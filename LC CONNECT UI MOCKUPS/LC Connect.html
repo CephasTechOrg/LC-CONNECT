@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LC Connect — Mobile Prototype</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet" />
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <script type="text/babel" src="ios-frame.jsx"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #d5e4ef;
+      min-height: 100vh;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      font-family: 'DM Sans', sans-serif;
+      padding: 24px 12px;
+    }
+    ::-webkit-scrollbar { display: none; }
+    input, button, span, p, div { font-family: 'DM Sans', sans-serif; }
+    .snav { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; justify-content: center; }
+    .snav button { padding: 5px 14px; border-radius: 20px; border: 1.5px solid #b8d0e0; background: rgba(255,255,255,0.75); color: #3F7FB5; font-size: 12px; font-weight: 500; cursor: pointer; }
+    .snav button.on { background: #3F7FB5; color: #fff; border-color: #3F7FB5; }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+
+<!-- ─────────────── SHARED TOKENS & COMPONENTS ─────────────── -->
+<script type="text/babel">
+const C = {
+  blue:      '#3F7FB5',
+  blueLight: '#8CB0BF',
+  blueSoft:  '#EBF3F9',
+  bluePale:  '#EFF6FB',
+  dark:      '#111827',
+  mid:       '#374151',
+  muted:     '#6B7280',
+  bg:        '#F6F9FB',
+  white:     '#FFFFFF',
+  border:    '#E5EAF0',
+  green:     '#10B981',
+};
+const IMG = {
+  students: 'uploads/students.png',
+  school:   'uploads/school.png',
+  headshot: 'uploads/headshots.png',
+};
+
+/* ── Inline SVG icon set (Feather/Lucide style) ── */
+const Ico = {
+  home:       c => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path d="M9 22V12h6v10"/></svg>,
+  users:      c => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>,
+  calendar:   c => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>,
+  message:    c => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2v10z"/></svg>,
+  person:     c => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
+  bell:       c => <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></svg>,
+  search:     c => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>,
+  filter:     c => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>,
+  chevron:    c => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg>,
+  check:      c => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>,
+  send:       c => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>,
+  plus:      (c,s=22) => <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2.5" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>,
+  shield:     c => <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>,
+  globe:      c => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>,
+  bookOpen:   c => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>,
+  heart:      c => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>,
+  lock:       c => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>,
+  edit:       c => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>,
+  settings:   c => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>,
+  compose:    c => <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>,
+  pin:        c => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>,
+  clock:      c => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>,
+  calSm:      c => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>,
+  usersSm:    c => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>,
+  dots:       c => <svg width="18" height="18" viewBox="0 0 24 24" fill={c}><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>,
+  verify:     c => <svg width="17" height="17" viewBox="0 0 24 24" fill={c}><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>,
+  eye:        c => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>,
+  mail:       c => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><path d="M22 6l-10 7L2 6"/></svg>,
+  padlock:    c => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>,
+  link:       c => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>,
+  studyHat:   c => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5-10-5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>,
+};
+
+/* ── Primitive components ── */
+function LCBadge({ size = 38 }) {
+  return (
+    <div style={{ width: size, height: size, borderRadius: size * 0.22, background: C.blue, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+      <span style={{ color: '#fff', fontWeight: 700, fontSize: size * 0.42, letterSpacing: '-0.02em' }}>LC</span>
+    </div>
+  );
+}
+
+function Avatar({ src, size = 44, sx = {} }) {
+  return (
+    <div style={{ width: size, height: size, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: C.bluePale, ...sx }}>
+      <img src={src || IMG.headshot} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center' }} />
+    </div>
+  );
+}
+
+function Chip({ label, active, onClick }) {
+  return (
+    <button onClick={onClick} style={{ padding: '6px 14px', borderRadius: 20, border: `1.5px solid ${active ? C.blue : C.border}`, background: active ? C.blue : C.white, color: active ? '#fff' : C.muted, fontSize: 13, fontWeight: active ? 600 : 400, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+      {label}
+    </button>
+  );
+}
+
+function Toggle({ on }) {
+  return (
+    <div style={{ width: 44, height: 26, borderRadius: 13, background: on ? C.blue : '#D1D5DB', position: 'relative', flexShrink: 0, cursor: 'pointer' }}>
+      <div style={{ width: 20, height: 20, borderRadius: '50%', background: '#fff', position: 'absolute', top: 3, left: on ? 21 : 3, boxShadow: '0 1px 3px rgba(0,0,0,0.2)', transition: 'left 0.2s' }} />
+    </div>
+  );
+}
+
+function BottomNav({ active, onNav }) {
+  const tabs = [
+    { id: 'home',       label: 'Home',       icon: Ico.home },
+    { id: 'connect',    label: 'Connect',    icon: Ico.users },
+    { id: 'activities', label: 'Activities', icon: Ico.calendar },
+    { id: 'messages',   label: 'Messages',   icon: Ico.message },
+    { id: 'profile',    label: 'Profile',    icon: Ico.person },
+  ];
+  return (
+    <div style={{ display: 'flex', background: C.white, borderTop: `1px solid ${C.border}`, paddingTop: 10, paddingBottom: 6, position: 'sticky', bottom: 0, zIndex: 40 }}>
+      {tabs.map(t => {
+        const on = active === t.id;
+        return (
+          <button key={t.id} onClick={() => onNav(t.id)} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+            {t.icon(on ? C.blue : '#9CA3AF')}
+            <span style={{ fontSize: 10, fontWeight: on ? 600 : 400, color: on ? C.blue : '#9CA3AF' }}>{t.label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function SearchBar({ placeholder = 'Search...', suffix }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: C.bg, border: `1.5px solid ${C.border}`, borderRadius: 12, padding: '10px 14px' }}>
+      {Ico.search(C.muted)}
+      <span style={{ flex: 1, color: '#9CA3AF', fontSize: 14 }}>{placeholder}</span>
+      {suffix}
+    </div>
+  );
+}
+
+Object.assign(window, { C, IMG, Ico, LCBadge, Avatar, Chip, Toggle, BottomNav, SearchBar });
+</script>
+
+<!-- ─────────────── SCREEN 1 · LOGIN ─────────────────────────── -->
+<script type="text/babel">
+function LoginScreen({ onSignIn }) {
+  return (
+    <div style={{ background: C.white, minHeight: '100%', display: 'flex', flexDirection: 'column' }}>
+
+      {/* ── HERO ── */}
+      <div style={{ position: 'relative', flexShrink: 0, background: '#EDF5FB' }}>
+
+        {/* Branding row — padded below status bar + dynamic island (~62px) */}
+        <div style={{ position: 'relative', zIndex: 10, paddingTop: 68, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'center', width: '100%', paddingLeft: 20, paddingRight: 20 }}>
+            <LCBadge size={46} />
+            <span style={{ fontSize: 28, fontWeight: 700, color: C.dark, letterSpacing: '-0.03em', whiteSpace: 'nowrap' }}>LC Connect</span>
+          </div>
+          <p style={{ fontSize: 14, color: C.muted, textAlign: 'center', lineHeight: 1.5 }}>
+            Find friends, study partners,<br />and campus activities
+          </p>
+        </div>
+
+        {/* Illustration stage — school behind, students in front */}
+        <div style={{ position: 'relative', height: 260, overflow: 'hidden', marginTop: 0 }}>
+          {/* school.png — fills the stage as the campus backdrop */}
+          <img
+            src={IMG.school}
+            alt=""
+            style={{
+              position: 'absolute',
+              bottom: 0,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              width: '105%',
+              height: '100%',
+              objectFit: 'contain',
+              objectPosition: 'bottom center',
+              opacity: 0.8,
+              zIndex: 1,
+            }}
+          />
+          {/* students.png — layered in front, bottom-aligned */}
+          <img
+            src={IMG.students}
+            alt="LC Connect students"
+            style={{
+              position: 'absolute',
+              bottom: 0,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              height: '95%',
+              width: 'auto',
+              maxWidth: '96%',
+              objectFit: 'contain',
+              objectPosition: 'bottom center',
+              zIndex: 2,
+            }}
+          />
+        </div>
+      </div>
+
+      {/* ── FORM ── */}
+      <div style={{ flex: 1, padding: '22px 22px 28px', display: 'flex', flexDirection: 'column', gap: 13 }}>
+        {/* Email */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, border: `1.5px solid ${C.border}`, borderRadius: 12, padding: '12px 14px', background: C.bg }}>
+          {Ico.mail(C.muted)}
+          <input placeholder="Email address" style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', fontSize: 14, color: C.dark }} />
+        </div>
+        {/* Password */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, border: `1.5px solid ${C.border}`, borderRadius: 12, padding: '12px 14px', background: C.bg }}>
+          {Ico.padlock(C.muted)}
+          <input type="password" placeholder="Password" style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', fontSize: 14, color: C.dark }} />
+          {Ico.eye(C.muted)}
+        </div>
+        {/* Forgot */}
+        <div style={{ textAlign: 'right', marginTop: -5 }}>
+          <span style={{ fontSize: 13, color: C.blue, fontWeight: 500, cursor: 'pointer' }}>Forgot password?</span>
+        </div>
+        {/* Sign In */}
+        <button onClick={onSignIn} style={{ width: '100%', padding: '14px', borderRadius: 13, background: C.blue, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: '0 4px 14px rgba(63,127,181,0.3)' }}>
+          {Ico.padlock('#fff')}
+          <span style={{ color: '#fff', fontSize: 15, fontWeight: 700 }}>Sign In</span>
+        </button>
+        {/* OR divider */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ flex: 1, height: 1, background: C.border }} />
+          <span style={{ fontSize: 11, color: C.muted, letterSpacing: '0.05em' }}>OR</span>
+          <div style={{ flex: 1, height: 1, background: C.border }} />
+        </div>
+        {/* School email */}
+        <button style={{ width: '100%', padding: '13px', borderRadius: 13, background: C.white, border: `1.5px solid ${C.border}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+          {Ico.mail(C.dark)}
+          <span style={{ color: C.dark, fontSize: 14, fontWeight: 500 }}>Continue with school email</span>
+        </button>
+        {/* Create account */}
+        <p style={{ textAlign: 'center', fontSize: 13, color: C.muted }}>
+          Don't have an account?{'  '}
+          <span style={{ color: C.blue, fontWeight: 600, cursor: 'pointer' }}>Create account</span>
+        </p>
+        {/* Safety note */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, background: C.bg, borderRadius: 12, padding: '11px 13px', border: `1px solid ${C.border}` }}>
+          {Ico.shield(C.blueLight)}
+          <p style={{ fontSize: 12, color: C.muted, lineHeight: 1.55 }}>
+            <strong style={{ color: C.mid }}>Students only.</strong> Verified Livingstone College students can access LC Connect.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+Object.assign(window, { LoginScreen });
+</script>
+
+<!-- ─────────────── SCREEN 2 · HOME ──────────────────────────── -->
+<script type="text/babel">
+const HOME_CATS = [
+  { label: 'Friendship',        icon: c => Ico.users(c) },
+  { label: 'Study Partner',     icon: c => Ico.bookOpen(c) },
+  { label: 'Language Exchange', icon: c => Ico.globe(c) },
+  { label: 'Events',            icon: c => Ico.calendar(c) },
+  { label: 'Open Connection',   icon: c => Ico.link(c) },
+];
+const HOME_STUDENTS = [
+  { name: 'Malik J.',  sub: "Computer Science '26", tags: ['Coding', 'Soccer'] },
+  { name: 'Sophie L.', sub: "Biology '27",           tags: ['Study Buddies', 'Hiking'] },
+  { name: 'Ethan R.',  sub: "Economics '26",         tags: ['Finance', 'Basketball'] },
+];
+const HOME_ACTS = [
+  { em: '📖', name: 'Study Session',  loc: 'Library, 2nd Floor', going: 8,  time: '2:00 PM' },
+  { em: '🏀', name: 'Basketball Run', loc: 'Recreation Center',  going: 12, time: '5:00 PM' },
+  { em: '☕', name: 'Coffee Meetup',  loc: 'Campus Cafe',        going: 6,  time: '7:30 PM' },
+];
+
+function HomeScreen({ onNav }) {
+  const [cat, setCat] = React.useState('Friendship');
+  return (
+    <div style={{ background: C.bg }}>
+      {/* Header */}
+      <div style={{ background: C.white, padding: '12px 20px 14px', display: 'flex', alignItems: 'center', gap: 12 }}>
+        <LCBadge size={40} />
+        <div style={{ flex: 1 }}>
+          <h2 style={{ fontSize: 20, fontWeight: 700, color: C.dark, lineHeight: 1.2 }}>Hi, Cephas</h2>
+          <p style={{ fontSize: 12, color: C.muted }}>Ready to connect on campus?</p>
+        </div>
+        <div style={{ position: 'relative', cursor: 'pointer' }}>
+          {Ico.bell(C.muted)}
+          <div style={{ position: 'absolute', top: -2, right: -2, width: 8, height: 8, borderRadius: '50%', background: '#EF4444', border: '1.5px solid white' }} />
+        </div>
+      </div>
+
+      {/* Search */}
+      <div style={{ padding: '12px 20px 0' }}>
+        <SearchBar placeholder="Search people, interests, or activities" />
+      </div>
+
+      {/* Category chips */}
+      <div style={{ overflowX: 'auto', display: 'flex', gap: 10, padding: '12px 20px' }}>
+        {HOME_CATS.map(c2 => {
+          const on = cat === c2.label;
+          return (
+            <button key={c2.label} onClick={() => setCat(c2.label)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, background: on ? C.blueSoft : C.white, border: `1.5px solid ${on ? C.blue : C.border}`, borderRadius: 14, padding: '9px 13px', cursor: 'pointer', minWidth: 68, flexShrink: 0 }}>
+              <span style={{ color: on ? C.blue : C.muted }}>{c2.icon(on ? C.blue : C.muted)}</span>
+              <span style={{ fontSize: 10, fontWeight: on ? 600 : 400, color: on ? C.blue : C.muted, textAlign: 'center', lineHeight: 1.3 }}>{c2.label}</span>
+            </button>
+          );
+        })}
+        <div style={{ width: 4, flexShrink: 0 }} />
+      </div>
+
+      {/* Recommended for you */}
+      <div style={{ padding: '0 20px 8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span style={{ fontSize: 15, fontWeight: 700, color: C.dark }}>Recommended for you</span>
+        <span style={{ fontSize: 12, color: C.blue, fontWeight: 500, cursor: 'pointer' }}>View all</span>
+      </div>
+
+      <div style={{ overflowX: 'auto', display: 'flex', gap: 12, padding: '0 20px 16px' }}>
+        {HOME_STUDENTS.map((s, i) => (
+          <div key={i} style={{ background: C.white, borderRadius: 16, padding: '0 0 12px', border: `1px solid ${C.border}`, minWidth: 130, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0, boxShadow: '0 2px 10px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+            {/* Avatar card with school bg */}
+            <div style={{ width: '100%', height: 90, position: 'relative', background: C.bluePale }}>
+              <img src={IMG.school} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center', opacity: 0.45 }} />
+              <div style={{ position: 'absolute', bottom: -22, left: '50%', transform: 'translateX(-50%)' }}>
+                <Avatar size={50} sx={{ border: '3px solid white', boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }} />
+              </div>
+              {/* connect badge */}
+              <div style={{ position: 'absolute', bottom: -18, right: 12, width: 20, height: 20, borderRadius: '50%', background: C.blue, border: '2px solid white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {Ico.users('#fff')}
+              </div>
+            </div>
+            <div style={{ height: 26 }} />
+            <div style={{ textAlign: 'center', padding: '0 10px' }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: C.dark }}>{s.name}</div>
+              <div style={{ fontSize: 10, color: C.muted, marginTop: 1 }}>{s.sub}</div>
+            </div>
+            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: 'center', padding: '6px 8px' }}>
+              {s.tags.map(t => <span key={t} style={{ fontSize: 10, color: C.blue, background: C.blueSoft, padding: '2px 7px', borderRadius: 20, fontWeight: 500 }}>{t}</span>)}
+            </div>
+            <button style={{ margin: '0 10px', width: 'calc(100% - 20px)', padding: '7px 0', borderRadius: 8, background: C.blue, border: 'none', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Connect</button>
+          </div>
+        ))}
+        <div style={{ width: 4, flexShrink: 0 }} />
+      </div>
+
+      {/* Today's activities */}
+      <div style={{ padding: '0 20px 8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span style={{ fontSize: 15, fontWeight: 700, color: C.dark }}>Today's activities</span>
+        <span style={{ fontSize: 12, color: C.blue, fontWeight: 500, cursor: 'pointer' }}>View calendar</span>
+      </div>
+      <div style={{ padding: '0 20px', display: 'flex', flexDirection: 'column', gap: 9 }}>
+        {HOME_ACTS.map((a, i) => (
+          <div key={i} style={{ background: C.white, borderRadius: 12, padding: '11px 13px', border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 11, boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+            <div style={{ width: 38, height: 38, borderRadius: 10, background: C.blueSoft, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>{a.em}</div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: C.dark }}>{a.name}</div>
+              <div style={{ fontSize: 11, color: C.muted }}>{a.loc}</div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              {Ico.usersSm(C.muted)}
+              <span style={{ fontSize: 11, color: C.muted }}>{a.going} going</span>
+            </div>
+            <span style={{ fontSize: 12, color: C.blue, fontWeight: 600 }}>{a.time}</span>
+            {Ico.chevron(C.muted)}
+          </div>
+        ))}
+      </div>
+
+      {/* Recent matches */}
+      <div style={{ padding: '14px 20px 8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span style={{ fontSize: 15, fontWeight: 700, color: C.dark }}>Recent matches</span>
+        <span onClick={() => onNav('messages')} style={{ fontSize: 12, color: C.blue, fontWeight: 500, cursor: 'pointer' }}>View messages</span>
+      </div>
+      <div style={{ padding: '0 20px 22px' }}>
+        <div onClick={() => onNav('messages')} style={{ background: C.white, borderRadius: 12, padding: '12px 13px', border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 11, boxShadow: '0 1px 4px rgba(0,0,0,0.04)', cursor: 'pointer' }}>
+          <div style={{ position: 'relative' }}>
+            <Avatar size={44} />
+            <div style={{ position: 'absolute', top: 0, left: 0, width: 11, height: 11, borderRadius: '50%', background: C.blue, border: '2px solid white' }} />
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: C.dark }}>Sophie L.</div>
+            <div style={{ fontSize: 11, color: C.muted }}>Biology '27</div>
+            <div style={{ fontSize: 12, color: C.mid, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              Hey! I'm also taking BIO 201. Want to study together this week?
+            </div>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+            <span style={{ fontSize: 10, color: C.muted }}>2h ago</span>
+            {Ico.chevron(C.muted)}
+          </div>
+        </div>
+      </div>
+
+      <BottomNav active="home" onNav={onNav} />
+    </div>
+  );
+}
+Object.assign(window, { HomeScreen });
+</script>
+
+<!-- ─────────────── SCREEN 3 · CONNECT ───────────────────────── -->
+<script type="text/babel">
+function ConnectScreen({ onNav }) {
+  const [filter, setFilter] = React.useState('All');
+  const filters = ['All', 'Friendship', 'Study Partner', 'Language Exchange', 'Events', 'Open Connection'];
+
+  return (
+    <div style={{ background: C.bg }}>
+      {/* Header */}
+      <div style={{ background: C.white, padding: '12px 20px 14px', display: 'flex', alignItems: 'center', gap: 12 }}>
+        <LCBadge size={40} />
+        <div style={{ flex: 1 }}>
+          <h2 style={{ fontSize: 20, fontWeight: 700, color: C.dark }}>Connect</h2>
+          <p style={{ fontSize: 11, color: C.muted }}>Discover and connect with students at Livingstone College.</p>
+        </div>
+        {Ico.bell(C.muted)}
+      </div>
+
+      <div style={{ padding: '12px 20px 0' }}>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <SearchBar placeholder="Search by name, major, or interests" />
+          <button style={{ width: 44, height: 44, borderRadius: 12, border: `1.5px solid ${C.border}`, background: C.white, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
+            {Ico.filter(C.muted)}
+          </button>
+        </div>
+        <div style={{ overflowX: 'auto', display: 'flex', gap: 8, marginTop: 12, paddingBottom: 4 }}>
+          {filters.map(f => <Chip key={f} label={f} active={filter === f} onClick={() => setFilter(f)} />)}
+        </div>
+      </div>
+
+      {/* Jordan M. discovery card */}
+      <div style={{ padding: '14px 20px 0' }}>
+        <div style={{ background: C.white, borderRadius: 20, border: `1px solid ${C.border}`, overflow: 'hidden', boxShadow: '0 4px 18px rgba(0,0,0,0.07)' }}>
+          {/* Badge row */}
+          <div style={{ padding: '12px 14px 6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: C.blueSoft, padding: '4px 10px', borderRadius: 20 }}>
+              {Ico.bookOpen(C.blue)}
+              <span style={{ fontSize: 11, color: C.blue, fontWeight: 500 }}>Wants study partner</span>
+            </div>
+            {Ico.dots(C.muted)}
+          </div>
+
+          {/* Card body */}
+          <div style={{ padding: '6px 14px', display: 'flex', gap: 14 }}>
+            {/* Photo with school bg */}
+            <div style={{ width: 110, height: 155, borderRadius: 16, overflow: 'hidden', position: 'relative', flexShrink: 0, background: C.bluePale }}>
+              <img src={IMG.school} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center', opacity: 0.45 }} />
+              {/* headshot.png as the student image */}
+              <img src={IMG.headshot} alt="" style={{ position: 'absolute', bottom: 0, left: 0, right: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center' }} />
+            </div>
+
+            <div style={{ flex: 1 }}>
+              <h3 style={{ fontSize: 20, fontWeight: 700, color: C.dark }}>Jordan M.</h3>
+              <p style={{ fontSize: 12, color: C.muted }}>Sophomore · He/Him</p>
+              <p style={{ fontSize: 13, color: C.blue, fontWeight: 600, marginTop: 2 }}>Computer Science</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 6 }}>
+                {Ico.pin(C.muted)}<span style={{ fontSize: 11, color: C.muted }}>Livingstone College</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 3 }}>
+                {Ico.calSm(C.muted)}<span style={{ fontSize: 11, color: C.muted }}>Class of 2026</span>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 8 }}>
+                {['🏀 Basketball', 'Coding', '🎵 Music'].map(t => (
+                  <span key={t} style={{ fontSize: 11, color: C.mid, background: C.bg, padding: '3px 9px', borderRadius: 20, border: `1px solid ${C.border}` }}>{t}</span>
+                ))}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 7 }}>
+                {Ico.globe(C.blue)}<span style={{ fontSize: 12, color: C.mid }}>Speaks <strong>English, Spanish</strong></span>
+              </div>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginTop: 6, background: '#ECFDF5', padding: '3px 10px', borderRadius: 20, border: '1px solid #A7F3D0' }}>
+                {Ico.globe('#059669')}<span style={{ fontSize: 11, color: '#059669', fontWeight: 500 }}>Language exchange</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Match reason */}
+          <div style={{ margin: '10px 14px', padding: '8px 12px', borderRadius: 10, background: '#FFFBEB', border: '1px solid #FDE68A', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 15 }}>🏀</span>
+            <span style={{ fontSize: 12, color: '#92400E' }}>You both like basketball</span>
+          </div>
+
+          {/* Actions */}
+          <div style={{ padding: '0 14px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button style={{ flex: 1, padding: '11px', borderRadius: 12, background: C.blue, border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: 'pointer', boxShadow: '0 3px 10px rgba(63,127,181,0.3)' }}>
+                {Ico.users('#fff')}<span style={{ color: '#fff', fontSize: 13, fontWeight: 600 }}>Connect</span>
+              </button>
+              <button style={{ flex: 1, padding: '11px', borderRadius: 12, background: C.white, border: `1.5px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: 'pointer' }}>
+                {Ico.bookOpen(C.dark)}<span style={{ color: C.dark, fontSize: 13, fontWeight: 500 }}>Study Together</span>
+              </button>
+            </div>
+            <button style={{ width: '100%', padding: '10px', borderRadius: 12, background: C.white, border: `1.5px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: 'pointer' }}>
+              {Ico.clock(C.muted)}<span style={{ color: C.muted, fontSize: 13 }}>Maybe Later</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Partial second card — Priya S. */}
+      <div style={{ padding: '12px 20px 20px' }}>
+        <div style={{ background: C.white, borderRadius: 20, border: `1px solid ${C.border}`, padding: '12px 14px', boxShadow: '0 4px 18px rgba(0,0,0,0.07)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: '#ECFDF5', padding: '4px 10px', borderRadius: 20, border: '1px solid #A7F3D0' }}>
+              {Ico.globe('#059669')}<span style={{ fontSize: 11, color: '#059669', fontWeight: 500 }}>Language exchange</span>
+            </div>
+            {Ico.dots(C.muted)}
+          </div>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+            <div style={{ width: 70, height: 80, borderRadius: 14, overflow: 'hidden', position: 'relative', background: C.bluePale, flexShrink: 0 }}>
+              <img src={IMG.school} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0.4 }} />
+              <img src={IMG.headshot} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center' }} />
+            </div>
+            <div>
+              <h3 style={{ fontSize: 18, fontWeight: 700, color: C.dark }}>Priya S.</h3>
+              <p style={{ fontSize: 12, color: C.muted }}>Junior · She/Her</p>
+              <p style={{ fontSize: 13, color: C.blue, fontWeight: 600 }}>Biology</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <BottomNav active="connect" onNav={onNav} />
+    </div>
+  );
+}
+Object.assign(window, { ConnectScreen });
+</script>
+
+<!-- ─────────────── SCREEN 4 · ACTIVITIES ────────────────────── -->
+<script type="text/babel">
+const EVENTS_LIST = [
+  { em: '🏀', name: 'Basketball Run',  date: 'Wed, May 14 · 7:00 PM',  loc: 'Alumni Gym',               going: 12 },
+  { em: '☕', name: 'Coffee Meetup',   date: 'Fri, May 16 · 10:00 AM', loc: "Dunkin' Lounge",            going: 18 },
+  { em: '🎲', name: 'Game Night',      date: 'Fri, May 16 · 7:00 PM',  loc: 'Student Center, Room 201', going: 16 },
+  { em: '🍿', name: 'Movie Night',     date: 'Sat, May 17 · 8:00 PM',  loc: 'Maguire Auditorium',       going: 22 },
+];
+
+function ActivitiesScreen({ onNav }) {
+  const [activeFilter, setFilter] = React.useState('All');
+  const [joined, setJoined] = React.useState(false);
+  const filters = ['All', 'Study', 'Sports', 'Social', 'Culture'];
+
+  return (
+    <div style={{ background: C.bg }}>
+      {/* Header */}
+      <div style={{ background: C.white, padding: '12px 20px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
+        <LCBadge size={36} />
+        <span style={{ fontSize: 16, fontWeight: 700, color: C.dark, flex: 1 }}>LC Connect</span>
+        <div style={{ position: 'relative', cursor: 'pointer' }}>
+          {Ico.bell(C.muted)}
+          <div style={{ position: 'absolute', top: -2, right: -2, width: 8, height: 8, borderRadius: '50%', background: '#EF4444', border: '1.5px solid white' }} />
+        </div>
+      </div>
+
+      <div style={{ padding: '16px 20px 0' }}>
+        <h1 style={{ fontSize: 27, fontWeight: 700, color: C.dark, letterSpacing: '-0.03em' }}>Activities</h1>
+        <p style={{ fontSize: 13, color: C.muted, marginTop: 2 }}>Find something happening on campus</p>
+        <div style={{ overflowX: 'auto', display: 'flex', gap: 8, marginTop: 13, paddingBottom: 4 }}>
+          {filters.map(f => <Chip key={f} label={f} active={activeFilter === f} onClick={() => setFilter(f)} />)}
+        </div>
+      </div>
+
+      {/* Featured event */}
+      <div style={{ padding: '14px 20px' }}>
+        <div style={{ background: C.white, borderRadius: 20, border: `1px solid ${C.border}`, overflow: 'hidden', boxShadow: '0 4px 18px rgba(0,0,0,0.07)' }}>
+          {/* Illustration hero */}
+          <div style={{ height: 120, position: 'relative', background: C.bluePale, overflow: 'hidden' }}>
+            <img src={IMG.school} alt="" style={{ position: 'absolute', right: -20, top: 0, height: '100%', width: 'auto', opacity: 0.55, objectFit: 'contain' }} />
+            <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to right, rgba(239,246,251,0.98) 42%, rgba(239,246,251,0.05))' }} />
+            <div style={{ position: 'absolute', top: 13, left: 15 }}>
+              <span style={{ background: C.blue, color: '#fff', fontSize: 9, fontWeight: 700, padding: '3px 8px', borderRadius: 6, letterSpacing: '0.06em' }}>FEATURED</span>
+            </div>
+            <div style={{ position: 'absolute', bottom: 13, left: 15 }}>
+              <h2 style={{ fontSize: 19, fontWeight: 700, color: C.dark, lineHeight: 1.25 }}>Library Study<br />Session</h2>
+            </div>
+            <button onClick={() => setJoined(j => !j)} style={{ position: 'absolute', bottom: 14, right: 15, padding: '9px 20px', borderRadius: 11, background: joined ? C.green : C.blue, border: 'none', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', boxShadow: '0 3px 10px rgba(0,0,0,0.18)' }}>
+              {joined ? '✓ Joined' : 'Join'}
+            </button>
+          </div>
+          <div style={{ padding: '13px 16px 15px' }}>
+            <p style={{ fontSize: 13, color: C.muted, lineHeight: 1.55, marginBottom: 10 }}>Focus together and crush your goals. All majors welcome!</p>
+            {[[Ico.calSm, 'Tue, May 13'], [Ico.clock, '6:00 PM – 8:00 PM'], [Ico.pin, 'Butler Library, Room 301'], [Ico.usersSm, '24 going']].map(([icon, text], i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 5 }}>
+                {icon(C.blue)}<span style={{ fontSize: 13, color: C.mid }}>{text}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Event list */}
+      <div style={{ padding: '0 20px', display: 'flex', flexDirection: 'column', gap: 9 }}>
+        {EVENTS_LIST.map((ev, i) => (
+          <div key={i} style={{ background: C.white, borderRadius: 14, padding: '11px 13px', border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 11, boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+            <div style={{ width: 48, height: 48, borderRadius: 12, background: C.blueSoft, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 21, flexShrink: 0 }}>{ev.em}</div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: C.dark }}>{ev.name}</div>
+              <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{ev.date}</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 3, marginTop: 2 }}>
+                {Ico.pin(C.muted)}<span style={{ fontSize: 11, color: C.muted }}>{ev.loc}</span>
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>{Ico.usersSm(C.muted)}<span style={{ fontSize: 11, color: C.muted }}>{ev.going}</span></div>
+              <div style={{ width: 28, height: 28, borderRadius: '50%', border: `1.5px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                {Ico.plus(C.blue, 14)}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* FAB */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '14px 20px 4px' }}>
+        <button style={{ width: 52, height: 52, borderRadius: '50%', background: C.blue, border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 4px 16px rgba(63,127,181,0.45)' }}>
+          {Ico.plus('#fff')}
+        </button>
+      </div>
+
+      <BottomNav active="activities" onNav={onNav} />
+    </div>
+  );
+}
+Object.assign(window, { ActivitiesScreen });
+</script>
+
+<!-- ─────────────── SCREEN 5 · MESSAGES ──────────────────────── -->
+<script type="text/babel">
+const CHAT_MSGS = [
+  { from: 'maya', text: "Hey! I saw we have Bio 101 together. Are you free to study in the library sometime this week?", time: '10:21 AM' },
+  { from: 'me',   text: "Hi Maya! Yes, I'd love to. How about tomorrow afternoon?", time: '10:24 AM', read: true },
+  { from: 'maya', text: "Tomorrow works great! How about 2:00 PM in the Library learning commons?", time: '10:26 AM' },
+  { from: 'me',   text: "Perfect! I'll see you there.", time: '10:27 AM', read: true },
+];
+
+function MessagesScreen({ onNav }) {
+  return (
+    <div style={{ background: C.white, minHeight: '100%', display: 'flex', flexDirection: 'column' }}>
+      {/* Header */}
+      <div style={{ padding: '10px 20px 12px', display: 'flex', alignItems: 'center', gap: 10, borderBottom: `1px solid ${C.border}` }}>
+        <LCBadge size={34} />
+        <h2 style={{ flex: 1, fontSize: 17, fontWeight: 700, color: C.dark, textAlign: 'center' }}>Messages</h2>
+        {Ico.compose(C.blue)}
+      </div>
+
+      {/* Maya context card */}
+      <div style={{ margin: '12px 16px', background: C.bg, borderRadius: 16, border: `1px solid ${C.border}` }}>
+        <div style={{ padding: '13px 14px' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 11 }}>
+            <div style={{ position: 'relative', flexShrink: 0 }}>
+              <Avatar size={54} sx={{ border: '2px solid white', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} />
+              <div style={{ position: 'absolute', bottom: 2, right: 2, width: 12, height: 12, borderRadius: '50%', background: C.green, border: '2px solid white' }} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <h3 style={{ fontSize: 16, fontWeight: 700, color: C.dark }}>Maya Chen</h3>
+                {Ico.dots(C.muted)}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 2 }}>
+                <div style={{ width: 7, height: 7, borderRadius: '50%', background: C.green }} />
+                <span style={{ fontSize: 12, color: C.green, fontWeight: 500 }}>Online</span>
+              </div>
+              <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, border: `1.5px solid ${C.border}`, borderRadius: 20, padding: '4px 10px', background: C.white }}>
+                  {Ico.bookOpen(C.blue)}<span style={{ fontSize: 11, color: C.mid }}>Study Partner</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, border: `1.5px solid ${C.border}`, borderRadius: 20, padding: '4px 10px', background: C.white }}>
+                  <span style={{ fontSize: 13 }}>🏀</span><span style={{ fontSize: 11, color: C.mid }}>Basketball</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div style={{ marginTop: 10, padding: '9px 11px', background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+            {Ico.users(C.muted)}
+            <p style={{ fontSize: 12, color: C.muted, lineHeight: 1.55 }}>You and Maya are both in Biology 101 and members of LC Women's Basketball.</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Date separator */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 20px 12px' }}>
+        <div style={{ flex: 1, height: 1, background: C.border }} />
+        <span style={{ fontSize: 11, color: C.muted }}>Today</span>
+        <div style={{ flex: 1, height: 1, background: C.border }} />
+      </div>
+
+      {/* Chat bubbles */}
+      <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {CHAT_MSGS.map((msg, i) => (
+          <div key={i}>
+            <div style={{ display: 'flex', flexDirection: msg.from === 'maya' ? 'row' : 'row-reverse', gap: 8, alignItems: 'flex-end' }}>
+              {msg.from === 'maya' && <Avatar size={28} />}
+              <div style={{ maxWidth: '73%', padding: '10px 14px', borderRadius: 18, borderBottomLeftRadius: msg.from === 'maya' ? 4 : 18, borderBottomRightRadius: msg.from === 'me' ? 4 : 18, background: msg.from === 'me' ? C.blue : '#F3F4F6' }}>
+                <p style={{ fontSize: 13, lineHeight: 1.55, color: msg.from === 'me' ? '#fff' : C.dark }}>{msg.text}</p>
+              </div>
+            </div>
+            <div style={{ display: 'flex', justifyContent: msg.from === 'maya' ? 'flex-start' : 'flex-end', marginTop: 3, paddingLeft: msg.from === 'maya' ? 36 : 0 }}>
+              <span style={{ fontSize: 10, color: C.muted }}>{msg.time}{msg.read ? ' ✓✓' : ''}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Quick actions */}
+      <div style={{ padding: '13px 16px 8px', display: 'flex', gap: 7, overflowX: 'auto' }}>
+        {[[Ico.bookOpen, 'Ask about classes'], [Ico.calendar, 'Invite to event'], [Ico.users, 'Study together']].map(([icon, label], i) => (
+          <button key={i} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 13px', borderRadius: 20, border: `1.5px solid ${C.border}`, background: C.white, fontSize: 12, color: C.mid, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+            {icon(C.muted)}{label}
+          </button>
+        ))}
+      </div>
+
+      {/* Input bar */}
+      <div style={{ padding: '8px 16px 12px', borderTop: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 9 }}>
+        <button style={{ width: 36, height: 36, borderRadius: '50%', border: `1.5px solid ${C.border}`, background: C.white, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+          {Ico.plus(C.muted, 18)}
+        </button>
+        <div style={{ flex: 1, background: C.bg, borderRadius: 20, border: `1px solid ${C.border}`, padding: '9px 15px' }}>
+          <span style={{ fontSize: 14, color: '#9CA3AF' }}>Type a message...</span>
+        </div>
+        <button style={{ width: 38, height: 38, borderRadius: '50%', background: C.blue, border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 3px 10px rgba(63,127,181,0.35)' }}>
+          {Ico.send('#fff')}
+        </button>
+      </div>
+
+      <BottomNav active="messages" onNav={onNav} />
+    </div>
+  );
+}
+Object.assign(window, { MessagesScreen });
+</script>
+
+<!-- ─────────────── SCREEN 6 · PROFILE ───────────────────────── -->
+<script type="text/babel">
+function ProfileScreen({ onNav }) {
+  const [toggles] = React.useState({ mutual: true, verified: true });
+  const lookingFor = [
+    { label: 'Friendship',        on: true  },
+    { label: 'Study Partner',     on: true  },
+    { label: 'Language Exchange', on: false },
+    { label: 'Events',            on: true  },
+    { label: 'Open Connection',   on: false },
+  ];
+
+  return (
+    <div style={{ background: C.bg }}>
+      {/* Header */}
+      <div style={{ background: C.white, padding: '10px 20px 12px', display: 'flex', alignItems: 'center', gap: 10 }}>
+        <LCBadge size={32} />
+        <span style={{ fontSize: 15, fontWeight: 700, color: C.dark, flex: 1 }}>LC Connect</span>
+        {Ico.settings(C.muted)}
+      </div>
+
+      {/* Profile card */}
+      <div style={{ background: C.white, padding: '18px 20px 20px', borderBottom: `1px solid ${C.border}` }}>
+        <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+          <div style={{ position: 'relative' }}>
+            <Avatar size={80} sx={{ boxShadow: '0 2px 14px rgba(0,0,0,0.13)', border: '3px solid white' }} />
+            <div style={{ position: 'absolute', bottom: 0, right: 0, width: 26, height: 26, borderRadius: '50%', background: C.blue, border: '2px solid white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+              {Ico.edit('#fff')}
+            </div>
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <h2 style={{ fontSize: 20, fontWeight: 700, color: C.dark }}>Maya Chen</h2>
+              {Ico.verify(C.blue)}
+            </div>
+            <p style={{ fontSize: 12, color: C.muted, marginTop: 4, lineHeight: 1.55, maxWidth: 200 }}>Always up for meaningful conversations, good coffee, and new experiences.</p>
+            <div style={{ marginTop: 9, display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {[[Ico.studyHat, 'Psychology'], [Ico.calendar, 'Sophomore'], [Ico.pin, 'Livingstone Campus']].map(([icon, text], i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  {icon(C.muted)}<span style={{ fontSize: 12, color: C.mid }}>{text}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ padding: '13px 16px', display: 'flex', flexDirection: 'column', gap: 11 }}>
+        {/* Verified */}
+        <div style={{ background: C.white, borderRadius: 14, border: `1px solid ${C.border}`, padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+          {Ico.shield(C.blue)}
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: C.dark }}>Verified Student</div>
+            <div style={{ fontSize: 11, color: C.muted }}>Your profile is verified by Livingston College.</div>
+          </div>
+          {Ico.chevron(C.muted)}
+        </div>
+
+        {/* Info rows */}
+        <div style={{ background: C.white, borderRadius: 14, border: `1px solid ${C.border}`, overflow: 'hidden' }}>
+          {[
+            [Ico.globe,    'Languages Spoken', 'English, Mandarin, Spanish'],
+            [Ico.bookOpen, 'Learning',          'Data Science, Design Thinking, French'],
+            [Ico.heart,    'Interests',         'Photography, Hiking, Volunteering, Indie Music'],
+          ].map(([icon, label, val], i) => (
+            <div key={i} style={{ padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 10, borderBottom: i < 2 ? `1px solid ${C.border}` : 'none' }}>
+              {icon(C.blue)}
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: C.dark }}>{label}</div>
+                <div style={{ fontSize: 11, color: C.muted, marginTop: 1 }}>{val}</div>
+              </div>
+              {Ico.chevron(C.muted)}
+            </div>
+          ))}
+        </div>
+
+        {/* Looking For */}
+        <div style={{ background: C.white, borderRadius: 14, border: `1px solid ${C.border}`, padding: '13px 14px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+            {Ico.users(C.blue)}
+            <span style={{ fontSize: 13, fontWeight: 700, color: C.dark }}>Looking For</span>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
+            {lookingFor.map(item => (
+              <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 12px', borderRadius: 20, background: item.on ? C.blue : C.white, border: `1.5px solid ${item.on ? C.blue : C.border}` }}>
+                {item.on && Ico.check('#fff')}
+                <span style={{ fontSize: 12, color: item.on ? '#fff' : C.muted, fontWeight: item.on ? 500 : 400 }}>{item.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Preferences */}
+        <div style={{ background: C.white, borderRadius: 14, border: `1px solid ${C.border}`, padding: '13px 14px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {Ico.lock(C.blue)}<span style={{ fontSize: 13, fontWeight: 700, color: C.dark }}>Preferences</span>
+            </div>
+            <span style={{ fontSize: 12, color: C.blue, fontWeight: 500, cursor: 'pointer' }}>Edit</span>
+          </div>
+          {[
+            { label: 'Only mutual matches can message me', key: 'mutual' },
+            { label: 'Show my profile to verified students only', key: 'verified' },
+          ].map((pref, i) => (
+            <div key={pref.key} style={{ display: 'flex', alignItems: 'center', gap: 10, paddingTop: i > 0 ? 11 : 0, paddingBottom: i < 1 ? 11 : 0, borderBottom: i < 1 ? `1px solid ${C.border}` : 'none' }}>
+              {Ico.shield(C.muted)}
+              <span style={{ flex: 1, fontSize: 12, color: C.mid }}>{pref.label}</span>
+              <Toggle on={toggles[pref.key]} />
+            </div>
+          ))}
+        </div>
+
+        {/* Stats */}
+        <div style={{ background: C.white, borderRadius: 14, border: `1px solid ${C.border}`, padding: '16px 14px', display: 'flex', justifyContent: 'space-around' }}>
+          {[[Ico.users, '128', 'Connections'], [Ico.calendar, '14', 'Joined Activities'], [Ico.message, '37', 'Messages']].map(([icon, val, label], i) => (
+            <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+              {icon(C.blue)}
+              <span style={{ fontSize: 22, fontWeight: 700, color: C.dark }}>{val}</span>
+              <span style={{ fontSize: 10, color: C.muted, textAlign: 'center' }}>{label}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Edit Profile CTA */}
+        <button style={{ width: '100%', padding: '14px', borderRadius: 14, background: C.blue, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: '0 4px 14px rgba(63,127,181,0.35)', marginBottom: 4 }}>
+          {Ico.edit('#fff')}
+          <span style={{ color: '#fff', fontSize: 15, fontWeight: 700 }}>Edit Profile</span>
+        </button>
+      </div>
+
+      <BottomNav active="profile" onNav={onNav} />
+    </div>
+  );
+}
+Object.assign(window, { ProfileScreen });
+</script>
+
+<!-- ─────────────── MAIN APP ──────────────────────────────────── -->
+<script type="text/babel">
+const ALL_SCREENS = ['login', 'home', 'connect', 'activities', 'messages', 'profile'];
+const SCREEN_LABELS = { login: 'Login', home: 'Home', connect: 'Connect', activities: 'Activities', messages: 'Messages', profile: 'Profile' };
+
+function App() {
+  const [screen, setScreen] = React.useState('login');
+
+  const renderScreen = () => {
+    switch (screen) {
+      case 'login':      return <LoginScreen      onSignIn={() => setScreen('home')} />;
+      case 'home':       return <HomeScreen        onNav={setScreen} />;
+      case 'connect':    return <ConnectScreen     onNav={setScreen} />;
+      case 'activities': return <ActivitiesScreen  onNav={setScreen} />;
+      case 'messages':   return <MessagesScreen    onNav={setScreen} />;
+      case 'profile':    return <ProfileScreen     onNav={setScreen} />;
+      default:           return <HomeScreen        onNav={setScreen} />;
+    }
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      <nav className="snav">
+        {ALL_SCREENS.map(s => (
+          <button key={s} className={screen === s ? 'on' : ''} onClick={() => setScreen(s)}>
+            {SCREEN_LABELS[s]}
+          </button>
+        ))}
+      </nav>
+      <IOSDevice>{renderScreen()}</IOSDevice>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
