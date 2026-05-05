@@ -7,9 +7,10 @@ from app.routers import activities, admin, auth, connections, discovery, lookups
 
 app = FastAPI(title=settings.app_name, version='0.1.0', default_response_class=ORJSONResponse)
 
-allowed_origins = settings.cors_origin_list
-if settings.is_development and not allowed_origins:
+if settings.is_development:
     allowed_origins = ['*']
+else:
+    allowed_origins = settings.cors_origin_list
 
 app.add_middleware(
     CORSMiddleware,
