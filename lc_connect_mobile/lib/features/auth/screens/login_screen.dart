@@ -2,9 +2,38 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../../core/theme/app_theme.dart';
 import '../providers/auth_provider.dart';
 
+// ── Color palette taken directly from the HTML mockup ─────────────
+class _C {
+  static const primary      = Color(0xFF4F8FC2);
+  static const primaryDark  = Color(0xFF3E7EB4);
+  static const logoTop      = Color(0xFF74A5C8);
+  static const logoBot      = Color(0xFF5F93BF);
+  static const textDark     = Color(0xFF111827);
+  static const textBody     = Color(0xFF1F2937);
+  static const textMuted    = Color(0xFF565C66);
+  static const hintColor    = Color(0xFF8B91A0);
+  static const eyeColor     = Color(0xFF7B8494);
+  static const border       = Color(0xFFDFE6EE);
+  static const forgotBlue   = Color(0xFF3E80BA);
+  static const btnShadow    = Color(0xFF3F7FB5);
+  static const divLine      = Color(0xFFDFE5EC);
+  static const divText      = Color(0xFF6F7784);
+  static const outlineBdr   = Color(0xFF3F7FB5);
+  static const outlineText  = Color(0xFF1C2635);
+  static const createText   = Color(0xFF2E3440);
+  static const createLink   = Color(0xFF4E8FC5);
+  static const noteIconClr  = Color(0xFF4E8FC5);
+  static const noteTextClr  = Color(0xFF606875);
+  static const noteStrong   = Color(0xFF1F2937);
+  static const noteBg       = Color(0xFFFBFCFD);
+  static const noteBorder   = Color(0xFFE0E7EF);
+  static const error        = Color(0xFFEF4444);
+  static const background   = Color(0xFFF6F9FB);
+}
+
+// ── Root widget ──────────────────────────────────────────────────
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
@@ -13,8 +42,8 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final _emailCtrl = TextEditingController();
+  final _formKey      = GlobalKey<FormState>();
+  final _emailCtrl    = TextEditingController();
   final _passwordCtrl = TextEditingController();
   bool _obscure = true;
 
@@ -40,7 +69,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             'Invalid email or password. Please try again.',
             style: GoogleFonts.dmSans(),
           ),
-          backgroundColor: AppColors.error,
+          backgroundColor: _C.error,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
@@ -63,15 +92,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             children: [
               _Branding(),
               _HeroScene(),
-              _Form(
-                formKey: _formKey,
-                emailCtrl: _emailCtrl,
-                passwordCtrl: _passwordCtrl,
-                obscure: _obscure,
-                isLoading: isLoading,
-                onToggleObscure: () => setState(() => _obscure = !_obscure),
-                onSubmit: _submit,
-                onRegister: () => context.go('/register'),
+              _FormSection(
+                formKey:          _formKey,
+                emailCtrl:        _emailCtrl,
+                passwordCtrl:     _passwordCtrl,
+                obscure:          _obscure,
+                isLoading:        isLoading,
+                onToggleObscure:  () => setState(() => _obscure = !_obscure),
+                onSubmit:         _submit,
+                onRegister:       () => context.go('/register'),
               ),
             ],
           ),
@@ -81,38 +110,79 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 }
 
-// ── Top branding block (above the hero) ─────────────────────────
+// ── Branding (logo + title + subtitle) ───────────────────────────
 class _Branding extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(22, 22, 22, 10),
-      child: Column(
+      padding: const EdgeInsets.fromLTRB(28, 26, 28, 0),
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              _LCBadge(size: 58),
-              const SizedBox(width: 12),
-              Text(
-                'LC Connect',
-                style: GoogleFonts.dmSans(
-                  fontSize: 26,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textDark,
-                  letterSpacing: -0.5,
-                ),
+          // Logo badge — gradient, Georgia "LC", shadow
+          Container(
+            width: 60,
+            height: 60,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [_C.logoTop, _C.logoBot],
               ),
-            ],
+              borderRadius: BorderRadius.circular(17),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x38789DBD),
+                  blurRadius: 18,
+                  offset: Offset(0, 8),
+                ),
+              ],
+            ),
+            alignment: Alignment.center,
+            child: const Text(
+              'LC',
+              style: TextStyle(
+                fontFamily: 'Georgia',
+                color: Colors.white,
+                fontSize: 32,
+                letterSpacing: -4,
+              ),
+            ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            'Find friends, study partners,\nand campus activities',
-            style: GoogleFonts.dmSans(
-              fontSize: 13.5,
-              color: AppColors.textMuted,
-              height: 1.5,
+          const SizedBox(width: 14),
+          // Title + subtitle
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                RichText(
+                  text: TextSpan(
+                    style: GoogleFonts.dmSans(
+                      fontSize: 34,
+                      fontWeight: FontWeight.w800,
+                      color: _C.textDark,
+                      height: 0.98,
+                      letterSpacing: -2.5,
+                    ),
+                    children: const [
+                      TextSpan(
+                        text: 'LC',
+                        style: TextStyle(color: _C.primary),
+                      ),
+                      TextSpan(text: ' Connect'),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  'Find friends, study partners,\nand campus activities',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 16,
+                    color: _C.textMuted,
+                    height: 1.35,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -121,58 +191,30 @@ class _Branding extends StatelessWidget {
   }
 }
 
-// ── LC Badge ────────────────────────────────────────────────────
-class _LCBadge extends StatelessWidget {
-  final double size;
-  const _LCBadge({required this.size});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: AppColors.primary,
-        borderRadius: BorderRadius.circular(size * 0.22),
-      ),
-      alignment: Alignment.center,
-      child: Text(
-        'LC',
-        style: GoogleFonts.dmSans(
-          color: Colors.white,
-          fontSize: size * 0.38,
-          fontWeight: FontWeight.w700,
-          letterSpacing: -0.5,
-        ),
-      ),
-    );
-  }
-}
-
-// ── Hero: school behind, students in front, curved white base ────
+// ── Hero: school + students + white elliptic curve ────────────────
 class _HeroScene extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final sz = MediaQuery.of(context).size;
-    final sceneH = sz.height * 0.34;
-
-    return SizedBox(
-      height: sceneH,
+    return Container(
+      height: 360,
+      margin: const EdgeInsets.only(top: 10),
       child: Stack(
+        clipBehavior: Clip.none,
         children: [
-          // School — fills the entire hero area as the background.
-          // Visible above and around the students (campus scene backdrop).
+          // School — full-zone background at 45% opacity
           Positioned.fill(
-            child: Image.asset(
-              'assets/images/school.png',
-              fit: BoxFit.cover,
-              alignment: Alignment.topCenter,
+            child: Opacity(
+              opacity: 0.45,
+              child: Image.asset(
+                'assets/images/school.png',
+                fit: BoxFit.cover,
+                alignment: Alignment.center,
+              ),
             ),
           ),
-          // Students — fills full width, bottom-anchored.
-          // Height is determined by the image's natural aspect ratio.
+          // Students — full-width, pushed a bit below the zone bottom
           Positioned(
-            bottom: 0,
+            bottom: -80,
             left: 0,
             right: 0,
             child: Image.asset(
@@ -181,18 +223,17 @@ class _HeroScene extends StatelessWidget {
               alignment: Alignment.bottomCenter,
             ),
           ),
-          // Curved white base — sits under the students' feet,
-          // transitions smoothly into the form below.
+          // White elliptic curve — sits over students' feet
           Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
+            bottom: -80,
+            left: -30,
+            right: -30,
             child: Container(
-              height: 34,
+              height: 90,
               decoration: const BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.vertical(
-                  top: Radius.circular(30),
+                  top: Radius.elliptical(200, 90),
                 ),
               ),
             ),
@@ -203,8 +244,8 @@ class _HeroScene extends StatelessWidget {
   }
 }
 
-// ── Form section ────────────────────────────────────────────────
-class _Form extends StatelessWidget {
+// ── Form section ─────────────────────────────────────────────────
+class _FormSection extends StatelessWidget {
   final GlobalKey<FormState> formKey;
   final TextEditingController emailCtrl;
   final TextEditingController passwordCtrl;
@@ -214,7 +255,7 @@ class _Form extends StatelessWidget {
   final VoidCallback onSubmit;
   final VoidCallback onRegister;
 
-  const _Form({
+  const _FormSection({
     required this.formKey,
     required this.emailCtrl,
     required this.passwordCtrl,
@@ -228,25 +269,26 @@ class _Form extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(22, 10, 22, 32),
+      padding: const EdgeInsets.fromLTRB(28, 10, 28, 28),
       child: Form(
         key: formKey,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _IconField(
-              controller: emailCtrl,
-              hintText: 'Email address',
-              icon: Icons.mail_outline_rounded,
+            // Email field
+            _MockupField(
+              controller:   emailCtrl,
+              hintText:     'Email address',
+              icon:         Icons.mail_outline_rounded,
               keyboardType: TextInputType.emailAddress,
-              validator: (v) =>
-                  v != null && v.contains('@') ? null : 'Enter a valid email',
+              validator:    (v) => v != null && v.contains('@') ? null : 'Enter a valid email',
             ),
-            const SizedBox(height: 12),
-            _IconField(
-              controller: passwordCtrl,
-              hintText: 'Password',
-              icon: Icons.lock_outline_rounded,
+            const SizedBox(height: 13),
+            // Password field
+            _MockupField(
+              controller:  passwordCtrl,
+              hintText:    'Password',
+              icon:        Icons.lock_outline_rounded,
               obscureText: obscure,
               suffixIcon: GestureDetector(
                 onTap: onToggleObscure,
@@ -254,76 +296,71 @@ class _Form extends StatelessWidget {
                   obscure
                       ? Icons.visibility_off_outlined
                       : Icons.visibility_outlined,
-                  color: AppColors.textMuted,
+                  color: _C.eyeColor,
                   size: 20,
                 ),
               ),
-              validator: (v) =>
-                  v != null && v.isNotEmpty ? null : 'Enter your password',
+              validator: (v) => v != null && v.isNotEmpty ? null : 'Enter your password',
             ),
             const SizedBox(height: 8),
+            // Forgot password
             Align(
               alignment: Alignment.centerRight,
-              child: TextButton(
-                onPressed: () {},
-                style: TextButton.styleFrom(
-                  padding: EdgeInsets.zero,
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
+              child: GestureDetector(
+                onTap: () {},
                 child: Text(
                   'Forgot password?',
                   style: GoogleFonts.dmSans(
-                    fontSize: 13,
-                    color: AppColors.primary,
+                    fontSize: 14,
+                    color: _C.forgotBlue,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
               ),
             ),
             const SizedBox(height: 18),
+            // Sign In button
             _SignInButton(isLoading: isLoading, onTap: onSubmit),
-            const SizedBox(height: 18),
+            const SizedBox(height: 20),
+            // OR divider
             Row(
               children: [
-                const Expanded(
-                    child: Divider(color: AppColors.border, thickness: 1)),
+                const Expanded(child: Divider(color: _C.divLine, thickness: 1)),
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Text(
                     'OR',
                     style: GoogleFonts.dmSans(
-                      fontSize: 11,
-                      color: AppColors.textMuted,
-                      letterSpacing: 0.5,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: _C.divText,
                     ),
                   ),
                 ),
-                const Expanded(
-                    child: Divider(color: AppColors.border, thickness: 1)),
+                const Expanded(child: Divider(color: _C.divLine, thickness: 1)),
               ],
             ),
-            const SizedBox(height: 18),
-            OutlinedButton.icon(
-              onPressed: () {},
-              icon: const Icon(Icons.mail_outline_rounded, size: 18),
-              label: const Text('Continue with school email'),
-            ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 17),
+            // Continue with school email
+            _SchoolEmailButton(),
+            const SizedBox(height: 17),
+            // Create account link
             Center(
               child: GestureDetector(
                 onTap: onRegister,
                 child: RichText(
                   text: TextSpan(
                     style: GoogleFonts.dmSans(
-                        fontSize: 13, color: AppColors.textMuted),
+                      fontSize: 15,
+                      color: _C.createText,
+                    ),
                     children: [
-                      const TextSpan(text: "Don't have an account?  "),
+                      const TextSpan(text: "Don't have an account?"),
                       TextSpan(
-                        text: 'Create account',
+                        text: ' Create account',
                         style: GoogleFonts.dmSans(
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.w600,
+                          color: _C.createLink,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ],
@@ -332,46 +369,8 @@ class _Form extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 20),
-            Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
-              decoration: BoxDecoration(
-                color: AppColors.background,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Icon(Icons.shield_outlined,
-                      size: 17, color: AppColors.primaryLight),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: RichText(
-                      text: TextSpan(
-                        style: GoogleFonts.dmSans(
-                            fontSize: 12,
-                            color: AppColors.textMuted,
-                            height: 1.55),
-                        children: [
-                          TextSpan(
-                            text: 'Students only. ',
-                            style: GoogleFonts.dmSans(
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textMid,
-                            ),
-                          ),
-                          const TextSpan(
-                            text:
-                                'Verified Livingstone College students can access LC Connect.',
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            // Students-only note
+            _NoteBox(),
           ],
         ),
       ),
@@ -379,8 +378,9 @@ class _Form extends StatelessWidget {
   }
 }
 
-// ── Reusable icon input field ────────────────────────────────────
-class _IconField extends StatelessWidget {
+// ── Mockup-spec input field ───────────────────────────────────────
+// White background, 56 px tall, border #DFE6EE, radius 14, subtle shadow.
+class _MockupField extends StatelessWidget {
   final TextEditingController controller;
   final String hintText;
   final IconData icon;
@@ -389,7 +389,7 @@ class _IconField extends StatelessWidget {
   final Widget? suffixIcon;
   final String? Function(String?)? validator;
 
-  const _IconField({
+  const _MockupField({
     required this.controller,
     required this.hintText,
     required this.icon,
@@ -401,22 +401,61 @@ class _IconField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TextFormField(
-      controller: controller,
-      keyboardType: keyboardType,
-      obscureText: obscureText,
-      style: GoogleFonts.dmSans(fontSize: 14, color: AppColors.textDark),
-      validator: validator,
-      decoration: InputDecoration(
-        hintText: hintText,
-        prefixIcon: Icon(icon, size: 18, color: AppColors.textMuted),
-        suffixIcon: suffixIcon,
+    return Container(
+      height: 56,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: _C.border),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0D0F172A),
+            blurRadius: 16,
+            offset: Offset(0, 6),
+          ),
+        ],
+      ),
+      child: TextFormField(
+        controller:   controller,
+        keyboardType: keyboardType,
+        obscureText:  obscureText,
+        validator:    validator,
+        style: GoogleFonts.dmSans(
+          fontSize: 16.5,
+          color: _C.textBody,
+        ),
+        decoration: InputDecoration(
+          hintText: hintText,
+          hintStyle: GoogleFonts.dmSans(
+            fontSize: 16.5,
+            color: _C.hintColor,
+          ),
+          prefixIcon: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 18),
+            child: Icon(icon, size: 22, color: _C.textBody),
+          ),
+          prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+          suffixIcon: suffixIcon != null
+              ? Padding(
+                  padding: const EdgeInsets.only(right: 14),
+                  child: suffixIcon,
+                )
+              : null,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 18),
+          // Override all borders so the Container border shows
+          border:       InputBorder.none,
+          enabledBorder: InputBorder.none,
+          focusedBorder: InputBorder.none,
+          errorBorder:   InputBorder.none,
+          focusedErrorBorder: InputBorder.none,
+          filled: false,
+        ),
       ),
     );
   }
 }
 
-// ── Sign in button ───────────────────────────────────────────────
+// ── Sign In gradient button ───────────────────────────────────────
 class _SignInButton extends StatelessWidget {
   final bool isLoading;
   final VoidCallback onTap;
@@ -424,50 +463,143 @@ class _SignInButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.primary,
-      borderRadius: BorderRadius.circular(13),
-      child: InkWell(
-        onTap: isLoading ? null : onTap,
-        borderRadius: BorderRadius.circular(13),
-        child: Container(
-          height: 52,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(13),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.primary.withAlpha(70),
-                blurRadius: 14,
-                offset: const Offset(0, 4),
-              ),
-            ],
+    return GestureDetector(
+      onTap: isLoading ? null : onTap,
+      child: Container(
+        height: 56,
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF5A94C2), Color(0xFF3E7EB4)],
           ),
-          child: Center(
-            child: isLoading
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.white),
-                  )
-                : Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.lock_outline_rounded,
-                          color: Colors.white, size: 18),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Sign In',
-                        style: GoogleFonts.dmSans(
-                          color: Colors.white,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
-          ),
+          borderRadius: BorderRadius.circular(13),
+          boxShadow: [
+            BoxShadow(
+              color: _C.btnShadow.withAlpha(87),  // .34 opacity
+              blurRadius: 24,
+              offset: const Offset(0, 10),
+            ),
+          ],
         ),
+        child: Center(
+          child: isLoading
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.lock_outline_rounded,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Sign In',
+                      style: GoogleFonts.dmSans(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Continue with school email button ────────────────────────────
+class _SchoolEmailButton extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () {},
+      child: Container(
+        height: 56,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border.all(color: _C.outlineBdr, width: 1.5),
+          borderRadius: BorderRadius.circular(13),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.mail_outline_rounded,
+                size: 22, color: _C.textBody),
+            const SizedBox(width: 16),
+            Text(
+              'Continue with school email',
+              style: GoogleFonts.dmSans(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: _C.outlineText,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Students-only note ────────────────────────────────────────────
+class _NoteBox extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(minHeight: 64),
+      decoration: BoxDecoration(
+        color: _C.noteBg,
+        border: Border.all(color: _C.noteBorder),
+        borderRadius: BorderRadius.circular(15),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x090F172A),  // ~.035 opacity
+            blurRadius: 16,
+            offset: Offset(0, 6),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.shield_outlined,
+              size: 28, color: _C.noteIconClr),
+          const SizedBox(width: 13),
+          Expanded(
+            child: RichText(
+              text: TextSpan(
+                style: GoogleFonts.dmSans(
+                  fontSize: 13.5,
+                  color: _C.noteTextClr,
+                  height: 1.38,
+                ),
+                children: [
+                  TextSpan(
+                    text: 'Students only. ',
+                    style: GoogleFonts.dmSans(
+                      fontWeight: FontWeight.w800,
+                      color: _C.noteStrong,
+                    ),
+                  ),
+                  const TextSpan(
+                    text: 'Verified Livingstone College students can access LC Connect.',
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
