@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/api/api_client.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../../messages/providers/messages_provider.dart';
 
 // ── Partner profile (subset of ProfilePublic) ────────────────────
@@ -99,6 +100,7 @@ final connectionsNotifierProvider =
 class ConnectionsNotifier extends AsyncNotifier<ConnectionsState> {
   @override
   Future<ConnectionsState> build() async {
+    ref.watch(authNotifierProvider);
     final client = ref.watch(apiClientProvider);
     final results = await Future.wait([
       client.dio.get('/connections/incoming'),

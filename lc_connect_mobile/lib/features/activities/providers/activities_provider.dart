@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/api/api_client.dart';
+import '../../auth/providers/auth_provider.dart';
 
 class Activity {
   final String id;
@@ -74,6 +75,7 @@ final activitiesNotifierProvider =
 class ActivitiesNotifier extends AsyncNotifier<List<Activity>> {
   @override
   Future<List<Activity>> build() async {
+    ref.watch(authNotifierProvider);
     final filter = ref.watch(activitiesFilterProvider);
     final client = ref.watch(apiClientProvider);
     final params = filter == 'all' ? null : {'category': filter};

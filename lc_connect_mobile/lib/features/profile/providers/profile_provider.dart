@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/api/api_client.dart';
+import '../../auth/providers/auth_provider.dart';
 
 // ── Public profile (viewing another user) ─────────────────────────
 
@@ -179,6 +180,7 @@ final myProfileNotifierProvider =
 class MyProfileNotifier extends AsyncNotifier<MyProfile> {
   @override
   Future<MyProfile> build() async {
+    ref.watch(authNotifierProvider);
     final client = ref.watch(apiClientProvider);
     final response = await client.dio.get('/profiles/me');
     return MyProfile.fromJson(response.data as Map<String, dynamic>);

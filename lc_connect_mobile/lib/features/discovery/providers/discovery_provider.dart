@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/api/api_client.dart';
+import '../../auth/providers/auth_provider.dart';
 
 class DiscoveryCard {
   final String profileId;
@@ -59,6 +60,7 @@ final discoveryNotifierProvider =
 class DiscoveryNotifier extends AsyncNotifier<List<DiscoveryCard>> {
   @override
   Future<List<DiscoveryCard>> build() async {
+    ref.watch(authNotifierProvider);
     final client = ref.watch(apiClientProvider);
     final response = await client.dio.get('/discovery/cards');
     return (response.data as List)
