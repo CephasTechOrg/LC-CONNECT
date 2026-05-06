@@ -108,11 +108,13 @@ class _Header extends StatelessWidget {
               ],
             ),
           ),
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded,
-                size: 20, color: AppColors.textMuted),
-            onPressed: () {},
-            // Refresh handled by ref.invalidate in parent
+          Consumer(
+            builder: (context, ref, _) => IconButton(
+              icon: const Icon(Icons.refresh_rounded,
+                  size: 20, color: AppColors.textMuted),
+              onPressed: () =>
+                  ref.invalidate(connectionsNotifierProvider),
+            ),
           ),
         ],
       ),

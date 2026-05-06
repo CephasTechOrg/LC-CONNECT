@@ -98,7 +98,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 // ── Header ───────────────────────────────────────────────────────
 class _Header extends StatelessWidget {
   final String firstName;
-  const _Header({required this.firstName});
+  final int incomingCount;
+  const _Header({required this.firstName, required this.incomingCount});
 
   @override
   Widget build(BuildContext context) {
@@ -132,7 +133,10 @@ class _Header extends StatelessWidget {
               ],
             ),
           ),
-          _BellIcon(),
+          GestureDetector(
+            onTap: () => context.push('/connections'),
+            child: _BellIcon(badgeCount: incomingCount),
+          ),
         ],
       ),
     );
@@ -166,25 +170,37 @@ class _LCBadge extends StatelessWidget {
 }
 
 class _BellIcon extends StatelessWidget {
+  final int badgeCount;
+  const _BellIcon({this.badgeCount = 0});
+
   @override
   Widget build(BuildContext context) {
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        const Icon(Icons.notifications_outlined, color: AppColors.textMuted, size: 24),
-        Positioned(
-          top: -2,
-          right: -2,
-          child: Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(
-              color: AppColors.error,
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.white, width: 1.5),
+        const Icon(Icons.notifications_outlined,
+            color: AppColors.textMuted, size: 24),
+        if (badgeCount > 0)
+          Positioned(
+            top: -4,
+            right: -4,
+            child: Container(
+              padding: const EdgeInsets.all(3),
+              decoration: BoxDecoration(
+                color: AppColors.error,
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 1.5),
+              ),
+              child: Text(
+                badgeCount > 9 ? '9+' : '$badgeCount',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 8,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
             ),
           ),
-        ),
       ],
     );
   }
