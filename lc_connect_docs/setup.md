@@ -582,21 +582,15 @@ At this point, the default Flutter counter app should run.
 From `mobile/`:
 
 ```bash
-flutter pub add http
+flutter pub add dio
 flutter pub add flutter_secure_storage
 flutter pub add go_router
-flutter pub add provider
+flutter pub add flutter_riverpod riverpod
+flutter pub add flutter_dotenv
+flutter pub add google_fonts
 flutter pub add image_picker
 flutter pub add intl
-flutter pub add lucide_icons
 ```
-
-Optional alternatives:
-
-- Use `dio` instead of `http` if you prefer interceptors.
-- Use `riverpod` or `flutter_bloc` instead of `provider` if the app grows.
-
-For MVP, `provider` is simple enough.
 
 ### 7.4 Add image assets
 
@@ -650,24 +644,32 @@ Then run:
 flutter pub get
 ```
 
-### 7.6 Recommended Flutter environment config
+### 7.6 Flutter environment config
 
-Create:
+LC Connect uses `flutter_dotenv` to load a `.env` file at runtime (the same pattern as the backend). Create `mobile/.env`:
 
-```text
-mobile/lib/core/config/app_config.dart
+```env
+API_BASE_URL=http://localhost:8000/api/v1
+ENV=development
 ```
 
-Add:
+Register it in `mobile/pubspec.yaml` under `flutter: assets:`:
+
+```yaml
+  assets:
+    - .env
+    - assets/images/students.png
+    - assets/images/school.png
+    - assets/images/headshots.png
+```
+
+Load it in `main.dart` before `runApp`:
 
 ```dart
-class AppConfig {
-  static const String apiBaseUrl = String.fromEnvironment(
-    'API_BASE_URL',
-    defaultValue: 'http://127.0.0.1:8000',
-  );
-}
+await dotenv.load(fileName: '.env');
 ```
+
+For physical Android device over USB, use `adb reverse tcp:8000 tcp:8000` and keep `API_BASE_URL=http://localhost:8000/api/v1` — ADB reverse tunnels `localhost` on the phone to your PC's port 8000.
 
 ### 7.7 Recommended asset constants
 
@@ -1070,26 +1072,32 @@ uvicorn app.main:app --reload
 
 ### Terminal 3 — Flutter mobile app
 
-Android emulator:
-
-```bash
-cd mobile
-flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8000
-```
-
-Physical Android over USB:
+Physical Android over USB (primary workflow):
 
 ```bash
 adb reverse tcp:8000 tcp:8000
 cd mobile
-flutter run --dart-define=API_BASE_URL=http://127.0.0.1:8000
+flutter run
 ```
 
-iOS simulator on macOS:
+Android emulator — update `.env` first:
+
+```env
+API_BASE_URL=http://10.0.2.2:8000/api/v1
+```
+
+Then:
 
 ```bash
 cd mobile
-flutter run --dart-define=API_BASE_URL=http://127.0.0.1:8000
+flutter run
+```
+
+iOS simulator on macOS — `.env` stays as `localhost`:
+
+```bash
+cd mobile
+flutter run
 ```
 
 ---
@@ -1098,24 +1106,16 @@ flutter run --dart-define=API_BASE_URL=http://127.0.0.1:8000
 
 After the full setup is done once:
 
-```bash
-# Terminal 1
-docker compose -f infra/docker-compose.local.yml up -d
-
-# Terminal 2
-cd backend
+```powershell
+# Terminal 1 — backend
+cd lc_connect_backend
 .venv\Scripts\Activate.ps1
 uvicorn app.main:app --reload
 
-# Terminal 3
-cd mobile
-flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8000
-```
-
-For a physical Android phone over USB:
-
-```bash
+# Terminal 2 — Flutter (physical Android over USB)
 adb reverse tcp:8000 tcp:8000
-cd mobile
-flutter run --dart-define=API_BASE_URL=http://127.0.0.1:8000
+cd lc_connect_mobile
+flutter run
 ```
+
+The `.env` file inside `lc_connect_mobile/` controls the API URL. Default is `http://localhost:8000/api/v1` which works with ADB reverse tunneling on a physical device.

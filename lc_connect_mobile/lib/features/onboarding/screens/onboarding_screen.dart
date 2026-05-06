@@ -303,7 +303,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         const SizedBox(height: 16),
         _Label('Class Year'),
         DropdownButtonFormField<int>(
-          value: _classYear,
+          initialValue: _classYear,
           onChanged: (v) => setState(() => _classYear = v),
           style:
               GoogleFonts.dmSans(fontSize: 14, color: AppColors.textDark),

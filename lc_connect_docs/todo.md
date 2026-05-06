@@ -225,26 +225,40 @@ Endpoints:
 - [x] Store JWT securely with `flutter_secure_storage`
 - [x] Load current user on app start
 - [x] Redirect unauthenticated users to login
-- [ ] Redirect new users to onboarding
+- [x] Redirect new users to onboarding
 
 ---
 
 ## Phase 8 — Flutter Onboarding/Profile Setup
 
-- [ ] Build profile setup form
-- [ ] Add display name input
-- [ ] Add major input
-- [ ] Add class year picker
-- [ ] Add country/state input
-- [ ] Add short bio input
-- [ ] Add interests selector
-- [ ] Add languages spoken selector
-- [ ] Add languages learning selector
-- [ ] Add looking-for selector
-- [ ] Add profile image picker
-- [ ] Upload profile image to backend
-- [ ] Submit profile to backend
-- [ ] Show profile completion success
+- [x] Build profile setup form (3-step wizard: About You / Your Vibe / Connect)
+- [x] Add display name input (pre-filled from email prefix)
+- [x] Add major input
+- [x] Add class year picker (dropdown 2022–2031)
+- [x] Add country/state input
+- [x] Add short bio input
+- [x] Add interests selector (animated chip grid, loaded from `/lookups`)
+- [x] Add languages spoken selector (chip grid)
+- [x] Add languages learning selector (chip grid)
+- [x] Add looking-for selector (chip grid, required — at least 1)
+- [ ] Add profile image picker — blocked on Supabase setup (see below)
+- [ ] Upload profile image to backend — backend endpoint ready (`POST /api/v1/profiles/me/avatar`), needs Supabase credentials in `.env`
+- [x] Submit profile to backend (`PATCH /api/v1/profiles/me`)
+- [x] Show profile completion success (router auto-redirects to `/home` after `refreshProfile()`)
+
+> **Supabase avatar upload — what's needed before this can be completed:**
+> 1. Create a Supabase project at supabase.com
+> 2. Copy Project URL and Service Role Key
+> 3. Create a storage bucket named `profile-images`
+> 4. Add to `lc_connect_backend/.env`:
+>    ```
+>    SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
+>    SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+>    SUPABASE_PROFILE_BUCKET=profile-images
+>    ```
+> 5. Wire `image_picker` in Flutter onboarding screen → `POST /api/v1/profiles/me/avatar`
+> 6. All backend code is already written and waiting.
+> Until then, use `headshots.png` as a placeholder avatar everywhere.
 
 ---
 
