@@ -9,9 +9,10 @@ import '../../features/discovery/screens/discovery_screen.dart';
 import '../../features/activities/screens/activities_screen.dart';
 import '../../features/messages/screens/messages_screen.dart';
 import '../../features/profile/screens/profile_screen.dart';
+import '../../features/onboarding/screens/onboarding_screen.dart';
 import '../../shared/widgets/nav_shell.dart';
 
-// Notifies GoRouter whenever auth state changes so redirect re-evaluates
+// Notifies GoRouter whenever auth state changes so redirect re-evaluates.
 class _AuthRouterNotifier extends ChangeNotifier {
   _AuthRouterNotifier(this._ref) {
     _ref.listen<AsyncValue<AuthUser?>>(
@@ -24,6 +25,9 @@ class _AuthRouterNotifier extends ChangeNotifier {
 
   bool get isLoggedIn =>
       _ref.read(authNotifierProvider).asData?.value != null;
+
+  bool get profileCompleted =>
+      _ref.read(authNotifierProvider).asData?.value?.profileCompleted ?? false;
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -35,16 +39,32 @@ final routerProvider = Provider<GoRouter>((ref) {
     refreshListenable: notifier,
     redirect: (context, state) {
       final isLoggedIn = notifier.isLoggedIn;
-      final onAuthScreen = state.matchedLocation == '/login' ||
-          state.matchedLocation == '/register';
+      final profileCompleted = notifier.profileCompleted;
+      final loc = state.matchedLocation;
 
+      final onAuthScreen = loc == '/login' || loc == '/register';
+      final onOnboarding = loc == '/onboarding';
+
+      // Not logged in — force to login
       if (!isLoggedIn && !onAuthScreen) return '/login';
-      if (isLoggedIn && onAuthScreen) return '/home';
+
+      // Logged in + on an auth screen → route based on profile state
+      if (isLoggedIn && onAuthScreen) {
+        return profileCompleted ? '/home' : '/onboarding';
+      }
+
+      // Logged in, profile incomplete, not already on onboarding
+      if (isLoggedIn && !profileCompleted && !onOnboarding) return '/onboarding';
+
+      // Profile complete but still sitting on onboarding screen
+      if (isLoggedIn && profileCompleted && onOnboarding) return '/home';
+
       return null;
     },
     routes: [
       GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
       GoRoute(path: '/register', builder: (context, state) => const RegisterScreen()),
+      GoRoute(path: '/onboarding', builder: (context, state) => const OnboardingScreen()),
       ShellRoute(
         builder: (context, state, child) => NavShell(child: child),
         routes: [
