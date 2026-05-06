@@ -26,9 +26,13 @@ class MessagesScreen extends ConsumerWidget {
                 error: (e, _) => _ErrorState(
                   onRetry: () => ref.invalidate(threadsNotifierProvider),
                 ),
-                data: (threads) => threads.isEmpty
-                    ? const _EmptyState()
-                    : _ThreadList(threads: threads),
+                data: (threads) => RefreshIndicator(
+                  onRefresh: () async =>
+                      ref.invalidate(threadsNotifierProvider),
+                  child: threads.isEmpty
+                      ? const _EmptyState()
+                      : _ThreadList(threads: threads),
+                ),
               ),
             ),
           ],
@@ -215,33 +219,37 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(40),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.chat_bubble_outline_rounded,
-                size: 56, color: AppColors.border),
-            const SizedBox(height: 16),
-            Text(
-              'No messages yet',
-              style: GoogleFonts.dmSans(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textDark,
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      children: [
+        SizedBox(height: MediaQuery.of(context).size.height * 0.25),
+        Padding(
+          padding: const EdgeInsets.all(40),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.chat_bubble_outline_rounded,
+                  size: 56, color: AppColors.border),
+              const SizedBox(height: 16),
+              Text(
+                'No messages yet',
+                style: GoogleFonts.dmSans(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textDark,
+                ),
               ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'Accept a connection request to start chatting.',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.dmSans(
-                  fontSize: 13, color: AppColors.textMuted),
-            ),
-          ],
+              const SizedBox(height: 6),
+              Text(
+                'Accept a connection request to start chatting.',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.dmSans(
+                    fontSize: 13, color: AppColors.textMuted),
+              ),
+            ],
+          ),
         ),
-      ),
+      ],
     );
   }
 }

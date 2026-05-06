@@ -65,6 +65,14 @@ class ProfilePublic(BaseModel):
     looking_for_codes: list[str]
 
 
+class MyProfileRead(ProfilePublic):
+    allow_messages_from_matches_only: bool
+    show_profile_to_verified_only: bool
+    connection_count: int
+    activity_count: int
+    message_count: int
+
+
 class DiscoveryCard(BaseModel):
     profile_id: UUID
     user_id: UUID

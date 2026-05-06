@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/api/api_client.dart';
+import '../../messages/providers/messages_provider.dart';
 
 // ── Partner profile (subset of ProfilePublic) ────────────────────
 class PartnerProfile {
@@ -117,12 +118,13 @@ class ConnectionsNotifier extends AsyncNotifier<ConnectionsState> {
   Future<void> accept(String requestId) async {
     final client = ref.read(apiClientProvider);
     await client.dio.post('/connections/$requestId/accept');
-    // Remove from incoming list
     final current = state.asData?.value;
     if (current == null) return;
     state = AsyncData(current.copyWith(
       incoming: current.incoming.where((r) => r.id != requestId).toList(),
     ));
+    // New match created — refresh threads so Messages tab shows it immediately
+    ref.invalidate(threadsNotifierProvider);
   }
 
   Future<void> decline(String requestId) async {

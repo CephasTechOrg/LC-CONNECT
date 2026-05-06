@@ -7,10 +7,14 @@ import '../../features/auth/providers/auth_provider.dart';
 import '../../features/home/screens/home_screen.dart';
 import '../../features/discovery/screens/discovery_screen.dart';
 import '../../features/activities/screens/activities_screen.dart';
+import '../../features/activities/screens/activity_detail_screen.dart';
+import '../../features/activities/screens/create_activity_screen.dart';
+import '../../features/activities/providers/activities_provider.dart';
 import '../../features/messages/screens/chat_screen.dart';
 import '../../features/messages/screens/messages_screen.dart';
 import '../../features/messages/providers/messages_provider.dart';
 import '../../features/profile/screens/profile_screen.dart';
+import '../../features/profile/screens/public_profile_screen.dart';
 import '../../features/connections/screens/connections_screen.dart';
 import '../../features/onboarding/screens/onboarding_screen.dart';
 import '../../shared/widgets/nav_shell.dart';
@@ -68,13 +72,35 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
       GoRoute(path: '/register', builder: (context, state) => const RegisterScreen()),
       GoRoute(path: '/onboarding', builder: (context, state) => const OnboardingScreen()),
+      GoRoute(
+        path: '/users/:profileId',
+        builder: (context, state) => PublicProfileScreen(
+          profileId: state.pathParameters['profileId']!,
+          preloadedName: state.extra as String?,
+        ),
+      ),
       ShellRoute(
         builder: (context, state, child) => NavShell(child: child),
         routes: [
           GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
           GoRoute(path: '/connections', builder: (context, state) => const ConnectionsScreen()),
           GoRoute(path: '/discover', builder: (context, state) => const DiscoveryScreen()),
-          GoRoute(path: '/activities', builder: (context, state) => const ActivitiesScreen()),
+          GoRoute(
+            path: '/activities',
+            builder: (context, state) => const ActivitiesScreen(),
+            routes: [
+              GoRoute(
+                path: 'create',
+                builder: (context, state) => const CreateActivityScreen(),
+              ),
+              GoRoute(
+                path: ':activityId',
+                builder: (context, state) => ActivityDetailScreen(
+                  activity: state.extra as Activity,
+                ),
+              ),
+            ],
+          ),
           GoRoute(
             path: '/messages',
             builder: (context, state) => const MessagesScreen(),

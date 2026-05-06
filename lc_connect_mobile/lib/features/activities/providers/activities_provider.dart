@@ -58,14 +58,14 @@ class Activity {
       );
 }
 
-class _FilterNotifier extends Notifier<String> {
+class ActivitiesFilterNotifier extends Notifier<String> {
   @override
   String build() => 'all';
   void set(String filter) => state = filter;
 }
 
 final activitiesFilterProvider =
-    NotifierProvider<_FilterNotifier, String>(_FilterNotifier.new);
+    NotifierProvider<ActivitiesFilterNotifier, String>(ActivitiesFilterNotifier.new);
 
 final activitiesNotifierProvider =
     AsyncNotifierProvider<ActivitiesNotifier, List<Activity>>(
@@ -94,6 +94,32 @@ class ActivitiesNotifier extends AsyncNotifier<List<Activity>> {
     final client = ref.read(apiClientProvider);
     final response = await client.dio.delete('/activities/$activityId/leave');
     _updateOne(Activity.fromJson(response.data as Map<String, dynamic>));
+  }
+
+  Future<void> create({
+    required String title,
+    required String category,
+    required String location,
+    required DateTime startTime,
+    DateTime? endTime,
+    String? description,
+    int? maxParticipants,
+  }) async {
+    final client = ref.read(apiClientProvider);
+    final response = await client.dio.post('/activities', data: {
+      'title': title.trim(),
+      'category': category,
+      'location': location.trim(),
+      'start_time': startTime.toUtc().toIso8601String(),
+      if (endTime != null) 'end_time': endTime.toUtc().toIso8601String(),
+      if (description != null && description.trim().isNotEmpty)
+        'description': description.trim(),
+      // ignore: use_null_aware_elements
+      if (maxParticipants != null) 'max_participants': maxParticipants,
+    });
+    final created = Activity.fromJson(response.data as Map<String, dynamic>);
+    final current = state.asData?.value ?? [];
+    state = AsyncData([created, ...current]);
   }
 
   void _updateOne(Activity updated) {

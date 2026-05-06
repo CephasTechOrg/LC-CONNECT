@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
@@ -26,7 +27,7 @@ class ActivitiesScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       floatingActionButton: FloatingActionButton(
-        onPressed: () {},
+        onPressed: () => context.push('/activities/create'),
         backgroundColor: AppColors.primary,
         elevation: 3,
         child: const Icon(Icons.add, color: Colors.white, size: 26),
@@ -260,7 +261,10 @@ class _FeaturedCardState extends ConsumerState<_FeaturedCard> {
     final a = widget.activity;
     final joined = a.hasJoined;
 
-    return Container(
+    return GestureDetector(
+      onTap: () =>
+          context.push('/activities/${a.id}', extra: widget.activity),
+      child: Container(
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
@@ -423,6 +427,7 @@ class _FeaturedCardState extends ConsumerState<_FeaturedCard> {
           ),
         ],
       ),
+      ),
     );
   }
 }
@@ -471,7 +476,10 @@ class _CompactCardState extends ConsumerState<_CompactCard> {
         a.participantCount >= a.maxParticipants! &&
         !joined;
 
-    return Container(
+    return GestureDetector(
+      onTap: () =>
+          context.push('/activities/${a.id}', extra: widget.activity),
+      child: Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -568,6 +576,7 @@ class _CompactCardState extends ConsumerState<_CompactCard> {
             ],
           ),
         ],
+      ),
       ),
     );
   }

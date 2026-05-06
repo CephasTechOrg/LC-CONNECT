@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
 import '../providers/discovery_provider.dart';
+import '../../safety/providers/safety_provider.dart';
+import '../../safety/widgets/safety_sheet.dart';
 
 // ── Filter definitions ─────────────────────────────────────────────
 const _filters = [
@@ -263,6 +266,15 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
           onSkip: () => ref
               .read(discoveryNotifierProvider.notifier)
               .skip(card.profileId),
+          onMore: () => showSafetySheet(
+            context: ctx,
+            targetUserId: card.userId,
+            targetName: card.displayName ?? 'this student',
+            safetyService: ref.read(safetyServiceProvider),
+            onBlocked: () => ref
+                .read(discoveryNotifierProvider.notifier)
+                .skip(card.profileId),
+          ),
         );
       },
     );
@@ -356,6 +368,7 @@ class _StudentCard extends StatefulWidget {
   final Future<void> Function() onConnect;
   final Future<void> Function() onStudyTogether;
   final VoidCallback onSkip;
+  final VoidCallback onMore;
 
   const _StudentCard({
     super.key,
@@ -363,6 +376,7 @@ class _StudentCard extends StatefulWidget {
     required this.onConnect,
     required this.onStudyTogether,
     required this.onSkip,
+    required this.onMore,
   });
 
   @override
@@ -429,7 +443,7 @@ class _StudentCardState extends State<_StudentCard> {
                   _LookingForBadge(code: primaryCode, label: primaryLabel),
                 const Spacer(),
                 IconButton(
-                  onPressed: () {},
+                  onPressed: widget.onMore,
                   icon: const Icon(Icons.more_horiz,
                       color: AppColors.textMuted, size: 20),
                   padding: EdgeInsets.zero,
@@ -440,7 +454,12 @@ class _StudentCardState extends State<_StudentCard> {
             const SizedBox(height: 10),
 
             // ── Profile row: avatar + info ──────────────────────────
-            Row(
+            GestureDetector(
+              onTap: () => context.push(
+                '/users/${c.profileId}',
+                extra: c.displayName,
+              ),
+              child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _Avatar(avatarUrl: c.avatarUrl),
@@ -491,6 +510,7 @@ class _StudentCardState extends State<_StudentCard> {
                   ),
                 ),
               ],
+              ),
             ),
 
             // ── Interests ──────────────────────────────────────────
