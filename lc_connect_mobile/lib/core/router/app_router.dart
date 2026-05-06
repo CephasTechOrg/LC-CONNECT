@@ -7,7 +7,9 @@ import '../../features/auth/providers/auth_provider.dart';
 import '../../features/home/screens/home_screen.dart';
 import '../../features/discovery/screens/discovery_screen.dart';
 import '../../features/activities/screens/activities_screen.dart';
+import '../../features/messages/screens/chat_screen.dart';
 import '../../features/messages/screens/messages_screen.dart';
+import '../../features/messages/providers/messages_provider.dart';
 import '../../features/profile/screens/profile_screen.dart';
 import '../../features/connections/screens/connections_screen.dart';
 import '../../features/onboarding/screens/onboarding_screen.dart';
@@ -73,7 +75,19 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/connections', builder: (context, state) => const ConnectionsScreen()),
           GoRoute(path: '/discover', builder: (context, state) => const DiscoveryScreen()),
           GoRoute(path: '/activities', builder: (context, state) => const ActivitiesScreen()),
-          GoRoute(path: '/messages', builder: (context, state) => const MessagesScreen()),
+          GoRoute(
+            path: '/messages',
+            builder: (context, state) => const MessagesScreen(),
+            routes: [
+              GoRoute(
+                path: ':matchId',
+                builder: (context, state) => ChatScreen(
+                  matchId: state.pathParameters['matchId']!,
+                  thread: state.extra as MessageThread?,
+                ),
+              ),
+            ],
+          ),
           GoRoute(path: '/profile', builder: (context, state) => const ProfileScreen()),
         ],
       ),

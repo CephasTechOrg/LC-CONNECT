@@ -307,12 +307,12 @@ Backend:
 
 Flutter:
 
-- [ ] Build mobile requests screen
-- [ ] Show incoming requests
-- [ ] Show outgoing requests
-- [ ] Add accept request action
-- [ ] Add decline request action
-- [ ] Show match confirmation after accept
+- [x] Build mobile requests screen
+- [x] Show incoming requests
+- [x] Show outgoing requests
+- [x] Add accept request action
+- [x] Add decline request action
+- [x] Show match confirmation after accept
 
 Endpoints:
 
@@ -337,14 +337,14 @@ Backend:
 Flutter:
 
 - [x] Messages/chat mockup created
-- [ ] Build messages list screen
-- [ ] Build chat thread screen
-- [ ] Use `headshots.png` for chat avatars in MVP/mockup
-- [ ] Add simple message bubbles
-- [ ] Add timestamps
-- [ ] Add send message form
-- [ ] Add empty state for no messages
-- [ ] Connect screens to backend endpoints
+- [x] Build messages list screen
+- [x] Build chat thread screen
+- [x] Use `headshots.png` for chat avatars in MVP/mockup
+- [x] Add simple message bubbles
+- [x] Add timestamps
+- [x] Add send message form
+- [x] Add empty state for no messages
+- [x] Connect screens to backend endpoints
 
 Endpoints:
 
