@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../connections/providers/connections_provider.dart';
 
 // ── Sample data (matches mockup exactly) ────────────────────────
 const _cats = [
@@ -41,13 +42,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget build(BuildContext context) {
     final user = ref.watch(authNotifierProvider).asData?.value;
     final firstName = user?.email.split('@').first ?? 'there';
+    final incomingCount = ref
+            .watch(connectionsNotifierProvider)
+            .asData
+            ?.value
+            .incoming
+            .length ??
+        0;
 
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: ListView(
           children: [
-            _Header(firstName: firstName),
+            _Header(firstName: firstName, incomingCount: incomingCount),
             const SizedBox(height: 12),
             _SearchBar(),
             const SizedBox(height: 12),

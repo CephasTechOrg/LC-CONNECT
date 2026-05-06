@@ -9,6 +9,7 @@ import '../../features/discovery/screens/discovery_screen.dart';
 import '../../features/activities/screens/activities_screen.dart';
 import '../../features/messages/screens/messages_screen.dart';
 import '../../features/profile/screens/profile_screen.dart';
+import '../../features/connections/screens/connections_screen.dart';
 import '../../features/onboarding/screens/onboarding_screen.dart';
 import '../../shared/widgets/nav_shell.dart';
 
@@ -69,6 +70,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state, child) => NavShell(child: child),
         routes: [
           GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
+          GoRoute(path: '/connections', builder: (context, state) => const ConnectionsScreen()),
           GoRoute(path: '/discover', builder: (context, state) => const DiscoveryScreen()),
           GoRoute(path: '/activities', builder: (context, state) => const ActivitiesScreen()),
           GoRoute(path: '/messages', builder: (context, state) => const MessagesScreen()),
