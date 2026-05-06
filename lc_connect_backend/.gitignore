@@ -5,3 +5,7 @@ node_modules
 .next
 .vscode
 .venv
+.env
+.env.local
+.env.production 
+.claude
