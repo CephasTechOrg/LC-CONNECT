@@ -370,14 +370,14 @@ Backend:
 Flutter:
 
 - [x] Activities mockup created
-- [ ] Build activity board screen
+- [x] Build activity board screen
 - [ ] Build activity detail screen
 - [ ] Build create activity screen
-- [ ] Show joined activities
-- [ ] Add category filters
-- [ ] Add join activity action
-- [ ] Add leave activity action
-- [ ] Add empty state for no activities
+- [x] Show joined activities
+- [x] Add category filters
+- [x] Add join activity action
+- [x] Add leave activity action
+- [x] Add empty state for no activities
 
 Endpoints:
 

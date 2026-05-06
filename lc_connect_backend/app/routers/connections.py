@@ -9,7 +9,7 @@ from app.database import get_db
 from app.dependencies import get_current_user
 from app.models import ConnectionRequest, Match, Profile, User
 from app.routers.profiles import get_profile_by_user_id, profile_load_options
-from app.schemas import ConnectionRequestCreate, ConnectionRequestRead, MatchRead
+from app.schemas import ConnectionRequestCreate, ConnectionRequestEnriched, ConnectionRequestRead, MatchRead
 from app.services import profile_to_public, users_are_blocked
 
 router = APIRouter(prefix='/connections', tags=['connections'])
@@ -58,14 +58,37 @@ async def send_connection_request(payload: ConnectionRequestCreate, current_user
     return request
 
 
-@router.get('/incoming', response_model=list[ConnectionRequestRead])
+async def _enrich(db: AsyncSession, requests: list[ConnectionRequest], partner_user_id_fn) -> list[ConnectionRequestEnriched]:
+    result: list[ConnectionRequestEnriched] = []
+    for req in requests:
+        try:
+            profile = await get_profile_by_user_id(db, partner_user_id_fn(req))
+            partner = profile_to_public(profile)
+        except Exception:
+            partner = None
+        result.append(ConnectionRequestEnriched(
+            id=req.id,
+            sender_id=req.sender_id,
+            receiver_id=req.receiver_id,
+            intent=req.intent,
+            note=req.note,
+            status=req.status,
+            created_at=req.created_at,
+            partner_profile=partner,
+        ))
+    return result
+
+
+@router.get('/incoming', response_model=list[ConnectionRequestEnriched])
 async def incoming_requests(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    return list((await db.execute(select(ConnectionRequest).where(ConnectionRequest.receiver_id == current_user.id, ConnectionRequest.status == 'pending').order_by(ConnectionRequest.created_at.desc()))).scalars().all())
+    requests = list((await db.execute(select(ConnectionRequest).where(ConnectionRequest.receiver_id == current_user.id, ConnectionRequest.status == 'pending').order_by(ConnectionRequest.created_at.desc()))).scalars().all())
+    return await _enrich(db, requests, lambda r: r.sender_id)
 
 
-@router.get('/outgoing', response_model=list[ConnectionRequestRead])
+@router.get('/outgoing', response_model=list[ConnectionRequestEnriched])
 async def outgoing_requests(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    return list((await db.execute(select(ConnectionRequest).where(ConnectionRequest.sender_id == current_user.id, ConnectionRequest.status == 'pending').order_by(ConnectionRequest.created_at.desc()))).scalars().all())
+    requests = list((await db.execute(select(ConnectionRequest).where(ConnectionRequest.sender_id == current_user.id, ConnectionRequest.status == 'pending').order_by(ConnectionRequest.created_at.desc()))).scalars().all())
+    return await _enrich(db, requests, lambda r: r.receiver_id)
 
 
 @router.post('/{request_id}/accept', response_model=MatchRead)

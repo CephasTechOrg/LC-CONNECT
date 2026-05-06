@@ -98,6 +98,17 @@ class ConnectionRequestRead(BaseModel):
     created_at: datetime
 
 
+class ConnectionRequestEnriched(BaseModel):
+    id: UUID
+    sender_id: UUID
+    receiver_id: UUID
+    intent: str | None
+    note: str | None
+    status: str
+    created_at: datetime
+    partner_profile: ProfilePublic | None = None
+
+
 class MatchRead(BaseModel):
     id: UUID
     user_a_id: UUID
