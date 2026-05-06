@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
@@ -329,7 +330,14 @@ class _IncomingCardState extends ConsumerState<_IncomingCard> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Avatar + name row
-          Row(
+          GestureDetector(
+            onTap: p != null
+                ? () => context.push(
+                      '/users/${p.profileId}',
+                      extra: p.displayName,
+                    )
+                : null,
+            child: Row(
             children: [
               _Avatar(avatarUrl: p?.avatarUrl),
               const SizedBox(width: 12),
@@ -360,6 +368,7 @@ class _IncomingCardState extends ConsumerState<_IncomingCard> {
                     fontSize: 11, color: AppColors.textMuted),
               ),
             ],
+            ),
           ),
           // Intent badge
           if (r.intent != null) ...[
@@ -427,7 +436,11 @@ class _OutgoingCard extends StatelessWidget {
     final r = request;
     final p = r.partnerProfile;
 
-    return Container(
+    return GestureDetector(
+      onTap: p != null
+          ? () => context.push('/users/${p.profileId}', extra: p.displayName)
+          : null,
+      child: Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -493,6 +506,7 @@ class _OutgoingCard extends StatelessWidget {
             ],
           ),
         ],
+      ),
       ),
     );
   }
