@@ -7,7 +7,6 @@ import '../providers/auth_provider.dart';
 // ── Color palette taken directly from the HTML mockup ─────────────
 class _C {
   static const primary      = Color(0xFF4F8FC2);
-  static const primaryDark  = Color(0xFF3E7EB4);
   static const logoTop      = Color(0xFF74A5C8);
   static const logoBot      = Color(0xFF5F93BF);
   static const textDark     = Color(0xFF111827);
@@ -30,7 +29,6 @@ class _C {
   static const noteBg       = Color(0xFFFBFCFD);
   static const noteBorder   = Color(0xFFE0E7EF);
   static const error        = Color(0xFFEF4444);
-  static const background   = Color(0xFFF6F9FB);
 }
 
 // ── Root widget ──────────────────────────────────────────────────
@@ -115,26 +113,26 @@ class _Branding extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(28, 26, 28, 0),
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Logo badge — gradient, Georgia "LC", shadow
           Container(
-            width: 60,
-            height: 60,
+            width: 48,
+            height: 48,
             decoration: BoxDecoration(
               gradient: const LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [_C.logoTop, _C.logoBot],
               ),
-              borderRadius: BorderRadius.circular(17),
+              borderRadius: BorderRadius.circular(12),
               boxShadow: const [
                 BoxShadow(
                   color: Color(0x38789DBD),
-                  blurRadius: 18,
-                  offset: Offset(0, 8),
+                  blurRadius: 12,
+                  offset: Offset(0, 4),
                 ),
               ],
             ),
@@ -144,12 +142,12 @@ class _Branding extends StatelessWidget {
               style: TextStyle(
                 fontFamily: 'Georgia',
                 color: Colors.white,
-                fontSize: 32,
-                letterSpacing: -4,
+                fontSize: 24,
+                letterSpacing: -2,
               ),
             ),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 12),
           // Title + subtitle
           Expanded(
             child: Column(
@@ -158,11 +156,11 @@ class _Branding extends StatelessWidget {
                 RichText(
                   text: TextSpan(
                     style: GoogleFonts.dmSans(
-                      fontSize: 34,
+                      fontSize: 28,
                       fontWeight: FontWeight.w800,
                       color: _C.textDark,
-                      height: 0.98,
-                      letterSpacing: -2.5,
+                      height: 1.0,
+                      letterSpacing: -1.5,
                     ),
                     children: const [
                       TextSpan(
@@ -173,13 +171,13 @@ class _Branding extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 6),
                 Text(
-                  'Find friends, study partners,\nand campus activities',
+                  'Find friends, partners, and activities',
                   style: GoogleFonts.dmSans(
-                    fontSize: 16,
+                    fontSize: 14,
                     color: _C.textMuted,
-                    height: 1.35,
+                    height: 1.2,
                   ),
                 ),
               ],
@@ -199,20 +197,9 @@ class _HeroScene extends StatelessWidget {
       height: 360,
       margin: const EdgeInsets.only(top: 10),
       child: Stack(
-        clipBehavior: Clip.none,
+        clipBehavior: Clip.antiAlias,
         children: [
-          // School — full-zone background at 45% opacity
-          Positioned.fill(
-            child: Opacity(
-              opacity: 0.45,
-              child: Image.asset(
-                'assets/images/school.png',
-                fit: BoxFit.cover,
-                alignment: Alignment.center,
-              ),
-            ),
-          ),
-          // Students — full-width, pushed a bit below the zone bottom
+          // Students — full-width, pushed down for better head visibility
           Positioned(
             bottom: -80,
             left: 0,
@@ -223,18 +210,28 @@ class _HeroScene extends StatelessWidget {
               alignment: Alignment.bottomCenter,
             ),
           ),
-          // White elliptic curve — sits over students' feet
+          // Beautiful elliptical curve transition
           Positioned(
-            bottom: -80,
-            left: -30,
-            right: -30,
+            bottom: -50,
+            left: -MediaQuery.of(context).size.width * 0.1,
+            right: -MediaQuery.of(context).size.width * 0.1,
             child: Container(
-              height: 90,
-              decoration: const BoxDecoration(
+              height: 100,
+              decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.vertical(
-                  top: Radius.elliptical(200, 90),
+                  top: Radius.elliptical(
+                    MediaQuery.of(context).size.width * 0.6,
+                    100,
+                  ),
                 ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.white.withAlpha(200),
+                    blurRadius: 20,
+                    offset: const Offset(0, -10),
+                  ),
+                ],
               ),
             ),
           ),
@@ -269,7 +266,7 @@ class _FormSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(28, 10, 28, 28),
+      padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
       child: Form(
         key: formKey,
         child: Column(
@@ -283,7 +280,7 @@ class _FormSection extends StatelessWidget {
               keyboardType: TextInputType.emailAddress,
               validator:    (v) => v != null && v.contains('@') ? null : 'Enter a valid email',
             ),
-            const SizedBox(height: 13),
+            const SizedBox(height: 10),
             // Password field
             _MockupField(
               controller:  passwordCtrl,
@@ -297,12 +294,12 @@ class _FormSection extends StatelessWidget {
                       ? Icons.visibility_off_outlined
                       : Icons.visibility_outlined,
                   color: _C.eyeColor,
-                  size: 20,
+                  size: 18,
                 ),
               ),
               validator: (v) => v != null && v.isNotEmpty ? null : 'Enter your password',
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             // Forgot password
             Align(
               alignment: Alignment.centerRight,
@@ -311,27 +308,27 @@ class _FormSection extends StatelessWidget {
                 child: Text(
                   'Forgot password?',
                   style: GoogleFonts.dmSans(
-                    fontSize: 14,
+                    fontSize: 13,
                     color: _C.forgotBlue,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
               ),
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 14),
             // Sign In button
             _SignInButton(isLoading: isLoading, onTap: onSubmit),
-            const SizedBox(height: 20),
+            const SizedBox(height: 14),
             // OR divider
             Row(
               children: [
                 const Expanded(child: Divider(color: _C.divLine, thickness: 1)),
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
                   child: Text(
                     'OR',
                     style: GoogleFonts.dmSans(
-                      fontSize: 13,
+                      fontSize: 12,
                       fontWeight: FontWeight.w600,
                       color: _C.divText,
                     ),
@@ -340,10 +337,10 @@ class _FormSection extends StatelessWidget {
                 const Expanded(child: Divider(color: _C.divLine, thickness: 1)),
               ],
             ),
-            const SizedBox(height: 17),
+            const SizedBox(height: 12),
             // Continue with school email
             _SchoolEmailButton(),
-            const SizedBox(height: 17),
+            const SizedBox(height: 14),
             // Create account link
             Center(
               child: GestureDetector(
@@ -351,7 +348,7 @@ class _FormSection extends StatelessWidget {
                 child: RichText(
                   text: TextSpan(
                     style: GoogleFonts.dmSans(
-                      fontSize: 15,
+                      fontSize: 14,
                       color: _C.createText,
                     ),
                     children: [
@@ -368,7 +365,7 @@ class _FormSection extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
             // Students-only note
             _NoteBox(),
           ],
@@ -402,16 +399,16 @@ class _MockupField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 56,
+      height: 48,
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: _C.border),
         boxShadow: const [
           BoxShadow(
             color: Color(0x0D0F172A),
-            blurRadius: 16,
-            offset: Offset(0, 6),
+            blurRadius: 12,
+            offset: Offset(0, 4),
           ),
         ],
       ),
@@ -421,27 +418,27 @@ class _MockupField extends StatelessWidget {
         obscureText:  obscureText,
         validator:    validator,
         style: GoogleFonts.dmSans(
-          fontSize: 16.5,
+          fontSize: 15,
           color: _C.textBody,
         ),
         decoration: InputDecoration(
           hintText: hintText,
           hintStyle: GoogleFonts.dmSans(
-            fontSize: 16.5,
+            fontSize: 15,
             color: _C.hintColor,
           ),
           prefixIcon: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 18),
-            child: Icon(icon, size: 22, color: _C.textBody),
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            child: Icon(icon, size: 20, color: _C.textBody),
           ),
           prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
           suffixIcon: suffixIcon != null
               ? Padding(
-                  padding: const EdgeInsets.only(right: 14),
+                  padding: const EdgeInsets.only(right: 12),
                   child: suffixIcon,
                 )
               : null,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 18),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 14),
           // Override all borders so the Container border shows
           border:       InputBorder.none,
           enabledBorder: InputBorder.none,
@@ -466,19 +463,19 @@ class _SignInButton extends StatelessWidget {
     return GestureDetector(
       onTap: isLoading ? null : onTap,
       child: Container(
-        height: 56,
+        height: 48,
         decoration: BoxDecoration(
           gradient: const LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [Color(0xFF5A94C2), Color(0xFF3E7EB4)],
           ),
-          borderRadius: BorderRadius.circular(13),
+          borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
               color: _C.btnShadow.withAlpha(87),  // .34 opacity
-              blurRadius: 24,
-              offset: const Offset(0, 10),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
             ),
           ],
         ),
@@ -498,14 +495,14 @@ class _SignInButton extends StatelessWidget {
                     const Icon(
                       Icons.lock_outline_rounded,
                       color: Colors.white,
-                      size: 20,
+                      size: 18,
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 8),
                     Text(
                       'Sign In',
                       style: GoogleFonts.dmSans(
                         color: Colors.white,
-                        fontSize: 18,
+                        fontSize: 16,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -524,22 +521,22 @@ class _SchoolEmailButton extends StatelessWidget {
     return GestureDetector(
       onTap: () {},
       child: Container(
-        height: 56,
+        height: 48,
         decoration: BoxDecoration(
           color: Colors.white,
           border: Border.all(color: _C.outlineBdr, width: 1.5),
-          borderRadius: BorderRadius.circular(13),
+          borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const Icon(Icons.mail_outline_rounded,
-                size: 22, color: _C.textBody),
-            const SizedBox(width: 16),
+                size: 20, color: _C.textBody),
+            const SizedBox(width: 12),
             Text(
               'Continue with school email',
               style: GoogleFonts.dmSans(
-                fontSize: 16,
+                fontSize: 15,
                 fontWeight: FontWeight.w700,
                 color: _C.outlineText,
               ),
@@ -569,20 +566,20 @@ class _NoteBox extends StatelessWidget {
           ),
         ],
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Icon(Icons.shield_outlined,
-              size: 28, color: _C.noteIconClr),
-          const SizedBox(width: 13),
+              size: 24, color: _C.noteIconClr),
+          const SizedBox(width: 10),
           Expanded(
             child: RichText(
               text: TextSpan(
                 style: GoogleFonts.dmSans(
-                  fontSize: 13.5,
+                  fontSize: 12.5,
                   color: _C.noteTextClr,
-                  height: 1.38,
+                  height: 1.3,
                 ),
                 children: [
                   TextSpan(
