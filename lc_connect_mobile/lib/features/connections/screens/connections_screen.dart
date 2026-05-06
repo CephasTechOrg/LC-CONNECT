@@ -40,7 +40,7 @@ class _ConnectionsScreenState extends ConsumerState<ConnectionsScreen>
             _Header(onBack: () => Navigator.of(context).pop()),
             async.when(
               loading: () => const SizedBox.shrink(),
-              error: (_, __) => const SizedBox.shrink(),
+              error: (e, _) => const SizedBox.shrink(),
               data: (s) => _TabBar(
                 controller: _tabs,
                 incomingCount: s.incoming.length,
@@ -219,7 +219,7 @@ class _IncomingTab extends StatelessWidget {
     return ListView.separated(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
       itemCount: requests.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      separatorBuilder: (context, _) => const SizedBox(height: 12),
       itemBuilder: (_, i) => _IncomingCard(request: requests[i]),
     );
   }
@@ -242,7 +242,7 @@ class _OutgoingTab extends StatelessWidget {
     return ListView.separated(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
       itemCount: requests.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      separatorBuilder: (context, _) => const SizedBox(height: 12),
       itemBuilder: (_, i) => _OutgoingCard(request: requests[i]),
     );
   }
