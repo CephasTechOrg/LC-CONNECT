@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/api/api_client.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -184,6 +185,23 @@ class MyProfileNotifier extends AsyncNotifier<MyProfile> {
     final client = ref.watch(apiClientProvider);
     final response = await client.dio.get('/profiles/me');
     return MyProfile.fromJson(response.data as Map<String, dynamic>);
+  }
+
+  Future<void> uploadAvatar({
+    required String path,
+    required String mimeType,
+    required String filename,
+  }) async {
+    final client = ref.read(apiClientProvider);
+    final formData = FormData.fromMap({
+      'file': await MultipartFile.fromFile(
+        path,
+        filename: filename,
+        contentType: DioMediaType.parse(mimeType),
+      ),
+    });
+    await client.dio.post('/profiles/me/avatar', data: formData);
+    ref.invalidateSelf();
   }
 
   Future<void> updateProfile({

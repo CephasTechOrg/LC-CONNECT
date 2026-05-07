@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../providers/profile_provider.dart';
@@ -29,24 +30,70 @@ class ProfileScreen extends ConsumerWidget {
 }
 
 // ── Full scrollable body ──────────────────────────────────────────
-class _ProfileBody extends ConsumerWidget {
+class _ProfileBody extends ConsumerStatefulWidget {
   final MyProfile profile;
   const _ProfileBody({required this.profile});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_ProfileBody> createState() => _ProfileBodyState();
+}
+
+class _ProfileBodyState extends ConsumerState<_ProfileBody> {
+  bool _uploading = false;
+
+  Future<void> _pickAndUpload() async {
+    final picker = ImagePicker();
+    final image = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 800,
+      maxHeight: 800,
+      imageQuality: 85,
+    );
+    if (image == null || !mounted) return;
+
+    setState(() => _uploading = true);
+    try {
+      await ref.read(myProfileNotifierProvider.notifier).uploadAvatar(
+            path: image.path,
+            mimeType: image.mimeType ?? 'image/jpeg',
+            filename: image.name,
+          );
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to upload photo. Try again.',
+                style: GoogleFonts.dmSans()),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _uploading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return ListView(
       children: [
         _Header(ref: ref),
-        _HeroSection(profile: profile),
+        _HeroSection(
+          profile: widget.profile,
+          uploading: _uploading,
+          onAvatarTap: _pickAndUpload,
+        ),
         const SizedBox(height: 8),
-        _InfoRows(profile: profile),
+        _InfoRows(profile: widget.profile),
         const SizedBox(height: 8),
-        _LookingForSection(lookingFor: profile.lookingFor),
+        _LookingForSection(lookingFor: widget.profile.lookingFor),
         const SizedBox(height: 8),
-        _PreferencesCard(profile: profile),
+        _PreferencesCard(profile: widget.profile),
         const SizedBox(height: 8),
-        _StatsRow(profile: profile),
+        _StatsRow(profile: widget.profile),
         const SizedBox(height: 16),
         _EditProfileButton(),
         const SizedBox(height: 24),
@@ -152,7 +199,13 @@ class _Header extends StatelessWidget {
 // ── Hero section ──────────────────────────────────────────────────
 class _HeroSection extends StatelessWidget {
   final MyProfile profile;
-  const _HeroSection({required this.profile});
+  final bool uploading;
+  final VoidCallback onAvatarTap;
+  const _HeroSection({
+    required this.profile,
+    required this.uploading,
+    required this.onAvatarTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -166,35 +219,54 @@ class _HeroSection extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Avatar
-              Stack(
-                children: [
-                  ClipOval(
-                    child: SizedBox(
-                      width: 80,
-                      height: 80,
-                      child: Image.asset(
-                        'assets/images/headshots.png',
-                        fit: BoxFit.cover,
-                        alignment: Alignment.topCenter,
+              GestureDetector(
+                onTap: uploading ? null : onAvatarTap,
+                child: Stack(
+                  children: [
+                    ClipOval(
+                      child: SizedBox(
+                        width: 80,
+                        height: 80,
+                        child: profile.avatarUrl != null
+                            ? Image.network(
+                                profile.avatarUrl!,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, _, _) => Image.asset(
+                                  'assets/images/headshots.png',
+                                  fit: BoxFit.cover,
+                                  alignment: Alignment.topCenter,
+                                ),
+                              )
+                            : Image.asset(
+                                'assets/images/headshots.png',
+                                fit: BoxFit.cover,
+                                alignment: Alignment.topCenter,
+                              ),
                       ),
                     ),
-                  ),
-                  Positioned(
-                    bottom: 0,
-                    right: 0,
-                    child: Container(
-                      width: 26,
-                      height: 26,
-                      decoration: BoxDecoration(
-                        color: AppColors.primary,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 2),
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: Container(
+                        width: 26,
+                        height: 26,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                        ),
+                        child: uploading
+                            ? const Padding(
+                                padding: EdgeInsets.all(5),
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2, color: Colors.white),
+                              )
+                            : const Icon(Icons.camera_alt_rounded,
+                                color: Colors.white, size: 12),
                       ),
-                      child: const Icon(Icons.camera_alt_rounded,
-                          color: Colors.white, size: 12),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
               const SizedBox(width: 16),
               // Name + bio
