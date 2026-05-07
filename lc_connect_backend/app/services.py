@@ -1,3 +1,4 @@
+import time
 from uuid import UUID
 
 from fastapi import HTTPException, status
@@ -104,12 +105,25 @@ class SupabaseStorageService:
         extension = filename.rsplit('.', 1)[-1].lower() if '.' in filename else 'jpg'
         safe_extension = extension if extension in {'jpg', 'jpeg', 'png', 'webp'} else 'jpg'
         path = f'profiles/{user_id}/avatar.{safe_extension}'
+
+        # Delete any existing avatar (all extensions) so the upload never hits a conflict.
+        for ext in ('jpg', 'jpeg', 'png', 'webp'):
+            try:
+                self.client.storage.from_(settings.supabase_profile_bucket).remove(
+                    [f'profiles/{user_id}/avatar.{ext}']
+                )
+            except Exception:
+                pass
+
         self.client.storage.from_(settings.supabase_profile_bucket).upload(
             path=path,
             file=data,
-            file_options={'content-type': content_type, 'cache-control': '3600', 'upsert': 'true'},
+            file_options={'content-type': content_type, 'cache-control': '3600'},
         )
-        return str(self.client.storage.from_(settings.supabase_profile_bucket).get_public_url(path))
+
+        # Append a timestamp so Flutter's Image.network re-fetches after every update.
+        public_url = str(self.client.storage.from_(settings.supabase_profile_bucket).get_public_url(path))
+        return f'{public_url}?v={int(time.time())}'
 
 
 storage_service = SupabaseStorageService()
