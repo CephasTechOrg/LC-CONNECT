@@ -127,12 +127,12 @@ Widget _detailScope(Activity activity) {
   );
 }
 
-Widget _createScope({VoidCallback? onPop}) {
+Widget _createScope() {
   final router = GoRouter(
     routes: [
       GoRoute(
         path: '/',
-        builder: (_, __) => const CreateActivityScreen(),
+        builder: (_, _) => const CreateActivityScreen(),
       ),
     ],
   );

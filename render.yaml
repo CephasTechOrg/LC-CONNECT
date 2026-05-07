@@ -1,0 +1,35 @@
+services:
+  - type: web
+    name: lc-connect-api
+    env: python
+    region: oregon
+    plan: free
+    branch: main
+    rootDir: lc_connect_backend
+    buildCommand: |
+      pip install --upgrade pip
+      pip install -r requirements.txt
+      python scripts/init_db.py
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.0"
+      - key: PIP_ROOT_USER_ACTION
+        value: ignore
+      - key: ENVIRONMENT
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_PROFILE_BUCKET
+        value: profile-images
+      - key: MAX_PROFILE_IMAGE_MB
+        value: "5"

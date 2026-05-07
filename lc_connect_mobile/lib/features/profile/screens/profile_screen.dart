@@ -644,12 +644,7 @@ class _EditProfileButton extends StatelessWidget {
         width: double.infinity,
         height: 52,
         child: FilledButton.icon(
-          onPressed: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                  content: Text('Edit profile coming soon!')),
-            );
-          },
+          onPressed: () => context.push('/profile/edit'),
           icon: const Icon(Icons.edit_outlined, size: 18),
           label: Text(
             'Edit Profile',

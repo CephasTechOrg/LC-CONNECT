@@ -186,6 +186,39 @@ class MyProfileNotifier extends AsyncNotifier<MyProfile> {
     return MyProfile.fromJson(response.data as Map<String, dynamic>);
   }
 
+  Future<void> updateProfile({
+    required String displayName,
+    required String major,
+    String? pronouns,
+    int? classYear,
+    String? countryState,
+    String? campus,
+    String? bio,
+    required List<String> interests,
+    required List<String> languagesSpoken,
+    required List<String> languagesLearning,
+    required List<String> lookingForCodes,
+  }) async {
+    final client = ref.read(apiClientProvider);
+    final body = <String, dynamic>{
+      'display_name': displayName,
+      'major': major,
+      'interests': interests,
+      'languages_spoken': languagesSpoken,
+      'languages_learning': languagesLearning,
+      'looking_for_codes': lookingForCodes,
+    };
+    if (pronouns != null && pronouns.isNotEmpty) body['pronouns'] = pronouns;
+    if (classYear != null) body['class_year'] = classYear;
+    if (countryState != null && countryState.isNotEmpty) {
+      body['country_state'] = countryState;
+    }
+    if (campus != null && campus.isNotEmpty) body['campus'] = campus;
+    if (bio != null && bio.isNotEmpty) body['bio'] = bio;
+    await client.dio.patch('/profiles/me', data: body);
+    ref.invalidateSelf();
+  }
+
   Future<void> updatePreference({
     bool? allowMessagesFromMatchesOnly,
     bool? showProfileToVerifiedOnly,
