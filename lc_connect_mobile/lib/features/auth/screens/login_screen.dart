@@ -304,7 +304,7 @@ class _FormSection extends StatelessWidget {
             Align(
               alignment: Alignment.centerRight,
               child: GestureDetector(
-                onTap: () {},
+                onTap: () => context.push('/forgot-password'),
                 child: Text(
                   'Forgot password?',
                   style: GoogleFonts.dmSans(
