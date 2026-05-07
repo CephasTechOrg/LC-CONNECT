@@ -10,7 +10,15 @@ class Base(DeclarativeBase):
     pass
 
 
-engine = create_async_engine(settings.database_url, echo=False, pool_pre_ping=True)
+def _async_url(url: str) -> str:
+    """Ensure the URL uses the postgresql+asyncpg:// scheme."""
+    for prefix in ('postgresql://', 'postgres://'):
+        if url.startswith(prefix):
+            return 'postgresql+asyncpg://' + url[len(prefix):]
+    return url
+
+
+engine = create_async_engine(_async_url(settings.database_url), echo=False, pool_pre_ping=True)
 AsyncSessionLocal = async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False, autoflush=False)
 
 
