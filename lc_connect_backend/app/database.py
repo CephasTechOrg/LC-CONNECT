@@ -11,7 +11,8 @@ class Base(DeclarativeBase):
 
 
 def _async_url(url: str) -> str:
-    """Ensure the URL uses the postgresql+asyncpg:// scheme."""
+    """Strip whitespace and ensure the URL uses the postgresql+asyncpg:// scheme."""
+    url = url.strip()
     for prefix in ('postgresql://', 'postgres://'):
         if url.startswith(prefix):
             return 'postgresql+asyncpg://' + url[len(prefix):]
@@ -23,7 +24,14 @@ def _is_local(url: str) -> bool:
 
 
 _db_url = _async_url(settings.database_url)
-_connect_args = {} if _is_local(_db_url) else {'ssl': 'require'}
+
+# Transaction pooler (port 6543) requires SSL and no prepared statements.
+# Local connections need neither.
+_connect_args = (
+    {}
+    if _is_local(_db_url)
+    else {'ssl': 'require', 'statement_cache_size': 0}
+)
 
 engine = create_async_engine(
     _db_url,
