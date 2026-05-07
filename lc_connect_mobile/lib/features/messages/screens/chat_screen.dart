@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/api/api_client.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -21,23 +22,52 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final _inputController = TextEditingController();
   final _scrollController = ScrollController();
   List<ChatMessage> _messages = [];
+  final _seenIds = <String>{};
   bool _loading = true;
   bool _sending = false;
   String _currentUserId = '';
+  RealtimeChannel? _channel;
 
   @override
   void initState() {
     super.initState();
-    _currentUserId =
-        ref.read(authNotifierProvider).asData?.value?.id ?? '';
+    _currentUserId = ref.read(authNotifierProvider).asData?.value?.id ?? '';
     _fetchMessages();
+    _subscribeToMessages();
   }
 
   @override
   void dispose() {
+    _channel?.unsubscribe();
     _inputController.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _subscribeToMessages() {
+    _channel = Supabase.instance.client
+        .channel('messages:${widget.matchId}')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'messages',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'match_id',
+            value: widget.matchId,
+          ),
+          callback: (payload) {
+            if (!mounted) return;
+            final msg = ChatMessage.fromJson(payload.newRecord);
+            if (_seenIds.contains(msg.id)) return;
+            setState(() {
+              _seenIds.add(msg.id);
+              _messages.add(msg);
+            });
+            _scrollToBottom();
+          },
+        )
+        .subscribe();
   }
 
   Future<void> _fetchMessages() async {
@@ -46,10 +76,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       final response =
           await client.dio.get('/messages/threads/${widget.matchId}');
       if (!mounted) return;
+      final msgs = (response.data as List)
+          .map((j) => ChatMessage.fromJson(j as Map<String, dynamic>))
+          .toList();
       setState(() {
-        _messages = (response.data as List)
-            .map((j) => ChatMessage.fromJson(j as Map<String, dynamic>))
-            .toList();
+        _messages = msgs;
+        _seenIds.addAll(msgs.map((m) => m.id));
         _loading = false;
       });
       _scrollToBottom(jump: true);
@@ -70,10 +102,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         data: {'body': text},
       );
       if (!mounted) return;
+      final msg = ChatMessage.fromJson(response.data as Map<String, dynamic>);
       setState(() {
-        _messages.add(
-            ChatMessage.fromJson(response.data as Map<String, dynamic>));
         _sending = false;
+        // Add immediately; deduplicate if realtime also delivers it
+        if (!_seenIds.contains(msg.id)) {
+          _seenIds.add(msg.id);
+          _messages.add(msg);
+        }
       });
       _scrollToBottom();
     } catch (e) {

@@ -44,6 +44,7 @@ dependencies:
   font_awesome_flutter: ^11.0.0
   flutter_dotenv: ^6.0.1
   google_fonts: ^8.1.0
+  supabase_flutter: ^2.8.0
 
 dev_dependencies:
   flutter_test:
