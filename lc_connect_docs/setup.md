@@ -590,7 +590,10 @@ flutter pub add flutter_dotenv
 flutter pub add google_fonts
 flutter pub add image_picker
 flutter pub add intl
+flutter pub add supabase_flutter
 ```
+
+`supabase_flutter` is used for two things: subscribing to Realtime message events and (via the backend) profile image storage. See `supabase.md` for full setup details.
 
 ### 7.4 Add image assets
 
@@ -651,7 +654,12 @@ LC Connect uses `flutter_dotenv` to load a `.env` file at runtime (the same patt
 ```env
 API_BASE_URL=http://localhost:8000/api/v1
 ENV=development
+
+SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
+SUPABASE_ANON_KEY=your_supabase_anon_key_here
 ```
+
+Get the Supabase values from **Supabase → Settings → API**. See `supabase.md` for details on which key to use.
 
 Register it in `mobile/pubspec.yaml` under `flutter: assets:`:
 
@@ -663,11 +671,26 @@ Register it in `mobile/pubspec.yaml` under `flutter: assets:`:
     - assets/images/headshots.png
 ```
 
-Load it in `main.dart` before `runApp`:
+The complete `main.dart` startup sequence — load env, initialize Supabase, then run app:
 
 ```dart
-await dotenv.load(fileName: '.env');
+import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();    // required before Supabase.initialize
+  await dotenv.load(fileName: '.env');
+  await Supabase.initialize(
+    url: dotenv.env['SUPABASE_URL']!,
+    anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
+  );
+  runApp(const ProviderScope(child: LcConnectApp()));
+}
 ```
+
+`WidgetsFlutterBinding.ensureInitialized()` must be called before any async work in `main()`. `Supabase.initialize()` must complete before `runApp` so the Realtime client is available when chat screens open.
 
 For physical Android device over USB, use `adb reverse tcp:8000 tcp:8000` and keep `API_BASE_URL=http://localhost:8000/api/v1` — ADB reverse tunnels `localhost` on the phone to your PC's port 8000.
 
