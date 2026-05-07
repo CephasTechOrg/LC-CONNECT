@@ -23,6 +23,12 @@ class Settings(BaseSettings):
     supabase_profile_bucket: str = Field(default='profile-images', alias='SUPABASE_PROFILE_BUCKET')
     max_profile_image_mb: int = Field(default=5, alias='MAX_PROFILE_IMAGE_MB')
 
+    smtp_host: str = Field(default='smtp.gmail.com', alias='SMTP_HOST')
+    smtp_port: int = Field(default=587, alias='SMTP_PORT')
+    smtp_user: str | None = Field(default=None, alias='SMTP_USER')
+    smtp_password: str | None = Field(default=None, alias='SMTP_PASSWORD')
+    smtp_from: str = Field(default='LC Connect <noreply@lcconnect.app>', alias='SMTP_FROM')
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [item.strip() for item in self.cors_origins.split(',') if item.strip()]
