@@ -26,7 +26,11 @@ import app.models  # noqa
 from app.config import settings
 
 target_metadata = Base.metadata
-config.set_main_option('sqlalchemy.url', settings.database_url)
+
+# Escape % to %% to prevent configparser interpolation errors 
+# (e.g. passwords with % or URL-encoded characters like %40)
+db_url_escaped = settings.database_url.replace('%', '%%')
+config.set_main_option('sqlalchemy.url', db_url_escaped)
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
