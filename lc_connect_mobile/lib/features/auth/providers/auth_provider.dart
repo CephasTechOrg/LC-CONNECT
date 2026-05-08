@@ -7,27 +7,31 @@ class AuthUser {
   final String id;
   final String email;
   final String role;
+  final bool isVerified;
   final bool profileCompleted;
 
   const AuthUser({
     required this.id,
     required this.email,
     required this.role,
+    this.isVerified = false,
     this.profileCompleted = false,
   });
 
   factory AuthUser.fromJson(Map<String, dynamic> json, {bool profileCompleted = false}) =>
       AuthUser(
         id: json['id'].toString(),
-        email: json['email'],
-        role: json['role'] ?? 'student',
+        email: json['email'] as String,
+        role: json['role'] as String? ?? 'student',
+        isVerified: json['is_verified'] as bool? ?? false,
         profileCompleted: profileCompleted,
       );
 
-  AuthUser copyWith({bool? profileCompleted}) => AuthUser(
+  AuthUser copyWith({bool? isVerified, bool? profileCompleted}) => AuthUser(
         id: id,
         email: email,
         role: role,
+        isVerified: isVerified ?? this.isVerified,
         profileCompleted: profileCompleted ?? this.profileCompleted,
       );
 }
@@ -47,7 +51,7 @@ class AuthNotifier extends AsyncNotifier<AuthUser?> {
       final client = ref.watch(apiClientProvider);
       final meResponse = await client.dio.get('/auth/me');
       final profileCompleted = await _fetchProfileCompleted(client);
-      return AuthUser.fromJson(meResponse.data, profileCompleted: profileCompleted);
+      return AuthUser.fromJson(meResponse.data as Map<String, dynamic>, profileCompleted: profileCompleted);
     } on DioException {
       await storage.deleteToken();
       return null;
@@ -76,7 +80,7 @@ class AuthNotifier extends AsyncNotifier<AuthUser?> {
       await storage.saveToken(token);
       final meResponse = await client.dio.get('/auth/me');
       final profileCompleted = await _fetchProfileCompleted(client);
-      return AuthUser.fromJson(meResponse.data, profileCompleted: profileCompleted);
+      return AuthUser.fromJson(meResponse.data as Map<String, dynamic>, profileCompleted: profileCompleted);
     });
   }
 
@@ -93,8 +97,20 @@ class AuthNotifier extends AsyncNotifier<AuthUser?> {
       await storage.saveToken(token);
       final meResponse = await client.dio.get('/auth/me');
       final profileCompleted = await _fetchProfileCompleted(client);
-      return AuthUser.fromJson(meResponse.data, profileCompleted: profileCompleted);
+      return AuthUser.fromJson(meResponse.data as Map<String, dynamic>, profileCompleted: profileCompleted);
     });
+  }
+
+  // Called after OTP verified — refreshes isVerified without full re-auth.
+  Future<void> refreshVerification() async {
+    final current = state.asData?.value;
+    if (current == null) return;
+    try {
+      final client = ref.read(apiClientProvider);
+      final meResponse = await client.dio.get('/auth/me');
+      final isVerified = meResponse.data['is_verified'] as bool? ?? false;
+      state = AsyncData(current.copyWith(isVerified: isVerified));
+    } catch (_) {}
   }
 
   // Called after onboarding submit — refreshes profileCompleted without full re-auth.

@@ -72,9 +72,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       );
-    } else {
-      context.go('/home');
     }
+    // On success the router redirect handles navigation based on isVerified/profileCompleted.
   }
 
   @override

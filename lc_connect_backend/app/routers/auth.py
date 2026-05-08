@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.dependencies import get_current_user
-from app.email import send_reset_otp
+from app.email import send_reset_otp, send_verification_otp
 from app.models import Profile, User
 from app.schemas import (
     CurrentUserResponse,
@@ -18,6 +18,7 @@ from app.schemas import (
     RegisterRequest,
     ResetPasswordRequest,
     TokenResponse,
+    VerifyEmailRequest,
 )
 from app.security import create_access_token, hash_password, verify_password
 
@@ -25,19 +26,31 @@ router = APIRouter(prefix='/auth', tags=['auth'])
 
 
 @router.post('/register', response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
-async def register(payload: RegisterRequest, db: AsyncSession = Depends(get_db)) -> TokenResponse:
+async def register(
+    payload: RegisterRequest,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+) -> TokenResponse:
     email = payload.email.lower().strip()
     existing = await db.execute(select(User).where(User.email == email))
     if existing.scalar_one_or_none() is not None:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='Email already registered')
 
-    user = User(email=email, password_hash=hash_password(payload.password))
+    otp = str(secrets.randbelow(900000) + 100000)
+    user = User(
+        email=email,
+        password_hash=hash_password(payload.password),
+        verify_otp_hash=hashlib.sha256(otp.encode()).hexdigest(),
+        verify_otp_expires_at=datetime.now(timezone.utc) + timedelta(minutes=15),
+    )
     db.add(user)
     await db.flush()
+
     display_name = payload.display_name.strip() if payload.display_name else email.split('@')[0]
     db.add(Profile(user_id=user.id, display_name=display_name))
     await db.commit()
 
+    background_tasks.add_task(send_verification_otp, email, otp)
     return TokenResponse(access_token=create_access_token(user.id))
 
 
@@ -63,6 +76,56 @@ async def me(current_user: User = Depends(get_current_user)) -> CurrentUserRespo
     )
 
 
+@router.post('/verify-email', response_model=MessageResponse)
+async def verify_email(
+    payload: VerifyEmailRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> MessageResponse:
+    if current_user.is_verified:
+        return MessageResponse(message='Email already verified.')
+
+    invalid = HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail='Invalid or expired verification code.',
+    )
+
+    if not current_user.verify_otp_hash or not current_user.verify_otp_expires_at:
+        raise invalid
+
+    if datetime.now(timezone.utc) > current_user.verify_otp_expires_at:
+        raise invalid
+
+    submitted_hash = hashlib.sha256(payload.otp.encode()).hexdigest()
+    if not secrets.compare_digest(submitted_hash, current_user.verify_otp_hash):
+        raise invalid
+
+    current_user.is_verified = True
+    current_user.verify_otp_hash = None
+    current_user.verify_otp_expires_at = None
+    await db.commit()
+
+    return MessageResponse(message='Email verified successfully.')
+
+
+@router.post('/resend-verification', response_model=MessageResponse)
+async def resend_verification(
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> MessageResponse:
+    if current_user.is_verified:
+        return MessageResponse(message='Email already verified.')
+
+    otp = str(secrets.randbelow(900000) + 100000)
+    current_user.verify_otp_hash = hashlib.sha256(otp.encode()).hexdigest()
+    current_user.verify_otp_expires_at = datetime.now(timezone.utc) + timedelta(minutes=15)
+    await db.commit()
+
+    background_tasks.add_task(send_verification_otp, current_user.email, otp)
+    return MessageResponse(message='Verification code sent. Check your email.')
+
+
 @router.post('/forgot-password', response_model=MessageResponse)
 async def forgot_password(
     payload: ForgotPasswordRequest,
@@ -78,7 +141,7 @@ async def forgot_password(
     if user is None:
         return response
 
-    otp = str(secrets.randbelow(900000) + 100000)  # 6-digit code, never starts with 0
+    otp = str(secrets.randbelow(900000) + 100000)
     user.reset_otp_hash = hashlib.sha256(otp.encode()).hexdigest()
     user.reset_otp_expires_at = datetime.now(timezone.utc) + timedelta(minutes=15)
     await db.commit()

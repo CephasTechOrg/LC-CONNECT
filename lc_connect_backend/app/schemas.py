@@ -1,13 +1,30 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, Field, model_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
+
+_LIVINGSTONE_DOMAINS = {'students.livingstone.edu', 'livingstone.edu'}
 
 
 class RegisterRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)
     display_name: str | None = Field(default=None, max_length=120)
+
+    @field_validator('email')
+    @classmethod
+    def must_be_livingstone_email(cls, v: str) -> str:
+        domain = v.lower().split('@')[-1]
+        if domain not in _LIVINGSTONE_DOMAINS:
+            raise ValueError(
+                'Only Livingstone College email addresses are allowed '
+                '(@students.livingstone.edu or @livingstone.edu)'
+            )
+        return v.lower()
+
+
+class VerifyEmailRequest(BaseModel):
+    otp: str = Field(min_length=6, max_length=6)
 
 
 class LoginRequest(BaseModel):

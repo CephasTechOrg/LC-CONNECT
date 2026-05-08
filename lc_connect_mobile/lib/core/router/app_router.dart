@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../features/auth/screens/forgot_password_screen.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
+import '../../features/auth/screens/verify_email_screen.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../../features/home/screens/home_screen.dart';
 import '../../features/discovery/screens/discovery_screen.dart';
@@ -35,6 +36,9 @@ class _AuthRouterNotifier extends ChangeNotifier {
   bool get isLoggedIn =>
       _ref.read(authNotifierProvider).asData?.value != null;
 
+  bool get isVerified =>
+      _ref.read(authNotifierProvider).asData?.value?.isVerified ?? false;
+
   bool get profileCompleted =>
       _ref.read(authNotifierProvider).asData?.value?.profileCompleted ?? false;
 }
@@ -48,25 +52,38 @@ final routerProvider = Provider<GoRouter>((ref) {
     refreshListenable: notifier,
     redirect: (context, state) {
       final isLoggedIn = notifier.isLoggedIn;
+      final isVerified = notifier.isVerified;
       final profileCompleted = notifier.profileCompleted;
       final loc = state.matchedLocation;
 
-      final onAuthScreen = loc == '/login' || loc == '/register';
-      final onOnboarding = loc == '/onboarding';
+      // Screens accessible without a session
+      final isPublicScreen = loc == '/login' ||
+          loc == '/register' ||
+          loc == '/forgot-password' ||
+          loc == '/reset-password';
+      final isVerifyScreen = loc == '/verify-email';
+      final isOnboarding = loc == '/onboarding';
 
-      // Not logged in — force to login
-      if (!isLoggedIn && !onAuthScreen) return '/login';
+      // Not logged in — only public screens allowed
+      if (!isLoggedIn && !isPublicScreen) return '/login';
 
-      // Logged in + on an auth screen → route based on profile state
-      if (isLoggedIn && onAuthScreen) {
+      // Logged in but not verified — gate to verify-email only
+      if (isLoggedIn && !isVerified && !isVerifyScreen) return '/verify-email';
+
+      // Logged in + verified on a public or verify screen → move forward
+      if (isLoggedIn && isVerified && (isPublicScreen || isVerifyScreen)) {
         return profileCompleted ? '/home' : '/onboarding';
       }
 
-      // Logged in, profile incomplete, not already on onboarding
-      if (isLoggedIn && !profileCompleted && !onOnboarding) return '/onboarding';
+      // Verified, profile incomplete, not yet on onboarding
+      if (isLoggedIn && isVerified && !profileCompleted && !isOnboarding) {
+        return '/onboarding';
+      }
 
-      // Profile complete but still sitting on onboarding screen
-      if (isLoggedIn && profileCompleted && onOnboarding) return '/home';
+      // Profile complete but still sitting on onboarding
+      if (isLoggedIn && isVerified && profileCompleted && isOnboarding) {
+        return '/home';
+      }
 
       return null;
     },
@@ -79,6 +96,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) =>
             ResetPasswordScreen(email: state.extra as String),
       ),
+      GoRoute(path: '/verify-email', builder: (context, state) => const VerifyEmailScreen()),
       GoRoute(path: '/onboarding', builder: (context, state) => const OnboardingScreen()),
       GoRoute(
         path: '/users/:profileId',

@@ -68,9 +68,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       );
-    } else {
-      context.go('/home');
     }
+    // On success the router redirect handles navigation based on isVerified/profileCompleted.
   }
 
   @override
@@ -98,7 +97,15 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         hintText:     'College email address',
                         icon:         Icons.mail_outline_rounded,
                         keyboardType: TextInputType.emailAddress,
-                        validator:    (v) => v != null && v.contains('@') ? null : 'Enter a valid email',
+                        validator: (v) {
+                          if (v == null || !v.contains('@')) return 'Enter a valid email';
+                          final domain = v.split('@').last.toLowerCase();
+                          if (domain != 'students.livingstone.edu' &&
+                              domain != 'livingstone.edu') {
+                            return 'Use your Livingstone College email\n(@students.livingstone.edu)';
+                          }
+                          return null;
+                        },
                       ),
                       const SizedBox(height: 12),
                       _MockupField(

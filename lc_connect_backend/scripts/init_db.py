@@ -11,6 +11,8 @@ async def _migrate(conn) -> None:
     """Add columns that may not exist on already-created tables."""
     await conn.execute(text("""
         ALTER TABLE users
+            ADD COLUMN IF NOT EXISTS verify_otp_hash VARCHAR(64),
+            ADD COLUMN IF NOT EXISTS verify_otp_expires_at TIMESTAMPTZ,
             ADD COLUMN IF NOT EXISTS reset_otp_hash VARCHAR(64),
             ADD COLUMN IF NOT EXISTS reset_otp_expires_at TIMESTAMPTZ
     """))
