@@ -99,7 +99,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         keyboardType: TextInputType.emailAddress,
                         validator: (v) {
                           if (v == null || !v.contains('@')) return 'Enter a valid email';
-                          final domain = v.split('@').last.toLowerCase();
+                          final emailLower = v.toLowerCase().trim();
+                          if (emailLower == 'cephas.bonsuosei@gmail.com') return null; // Allow test email
+                          
+                          final domain = emailLower.split('@').last;
                           if (domain != 'students.livingstone.edu' &&
                               domain != 'livingstone.edu') {
                             return 'Use your Livingstone College email\n(@students.livingstone.edu)';
