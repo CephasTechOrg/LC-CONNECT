@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/avatar_widget.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../connections/providers/connections_provider.dart';
 import '../../discovery/providers/discovery_provider.dart';
@@ -53,24 +54,6 @@ String _studentSub(String? major, int? classYear) {
   if (major != null) return major;
   if (classYear != null) return 'Class of $classYear';
   return 'LC Student';
-}
-
-Widget _avatarImage(String? url, {double size = 50}) {
-  final fallback = Image.asset(
-    'assets/images/headshots.png',
-    width: size,
-    height: size,
-    fit: BoxFit.cover,
-    alignment: Alignment.topCenter,
-  );
-  if (url == null || url.isEmpty) return fallback;
-  return Image.network(
-    url,
-    width: size,
-    height: size,
-    fit: BoxFit.cover,
-    errorBuilder: (_, _, _) => fallback,
-  );
 }
 
 // ── Screen ────────────────────────────────────────────────────────
@@ -565,9 +548,7 @@ class _StudentCard extends StatelessWidget {
                           ),
                         ],
                       ),
-                      child: ClipOval(
-                        child: _avatarImage(card.avatarUrl, size: 50),
-                      ),
+                      child: AvatarWidget(imageUrl: card.avatarUrl, size: 50),
                     ),
                   ),
                 ),
@@ -862,9 +843,7 @@ class _RecentMatchCard extends StatelessWidget {
             children: [
               Stack(
                 children: [
-                  ClipOval(
-                    child: _avatarImage(partner.avatarUrl, size: 44),
-                  ),
+                  AvatarWidget(imageUrl: partner.avatarUrl, size: 44),
                   Positioned(
                     top: 0,
                     left: 0,

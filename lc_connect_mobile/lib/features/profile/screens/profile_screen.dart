@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/avatar_widget.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../providers/profile_provider.dart';
 
@@ -271,27 +272,7 @@ class _HeroSection extends StatelessWidget {
                 onTap: uploading ? null : onAvatarTap,
                 child: Stack(
                   children: [
-                    ClipOval(
-                      child: SizedBox(
-                        width: 80,
-                        height: 80,
-                        child: profile.avatarUrl != null
-                            ? Image.network(
-                                profile.avatarUrl!,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, _, _) => Image.asset(
-                                  'assets/images/headshots.png',
-                                  fit: BoxFit.cover,
-                                  alignment: Alignment.topCenter,
-                                ),
-                              )
-                            : Image.asset(
-                                'assets/images/headshots.png',
-                                fit: BoxFit.cover,
-                                alignment: Alignment.topCenter,
-                              ),
-                      ),
-                    ),
+                    AvatarWidget(imageUrl: profile.avatarUrl, size: 80),
                     Positioned(
                       bottom: 0,
                       right: 0,

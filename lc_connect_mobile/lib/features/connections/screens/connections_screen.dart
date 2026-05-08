@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/avatar_widget.dart';
 import '../providers/connections_provider.dart';
 
 class ConnectionsScreen extends ConsumerStatefulWidget {
@@ -519,17 +520,7 @@ class _Avatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ClipOval(
-      child: SizedBox(
-        width: 52,
-        height: 52,
-        child: Image.asset(
-          'assets/images/headshots.png',
-          fit: BoxFit.cover,
-          alignment: Alignment.topCenter,
-        ),
-      ),
-    );
+    return AvatarWidget(imageUrl: avatarUrl, size: 52);
   }
 }
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/avatar_widget.dart';
 import '../providers/profile_provider.dart';
 
 class PublicProfileScreen extends ConsumerWidget {
@@ -89,17 +90,7 @@ class _HeroCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              ClipOval(
-                child: SizedBox(
-                  width: 80,
-                  height: 80,
-                  child: Image.asset(
-                    'assets/images/headshots.png',
-                    fit: BoxFit.cover,
-                    alignment: Alignment.topCenter,
-                  ),
-                ),
-              ),
+              AvatarWidget(imageUrl: profile.avatarUrl, size: 80),
               const SizedBox(width: 16),
               Expanded(
                 child: Column(

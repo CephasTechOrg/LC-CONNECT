@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/api/api_client.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/avatar_widget.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../providers/messages_provider.dart';
 
@@ -158,6 +159,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                       : _MessageList(
                           messages: _messages,
                           currentUserId: _currentUserId,
+                          partnerAvatarUrl: partner?.avatarUrl,
                           scrollController: _scrollController,
                         ),
             ),
@@ -241,17 +243,7 @@ class _PartnerInfoRow extends StatelessWidget {
         children: [
           Row(
             children: [
-              ClipOval(
-                child: SizedBox(
-                  width: 56,
-                  height: 56,
-                  child: Image.asset(
-                    'assets/images/headshots.png',
-                    fit: BoxFit.cover,
-                    alignment: Alignment.topCenter,
-                  ),
-                ),
-              ),
+              AvatarWidget(imageUrl: partner.avatarUrl, size: 56),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -340,10 +332,12 @@ class _Tag extends StatelessWidget {
 class _MessageList extends StatelessWidget {
   final List<ChatMessage> messages;
   final String currentUserId;
+  final String? partnerAvatarUrl;
   final ScrollController scrollController;
   const _MessageList({
     required this.messages,
     required this.currentUserId,
+    this.partnerAvatarUrl,
     required this.scrollController,
   });
 
@@ -374,7 +368,11 @@ class _MessageList extends StatelessWidget {
         }
         final msg = (item as _MessageItem).message;
         final isMine = msg.senderId == currentUserId;
-        return _BubbleTile(message: msg, isMine: isMine);
+        return _BubbleTile(
+          message: msg, 
+          isMine: isMine,
+          partnerAvatarUrl: partnerAvatarUrl,
+        );
       },
     );
   }
@@ -437,7 +435,12 @@ class _DateSeparator extends StatelessWidget {
 class _BubbleTile extends StatelessWidget {
   final ChatMessage message;
   final bool isMine;
-  const _BubbleTile({required this.message, required this.isMine});
+  final String? partnerAvatarUrl;
+  const _BubbleTile({
+    required this.message, 
+    required this.isMine,
+    this.partnerAvatarUrl,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -449,17 +452,7 @@ class _BubbleTile extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (!isMine) ...[
-            ClipOval(
-              child: SizedBox(
-                width: 28,
-                height: 28,
-                child: Image.asset(
-                  'assets/images/headshots.png',
-                  fit: BoxFit.cover,
-                  alignment: Alignment.topCenter,
-                ),
-              ),
-            ),
+            AvatarWidget(imageUrl: partnerAvatarUrl, size: 28),
             const SizedBox(width: 8),
           ],
           Flexible(

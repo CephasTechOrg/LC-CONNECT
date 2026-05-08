@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/avatar_widget.dart';
 import '../providers/messages_provider.dart';
 
 class MessagesScreen extends ConsumerWidget {
@@ -139,17 +140,7 @@ class _ThreadCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Avatar
-            ClipOval(
-              child: SizedBox(
-                width: 52,
-                height: 52,
-                child: Image.asset(
-                  'assets/images/headshots.png',
-                  fit: BoxFit.cover,
-                  alignment: Alignment.topCenter,
-                ),
-              ),
-            ),
+            AvatarWidget(imageUrl: p.avatarUrl, size: 52),
             const SizedBox(width: 12),
             // Content
             Expanded(

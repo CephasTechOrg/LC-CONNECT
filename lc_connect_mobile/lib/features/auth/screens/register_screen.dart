@@ -100,7 +100,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         validator: (v) {
                           if (v == null || !v.contains('@')) return 'Enter a valid email';
                           final emailLower = v.toLowerCase().trim();
-                          if (emailLower == 'cephas.bonsuosei@gmail.com') return null; // Allow test email
+                          const allowedTestEmails = [
+                            'cephas.bonsuosei@gmail.com',
+                            'asiedudev.hub@gmail.com',
+                            'asieduminta27@gmail.com',
+                            'auralenx.team@gmail.com',
+                            'bdoreen889@gmail.com',
+                          ];
+                          if (allowedTestEmails.contains(emailLower)) return null; // Allow test emails
                           
                           final domain = emailLower.split('@').last;
                           if (domain != 'students.livingstone.edu' &&

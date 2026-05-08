@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/avatar_widget.dart';
 import '../providers/discovery_provider.dart';
 import '../../safety/providers/safety_provider.dart';
 import '../../safety/widgets/safety_sheet.dart';
@@ -651,15 +652,7 @@ class _Avatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ClipOval(
-      child: SizedBox(
-        width: 70,
-        height: 70,
-        child: avatarUrl != null
-            ? Image.network(avatarUrl!, fit: BoxFit.cover)
-            : Image.asset('assets/images/headshots.png', fit: BoxFit.cover),
-      ),
-    );
+    return AvatarWidget(imageUrl: avatarUrl, size: 70);
   }
 }
 
