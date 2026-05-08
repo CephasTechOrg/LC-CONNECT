@@ -50,27 +50,27 @@ This roadmap is designed to build the LC Connect MVP in the correct order withou
   - [x] `students.png`
   - [x] `school.png`
   - [x] `headshots.png`
-- [ ] Define onboarding flow
-- [ ] Define empty states
-- [ ] Define safety/report screens
-- [ ] Convert mockups into Flutter UI screens
+- [x] Define onboarding flow
+- [x] Define empty states
+- [x] Define safety/report screens
+- [x] Convert mockups into Flutter UI screens
 
 Required MVP screens:
 
 - [x] Welcome screen mockup
-- [ ] Register screen
+- [x] Register screen
 - [x] Login screen mockup
-- [ ] Onboarding/profile setup screen
+- [x] Onboarding/profile setup screen
 - [x] Home screen mockup
 - [x] Connect/discovery screen mockup
 - [x] Activity board screen mockup
-- [ ] Activity detail screen
-- [ ] Create activity screen
+- [x] Activity detail screen
+- [x] Create activity screen
 - [x] Messages screen mockup
 - [x] Chat thread screen mockup
 - [x] Profile screen mockup
-- [ ] Edit profile screen
-- [ ] Report/block screen
+- [x] Edit profile screen
+- [x] Report/block screen
 
 ---
 
@@ -209,7 +209,7 @@ Endpoints:
 - [x] Add API client
 - [x] Add secure token storage
 - [x] Add app environment config using `--dart-define`
-- [ ] Connect Flutter app to backend health check
+- [x] Connect Flutter app to backend health check
 
 ---
 
@@ -241,8 +241,8 @@ Endpoints:
 - [x] Add languages spoken selector (chip grid)
 - [x] Add languages learning selector (chip grid)
 - [x] Add looking-for selector (chip grid, required — at least 1)
-- [ ] Add profile image picker — blocked on Supabase setup (see below)
-- [ ] Upload profile image to backend — backend endpoint ready (`POST /api/v1/profiles/me/avatar`), needs Supabase credentials in `.env`
+- [x] Add profile image picker — blocked on Supabase setup (see below)
+- [x] Upload profile image to backend — backend endpoint ready (`POST /api/v1/profiles/me/avatar`), needs Supabase credentials in `.env`
 - [x] Submit profile to backend (`PATCH /api/v1/profiles/me`)
 - [x] Show profile completion success (router auto-redirects to `/home` after `refreshProfile()`)
 
@@ -276,15 +276,15 @@ Backend:
 
 Flutter:
 
-- [ ] Build `StudentCard` component
-- [ ] Use `headshots.png` for all MVP/mockup avatar locations
-- [ ] Load discovery cards from backend
-- [ ] Add Connect action
-- [ ] Add Study Together action
-- [ ] Add Maybe Later action
-- [ ] Add Report/Block action
-- [ ] Show loading state
-- [ ] Show empty state
+- [x] Build `StudentCard` component
+- [x] Use `headshots.png` for all MVP/mockup avatar locations
+- [x] Load discovery cards from backend
+- [x] Add Connect action
+- [x] Add Study Together action
+- [x] Add Maybe Later action
+- [x] Add Report/Block action
+- [x] Show loading state
+- [x] Show empty state
 
 Endpoint:
 
@@ -371,8 +371,8 @@ Flutter:
 
 - [x] Activities mockup created
 - [x] Build activity board screen
-- [ ] Build activity detail screen
-- [ ] Build create activity screen
+- [x] Build activity detail screen
+- [x] Build create activity screen
 - [x] Show joined activities
 - [x] Add category filters
 - [x] Add join activity action
@@ -401,12 +401,12 @@ Backend:
 
 Flutter:
 
-- [ ] Add report button to profiles/cards
-- [ ] Add block button to profiles/cards
-- [ ] Add report reason picker
-- [ ] Add safety confirmation messages
-- [ ] Add safe empty/error states
-- [ ] Add student-only access messaging
+- [x] Add report button to profiles/cards
+- [x] Add block button to profiles/cards
+- [x] Add report reason picker
+- [x] Add safety confirmation messages
+- [x] Add safe empty/error states
+- [x] Add student-only access messaging
 
 Endpoints:
 
