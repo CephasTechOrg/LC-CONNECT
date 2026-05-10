@@ -205,14 +205,16 @@ Student taps Connect / Study Together / Language Exchange
 ```text
 Student opens message thread
 → backend checks that both users are matched
-→ backend returns messages
+→ backend returns message history
+→ Flutter subscribes to Supabase Realtime channel (filtered by match_id)
 → student sends message
 → backend validates match and block status
-→ backend stores message
-→ receiver sees message
+→ backend inserts message row (using service_role key, bypasses RLS)
+→ Supabase WAL captures INSERT → Realtime server forwards event to subscribed clients
+→ receiver's Flutter app receives event → appends message to visible list
 ```
 
-For MVP, messages can use normal REST endpoints. WebSockets can be added later for real-time delivery.
+All writes go through FastAPI (JWT-enforced). Realtime delivery goes through Supabase directly (RLS-protected). See `lc_connect_docs/realtime-messaging.md` for the full implementation details.
 
 ## 4.6 Activity Flow
 
@@ -436,13 +438,16 @@ MVP security requirements:
 - User input must be validated
 - Admin endpoints must require admin role
 - Sensitive information should not be exposed in discovery cards
+- Supabase RLS enforces row-level access on the messages table — only match participants can read their messages, and no direct client-side inserts are allowed (see `lc_connect_docs/security_rls_messages.md`)
 
 ## 9. Future Improvements
 
 After the MVP works, add:
 
-- Push notifications
-- Real-time messaging with WebSockets
+- Push notifications (Firebase Cloud Messaging)
+- Thread list live preview (Realtime subscription in messages screen)
+- Typing indicators (Supabase Realtime Broadcast)
+- Read receipts
 - Better search/filtering
 - AI-generated icebreakers
 - Admin dashboard
@@ -451,3 +456,4 @@ After the MVP works, add:
 - Group chats for activities
 - Campus map integration
 - Recommendation engine
+- Offline message queue (local SQLite via `sqflite`)

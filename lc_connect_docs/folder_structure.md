@@ -16,99 +16,101 @@ lc-connect/
 
 ```text
 lc-connect/
-  mobile/              # React Native Expo app
-  backend/             # FastAPI backend
-  docs/                # Project documentation
+  lc_connect_mobile/   # Flutter app
+  lc_connect_backend/  # FastAPI backend
+  supabase/            # Supabase migrations
+  lc_connect_docs/     # Project documentation
   README.md            # Main project README
   .gitignore
 ```
 
 ## 2. Mobile App Folder Structure
 
-Technology: **React Native + Expo + TypeScript**
+Technology: **Flutter + Dart + Riverpod + supabase_flutter**
 
-Recommended structure:
+Actual structure:
 
 ```text
-mobile/
-  app/
-    _layout.tsx
-    index.tsx
-    auth/
-      login.tsx
-      register.tsx
-      onboarding.tsx
-    tabs/
-      _layout.tsx
-      home.tsx
-      connect.tsx
-      activities.tsx
-      messages.tsx
-      profile.tsx
-    profile/
-      edit.tsx
-      settings.tsx
-    activities/
-      create.tsx
-      [activityId].tsx
-    messages/
-      [matchId].tsx
-    connections/
-      requests.tsx
-  src/
-    components/
-      cards/
-        StudentCard.tsx
-        ActivityCard.tsx
-        MatchReasonPill.tsx
-      forms/
-        ProfileForm.tsx
-        ActivityForm.tsx
-      ui/
-        Button.tsx
-        Input.tsx
-        Tag.tsx
-        Avatar.tsx
-        EmptyState.tsx
-    constants/
-      colors.ts
-      lookingFor.ts
-      interests.ts
-      languages.ts
-    hooks/
-      useAuth.ts
-      useProfile.ts
-      useDiscovery.ts
-      useActivities.ts
-      useMessages.ts
-    lib/
-      api.ts
-      authStorage.ts
-      queryClient.ts
-    services/
-      authService.ts
-      profileService.ts
-      discoveryService.ts
-      connectionService.ts
-      activityService.ts
-      messageService.ts
-      safetyService.ts
-    types/
-      auth.ts
-      profile.ts
-      discovery.ts
-      connections.ts
-      activities.ts
-      messages.ts
-    utils/
-      formatDate.ts
-      validators.ts
+lc_connect_mobile/
+  lib/
+    main.dart                        # app entry point — Supabase.initialize, ProviderScope
+    core/
+      api/
+        api_client.dart              # Dio HTTP client with JWT interceptor
+        health_provider.dart         # backend connectivity check
+      constants/
+        app_constants.dart           # shared constants
+      router/
+        app_router.dart              # GoRouter navigation and auth guards
+      storage/
+        secure_storage.dart          # flutter_secure_storage JWT persistence
+      theme/
+        app_theme.dart               # ThemeData, AppColors
+      widgets/
+        avatar_widget.dart           # reusable avatar with fallback initials
+    features/
+      auth/
+        providers/
+          auth_provider.dart         # AuthNotifier — login, register, logout, setAuth
+        screens/
+          login_screen.dart
+          register_screen.dart
+          verify_email_screen.dart
+          forgot_password_screen.dart
+      onboarding/
+        providers/
+          onboarding_provider.dart
+        screens/
+          onboarding_screen.dart
+      discovery/
+        providers/
+          discovery_provider.dart
+        screens/
+          discovery_screen.dart
+      connections/
+        providers/
+          connections_provider.dart
+        screens/
+          connections_screen.dart
+      messages/
+        providers/
+          messages_provider.dart     # thread list state
+        screens/
+          messages_screen.dart       # conversation list
+          chat_screen.dart           # individual chat with Realtime subscription
+      activities/
+        providers/
+          activities_provider.dart
+        screens/
+          activities_screen.dart
+          activity_detail_screen.dart
+          create_activity_screen.dart
+      profile/
+        providers/
+          profile_provider.dart      # MyProfile, PublicProfile models
+        screens/
+          profile_screen.dart
+          public_profile_screen.dart
+          edit_profile_screen.dart
+      home/
+        screens/
+          home_screen.dart
+      safety/
+        providers/
+          safety_provider.dart
+        widgets/
+          safety_sheet.dart
+    shared/
+      widgets/
+        nav_shell.dart               # bottom navigation wrapper
+  test/
+    features/
+      auth/
+      messages/
+      profile/
   assets/
-    images/
-    icons/
-  app.json
-  package.json
-  tsconfig.json
+  pubspec.yaml
+  .env                               # SUPABASE_URL, SUPABASE_ANON_KEY, API_BASE_URL
 ```
 
 ## 3. Mobile App Folder Explanation
