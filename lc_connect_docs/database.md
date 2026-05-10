@@ -44,19 +44,19 @@ The database should enforce these product rules:
 
 ```text
 users 1 ─── 1 profiles
-users M ─── M interests through user_interests
-users M ─── M languages through user_languages
-users M ─── M looking_for_options through user_looking_for
-users 1 ─── M connection_requests as requester
+profiles M ─── M interests through user_interests
+profiles M ─── M languages through user_languages
+profiles M ─── M looking_for_options through user_looking_for
+users 1 ─── M connection_requests as sender
 users 1 ─── M connection_requests as receiver
-users 1 ─── M matches as user_one/user_two
+users 1 ─── M matches as user_a/user_b
 matches 1 ─── M messages
 users 1 ─── M activities as creator
 activities M ─── M users through activity_participants
 users 1 ─── M reports as reporter
 users 1 ─── M reports as reported_user
 users 1 ─── M blocks as blocker
-users 1 ─── M blocks as blocked_user
+users 1 ─── M blocks as blocked
 ```
 
 ## 4. Recommended Enums
@@ -129,21 +129,27 @@ dismissed
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     email VARCHAR(255) NOT NULL UNIQUE,
-    password_hash TEXT NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
     role VARCHAR(30) NOT NULL DEFAULT 'student',
-    status VARCHAR(30) NOT NULL DEFAULT 'pending_verification',
-    is_email_verified BOOLEAN NOT NULL DEFAULT FALSE,
+    status VARCHAR(30) NOT NULL DEFAULT 'active',
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    is_verified BOOLEAN NOT NULL DEFAULT FALSE,
+    verify_otp_hash VARCHAR(64),
+    verify_otp_expires_at TIMESTAMPTZ,
+    reset_otp_hash VARCHAR(64),
+    reset_otp_expires_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    last_login_at TIMESTAMPTZ
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 ```
 
 Notes:
 
-- Passwords must never be stored as plain text.
-- Use `password_hash` only.
-- `status` controls whether the user can access the app.
+- Passwords must never be stored as plain text — `password_hash` only.
+- `is_verified` is set to `true` after the user confirms their OTP email.
+- `verify_otp_hash` and `verify_otp_expires_at` hold the current verification OTP state.
+- `reset_otp_hash` and `reset_otp_expires_at` hold the current password-reset OTP state.
+- `status` controls whether the user can access the app (active, suspended, etc).
 
 ### 5.2 `profiles`
 
@@ -151,26 +157,36 @@ Notes:
 CREATE TABLE profiles (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
-    display_name VARCHAR(100) NOT NULL,
-    profile_photo_url TEXT,
+    display_name VARCHAR(120),
+    pronouns VARCHAR(50),
     major VARCHAR(120),
-    class_year VARCHAR(50),
-    country_or_state VARCHAR(120),
+    class_year INTEGER,
+    country_state VARCHAR(120),
+    campus VARCHAR(120) DEFAULT 'Livingstone Campus',
     bio TEXT,
-    is_profile_complete BOOLEAN NOT NULL DEFAULT FALSE,
+    avatar_url TEXT,
     is_hidden BOOLEAN NOT NULL DEFAULT FALSE,
+    allow_messages_from_matches_only BOOLEAN NOT NULL DEFAULT TRUE,
+    show_profile_to_verified_only BOOLEAN NOT NULL DEFAULT TRUE,
+    profile_completed BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 ```
 
+Notes:
+
+- `avatar_url` stores the URL to the profile photo.
+- `profile_completed` is set to `true` once the user finishes onboarding.
+- `show_profile_to_verified_only` hides the profile from unverified users in discovery.
+
 ### 5.3 `interests`
 
 ```sql
 CREATE TABLE interests (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id SERIAL PRIMARY KEY,
     name VARCHAR(80) NOT NULL UNIQUE,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    category VARCHAR(50)
 );
 ```
 
@@ -178,20 +194,20 @@ CREATE TABLE interests (
 
 ```sql
 CREATE TABLE user_interests (
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    interest_id UUID NOT NULL REFERENCES interests(id) ON DELETE CASCADE,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    PRIMARY KEY (user_id, interest_id)
+    profile_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+    interest_id INTEGER NOT NULL REFERENCES interests(id) ON DELETE CASCADE,
+    PRIMARY KEY (profile_id, interest_id)
 );
 ```
+
+Note: the join is on `profiles.id`, not `users.id`.
 
 ### 5.5 `languages`
 
 ```sql
 CREATE TABLE languages (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name VARCHAR(80) NOT NULL UNIQUE,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(80) NOT NULL UNIQUE
 );
 ```
 
@@ -200,23 +216,23 @@ CREATE TABLE languages (
 ```sql
 CREATE TABLE user_languages (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    language_id UUID NOT NULL REFERENCES languages(id) ON DELETE CASCADE,
-    type VARCHAR(30) NOT NULL, -- spoken or learning
-    level VARCHAR(30), -- beginner, intermediate, advanced, fluent
+    profile_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+    language_id INTEGER NOT NULL REFERENCES languages(id) ON DELETE CASCADE,
+    kind VARCHAR(20) NOT NULL,   -- 'spoken' or 'learning'
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    UNIQUE (user_id, language_id, type)
+    UNIQUE (profile_id, language_id, kind)
 );
 ```
+
+Note: `kind` replaces `type` to avoid clashing with the PostgreSQL reserved word.
 
 ### 5.7 `looking_for_options`
 
 ```sql
 CREATE TABLE looking_for_options (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    key VARCHAR(60) NOT NULL UNIQUE,
-    label VARCHAR(100) NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    id SERIAL PRIMARY KEY,
+    code VARCHAR(50) NOT NULL UNIQUE,
+    name VARCHAR(80) NOT NULL UNIQUE
 );
 ```
 
@@ -234,27 +250,27 @@ open_connection   → Open Connection
 
 ```sql
 CREATE TABLE user_looking_for (
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    option_id UUID NOT NULL REFERENCES looking_for_options(id) ON DELETE CASCADE,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    PRIMARY KEY (user_id, option_id)
+    profile_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+    option_id INTEGER NOT NULL REFERENCES looking_for_options(id) ON DELETE CASCADE,
+    PRIMARY KEY (profile_id, option_id)
 );
 ```
+
+Note: the join is on `profiles.id`, not `users.id`.
 
 ### 5.9 `connection_requests`
 
 ```sql
 CREATE TABLE connection_requests (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    requester_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    sender_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     receiver_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    intent VARCHAR(60) NOT NULL,
+    intent VARCHAR(50),
+    note TEXT,
     status VARCHAR(30) NOT NULL DEFAULT 'pending',
-    message TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    CHECK (requester_id <> receiver_id),
-    UNIQUE (requester_id, receiver_id, intent)
+    responded_at TIMESTAMPTZ,
+    UNIQUE (sender_id, receiver_id)
 );
 ```
 
@@ -263,19 +279,17 @@ CREATE TABLE connection_requests (
 ```sql
 CREATE TABLE matches (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_one_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    user_two_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    connection_request_id UUID REFERENCES connection_requests(id) ON DELETE SET NULL,
-    intent VARCHAR(60),
+    user_a_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    user_b_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    CHECK (user_one_id <> user_two_id),
-    UNIQUE (user_one_id, user_two_id)
+    UNIQUE (user_a_id, user_b_id)
 );
 ```
 
 Important rule:
 
-- Store lower UUID first or enforce a consistent ordering in backend logic so duplicate matches are not created in reverse order.
+- Store lower UUID first (`user_a_id < user_b_id`) in backend logic so duplicate matches are not created in reverse order.
+- The RLS SELECT policy on `messages` references `matches.user_a_id` and `matches.user_b_id` — any rename here must also update the migration in `supabase/migrations/20260510000000_messages_rls.sql`.
 
 ### 5.11 `messages`
 
@@ -294,7 +308,8 @@ Rules:
 
 - Backend must verify that `sender_id` belongs to the match.
 - Backend must verify that neither user has blocked the other.
-- MVP can use REST polling before adding real-time WebSockets.
+- Real-time delivery uses Supabase Realtime (WebSocket). No polling needed. See `lc_connect_docs/realtime-messaging.md`.
+- RLS is enabled on this table. Only match participants can read their messages. Direct client-side inserts are blocked. See `lc_connect_docs/security_rls_messages.md`.
 
 ### 5.12 `activities`
 
@@ -304,10 +319,10 @@ CREATE TABLE activities (
     creator_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     title VARCHAR(120) NOT NULL,
     description TEXT,
-    category VARCHAR(60) NOT NULL DEFAULT 'other',
-    location VARCHAR(160),
-    starts_at TIMESTAMPTZ NOT NULL,
-    ends_at TIMESTAMPTZ,
+    category VARCHAR(40) NOT NULL,
+    location VARCHAR(160) NOT NULL,
+    start_time TIMESTAMPTZ NOT NULL,
+    end_time TIMESTAMPTZ,
     max_participants INTEGER,
     is_cancelled BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -319,10 +334,12 @@ CREATE TABLE activities (
 
 ```sql
 CREATE TABLE activity_participants (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     activity_id UUID NOT NULL REFERENCES activities(id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    PRIMARY KEY (activity_id, user_id)
+    status VARCHAR(30) NOT NULL DEFAULT 'joined',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (activity_id, user_id)
 );
 ```
 
@@ -332,10 +349,9 @@ CREATE TABLE activity_participants (
 CREATE TABLE blocks (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     blocker_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    blocked_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    blocked_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    CHECK (blocker_id <> blocked_user_id),
-    UNIQUE (blocker_id, blocked_user_id)
+    UNIQUE (blocker_id, blocked_id)
 );
 ```
 
@@ -353,12 +369,10 @@ CREATE TABLE reports (
     reporter_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     reported_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
     activity_id UUID REFERENCES activities(id) ON DELETE SET NULL,
-    reason VARCHAR(120) NOT NULL,
+    reason VARCHAR(80) NOT NULL,
     details TEXT,
     status VARCHAR(30) NOT NULL DEFAULT 'open',
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    reviewed_at TIMESTAMPTZ,
-    reviewed_by UUID REFERENCES users(id) ON DELETE SET NULL
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 ```
 
@@ -368,12 +382,12 @@ CREATE TABLE reports (
 CREATE TABLE verification_requests (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    method VARCHAR(60) NOT NULL, -- school_email, student_id_upload, manual
+    method VARCHAR(50) NOT NULL,
     status VARCHAR(30) NOT NULL DEFAULT 'pending',
     evidence_url TEXT,
-    submitted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    reviewed_at TIMESTAMPTZ,
-    reviewed_by UUID REFERENCES users(id) ON DELETE SET NULL
+    reviewed_by_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    reviewed_at TIMESTAMPTZ
 );
 ```
 
@@ -387,19 +401,19 @@ CREATE INDEX idx_profiles_major ON profiles(major);
 CREATE INDEX idx_profiles_is_hidden ON profiles(is_hidden);
 
 CREATE INDEX idx_connection_requests_receiver ON connection_requests(receiver_id, status);
-CREATE INDEX idx_connection_requests_requester ON connection_requests(requester_id, status);
+CREATE INDEX idx_connection_requests_sender ON connection_requests(sender_id, status);
 
-CREATE INDEX idx_matches_user_one ON matches(user_one_id);
-CREATE INDEX idx_matches_user_two ON matches(user_two_id);
+CREATE INDEX idx_matches_user_a ON matches(user_a_id);
+CREATE INDEX idx_matches_user_b ON matches(user_b_id);
 
 CREATE INDEX idx_messages_match_created ON messages(match_id, created_at);
 
-CREATE INDEX idx_activities_starts_at ON activities(starts_at);
+CREATE INDEX idx_activities_start_time ON activities(start_time);
 CREATE INDEX idx_activities_category ON activities(category);
 CREATE INDEX idx_activities_creator ON activities(creator_id);
 
 CREATE INDEX idx_blocks_blocker ON blocks(blocker_id);
-CREATE INDEX idx_blocks_blocked ON blocks(blocked_user_id);
+CREATE INDEX idx_blocks_blocked ON blocks(blocked_id);
 
 CREATE INDEX idx_reports_status ON reports(status);
 ```

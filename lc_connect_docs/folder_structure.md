@@ -115,258 +115,131 @@ lc_connect_mobile/
 
 ## 3. Mobile App Folder Explanation
 
-### `app/`
+### `lib/main.dart`
 
-Contains Expo Router screens and navigation.
+App entry point. Calls `WidgetsFlutterBinding.ensureInitialized()`, loads `.env`, initialises Supabase, then starts the app inside a `ProviderScope`.
 
-Important screens:
+### `lib/core/`
 
-- `auth/login.tsx` — login screen
-- `auth/register.tsx` — registration screen
-- `auth/onboarding.tsx` — first profile setup
-- `tabs/home.tsx` — recommended students and activities
-- `tabs/connect.tsx` — discovery card screen
-- `tabs/activities.tsx` — activity board
-- `tabs/messages.tsx` — message threads
-- `tabs/profile.tsx` — profile page
+Cross-feature infrastructure shared by all features.
 
-### `src/components/`
+- `api_client.dart` — Dio client with a JWT interceptor that attaches `Authorization: Bearer <token>` to every request
+- `app_router.dart` — GoRouter with redirect guards for unauthenticated and unverified users
+- `secure_storage.dart` — read/write/delete the JWT token from device secure storage
+- `app_theme.dart` — `ThemeData` and `AppColors` used everywhere
 
-Reusable UI components.
+### `lib/features/`
 
-Examples:
+One sub-folder per feature. Each feature contains:
 
-- `StudentCard.tsx` — card shown in discovery
-- `ActivityCard.tsx` — campus activity card
-- `MatchReasonPill.tsx` — small tag showing why two students match
-- `Button.tsx` — reusable button
-- `Input.tsx` — reusable input
+- `providers/` — Riverpod `AsyncNotifierProvider` or `FutureProvider` for state
+- `screens/` — `ConsumerWidget` or `ConsumerStatefulWidget` screens
 
-### `src/services/`
+Key provider notes:
 
-Functions that communicate with the FastAPI backend.
+- `auth_provider.dart` — manages `AuthUser?` state; calls `Supabase.instance.client.realtime.setAuth(token)` after every login/register/startup and `setAuth(null)` on logout
+- `chat_screen.dart` — manages a Supabase Realtime channel subscription per conversation; subscribes in `initState()`, unsubscribes in `dispose()`
 
-Example:
+### `lib/shared/`
 
-```ts
-profileService.updateProfile(data)
-discoveryService.getCards()
-connectionService.sendRequest(profileId)
-```
-
-### `src/hooks/`
-
-Reusable React hooks for app logic.
-
-Example:
-
-- `useAuth()`
-- `useDiscovery()`
-- `useActivities()`
-
-### `src/types/`
-
-TypeScript types matching backend response schemas.
+Widgets used across multiple features (e.g., `nav_shell.dart` — bottom navigation bar with tab routing).
 
 ## 4. Backend Folder Structure
 
-Technology: **FastAPI + PostgreSQL + SQLAlchemy + Alembic**
+Technology: **FastAPI + PostgreSQL (Supabase) + SQLAlchemy + Alembic**
 
-Recommended structure:
+Actual structure:
 
 ```text
-backend/
+lc_connect_backend/
   app/
-    main.py
-    api/
-      __init__.py
-      v1/
-        __init__.py
-        router.py
-        routes/
-          auth.py
-          profiles.py
-          discovery.py
-          connections.py
-          messages.py
-          activities.py
-          safety.py
-          admin.py
-    core/
-      config.py
-      security.py
-      permissions.py
-      errors.py
-    db/
-      session.py
-      base.py
-      init_db.py
-    models/
-      user.py
-      profile.py
-      interest.py
-      language.py
-      connection.py
-      message.py
-      activity.py
-      report.py
-      block.py
-      verification.py
-    schemas/
-      auth.py
-      user.py
-      profile.py
-      discovery.py
-      connection.py
-      message.py
-      activity.py
-      report.py
-      block.py
-    services/
-      auth_service.py
-      profile_service.py
-      discovery_service.py
-      connection_service.py
-      message_service.py
-      activity_service.py
-      safety_service.py
-      admin_service.py
-    repositories/
-      user_repository.py
-      profile_repository.py
-      discovery_repository.py
-      connection_repository.py
-      message_repository.py
-      activity_repository.py
-      safety_repository.py
-    utils/
-      dates.py
-      validators.py
-      pagination.py
-    tests/
-      test_auth.py
-      test_profiles.py
-      test_connections.py
-      test_activities.py
-      test_messages.py
+    main.py              # FastAPI app, CORS, router includes
+    config.py            # Settings from .env via pydantic-settings
+    database.py          # async SQLAlchemy engine and session
+    dependencies.py      # get_current_user dependency (JWT → User)
+    models.py            # all SQLAlchemy ORM models in one file
+    schemas.py           # all Pydantic request/response schemas
+    security.py          # password hashing, JWT create/decode
+    services.py          # business logic (messaging rules, discovery filters)
+    email.py             # OTP email sending
+    seed.py              # seed interests, languages, looking-for options
+    routers/
+      auth.py            # register, login, verify-email, forgot-password
+      profiles.py        # profile setup and retrieval
+      discovery.py       # discovery cards
+      connections.py     # connection requests and match creation
+      messages.py        # message threads and send
+      activities.py      # activity CRUD and join/leave
+      safety.py          # block and report
+      admin.py           # admin moderation endpoints
+      lookups.py         # interests, languages, looking-for options
   alembic/
     versions/
+      3ffad56200ff_initial_schema.py
   alembic.ini
   requirements.txt
+  .env
   .env.example
-  README.md
 ```
 
 ## 5. Backend Folder Explanation
 
 ### `main.py`
 
-FastAPI app entry point.
+FastAPI app entry point. Creates the FastAPI app, adds CORS middleware, and includes all routers.
 
-Responsibilities:
+### `routers/`
 
-- Create FastAPI app
-- Add middleware
-- Include API routers
-- Add health check
+Thin route files. Business logic lives in `services.py`, not here.
 
-### `api/v1/routes/`
+### `models.py`
 
-Contains API route files.
+All SQLAlchemy ORM models in a single file: `User`, `Profile`, `Interest`, `Language`, `LookingForOption`, `UserLanguage`, `ConnectionRequest`, `Match`, `Message`, `Activity`, `ActivityParticipant`, `Block`, `Report`, `VerificationRequest`.
 
-Routes should stay thin. They should call service functions instead of containing all business logic.
+### `schemas.py`
 
-Example:
+All Pydantic request/response schemas. Controls what the frontend sends and receives.
 
-```python
-@router.post('/request')
-def send_connection_request(...):
-    return connection_service.send_request(...)
-```
+### `services.py`
 
-### `core/`
-
-Core configuration and security.
-
-Files:
-
-- `config.py` — environment variables
-- `security.py` — password hashing, JWT tokens
-- `permissions.py` — admin/user checks
-- `errors.py` — custom exceptions
-
-### `db/`
-
-Database connection setup.
-
-Files:
-
-- `session.py` — SQLAlchemy session
-- `base.py` — base model imports
-- `init_db.py` — optional startup database setup
-
-### `models/`
-
-SQLAlchemy ORM models that represent database tables.
-
-Example models:
-
-- `User`
-- `Profile`
-- `ConnectionRequest`
-- `Match`
-- `Message`
-- `Activity`
-
-### `schemas/`
-
-Pydantic request/response schemas.
-
-Use schemas to control what the frontend sends and receives.
-
-### `services/`
-
-Business logic.
-
-This is where important rules should live:
+Business logic. This is where important rules live:
 
 - Users cannot message without a match
 - Blocked users cannot interact
-- Discovery excludes suspended users
-- Matches are created only after accepted requests
+- Discovery excludes blocked and hidden users
+- Matches are created only after an accepted connection request
 
-### `repositories/`
+### `security.py`
 
-Database queries.
+Password hashing (bcrypt) and JWT token creation/decoding. The JWT payload includes `role: authenticated` so that Supabase can verify the token and resolve `auth.uid()` in RLS policies.
 
-Repositories help keep SQL/database logic away from route files.
+### `dependencies.py`
 
-### `tests/`
+FastAPI dependency `get_current_user` — decodes the Bearer JWT and returns the authenticated `User`.
 
-Backend tests.
-
-Start with tests for:
-
-- Auth
-- Profile creation
-- Connection request flow
-- Message permission rules
-- Activity join/leave
-- Blocking behavior
-
-## 6. Docs Folder Structure
+## 6. Supabase Folder
 
 ```text
-docs/
-  overview.md
-  project_description.md
-  architecture.md
-  folder_structure.md
-  database.md
-  to-do.md
+supabase/
+  migrations/
+    20260510000000_messages_rls.sql   # RLS policies for the messages table
 ```
 
-## 7. Recommended Development Order
+The `supabase/migrations/` folder holds versioned SQL files for database-level changes that Alembic does not manage (RLS policies, publications). Run these in **Supabase Dashboard → SQL Editor** or via `supabase db push` when setting up a new environment. See `lc_connect_docs/security_rls_messages.md` for details.
+
+## 7. Docs Folder Structure
+
+```text
+lc_connect_docs/
+  project_description.md    # app vision, MVP features, user stories
+  architecture.md           # system diagram, tech stack, data flows
+  folder_structure.md       # this file — folder layout and explanations
+  database.md               # table schemas, column names, RLS notes
+  realtime-messaging.md     # Supabase Realtime implementation end-to-end
+  security_rls_messages.md  # RLS setup, JWT wiring, policy documentation
+```
+
+## 8. Recommended Development Order
 
 Build in this order:
 
