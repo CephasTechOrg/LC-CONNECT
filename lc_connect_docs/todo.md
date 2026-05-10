@@ -4,11 +4,12 @@ This roadmap is designed to build the LC Connect MVP in the correct order withou
 
 **Current confirmed stack**
 
-- **Mobile app:** Flutter
-- **Backend:** FastAPI
+- **Mobile app:** Flutter + Riverpod + supabase_flutter
+- **Backend:** FastAPI (hosted on Render)
 - **Local development database:** Local PostgreSQL
 - **Production database:** Supabase PostgreSQL
-- **Profile image storage:** Supabase Storage bucket
+- **Realtime messaging:** Supabase Realtime (WebSocket, RLS-protected)
+- **Profile image storage:** Supabase Storage bucket (`profile-images`)
 - **MVP audience:** Livingstone College students
 
 ---
@@ -109,13 +110,16 @@ Local development:
 
 Production:
 
-- [ ] Create Supabase project
-- [ ] Copy Supabase PostgreSQL connection string
-- [ ] Configure production `DATABASE_URL`
-- [ ] Create Supabase Storage bucket: `profile-images`
-- [ ] Configure Supabase Storage policies or backend-only upload rules
-- [ ] Store Supabase service role key only in backend environment variables
-- [ ] Confirm mobile app never exposes Supabase service role key
+- [x] Create Supabase project
+- [x] Copy Supabase PostgreSQL connection string
+- [x] Configure production `DATABASE_URL`
+- [x] Create Supabase Storage bucket: `profile-images`
+- [x] Configure Supabase Storage policies or backend-only upload rules
+- [x] Store Supabase service role key only in backend environment variables
+- [x] Confirm mobile app never exposes Supabase service role key
+- [x] Enable Supabase Realtime publication on messages table
+- [x] Apply RLS migration (`supabase/migrations/20260510000000_messages_rls.sql`)
+- [x] Configure Supabase JWT Secret to match backend `JWT_SECRET_KEY`
 
 Schema:
 
@@ -150,6 +154,22 @@ Schema:
 - [x] JWT token validation
 - [x] Basic user status check
 - [x] Prevent suspended users from logging in or using core endpoints
+
+Endpoints:
+
+OTP email verification:
+
+- [x] Add OTP columns to users table (`verify_otp_hash`, `verify_otp_expires_at`)
+- [x] `POST /api/v1/auth/send-otp` — send verification email
+- [x] `POST /api/v1/auth/verify-otp` — verify OTP and mark user as verified
+- [x] Build verify email screen in Flutter (`verify_email_screen.dart`)
+
+Password reset:
+
+- [x] Add reset OTP columns (`reset_otp_hash`, `reset_otp_expires_at`)
+- [x] `POST /api/v1/auth/forgot-password`
+- [x] `POST /api/v1/auth/reset-password`
+- [x] Build forgot password screen in Flutter (`forgot_password_screen.dart`)
 
 Endpoints:
 
@@ -203,6 +223,7 @@ Endpoints:
   - [x] `image_picker`
   - [x] `intl`
   - [x] `font_awesome_flutter`
+  - [x] `supabase_flutter` (for Realtime message delivery)
 - [x] Add app theme/colors
 - [x] Add reusable UI components
 - [x] Add navigation shell with bottom tabs
@@ -241,24 +262,10 @@ Endpoints:
 - [x] Add languages spoken selector (chip grid)
 - [x] Add languages learning selector (chip grid)
 - [x] Add looking-for selector (chip grid, required — at least 1)
-- [x] Add profile image picker — blocked on Supabase setup (see below)
-- [x] Upload profile image to backend — backend endpoint ready (`POST /api/v1/profiles/me/avatar`), needs Supabase credentials in `.env`
+- [x] Add profile image picker
+- [x] Upload profile image to backend (`POST /api/v1/profiles/me/avatar`) — Supabase bucket configured and working
 - [x] Submit profile to backend (`PATCH /api/v1/profiles/me`)
 - [x] Show profile completion success (router auto-redirects to `/home` after `refreshProfile()`)
-
-> **Supabase avatar upload — what's needed before this can be completed:**
-> 1. Create a Supabase project at supabase.com
-> 2. Copy Project URL and Service Role Key
-> 3. Create a storage bucket named `profile-images`
-> 4. Add to `lc_connect_backend/.env`:
->    ```
->    SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
->    SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
->    SUPABASE_PROFILE_BUCKET=profile-images
->    ```
-> 5. Wire `image_picker` in Flutter onboarding screen → `POST /api/v1/profiles/me/avatar`
-> 6. All backend code is already written and waiting.
-> Until then, use `headshots.png` as a placeholder avatar everywhere.
 
 ---
 
@@ -345,6 +352,17 @@ Flutter:
 - [x] Add send message form
 - [x] Add empty state for no messages
 - [x] Connect screens to backend endpoints
+
+Supabase Realtime (live message delivery):
+
+- [x] Initialize Supabase client in `main.dart` with `SUPABASE_URL` and `SUPABASE_ANON_KEY`
+- [x] Add `role: authenticated` to FastAPI JWT payload so Supabase can resolve `auth.uid()`
+- [x] Call `Supabase.instance.client.realtime.setAuth(token)` on login, register, and app startup
+- [x] Call `setAuth(null)` on logout
+- [x] Subscribe to `PostgresChanges` INSERT events filtered by `match_id` in `chat_screen.dart`
+- [x] Unsubscribe from channel in `dispose()` to prevent resource leaks
+- [x] Add `_seenIds` deduplication so sender's message does not appear twice
+- [x] Receiver sees new messages appear live without polling or refresh
 
 Endpoints:
 
@@ -467,19 +485,19 @@ Backend tests:
 - [ ] User cannot join full activity
 - [ ] Report can be submitted
 
-Flutter tests:
+Flutter tests (39 tests passing):
 
-- [ ] App launches without crash
-- [ ] Login screen renders correctly
-- [ ] Login hero layers `school.png` behind `students.png`
-- [ ] Register flow works
-- [ ] Login flow works
-- [ ] JWT stores securely
-- [ ] Profile setup works
+- [x] Auth provider unit tests
+- [x] Register screen — form validation, student email domain enforcement
+- [x] Messages screen — thread list renders, null partner handled, timestamps displayed
+- [x] Chat screen — message bubbles render, send flow works
+- [x] Profile model — `isVerified` parsed correctly, defaults to false when absent
+- [x] Profile screen — verified badge shown when `isVerified: true`, hidden when false
+- [x] Public profile screen — verified icon conditional on `isVerified`
+- [ ] Login flow end-to-end test
+- [ ] JWT stored securely (integration)
 - [ ] Discovery cards load
-- [ ] Connection request works
-- [ ] Messages screen works
-- [ ] Chat thread works
+- [ ] Connection request flow
 - [ ] Activity board works
 - [ ] Report/block works
 
@@ -489,13 +507,13 @@ Flutter tests:
 
 Backend:
 
-- [ ] Choose hosting: Render, Railway, Fly.io, or similar
-- [ ] Create production Supabase project
-- [ ] Configure production `DATABASE_URL`
-- [ ] Configure Supabase Storage bucket
-- [ ] Configure environment variables
-- [ ] Run migrations or initialization in production
-- [ ] Set allowed CORS origins
+- [x] Choose hosting: Render
+- [x] Create production Supabase project
+- [x] Configure production `DATABASE_URL`
+- [x] Configure Supabase Storage bucket
+- [x] Configure environment variables on Render
+- [x] Run migrations / initialization in production
+- [x] Set allowed CORS origins
 - [ ] Add production logging
 
 Flutter mobile:
@@ -503,10 +521,10 @@ Flutter mobile:
 - [ ] Configure app package name / bundle ID
 - [ ] Configure app icon
 - [ ] Configure splash screen
-- [ ] Create Android development build
-- [ ] Test on Android phone
+- [x] Create Android development build
+- [x] Test on Android phone — register, login, and core flows verified
 - [ ] Test on iPhone if available
-- [ ] Configure production API URL with `--dart-define`
+- [x] Configure production API URL
 - [ ] Prepare internal testing build
 
 ---
@@ -530,8 +548,12 @@ Flutter mobile:
 
 Only add these after students are actually using the MVP:
 
-- [ ] Push notifications
-- [ ] Real-time messaging with WebSockets
+- [x] Real-time messaging (implemented via Supabase Realtime — no polling)
+- [ ] Thread list live preview (messages screen does not yet update without refresh)
+- [ ] Push notifications (Firebase Cloud Messaging)
+- [ ] Typing indicators (Supabase Realtime Broadcast)
+- [ ] Read receipts
+- [ ] Offline message queue (sqflite)
 - [ ] AI-generated icebreakers
 - [ ] Better recommendation engine
 - [ ] Club/organization pages
