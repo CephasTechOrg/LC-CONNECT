@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/api/api_client.dart';
 import '../../../core/storage/secure_storage.dart';
 
@@ -47,6 +48,8 @@ class AuthNotifier extends AsyncNotifier<AuthUser?> {
     final token = await storage.getToken();
     if (token == null) return null;
 
+    Supabase.instance.client.realtime.setAuth(token);
+
     try {
       final client = ref.watch(apiClientProvider);
       final meResponse = await client.dio.get('/auth/me');
@@ -78,6 +81,7 @@ class AuthNotifier extends AsyncNotifier<AuthUser?> {
       });
       final token = response.data['access_token'] as String;
       await storage.saveToken(token);
+      Supabase.instance.client.realtime.setAuth(token);
       final meResponse = await client.dio.get('/auth/me');
       final profileCompleted = await _fetchProfileCompleted(client);
       return AuthUser.fromJson(meResponse.data as Map<String, dynamic>, profileCompleted: profileCompleted);
@@ -95,6 +99,7 @@ class AuthNotifier extends AsyncNotifier<AuthUser?> {
       });
       final token = registerResponse.data['access_token'] as String;
       await storage.saveToken(token);
+      Supabase.instance.client.realtime.setAuth(token);
       final meResponse = await client.dio.get('/auth/me');
       final profileCompleted = await _fetchProfileCompleted(client);
       return AuthUser.fromJson(meResponse.data as Map<String, dynamic>, profileCompleted: profileCompleted);
@@ -127,6 +132,7 @@ class AuthNotifier extends AsyncNotifier<AuthUser?> {
   Future<void> logout() async {
     final storage = ref.read(secureStorageProvider);
     await storage.deleteToken();
+    Supabase.instance.client.realtime.setAuth(null);
     state = const AsyncData(null);
   }
 }

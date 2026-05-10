@@ -188,7 +188,7 @@ void main() {
 
       final thread = MessageThread.fromJson(json);
       expect(thread.matchId, 'match-abc');
-      expect(thread.partner.displayName, 'Alex');
+      expect(thread.partner!.displayName, 'Alex');
       expect(thread.latestMessage, isNotNull);
       expect(thread.latestMessage!.body, 'Hey!');
     });
@@ -220,6 +220,17 @@ void main() {
 
       final thread = MessageThread.fromJson(json);
       expect(thread.latestMessage, isNull);
+    });
+
+    test('does not crash when partner is null', () {
+      final json = {
+        'match_id': 'match-orphan',
+        'partner': null,
+        'latest_message': null,
+      };
+      final thread = MessageThread.fromJson(json);
+      expect(thread.partner, isNull);
+      expect(thread.matchId, 'match-orphan');
     });
   });
 
@@ -266,6 +277,14 @@ void main() {
 
       expect(find.text('Maya Chen'), findsOneWidget);
       expect(find.text('Ethan R.'), findsOneWidget);
+    });
+
+    testWidgets('timestamp is displayed in local time format', (tester) async {
+      // _sampleMessage was created 1 hour ago → _formatThreadTime returns '1h'
+      await tester.pumpWidget(_threadScope(threads: [_sampleThread]));
+      await tester.pumpAndSettle();
+
+      expect(find.text('1h'), findsOneWidget);
     });
   });
 

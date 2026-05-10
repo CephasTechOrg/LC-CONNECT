@@ -27,6 +27,7 @@ def profile_to_public(profile: Profile) -> ProfilePublic:
         bio=profile.bio,
         avatar_url=profile.avatar_url,
         is_hidden=profile.is_hidden,
+        is_verified=profile.user.is_verified,
         profile_completed=profile.profile_completed,
         interests=sorted([interest.name for interest in profile.interests]),
         languages_spoken=spoken,

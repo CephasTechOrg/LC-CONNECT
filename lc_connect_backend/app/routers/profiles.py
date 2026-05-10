@@ -17,6 +17,7 @@ router = APIRouter(prefix='/profiles', tags=['profiles'])
 
 def profile_load_options():
     return [
+        selectinload(Profile.user),
         selectinload(Profile.interests),
         selectinload(Profile.looking_for_options),
         selectinload(Profile.languages).selectinload(UserLanguage.language),

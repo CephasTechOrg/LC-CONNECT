@@ -815,7 +815,7 @@ class _RecentMatchCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final partner = thread.partner;
+    final partner = thread.partner!; // provider filters out null-partner threads
     final latest = thread.latestMessage;
     final sub = _studentSub(partner.major, partner.classYear);
     final previewText = latest?.body ?? 'New match — say hello!';

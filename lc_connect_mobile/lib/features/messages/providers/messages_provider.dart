@@ -75,19 +75,20 @@ class ChatMessage {
 // ── Message thread ────────────────────────────────────────────────
 class MessageThread {
   final String matchId;
-  final MessagePartner partner;
+  final MessagePartner? partner;
   final ChatMessage? latestMessage;
 
   const MessageThread({
     required this.matchId,
-    required this.partner,
+    this.partner,
     this.latestMessage,
   });
 
   factory MessageThread.fromJson(Map<String, dynamic> j) => MessageThread(
         matchId: j['match_id'] as String,
-        partner:
-            MessagePartner.fromJson(j['partner'] as Map<String, dynamic>),
+        partner: j['partner'] != null
+            ? MessagePartner.fromJson(j['partner'] as Map<String, dynamic>)
+            : null,
         latestMessage: j['latest_message'] != null
             ? ChatMessage.fromJson(
                 j['latest_message'] as Map<String, dynamic>)
@@ -108,6 +109,7 @@ class ThreadsNotifier extends AsyncNotifier<List<MessageThread>> {
     final response = await client.dio.get('/messages/threads');
     return (response.data as List)
         .map((j) => MessageThread.fromJson(j as Map<String, dynamic>))
+        .where((t) => t.partner != null)
         .toList();
   }
 }

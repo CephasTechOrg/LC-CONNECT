@@ -23,6 +23,7 @@ class PublicProfileScreen extends ConsumerWidget {
       backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: AppColors.surface,
+        
         foregroundColor: AppColors.textDark,
         elevation: 0,
         title: Text(
@@ -108,9 +109,11 @@ class _HeroCard extends StatelessWidget {
                             ),
                           ),
                         ),
-                        const SizedBox(width: 6),
-                        const Icon(Icons.verified_rounded,
-                            color: AppColors.primary, size: 18),
+                        if (profile.isVerified) ...[
+                          const SizedBox(width: 6),
+                          const Icon(Icons.verified_rounded,
+                              color: AppColors.primary, size: 18),
+                        ],
                       ],
                     ),
                     if (profile.pronouns != null) ...[

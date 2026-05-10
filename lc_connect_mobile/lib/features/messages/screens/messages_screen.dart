@@ -129,7 +129,7 @@ class _ThreadCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final p = thread.partner;
+    final p = thread.partner!; // provider filters out null-partner threads
     final latest = thread.latestMessage;
 
     return InkWell(
@@ -286,10 +286,10 @@ class _ErrorState extends StatelessWidget {
 
 // ── Time formatter ────────────────────────────────────────────────
 String _formatThreadTime(DateTime dt) {
-  final now = DateTime.now();
-  final diff = now.difference(dt);
+  final local = dt.toLocal();
+  final diff = DateTime.now().difference(local);
   if (diff.inMinutes < 60) return '${diff.inMinutes}m';
   if (diff.inHours < 24) return '${diff.inHours}h';
-  if (diff.inDays < 7) return DateFormat('EEE').format(dt);
-  return DateFormat('MMM d').format(dt);
+  if (diff.inDays < 7) return DateFormat('EEE').format(local);
+  return DateFormat('MMM d').format(local);
 }

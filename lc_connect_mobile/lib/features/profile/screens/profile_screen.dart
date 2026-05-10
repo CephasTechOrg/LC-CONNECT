@@ -315,9 +315,11 @@ class _HeroSection extends StatelessWidget {
                             ),
                           ),
                         ),
-                        const SizedBox(width: 6),
-                        const Icon(Icons.verified_rounded,
-                            color: AppColors.primary, size: 18),
+                        if (profile.isVerified) ...[
+                          const SizedBox(width: 6),
+                          const Icon(Icons.verified_rounded,
+                              color: AppColors.primary, size: 18),
+                        ],
                       ],
                     ),
                     if (profile.bio != null && profile.bio!.isNotEmpty) ...[
@@ -401,14 +403,16 @@ class _InfoRows extends StatelessWidget {
       child: Column(
         children: [
           // Verified Student
-          _InfoRow(
-            icon: Icons.verified_user_outlined,
-            iconColor: AppColors.primary,
-            title: 'Verified Student',
-            subtitle: 'Your profile is verified by Livingstone College',
-            showChevron: true,
-          ),
-          _divider(),
+          if (profile.isVerified) ...[
+            _InfoRow(
+              icon: Icons.verified_user_outlined,
+              iconColor: AppColors.primary,
+              title: 'Verified Student',
+              subtitle: 'Your profile is verified by Livingstone College',
+              showChevron: true,
+            ),
+            _divider(),
+          ],
           // Languages Spoken
           if (profile.languagesSpoken.isNotEmpty)
             _InfoRow(

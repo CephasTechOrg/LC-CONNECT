@@ -30,7 +30,7 @@ async def get_discovery_cards(current_user: User = Depends(get_current_user), db
     result = await db.execute(
         select(Profile)
         .join(User, User.id == Profile.user_id)
-        .options(selectinload(Profile.interests), selectinload(Profile.looking_for_options), selectinload(Profile.languages).selectinload(UserLanguage.language))
+        .options(selectinload(Profile.user), selectinload(Profile.interests), selectinload(Profile.looking_for_options), selectinload(Profile.languages).selectinload(UserLanguage.language))
         .where(Profile.user_id.not_in(excluded), Profile.is_hidden.is_(False), Profile.profile_completed.is_(True), User.is_active.is_(True), User.status == 'active')
         .limit(150)
     )

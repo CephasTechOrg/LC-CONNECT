@@ -98,6 +98,7 @@ class ProfilePublic(BaseModel):
     bio: str | None
     avatar_url: str | None
     is_hidden: bool
+    is_verified: bool
     profile_completed: bool
     interests: list[str]
     languages_spoken: list[str]

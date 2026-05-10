@@ -19,6 +19,7 @@ def create_access_token(user_id: UUID) -> str:
     now = datetime.now(UTC)
     payload = {
         'sub': str(user_id),
+        'role': 'authenticated',
         'type': 'access',
         'iat': now,
         'exp': now + timedelta(minutes=settings.access_token_expire_minutes),

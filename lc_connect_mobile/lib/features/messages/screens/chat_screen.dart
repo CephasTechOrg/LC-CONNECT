@@ -46,29 +46,33 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   void _subscribeToMessages() {
-    _channel = Supabase.instance.client
-        .channel('messages:${widget.matchId}')
-        .onPostgresChanges(
-          event: PostgresChangeEvent.insert,
-          schema: 'public',
-          table: 'messages',
-          filter: PostgresChangeFilter(
-            type: PostgresChangeFilterType.eq,
-            column: 'match_id',
-            value: widget.matchId,
-          ),
-          callback: (payload) {
-            if (!mounted) return;
-            final msg = ChatMessage.fromJson(payload.newRecord);
-            if (_seenIds.contains(msg.id)) return;
-            setState(() {
-              _seenIds.add(msg.id);
-              _messages.add(msg);
-            });
-            _scrollToBottom();
-          },
-        )
-        .subscribe();
+    try {
+      _channel = Supabase.instance.client
+          .channel('messages:${widget.matchId}')
+          .onPostgresChanges(
+            event: PostgresChangeEvent.insert,
+            schema: 'public',
+            table: 'messages',
+            filter: PostgresChangeFilter(
+              type: PostgresChangeFilterType.eq,
+              column: 'match_id',
+              value: widget.matchId,
+            ),
+            callback: (payload) {
+              if (!mounted) return;
+              final msg = ChatMessage.fromJson(payload.newRecord);
+              if (_seenIds.contains(msg.id)) return;
+              setState(() {
+                _seenIds.add(msg.id);
+                _messages.add(msg);
+              });
+              _scrollToBottom();
+            },
+          )
+          .subscribe();
+    } catch (_) {
+      // Realtime unavailable; messages delivered via REST only
+    }
   }
 
   Future<void> _fetchMessages() async {
@@ -257,26 +261,13 @@ class _PartnerInfoRow extends StatelessWidget {
                         color: AppColors.textDark,
                       ),
                     ),
-                    Row(
-                      children: [
-                        Container(
-                          width: 7,
-                          height: 7,
-                          decoration: BoxDecoration(
-                            color: AppColors.green,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                        const SizedBox(width: 5),
-                        Text(
-                          'Online',
-                          style: GoogleFonts.dmSans(
-                            fontSize: 12,
-                            color: AppColors.green,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
+                    Text(
+                      'Livingstone College',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 12,
+                        color: AppColors.textMuted,
+                        fontWeight: FontWeight.w400,
+                      ),
                     ),
                   ],
                 ),
@@ -348,8 +339,8 @@ class _MessageList extends StatelessWidget {
     DateTime? lastDate;
 
     for (final msg in messages) {
-      final msgDate =
-          DateTime(msg.createdAt.year, msg.createdAt.month, msg.createdAt.day);
+      final local = msg.createdAt.toLocal();
+      final msgDate = DateTime(local.year, local.month, local.day);
       if (lastDate == null || msgDate != lastDate) {
         items.add(_DateSeparatorItem(msgDate));
         lastDate = msgDate;
@@ -497,7 +488,7 @@ class _BubbleTile extends StatelessWidget {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  DateFormat('h:mm a').format(message.createdAt),
+                  DateFormat('h:mm a').format(message.createdAt.toLocal()),
                   style: GoogleFonts.dmSans(
                     fontSize: 10,
                     color: AppColors.textMuted,

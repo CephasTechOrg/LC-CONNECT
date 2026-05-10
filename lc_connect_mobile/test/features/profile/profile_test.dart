@@ -49,6 +49,7 @@ MyProfile _makeProfile({
   List<String> lookingForCodes = const ['friendship', 'study_partner'],
   bool allowMessages = true,
   bool showToVerified = true,
+  bool isVerified = true,
   int connections = 42,
   int activities = 7,
   int messages = 15,
@@ -68,6 +69,7 @@ MyProfile _makeProfile({
       lookingForCodes: lookingForCodes,
       allowMessagesFromMatchesOnly: allowMessages,
       showProfileToVerifiedOnly: showToVerified,
+      isVerified: isVerified,
       connectionCount: connections,
       activityCount: activities,
       messageCount: messages,
@@ -90,6 +92,7 @@ void main() {
       'bio': 'Hello!',
       'avatar_url': null,
       'is_hidden': false,
+      'is_verified': true,
       'profile_completed': true,
       'interests': ['Photography', 'Hiking'],
       'languages_spoken': ['English', 'Mandarin'],
@@ -121,6 +124,18 @@ void main() {
       expect(p.languagesLearning, contains('French'));
       expect(p.lookingFor, containsAll(['Friendship', 'Study Partner']));
       expect(p.lookingForCodes, contains('study_partner'));
+    });
+
+    test('parses is_verified field', () {
+      final p = MyProfile.fromJson(fullJson);
+      expect(p.isVerified, isTrue);
+    });
+
+    test('defaults is_verified to false when absent', () {
+      final json = Map<String, dynamic>.from(fullJson)
+        ..remove('is_verified');
+      final p = MyProfile.fromJson(json);
+      expect(p.isVerified, isFalse);
     });
 
     test('parses preference booleans', () {
@@ -260,10 +275,26 @@ void main() {
       expect(find.text('Edit Profile'), findsOneWidget);
     });
 
-    testWidgets('shows verified student row', (tester) async {
-      await tester.pumpWidget(_scope(_makeProfile()));
+    testWidgets('shows verified badge and row when isVerified is true',
+        (tester) async {
+      await tester.pumpWidget(_scope(_makeProfile(isVerified: true)));
       await tester.pumpAndSettle();
       expect(find.text('Verified Student'), findsOneWidget);
+      expect(
+        find.byIcon(Icons.verified_rounded, skipOffstage: false),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('hides verified badge and row when isVerified is false',
+        (tester) async {
+      await tester.pumpWidget(_scope(_makeProfile(isVerified: false)));
+      await tester.pumpAndSettle();
+      expect(find.text('Verified Student', skipOffstage: false), findsNothing);
+      expect(
+        find.byIcon(Icons.verified_rounded, skipOffstage: false),
+        findsNothing,
+      );
     });
 
     testWidgets('handles empty optional fields gracefully', (tester) async {
