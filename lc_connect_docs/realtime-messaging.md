@@ -89,26 +89,45 @@ WHERE pubname = 'supabase_realtime';
 -- Should include: public | messages
 ```
 
-### 3.2 Add RLS policy for anon to read messages
+### 3.2 RLS policies for messages — JWT-based security
 
-LC Connect uses custom JWT auth (not Supabase Auth), so the Flutter Supabase client always authenticates as `anon`. Without a SELECT policy for the anon role, Supabase Realtime will connect but deliver zero events.
+LC Connect uses custom FastAPI JWT auth (not Supabase Auth). The JWT is wired into the Supabase Realtime client so that `auth.uid()` resolves to the logged-in user's UUID inside RLS policies. This means Supabase can enforce per-user read access at the database level.
 
-Run this SQL once in **Supabase → SQL Editor**:
+**Full setup details and rationale:** see `lc_connect_docs/security_rls_messages.md`
+
+**Summary of what is in place:**
+
+Two policies are active on the `messages` table:
 
 ```sql
-ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
+-- Only match participants can read their messages
+CREATE POLICY "participants can read their messages"
+ON messages FOR SELECT
+USING (
+  EXISTS (
+    SELECT 1 FROM matches
+    WHERE matches.id = messages.match_id
+      AND (matches.user_a_id = auth.uid() OR matches.user_b_id = auth.uid())
+  )
+);
 
-CREATE POLICY "anon_can_read_messages"
-  ON public.messages
-  FOR SELECT
-  TO anon
-  USING (true);
+-- No direct inserts via client keys — all writes go through FastAPI
+CREATE POLICY "no direct inserts"
+ON messages FOR INSERT
+WITH CHECK (false);
 ```
 
-This policy is safe because:
-- Write operations require a FastAPI JWT — you cannot insert a message without being authenticated.
-- The realtime client filters by `match_id` on the client side; Supabase also applies server-side filtering.
-- If LC Connect later adopts Supabase Auth, this policy can be replaced with a user-specific one.
+**How `auth.uid()` works here:**
+
+Three things had to be in place for this to function:
+
+1. The FastAPI JWT payload includes `'role': 'authenticated'` — required for Supabase to treat the connection as an authenticated user
+2. The Supabase JWT Secret (Dashboard → Project Settings → Auth → JWT Settings) is set to the same value as the backend `JWT_SECRET_KEY`
+3. After every login/register, `Supabase.instance.client.realtime.setAuth(token)` is called in `auth_provider.dart` so the realtime channel carries the user's identity
+
+Without step 3, the realtime client connects anonymously and `auth.uid()` returns NULL, silently blocking all events.
+
+**The migration file** for these policies lives at `supabase/migrations/20260510000000_messages_rls.sql`. Run this after any Supabase reset or when creating a new environment.
 
 ---
 
@@ -340,18 +359,6 @@ There is no offline message queue. If the device loses connection, incoming mess
 
 The subscription listens to `PostgresChangeEvent.insert` only. If a message is edited or deleted in the future, a separate subscription or logic would be needed.
 
-### Anon RLS policy is permissive
-
-The current RLS policy (`USING (true)`) lets any authenticated-as-anon client read messages if they know the `match_id`. The `match_id` is a UUID, so it is effectively a secret, but it is not cryptographically enforced. If LC Connect adopts Supabase Auth in the future, the policy should be tightened to:
-
-```sql
-USING (
-  auth.uid() IN (
-    SELECT user_id FROM matches WHERE id = match_id
-  )
-)
-```
-
 ### Thread list does not auto-update
 
 The messages screen (`messages_screen.dart`) shows a list of conversations. It does not have a Realtime subscription. When a new message arrives in a conversation, the thread list preview does not update until the user pulls to refresh or navigates away and back. This is a future improvement.
@@ -365,6 +372,5 @@ The messages screen (`messages_screen.dart`) shows a list of conversations. It d
 | Thread list live preview | Add a Realtime subscription in `messages_provider.dart` for latest message updates |
 | Read receipts | INSERT into a `message_reads` table; add Realtime subscription for that table |
 | Typing indicators | Use Supabase Realtime Broadcast (not Postgres changes) — no DB write needed |
-| Tighter RLS | Migrate to Supabase Auth and add user-specific SELECT policy on messages |
 | Offline message queue | Local database (e.g., `sqflite`) to store pending messages when offline |
 | Push notifications | Firebase Cloud Messaging triggered by backend webhook when message is inserted |

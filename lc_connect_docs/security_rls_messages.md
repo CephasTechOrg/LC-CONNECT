@@ -14,6 +14,8 @@ The anon key is not a secret — anyone can extract it from an Android APK using
 
 RLS is the Supabase/PostgreSQL mechanism that enforces data access at the database level, regardless of how a client connects. Even if someone has the anon key, they can only see rows that the policies explicitly permit.
 
+**Note on keeping policies public:** The policy logic (the SQL rules themselves) is safe to store in a public GitHub repository. Security comes from the policies being enforced by the database, not from hiding what the rules are. What must never be public are secret values — `JWT_SECRET_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, and database passwords. Those stay in `.env` files which are gitignored.
+
 ---
 
 ## The architecture: two auth systems
@@ -60,7 +62,7 @@ In **Project Settings → Auth → JWT Settings**, the JWT Secret was changed to
 
 This tells Supabase: "trust and verify tokens signed with this secret". Before this change, Supabase had no way to validate the FastAPI tokens because it did not know the signing key. After this change, Supabase decodes the FastAPI JWT, reads the `sub` claim as the user's UUID, and makes it available as `auth.uid()` inside RLS policies.
 
-**Important:** the JWT secret value must be identical on both sides — the exact same string. Length does not need to match any particular format; HS256 accepts keys of any length. A 64-character key from the backend and a 32-character default from Supabase would not match because they are different values, not because of their lengths. Always copy the backend `JWT_SECRET_KEY` value directly.
+**Important:** the JWT secret value must be identical on both sides — the exact same string. Length does not need to match any particular format; HS256 accepts keys of any length. A 64-character key from the backend and a 32-character key in Supabase would not match because they are different values, not because of their lengths. Always copy the backend `JWT_SECRET_KEY` value directly into Supabase. The direction (backend → Supabase) is what matters — use your backend value as the source of truth.
 
 ### Flutter — `lib/features/auth/providers/auth_provider.dart`
 After every login, register, and on app startup (when restoring a session from storage), the FastAPI JWT is now passed to the Supabase realtime client:
@@ -115,34 +117,7 @@ WITH CHECK (false);
 
 ---
 
-## How RLS was enabled
-
-RLS was enabled and policies were created by running the following SQL in the **Supabase Dashboard → SQL Editor**:
-
-```sql
--- Step 1: Enable RLS on the messages table
-ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
-
--- Step 2: Restrict reads to match participants only
-CREATE POLICY "participants can read their messages"
-ON messages FOR SELECT
-USING (
-  EXISTS (
-    SELECT 1 FROM matches
-    WHERE matches.id = messages.match_id
-      AND (matches.user_a_id = auth.uid() OR matches.user_b_id = auth.uid())
-  )
-);
-
--- Step 3: Block all direct inserts via client keys
-CREATE POLICY "no direct inserts"
-ON messages FOR INSERT
-WITH CHECK (false);
-```
-
----
-
-## The rogue policy problem — and what to watch for on re-migration
+## The rogue policy problem
 
 During setup, a third policy was discovered that had been **auto-created by Supabase** when the `messages` table was first set up through the Dashboard's Table Editor UI:
 
@@ -158,55 +133,57 @@ It was removed with:
 DROP POLICY "anon_can_read_messages" ON messages;
 ```
 
-### Will this happen again on re-migration?
+This rogue policy only appears when a table is created through the Supabase Dashboard Table Editor UI (which offers to auto-generate RLS policies). Tables created via raw SQL or migrations do not trigger this. The migration file at `supabase/migrations/20260510000000_messages_rls.sql` includes a `DROP POLICY IF EXISTS` for this name as a permanent defensive measure.
 
-**It depends on how the table is recreated:**
+---
 
-- **If the table is recreated via SQL (Alembic migration, raw SQL script, Supabase CLI `supabase db push`):** No. Raw SQL does not trigger Supabase's policy wizard. The table will be created with no policies, and you must run the three SQL statements above manually or include them in the migration script.
+## When you need to rerun the migration
 
-- **If the table is created through the Supabase Dashboard Table Editor:** Yes. The Dashboard offers to create RLS policies when you create a table, and one of the default templates creates an open `anon` read policy. Always decline this offer, or drop any auto-created policies immediately after.
+RLS policies are stored inside the database permanently. Once set, they stay in place forever — server restarts, code deployments, app updates, and backend changes do not affect them. You do **not** run this regularly.
 
-### Recommended: include policies in migration
+You only need to rerun `supabase/migrations/20260510000000_messages_rls.sql` in these specific situations:
 
-To make this repeatable and safe, add the RLS setup directly into a migration file. Create a new Alembic migration or an `init_rls.sql` file that runs after any schema rebuild:
+| Situation | Why policies are lost |
+|---|---|
+| **Full Supabase project reset** | Project Settings → Danger Zone → Reset wipes the entire database including all policies |
+| **Creating a new environment** | A brand new Supabase project (e.g. a staging database alongside production) starts with no policies |
+| **Switching to a different Supabase project** | Any new project starts clean |
+| **The `messages` table is dropped and recreated** | Policies are attached to the table — dropping the table removes them |
 
-```sql
--- Run after schema is created to enforce message security
-ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
+In all other situations — normal deployments, backend code changes, Flutter app updates, server restarts — the policies are untouched and you do not need to do anything.
 
--- Drop any Supabase-auto-created open policies if they exist
-DROP POLICY IF EXISTS "anon_can_read_messages" ON messages;
+---
 
--- Correct policies
-CREATE POLICY IF NOT EXISTS "participants can read their messages"
-ON messages FOR SELECT
-USING (
-  EXISTS (
-    SELECT 1 FROM matches
-    WHERE matches.id = messages.match_id
-      AND (matches.user_a_id = auth.uid() OR matches.user_b_id = auth.uid())
-  )
-);
+## The migration file
 
-CREATE POLICY IF NOT EXISTS "no direct inserts"
-ON messages FOR INSERT
-WITH CHECK (false);
+All policies live in version control at:
+
+```
+supabase/migrations/20260510000000_messages_rls.sql
 ```
 
-The `DROP POLICY IF EXISTS` and `CREATE POLICY IF NOT EXISTS` syntax means this script is safe to run multiple times without errors.
+This file is safe to be in a public GitHub repository. The policy logic describes access rules, and security comes from those rules being enforced by PostgreSQL — not from keeping the rules secret. Secret values (`JWT_SECRET_KEY`, `SUPABASE_SERVICE_ROLE_KEY`) are never in this file or anywhere in version control.
+
+The file is fully idempotent — safe to run on a fresh database or one where policies already exist. It will not throw errors on repeated runs.
+
+**To apply it**, copy the contents and run them in **Supabase Dashboard → SQL Editor**, or use the Supabase CLI:
+
+```bash
+supabase db push
+```
 
 ---
 
 ## Verification checklist
 
-Run these after any migration or Supabase reset to confirm everything is correct:
+Run these after applying the migration or after any Supabase reset to confirm everything is correct:
 
 ```sql
 -- 1. RLS is enabled (relrowsecurity must be true)
 SELECT relname, relrowsecurity 
 FROM pg_class WHERE relname = 'messages';
 
--- 2. Exactly two policies exist (no extras)
+-- 2. Exactly two policies exist — no more, no less
 SELECT policyname, cmd 
 FROM pg_policies WHERE tablename = 'messages';
 
@@ -223,7 +200,7 @@ Expected results:
 | Policies listed | `participants can read their messages` (SELECT) and `no direct inserts` (INSERT) — exactly these two, nothing else |
 | `rolbypassrls` for anon | `false` |
 
-If you see more than two policies on the messages table, identify any extras and assess whether they are granting broader access than intended. Drop them if they are.
+If you see more than two policies on the messages table, identify any extras and assess whether they are granting broader access than intended. Drop any extras that are not in the list above.
 
 ---
 
@@ -234,7 +211,7 @@ The JWT secret does not have a required length. HS256 (HMAC-SHA256) accepts sign
 - Backend `JWT_SECRET_KEY` in `.env`
 - Supabase **Project Settings → Auth → JWT Settings → JWT Secret**
 
-If the backend uses a 64-character key and you paste a different 32-character Supabase-generated value into the backend, they will not match and authentication will break — not because of length, but because the values are different. Always copy the value from one source and paste it into the other. The direction (backend → Supabase or Supabase → backend) does not matter as long as they end up identical.
+If the backend uses a 64-character key and you paste a different 32-character Supabase-generated value into the backend, they will not match and authentication will break — not because of length, but because the values are different. Always copy the backend `JWT_SECRET_KEY` value directly into the Supabase dashboard. Treat the backend `.env` value as the source of truth.
 
 For security, a minimum of 32 characters (256 bits) is recommended for HS256. Longer keys (64+ characters) are fine and provide a larger margin against brute-force attacks.
 
@@ -246,5 +223,6 @@ For security, a minimum of 32 characters (256 bits) is recommended for HS256. Lo
 |---|---|
 | `lc_connect_backend/app/security.py` | Added `'role': 'authenticated'` to JWT payload |
 | `lc_connect_mobile/lib/features/auth/providers/auth_provider.dart` | Added `Supabase.instance.client.realtime.setAuth(token)` on login, register, startup, and `setAuth(null)` on logout |
+| `supabase/migrations/20260510000000_messages_rls.sql` | Versioned migration file containing all RLS policy setup |
 | Supabase Dashboard → Auth → JWT Settings | JWT Secret updated to match backend `JWT_SECRET_KEY` |
 | Supabase SQL Editor | RLS enabled, two policies created, rogue `anon_can_read_messages` policy dropped |

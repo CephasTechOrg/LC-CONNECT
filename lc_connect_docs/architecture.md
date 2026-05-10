@@ -2,22 +2,23 @@
 
 ## 1. Architecture Summary
 
-LC Connect will use a mobile-first client-server architecture.
+LC Connect uses a mobile-first client-server architecture with a dedicated realtime layer.
 
 ```text
-React Native Expo Mobile App
-        ↓ HTTPS / JSON API
+Flutter Mobile App (iOS / Android)
+        ↓ HTTPS / JSON API (JWT auth)
 FastAPI Backend API
         ↓ SQLAlchemy / async database access
-PostgreSQL Database
+PostgreSQL Database (via Supabase)
+        ↑ WebSocket (Supabase Realtime)
+Flutter Mobile App (Supabase channel subscription)
 ```
 
 Future optional services:
 
 ```text
 Cloudinary/S3      → profile image storage
-Redis              → caching, rate limits, future realtime support
-Push Notifications → Expo Notifications or Firebase Cloud Messaging
+Push Notifications → Firebase Cloud Messaging
 Next.js Admin      → admin dashboard for reports/users/activities
 ```
 
@@ -25,15 +26,15 @@ Next.js Admin      → admin dashboard for reports/users/activities
 
 ### Mobile Frontend
 
-**React Native + Expo**
+**Flutter + Riverpod**
 
 Reason:
 
-- Builds real mobile apps for Android and iOS
-- Faster MVP development
-- Easy phone testing with Expo Go/dev builds
+- Builds real native mobile apps for Android and iOS from a single Dart codebase
+- Faster MVP development with hot reload
 - Strong fit for cards, profiles, activities, chat, and mobile-first interaction
-- Works well with a future React/Next.js admin dashboard
+- Riverpod provides clean async state management across the app
+- `supabase_flutter` integrates natively for Realtime subscriptions
 
 ### Backend
 
@@ -49,13 +50,14 @@ Reason:
 
 ### Database
 
-**PostgreSQL**
+**PostgreSQL (hosted on Supabase)**
 
 Reason:
 
 - Reliable relational database
 - Good for users, profiles, messages, activities, matches, reports, and relationships
 - Supports indexes, constraints, enums, and future search features
+- Supabase adds Row Level Security (RLS) and Realtime publication on top of standard PostgreSQL
 
 ## 3. System Components
 

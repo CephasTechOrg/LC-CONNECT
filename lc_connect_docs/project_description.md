@@ -30,9 +30,10 @@ The MVP should be simple, useful, and easy to understand. The goal is not to rep
 The confirmed direction is:
 
 - Build a **real mobile app first**
-- Use **React Native + Expo** for the mobile frontend
+- Use **Flutter + Riverpod** for the mobile frontend
 - Use **FastAPI** for the backend API
 - Use **PostgreSQL** for the database
+- Use **Supabase** for Realtime message delivery and Row Level Security
 - Start with a focused MVP, not a complicated full platform
 - Make the app interactive through cards, prompts, activities, and mutual connections
 - Include friendship, study partners, language exchange, events, and open connection
