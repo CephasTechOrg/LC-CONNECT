@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/api/api_client.dart';
 import '../../auth/providers/auth_provider.dart';
 
@@ -102,14 +103,65 @@ final threadsNotifierProvider =
         ThreadsNotifier.new);
 
 class ThreadsNotifier extends AsyncNotifier<List<MessageThread>> {
+  RealtimeChannel? _channel;
+
   @override
   Future<List<MessageThread>> build() async {
     ref.watch(authNotifierProvider);
     final client = ref.watch(apiClientProvider);
     final response = await client.dio.get('/messages/threads');
-    return (response.data as List)
+    final threads = (response.data as List)
         .map((j) => MessageThread.fromJson(j as Map<String, dynamic>))
         .where((t) => t.partner != null)
         .toList();
+
+    _subscribeToNewMessages();
+    ref.onDispose(() {
+      _channel?.unsubscribe();
+      _channel = null;
+    });
+
+    return threads;
+  }
+
+  void _subscribeToNewMessages() {
+    _channel?.unsubscribe();
+    _channel = null;
+    try {
+      _channel = Supabase.instance.client
+          .channel('thread_list_messages')
+          .onPostgresChanges(
+            event: PostgresChangeEvent.insert,
+            schema: 'public',
+            table: 'messages',
+            callback: (payload) => _onNewMessage(payload.newRecord),
+          )
+          .subscribe();
+    } catch (_) {}
+  }
+
+  void _onNewMessage(Map<String, dynamic> record) {
+    final current = state.asData?.value;
+    if (current == null) return;
+
+    final msg = ChatMessage.fromJson(record);
+    final idx = current.indexWhere((t) => t.matchId == msg.matchId);
+    if (idx == -1) return;
+
+    final updated = List<MessageThread>.from(current);
+    updated[idx] = MessageThread(
+      matchId: current[idx].matchId,
+      partner: current[idx].partner,
+      latestMessage: msg,
+    );
+    updated.sort((a, b) {
+      final aTime = a.latestMessage?.createdAt;
+      final bTime = b.latestMessage?.createdAt;
+      if (aTime == null && bTime == null) return 0;
+      if (aTime == null) return 1;
+      if (bTime == null) return -1;
+      return bTime.compareTo(aTime);
+    });
+    state = AsyncData(updated);
   }
 }

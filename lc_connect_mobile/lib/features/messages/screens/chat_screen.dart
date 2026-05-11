@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -26,8 +28,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final _seenIds = <String>{};
   bool _loading = true;
   bool _sending = false;
+  bool _partnerTyping = false;
   String _currentUserId = '';
   RealtimeChannel? _channel;
+  Timer? _typingTimer;
+  Timer? _typingBroadcastDebounce;
 
   @override
   void initState() {
@@ -40,6 +45,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   @override
   void dispose() {
     _channel?.unsubscribe();
+    _typingTimer?.cancel();
+    _typingBroadcastDebounce?.cancel();
     _inputController.dispose();
     _scrollController.dispose();
     super.dispose();

@@ -823,6 +823,31 @@ For Android App Bundle:
 flutter build appbundle --release --dart-define=API_BASE_URL=https://your-production-api.com
 ```
 
+### 8.6 Chrome (Flutter web) against the production Render backend
+
+Flutter web picks a random port each time you run it, which breaks CORS on the production backend. Pin the port so it never changes:
+
+```bash
+cd lc_connect_mobile
+flutter run -d chrome --web-port 8080
+```
+
+Then add `http://localhost:8080` to the `CORS_ORIGINS` environment variable on Render (comma-separated alongside any existing origins):
+
+```
+CORS_ORIGINS=https://your-other-origin.com,http://localhost:8080
+```
+
+Save the variable on Render and redeploy (or wait for the next deploy). After that, `http://localhost:8080` will always be allowed by the backend and you can run the web app with the same command every time.
+
+Your Flutter `.env` should point to the Render backend URL when doing this:
+
+```env
+API_BASE_URL=https://your-app.onrender.com/api/v1
+```
+
+If you also test on a physical phone at the same time, keep a second `.env` (or swap the value) pointing to the Render URL for mobile too — both will use the same production backend.
+
 ---
 
 ## 9. Running Tests
@@ -1049,6 +1074,28 @@ Dart defines are compile-time values.
 
 Stop the app completely and run again.
 
+### Flutter web (Chrome) gets CORS errors against the Render backend
+
+The production backend only allows origins listed in `CORS_ORIGINS`. Chrome running on a random port (e.g. `localhost:63918`) is not in that list.
+
+Fix:
+
+1. Pin the Flutter web port so it never changes:
+
+```bash
+flutter run -d chrome --web-port 8080
+```
+
+2. Add `http://localhost:8080` to `CORS_ORIGINS` on Render (Environment → CORS_ORIGINS):
+
+```
+http://localhost:8080,https://any-other-origin-you-have
+```
+
+3. Redeploy on Render (or wait for the next deploy to pick up the new env var).
+
+After this, Chrome at `localhost:8080` is always allowed and the error disappears.
+
 ### Supabase image upload fails
 
 Check:
@@ -1093,7 +1140,7 @@ source .venv/bin/activate
 uvicorn app.main:app --reload
 ```
 
-### Terminal 3 — Flutter mobile app
+### Terminal 3 — Flutter app
 
 Physical Android over USB (primary workflow):
 
@@ -1122,6 +1169,15 @@ iOS simulator on macOS — `.env` stays as `localhost`:
 cd mobile
 flutter run
 ```
+
+Chrome (Flutter web) against the production Render backend:
+
+```bash
+cd lc_connect_mobile
+flutter run -d chrome --web-port 8080
+```
+
+Make sure `http://localhost:8080` is in `CORS_ORIGINS` on Render and `API_BASE_URL` in `.env` points to the Render backend URL. See section 8.6 for full setup.
 
 ---
 
