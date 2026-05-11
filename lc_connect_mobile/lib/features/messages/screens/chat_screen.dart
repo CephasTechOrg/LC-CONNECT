@@ -195,10 +195,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                           scrollController: _scrollController,
                         ),
             ),
+            if (_partnerTyping)
+              _TypingIndicator(name: partner?.displayName ?? 'Your match'),
             _InputBar(
               controller: _inputController,
               sending: _sending,
               onSend: _send,
+              onTyping: _onUserTyping,
             ),
           ],
         ),
@@ -537,10 +540,12 @@ class _InputBar extends StatelessWidget {
   final TextEditingController controller;
   final bool sending;
   final VoidCallback onSend;
+  final VoidCallback onTyping;
   const _InputBar({
     required this.controller,
     required this.sending,
     required this.onSend,
+    required this.onTyping,
   });
 
   @override
