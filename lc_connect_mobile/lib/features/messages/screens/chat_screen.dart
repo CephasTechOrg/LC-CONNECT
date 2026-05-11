@@ -587,6 +587,7 @@ class _InputBar extends StatelessWidget {
                   contentPadding:
                       const EdgeInsets.symmetric(vertical: 10),
                 ),
+                onChanged: (_) => onTyping(),
                 onSubmitted: (_) => onSend(),
               ),
             ),
@@ -613,6 +614,29 @@ class _InputBar extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ── Typing indicator ──────────────────────────────────────────────
+class _TypingIndicator extends StatelessWidget {
+  final String name;
+  const _TypingIndicator({required this.name});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: AppColors.background,
+      padding: const EdgeInsets.fromLTRB(20, 4, 20, 2),
+      alignment: Alignment.centerLeft,
+      child: Text(
+        '$name is typing...',
+        style: GoogleFonts.dmSans(
+          fontSize: 12,
+          color: AppColors.textMuted,
+          fontStyle: FontStyle.italic,
+        ),
       ),
     );
   }
