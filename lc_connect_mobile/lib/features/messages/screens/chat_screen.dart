@@ -60,14 +60,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             event: PostgresChangeEvent.insert,
             schema: 'public',
             table: 'messages',
-            filter: PostgresChangeFilter(
-              type: PostgresChangeFilterType.eq,
-              column: 'match_id',
-              value: widget.matchId,
-            ),
+            // No server-side UUID filter — UUID eq filter silently fails in
+            // some Supabase Realtime versions. RLS already restricts events
+            // to the user's own conversations; we filter by match_id here.
             callback: (payload) {
               if (!mounted) return;
-              final msg = ChatMessage.fromJson(payload.newRecord);
+              final record = payload.newRecord;
+              if (record['match_id'] != widget.matchId) return;
+              final msg = ChatMessage.fromJson(record);
               if (_seenIds.contains(msg.id)) return;
               setState(() {
                 _seenIds.add(msg.id);
@@ -76,10 +76,31 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               _scrollToBottom();
             },
           )
+          .onBroadcast(
+            event: 'typing',
+            callback: (_) {
+              if (!mounted) return;
+              setState(() => _partnerTyping = true);
+              _typingTimer?.cancel();
+              _typingTimer = Timer(const Duration(seconds: 3), () {
+                if (mounted) setState(() => _partnerTyping = false);
+              });
+            },
+          )
           .subscribe();
     } catch (_) {
       // Realtime unavailable; messages delivered via REST only
     }
+  }
+
+  void _onUserTyping() {
+    _typingBroadcastDebounce?.cancel();
+    _typingBroadcastDebounce = Timer(const Duration(milliseconds: 500), () {
+      _channel?.sendBroadcastMessage(
+        event: 'typing',
+        payload: {'user_id': _currentUserId},
+      );
+    });
   }
 
   Future<void> _fetchMessages() async {
