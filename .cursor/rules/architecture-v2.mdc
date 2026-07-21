@@ -1,11 +1,11 @@
 ---
-description: Canonical architecture — read lc_connect_architecture_review_v2 before auth/realtime/security work
+description: Canonical architecture — read architecture_review before auth/realtime/security work
 alwaysApply: true
 ---
 
 # Architecture Direction (v2)
 
-Before changing authentication, messaging, realtime, Redis, privacy, or security, **read the docs in `lc_connect_architecture_review_v2/`** — that folder is the source of truth. Prefer it over older notes in `lc_connect_docs/` when they conflict (especially anything about Supabase Realtime chat or custom JWT auth).
+Before changing authentication, messaging, realtime, Redis, privacy, or security, **read the docs in `architecture_review/`** — that folder is the source of truth. Prefer it over older notes in `docs/` when they conflict (especially anything about Supabase Realtime chat or custom JWT auth).
 
 ## Locked decisions
 

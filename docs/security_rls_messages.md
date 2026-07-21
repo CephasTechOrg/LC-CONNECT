@@ -221,8 +221,8 @@ For security, a minimum of 32 characters (256 bits) is recommended for HS256. Lo
 
 | File | Change |
 |---|---|
-| `lc_connect_backend/app/security.py` | Added `'role': 'authenticated'` to JWT payload |
-| `lc_connect_mobile/lib/features/auth/providers/auth_provider.dart` | Added `Supabase.instance.client.realtime.setAuth(token)` on login, register, startup, and `setAuth(null)` on logout |
+| `backend/app/security.py` | Added `'role': 'authenticated'` to JWT payload |
+| `mobile/lib/features/auth/providers/auth_provider.dart` | Added `Supabase.instance.client.realtime.setAuth(token)` on login, register, startup, and `setAuth(null)` on logout |
 | `supabase/migrations/20260510000000_messages_rls.sql` | Versioned migration file containing all RLS policy setup |
 | Supabase Dashboard → Auth → JWT Settings | JWT Secret updated to match backend `JWT_SECRET_KEY` |
 | Supabase SQL Editor | RLS enabled, two policies created, rogue `anon_can_read_messages` policy dropped |

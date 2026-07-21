@@ -7,10 +7,10 @@ This document describes the actual folder structure. The project follows a **fea
 
 ```text
 lc-connect/
-  lc_connect_mobile/   # Flutter app
-  lc_connect_backend/  # FastAPI backend
+  mobile/   # Flutter app
+  backend/  # FastAPI backend
   supabase/            # Supabase SQL migrations (RLS, publications)
-  lc_connect_docs/     # Project documentation
+  docs/     # Project documentation
   scripts/             # repo tooling (check_line_limits.py)
   CONVENTIONS.md       # engineering conventions (structure + line rules)
   .github/workflows/   # CI (line limits, backend tests/lint, flutter analyze)
@@ -25,7 +25,7 @@ moving between backend and mobile sees the same shape. Cross-cutting infrastruct
 shared kernel (`core`/`shared` on mobile, root modules + `shared/` on the backend); features
 depend on the kernel, never sideways on each other.
 
-## 2. Mobile App (`lc_connect_mobile/`)
+## 2. Mobile App (`mobile/`)
 
 Technology: **Flutter + Dart + Riverpod + supabase_flutter**
 
@@ -71,7 +71,7 @@ home/
     home_match_cards.dart
 ```
 
-## 3. Backend (`lc_connect_backend/`)
+## 3. Backend (`backend/`)
 
 Technology: **FastAPI + PostgreSQL (Supabase) + async SQLAlchemy + Alembic**
 
@@ -141,7 +141,7 @@ confirmed, so it is not worth relocating code that will be deleted.
 (`UPDATE_SNAPSHOTS=1 pytest`). The new Supabase-auth endpoints already live in
 `app/features/auth/`.
 
-## 6. Regression safety net (`lc_connect_backend/tests/`)
+## 6. Regression safety net (`backend/tests/`)
 
 No live database needed — these inspect the assembled app only:
 
@@ -152,7 +152,7 @@ No live database needed — these inspect the assembled app only:
 Run `pytest`. Regenerate the baseline only for intentional API changes with
 `UPDATE_SNAPSHOTS=1 pytest`.
 
-## 7. Docs (`lc_connect_docs/`)
+## 7. Docs (`docs/`)
 
 ```text
 project_description.md  architecture.md  folder_structure.md (this file)

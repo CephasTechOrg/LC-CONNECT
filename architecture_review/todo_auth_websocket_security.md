@@ -6,8 +6,8 @@
 - [x] Local DB created (`lc_connect_db`) + tables seeded
 - [x] Alembic baseline / head stamped (`a1b2c3d4e5f6`)
 - [x] Secret scan and `.gitignore` (`.env` ignored)
-- [x] Contributor setup docs (`lc_connect_docs/local_dev_setup.md`)
-- [x] Daily start docs (`lc_connect_docs/daily_dev_start.md`)
+- [x] Contributor setup docs (`docs/local_dev_setup.md`)
+- [x] Daily start docs (`docs/daily_dev_start.md`)
 - [x] Cursor rules (architecture + file structure)
 - [ ] Dependency lock strategy (`requirements.lock` / pinned CI)
 - [ ] CI pipeline

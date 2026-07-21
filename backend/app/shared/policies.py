@@ -2,7 +2,7 @@
 
 `users_are_blocked` is a relationship policy used by the connections, messages, and
 safety features. Future policies (can_view_profile, can_connect, can_message) belong
-here too — see lc_connect_architecture_review_v2/00_current_state_review.md.
+here too — see architecture_review/00_current_state_review.md.
 """
 
 from __future__ import annotations

@@ -308,8 +308,8 @@ Rules:
 
 - Backend must verify that `sender_id` belongs to the match.
 - Backend must verify that neither user has blocked the other.
-- Real-time delivery uses Supabase Realtime (WebSocket). No polling needed. See `lc_connect_docs/realtime-messaging.md`.
-- RLS is enabled on this table. Only match participants can read their messages. Direct client-side inserts are blocked. See `lc_connect_docs/security_rls_messages.md`.
+- Real-time delivery uses Supabase Realtime (WebSocket). No polling needed. See `docs/realtime-messaging.md`.
+- RLS is enabled on this table. Only match participants can read their messages. Direct client-side inserts are blocked. See `docs/security_rls_messages.md`.
 
 ### 5.12 `activities`
 

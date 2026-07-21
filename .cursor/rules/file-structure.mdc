@@ -6,7 +6,7 @@ alwaysApply: true
 # File Structure & Size Limits
 
 Read and follow this before creating or editing any code in this repo. The canonical reference is
-`CONVENTIONS.md` at the repo root; full layout in `lc_connect_docs/folder_structure.md`.
+`CONVENTIONS.md` at the repo root; full layout in `docs/folder_structure.md`.
 
 ## Line rules (enforced in CI via `scripts/check_line_limits.py`)
 
@@ -15,7 +15,7 @@ Read and follow this before creating or editing any code in this repo. The canon
   (use the widget / service patterns below) or add a reviewed entry to `ALLOWLIST` in the script.
 - Check before committing: `python scripts/check_line_limits.py` (covers `.py` and `.dart`).
 
-## Backend (`lc_connect_backend/`)
+## Backend (`backend/`)
 
 Organize by **feature**, not by layer dumps. Each feature owns its router, service, and schemas:
 
@@ -52,11 +52,11 @@ Rules:
 - **Legacy island:** `app/routers/auth.py` + `app/schemas.py` hold the transitional password/OTP auth
   only. Do not extend them; they are scheduled for deletion once Supabase auth is confirmed. New auth
   work goes in `app/features/auth/`.
-- The API is snapshot-guarded: after any backend change run `pytest` (from `lc_connect_backend/`) — a
+- The API is snapshot-guarded: after any backend change run `pytest` (from `backend/`) — a
   pure refactor must stay byte-identical. Regenerate only for intentional API changes with
   `UPDATE_SNAPSHOTS=1 pytest`.
 
-## Mobile (`lc_connect_mobile/`)
+## Mobile (`mobile/`)
 
 Feature-based — keep it that way:
 

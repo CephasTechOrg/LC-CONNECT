@@ -93,7 +93,7 @@ WHERE pubname = 'supabase_realtime';
 
 LC Connect uses custom FastAPI JWT auth (not Supabase Auth). The JWT is wired into the Supabase Realtime client so that `auth.uid()` resolves to the logged-in user's UUID inside RLS policies. This means Supabase can enforce per-user read access at the database level.
 
-**Full setup details and rationale:** see `lc_connect_docs/security_rls_messages.md`
+**Full setup details and rationale:** see `docs/security_rls_messages.md`
 
 **Summary of what is in place:**
 
@@ -135,7 +135,7 @@ Without step 3, the realtime client connects anonymously and `auth.uid()` return
 
 ### 4.1 Add supabase_flutter package
 
-In `lc_connect_mobile/pubspec.yaml`:
+In `mobile/pubspec.yaml`:
 
 ```yaml
 dependencies:
@@ -166,7 +166,7 @@ Future<void> main() async {
 }
 ```
 
-The `SUPABASE_URL` and `SUPABASE_ANON_KEY` come from `lc_connect_mobile/.env`. The anon key is safe to put here — it is the public-facing key, not the service role key.
+The `SUPABASE_URL` and `SUPABASE_ANON_KEY` come from `mobile/.env`. The anon key is safe to put here — it is the public-facing key, not the service role key.
 
 ### 4.3 Flutter .env values needed
 

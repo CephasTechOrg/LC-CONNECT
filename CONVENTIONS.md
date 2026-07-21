@@ -46,7 +46,7 @@ python scripts/check_line_limits.py --warn-only
 Organize by **feature**, layer **inside** each feature. Backend and mobile mirror each other so
 a developer moving between them isn't surprised.
 
-### Backend — `lc_connect_backend/app/`
+### Backend — `backend/app/`
 
 ```text
 app/
@@ -62,7 +62,7 @@ app/
       __init__.py         # exposes `router`
 ```
 
-### Mobile — `lc_connect_mobile/lib/`
+### Mobile — `mobile/lib/`
 
 ```text
 lib/

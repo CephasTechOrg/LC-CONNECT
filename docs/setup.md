@@ -828,7 +828,7 @@ flutter build appbundle --release --dart-define=API_BASE_URL=https://your-produc
 Flutter web picks a random port each time you run it, which breaks CORS on the production backend. Pin the port so it never changes:
 
 ```bash
-cd lc_connect_mobile
+cd mobile
 flutter run -d chrome --web-port 8080
 ```
 
@@ -1173,7 +1173,7 @@ flutter run
 Chrome (Flutter web) against the production Render backend:
 
 ```bash
-cd lc_connect_mobile
+cd mobile
 flutter run -d chrome --web-port 8080
 ```
 
@@ -1187,14 +1187,14 @@ After the full setup is done once:
 
 ```powershell
 # Terminal 1 — backend
-cd lc_connect_backend
+cd backend
 .venv\Scripts\Activate.ps1
 uvicorn app.main:app --reload
 
 # Terminal 2 — Flutter (physical Android over USB)
 adb reverse tcp:8000 tcp:8000
-cd lc_connect_mobile
+cd mobile
 flutter run
 ```
 
-The `.env` file inside `lc_connect_mobile/` controls the API URL. Default is `http://localhost:8000/api/v1` which works with ADB reverse tunneling on a physical device.
+The `.env` file inside `mobile/` controls the API URL. Default is `http://localhost:8000/api/v1` which works with ADB reverse tunneling on a physical device.

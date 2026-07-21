@@ -34,10 +34,10 @@ Repo layout you will use most:
 
 ```text
 LC-CONNECT/
-  lc_connect_backend/     # FastAPI
-  lc_connect_mobile/      # Flutter
-  lc_connect_docs/        # Documentation
-  lc_connect_architecture_review_v2/   # Architecture source of truth
+  backend/     # FastAPI
+  mobile/      # Flutter
+  docs/        # Documentation
+  architecture_review/   # Architecture source of truth
 ```
 
 ---
@@ -207,7 +207,7 @@ If you use **Postgres.app**, make sure its `bin` is on your PATH (often already 
 ## 6. Backend setup (FastAPI)
 
 ```bash
-cd /path/to/LC-CONNECT/lc_connect_backend
+cd /path/to/LC-CONNECT/backend
 ```
 
 ### 6.1 Create a Python virtual environment
@@ -285,7 +285,7 @@ API docs (local): [http://localhost:8000/docs](http://localhost:8000/docs)
 ## 7. Mobile setup (Flutter)
 
 ```bash
-cd /path/to/LC-CONNECT/lc_connect_mobile
+cd /path/to/LC-CONNECT/mobile
 ```
 
 ### 7.1 Install Flutter packages
@@ -370,7 +370,7 @@ iOS Simulator (Flutter)
 Before changing authentication, messaging, Redis, or security:
 
 1. Read Cursor rules in `.cursor/rules/`
-2. Read `lc_connect_architecture_review_v2/` (source of truth)
+2. Read `architecture_review/` (source of truth)
 
 Locked direction:
 

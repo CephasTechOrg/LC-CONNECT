@@ -12,7 +12,7 @@ You need **two terminals** (plus the iOS Simulator).
 ### Terminal A — Backend
 
 ```bash
-cd /Users/cephas/Projects/LC-CONNECT/lc_connect_backend
+cd /Users/cephas/Projects/LC-CONNECT/backend
 source .venv/bin/activate
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
@@ -28,7 +28,7 @@ Uvicorn running on http://0.0.0.0:8000
 
 ```bash
 open -a Simulator
-cd /Users/cephas/Projects/LC-CONNECT/lc_connect_mobile
+cd /Users/cephas/Projects/LC-CONNECT/mobile
 flutter run
 ```
 
@@ -57,7 +57,7 @@ lc_connect_db on localhost:5432
 ### 2. Start the backend
 
 ```bash
-cd /Users/cephas/Projects/LC-CONNECT/lc_connect_backend
+cd /Users/cephas/Projects/LC-CONNECT/backend
 source .venv/bin/activate
 ```
 
@@ -86,7 +86,7 @@ Pick an iPhone device if needed (e.g. **iPhone 17**).
 ### 4. Start Flutter
 
 ```bash
-cd /Users/cephas/Projects/LC-CONNECT/lc_connect_mobile
+cd /Users/cephas/Projects/LC-CONNECT/mobile
 flutter devices
 flutter run
 ```
@@ -162,14 +162,14 @@ Simulator app
 ### Reinstall mobile packages
 
 ```bash
-cd /Users/cephas/Projects/LC-CONNECT/lc_connect_mobile
+cd /Users/cephas/Projects/LC-CONNECT/mobile
 flutter pub get
 ```
 
 ### Reinstall backend packages
 
 ```bash
-cd /Users/cephas/Projects/LC-CONNECT/lc_connect_backend
+cd /Users/cephas/Projects/LC-CONNECT/backend
 source .venv/bin/activate
 pip install -r requirements.txt
 ```
@@ -177,7 +177,7 @@ pip install -r requirements.txt
 ### Apply new database migrations
 
 ```bash
-cd /Users/cephas/Projects/LC-CONNECT/lc_connect_backend
+cd /Users/cephas/Projects/LC-CONNECT/backend
 source .venv/bin/activate
 alembic upgrade head
 ```

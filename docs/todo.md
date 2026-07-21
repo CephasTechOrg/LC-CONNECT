@@ -208,7 +208,7 @@ Endpoints:
 - [x] Install Android Studio and Android SDK
 - [x] Accept Android SDK licenses
 - [x] Run `flutter doctor` and fix all required issues
-- [x] Create Flutter app inside `lc_connect_mobile/`
+- [x] Create Flutter app inside `mobile/`
 - [x] Add clean Flutter folder structure
 - [x] Add app assets:
   - [x] `assets/images/students.png`

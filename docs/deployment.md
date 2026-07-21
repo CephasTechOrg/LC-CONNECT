@@ -28,7 +28,7 @@ This document covers how the LC Connect FastAPI backend is deployed to Render, i
 | Runtime | Python 3.12 |
 | Region | Oregon (US West) |
 | Plan | Free |
-| Root directory | `lc_connect_backend` |
+| Root directory | `backend` |
 | Health check | `GET /health` |
 | Production URL | `https://lc-connect-api.onrender.com` |
 
@@ -48,7 +48,7 @@ services:
     region: oregon
     plan: free
     branch: main
-    rootDir: lc_connect_backend
+    rootDir: backend
     buildCommand: |
       pip install --upgrade pip
       pip install -r requirements.txt
@@ -125,7 +125,7 @@ Or a silent failure where the `psycopg` synchronous driver is used instead.
 
 ### The fix — database.py normalization
 
-`lc_connect_backend/app/database.py` converts the URL automatically:
+`backend/app/database.py` converts the URL automatically:
 
 ```python
 def _async_url(url: str) -> str:
@@ -218,7 +218,7 @@ The start command runs `python scripts/init_db.py`. Inside `init_db.py`, the scr
 from app.database import engine, Base
 ```
 
-When Python runs `scripts/init_db.py` from the `lc_connect_backend/` root directory, it does not automatically add the current directory to `sys.path`. So `from app.database import ...` fails with:
+When Python runs `scripts/init_db.py` from the `backend/` root directory, it does not automatically add the current directory to `sys.path`. So `from app.database import ...` fails with:
 
 ```
 ModuleNotFoundError: No module named 'app'
@@ -232,7 +232,7 @@ Prepend `PYTHONPATH=.` to the command:
 startCommand: PYTHONPATH=. python scripts/init_db.py && uvicorn app.main:app --host 0.0.0.0 --port $PORT
 ```
 
-`PYTHONPATH=.` adds the current working directory to Python's module search path. Since `rootDir` in render.yaml is `lc_connect_backend`, the current directory at startup is `lc_connect_backend/`, which contains the `app/` package.
+`PYTHONPATH=.` adds the current working directory to Python's module search path. Since `rootDir` in render.yaml is `backend`, the current directory at startup is `backend/`, which contains the `app/` package.
 
 `uvicorn` does not need `PYTHONPATH=.` because it handles module discovery differently, but having it set does not hurt.
 
@@ -299,7 +299,7 @@ If cold starts are disruptive during demos or testing, you can use a free extern
 Use this before every deployment:
 
 - [ ] `render.yaml` is committed to the `main` branch
-- [ ] `rootDir` is set to `lc_connect_backend`
+- [ ] `rootDir` is set to `backend`
 - [ ] `DATABASE_URL` in Render dashboard uses Transaction pooler URL (port 6543)
 - [ ] `JWT_SECRET_KEY` is set in Render dashboard
 - [ ] `SUPABASE_URL` is set in Render dashboard

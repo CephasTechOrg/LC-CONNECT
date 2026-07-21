@@ -6,11 +6,11 @@ in full before writing code** — this file is the quick reference.
 ## Project
 
 Campus social/matching app for Livingstone College. Two apps:
-- `lc_connect_backend/` — FastAPI + async SQLAlchemy + PostgreSQL (Supabase), migrating auth to Supabase Auth.
-- `lc_connect_mobile/` — Flutter + Riverpod + supabase_flutter.
+- `backend/` — FastAPI + async SQLAlchemy + PostgreSQL (Supabase), migrating auth to Supabase Auth.
+- `mobile/` — Flutter + Riverpod + supabase_flutter.
 
-Layout: [`lc_connect_docs/folder_structure.md`](lc_connect_docs/folder_structure.md).
-Architecture direction: `lc_connect_architecture_review_v2/`.
+Layout: [`docs/folder_structure.md`](docs/folder_structure.md).
+Architecture direction: `architecture_review/`.
 
 ## File-length rules (enforced in CI)
 
@@ -45,12 +45,15 @@ not gates — clarity for the next reader wins.
 
 ## Before you finish — verify
 
+Run **`/verify`** (defined in `.claude/commands/`) to execute the whole gate at once, or run the
+pieces manually:
+
 ```bash
-# Backend (from lc_connect_backend/, no DB needed):
+# Backend (from backend/, no DB needed):
 .venv/bin/pytest          # API-contract snapshot + route inventory + import smoke
 .venv/bin/ruff check .
 
-# Mobile (from lc_connect_mobile/):
+# Mobile (from mobile/):
 flutter analyze
 
 # Repo:
