@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../../../core/api/api_client.dart';
 import '../../../core/storage/secure_storage.dart';
 
@@ -19,13 +20,12 @@ class AuthUser {
     this.profileCompleted = false,
   });
 
-  factory AuthUser.fromJson(Map<String, dynamic> json, {bool profileCompleted = false}) =>
-      AuthUser(
+  factory AuthUser.fromBootstrap(Map<String, dynamic> json) => AuthUser(
         id: json['id'].toString(),
         email: json['email'] as String,
         role: json['role'] as String? ?? 'student',
         isVerified: json['is_verified'] as bool? ?? false,
-        profileCompleted: profileCompleted,
+        profileCompleted: json['profile_completed'] as bool? ?? false,
       );
 
   AuthUser copyWith({bool? isVerified, bool? profileCompleted}) => AuthUser(
@@ -42,97 +42,147 @@ final authNotifierProvider = AsyncNotifierProvider<AuthNotifier, AuthUser?>(
 );
 
 class AuthNotifier extends AsyncNotifier<AuthUser?> {
+  GoTrueClient get _auth => Supabase.instance.client.auth;
+  String? _pendingEmail;
+
+  String? get pendingEmail => _pendingEmail;
+
   @override
   Future<AuthUser?> build() async {
-    final storage = ref.watch(secureStorageProvider);
-    final token = await storage.getToken();
-    if (token == null) return null;
-
-    Supabase.instance.client.realtime.setAuth(token);
-
+    final session = _auth.currentSession;
+    if (session == null) {
+      await ref.read(secureStorageProvider).deleteToken();
+      return null;
+    }
+    await ref.read(secureStorageProvider).saveToken(session.accessToken);
     try {
-      final client = ref.watch(apiClientProvider);
-      final meResponse = await client.dio.get('/auth/me');
-      final profileCompleted = await _fetchProfileCompleted(client);
-      return AuthUser.fromJson(meResponse.data as Map<String, dynamic>, profileCompleted: profileCompleted);
+      return await _bootstrap();
     } on DioException {
-      await storage.deleteToken();
+      await _auth.signOut();
+      await ref.read(secureStorageProvider).deleteToken();
       return null;
     }
   }
 
-  Future<bool> _fetchProfileCompleted(ApiClient client) async {
-    try {
-      final response = await client.dio.get('/profiles/me');
-      return (response.data['profile_completed'] as bool?) ?? false;
-    } catch (_) {
-      return false;
-    }
+  Future<AuthUser> _bootstrap() async {
+    final client = ref.read(apiClientProvider);
+    final response = await client.dio.post('/auth/bootstrap');
+    return AuthUser.fromBootstrap(response.data as Map<String, dynamic>);
+  }
+
+  Future<void> _persistSession(Session session) async {
+    await ref.read(secureStorageProvider).saveToken(session.accessToken);
   }
 
   Future<void> login(String email, String password) async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
-      final client = ref.read(apiClientProvider);
-      final storage = ref.read(secureStorageProvider);
-      final response = await client.dio.post('/auth/login', data: {
-        'email': email,
-        'password': password,
-      });
-      final token = response.data['access_token'] as String;
-      await storage.saveToken(token);
-      Supabase.instance.client.realtime.setAuth(token);
-      final meResponse = await client.dio.get('/auth/me');
-      final profileCompleted = await _fetchProfileCompleted(client);
-      return AuthUser.fromJson(meResponse.data as Map<String, dynamic>, profileCompleted: profileCompleted);
+      final result = await _auth.signInWithPassword(
+        email: email.trim().toLowerCase(),
+        password: password,
+      );
+      final session = result.session;
+      if (session == null) {
+        throw AuthException('No session returned. Confirm your email first.');
+      }
+      await _persistSession(session);
+      return _bootstrap();
     });
   }
 
   Future<void> register(String email, String password) async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
-      final client = ref.read(apiClientProvider);
-      final storage = ref.read(secureStorageProvider);
-      final registerResponse = await client.dio.post('/auth/register', data: {
-        'email': email,
-        'password': password,
-      });
-      final token = registerResponse.data['access_token'] as String;
-      await storage.saveToken(token);
-      Supabase.instance.client.realtime.setAuth(token);
-      final meResponse = await client.dio.get('/auth/me');
-      final profileCompleted = await _fetchProfileCompleted(client);
-      return AuthUser.fromJson(meResponse.data as Map<String, dynamic>, profileCompleted: profileCompleted);
+      final normalized = email.trim().toLowerCase();
+      final result = await _auth.signUp(
+        email: normalized,
+        password: password,
+      );
+      final session = result.session;
+      if (session == null) {
+        _pendingEmail = normalized;
+        return null;
+      }
+      _pendingEmail = null;
+      await _persistSession(session);
+      return _bootstrap();
     });
   }
 
-  // Called after OTP verified — refreshes isVerified without full re-auth.
+  /// True when signup succeeded but Supabase has not issued a session yet.
+  bool get awaitingEmailConfirmation =>
+      _pendingEmail != null && state.asData?.value == null;
+
+  Future<void> verifyEmailOtp({required String email, required String token}) async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() async {
+      final normalized = email.trim().toLowerCase();
+      final result = await _auth.verifyOTP(
+        type: OtpType.signup,
+        email: normalized,
+        token: token.trim(),
+      );
+      final session = result.session;
+      if (session == null) {
+        throw AuthException('Verification succeeded but no session was created.');
+      }
+      _pendingEmail = null;
+      await _persistSession(session);
+      return _bootstrap();
+    });
+  }
+
+  Future<void> resendSignupOtp(String email) async {
+    await _auth.resend(
+      type: OtpType.signup,
+      email: email.trim().toLowerCase(),
+    );
+  }
+
+  Future<void> sendPasswordReset(String email) async {
+    await _auth.resetPasswordForEmail(email.trim().toLowerCase());
+  }
+
+  Future<void> resetPasswordWithOtp({
+    required String email,
+    required String token,
+    required String newPassword,
+  }) async {
+    final result = await _auth.verifyOTP(
+      type: OtpType.recovery,
+      email: email.trim().toLowerCase(),
+      token: token.trim(),
+    );
+    final session = result.session;
+    if (session == null) {
+      throw AuthException('Invalid or expired reset code.');
+    }
+    await _auth.updateUser(UserAttributes(password: newPassword));
+    await _auth.signOut();
+  }
+
   Future<void> refreshVerification() async {
     final current = state.asData?.value;
     if (current == null) return;
     try {
-      final client = ref.read(apiClientProvider);
-      final meResponse = await client.dio.get('/auth/me');
-      final isVerified = meResponse.data['is_verified'] as bool? ?? false;
-      state = AsyncData(current.copyWith(isVerified: isVerified));
+      final user = await _bootstrap();
+      state = AsyncData(user);
     } catch (_) {}
   }
 
-  // Called after onboarding submit — refreshes profileCompleted without full re-auth.
   Future<void> refreshProfile() async {
     final current = state.asData?.value;
     if (current == null) return;
     try {
-      final client = ref.read(apiClientProvider);
-      final profileCompleted = await _fetchProfileCompleted(client);
-      state = AsyncData(current.copyWith(profileCompleted: profileCompleted));
+      final user = await _bootstrap();
+      state = AsyncData(user);
     } catch (_) {}
   }
 
   Future<void> logout() async {
-    final storage = ref.read(secureStorageProvider);
-    await storage.deleteToken();
-    Supabase.instance.client.realtime.setAuth(null);
+    _pendingEmail = null;
+    await _auth.signOut();
+    await ref.read(secureStorageProvider).deleteToken();
     state = const AsyncData(null);
   }
 }

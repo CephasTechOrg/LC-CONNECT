@@ -1,0 +1,65 @@
+---
+description: Feature-based file structure and 700-line hard limit for LC Connect
+alwaysApply: true
+---
+
+# File Structure & Size Limits
+
+Read and follow this before creating or editing any code in this repo.
+
+## Hard limit
+
+- **No file may exceed 700 lines.** If a change would push a file over 700, split it first.
+- Prefer small, single-purpose files with clear names.
+
+## Backend (`lc_connect_backend/`)
+
+Organize by **feature**, not by layer dumps. Each feature owns its own router, service, and schemas:
+
+```text
+app/features/<feature>/
+  router.py      # HTTP/WS routes only — thin
+  service.py     # business logic for this feature
+  schema.py      # Pydantic request/response models
+```
+
+Examples: `auth/`, `connections/`, `messages/`, `profiles/`, `discovery/`, `activities/`, `safety/`, `admin/`.
+
+Shared infrastructure stays outside features:
+
+```text
+app/
+  models.py          # ONE central SQLAlchemy models file (do not split per feature)
+  dependencies.py
+  database.py
+  config.py
+  main.py
+  security/          # JWT/JWKS verification helpers (not feature business logic)
+```
+
+Do **not** add new domain logic into a global `services.py` or `schemas.py`. Put it under the feature.
+
+## Mobile (`lc_connect_mobile/`)
+
+Already feature-based — keep it that way:
+
+```text
+lib/features/<feature>/
+  providers/
+  screens/
+  widgets/           # extract when a screen approaches 700 lines
+```
+
+Shared cross-feature code lives in `lib/core/` or `lib/shared/`.
+
+## Naming
+
+- Prefer `router.py` / `service.py` / `schema.py` (singular) inside a feature folder.
+- Names should describe the feature, not the layer alone (e.g. `connections/service.py`, not a mega `services.py`).
+- When splitting an oversized screen or service, name the pieces by responsibility (e.g. `chat_message_list.dart`, `connection_request_card.dart`).
+
+## Before you write
+
+1. Confirm which feature folder the change belongs in.
+2. Check the target file’s line count; split if near or over 700.
+3. Keep routers thin — logic goes in `service.py`.

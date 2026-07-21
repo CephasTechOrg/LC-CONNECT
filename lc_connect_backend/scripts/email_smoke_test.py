@@ -7,8 +7,8 @@ Usage:
 """
 
 import argparse
-import sys
 import os
+import sys
 
 # Allow running from the backend/ directory without installing the package.
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

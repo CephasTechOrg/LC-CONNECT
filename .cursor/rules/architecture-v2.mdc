@@ -1,0 +1,39 @@
+---
+description: Canonical architecture — read lc_connect_architecture_review_v2 before auth/realtime/security work
+alwaysApply: true
+---
+
+# Architecture Direction (v2)
+
+Before changing authentication, messaging, realtime, Redis, privacy, or security, **read the docs in `lc_connect_architecture_review_v2/`** — that folder is the source of truth. Prefer it over older notes in `lc_connect_docs/` when they conflict (especially anything about Supabase Realtime chat or custom JWT auth).
+
+## Locked decisions
+
+- **Auth:** Supabase Auth (credentials, sessions, MFA). FastAPI verifies Supabase JWTs via JWKS.
+- **Authorization:** FastAPI only — REST and WebSockets. Map `token.sub` → `users.auth_user_id` → `users.id`.
+- **Chat realtime:** FastAPI WebSockets + Redis Pub/Sub fan-out. **Not** Supabase Realtime.
+- **Truth:** PostgreSQL. Persist messages before publish. Recover misses via cursor REST sync.
+- **Redis:** Fan-out, typing/presence TTLs, distributed rate limits — not message history.
+- **Push:** FCM/APNs when offline; generic notification text by default.
+- **Identity:** Keep app user IDs; add `users.auth_user_id`. Central `models.py` stays one file.
+
+## Doc map
+
+1. `00_current_state_review.md` — current risks
+2. `01_target_architecture.md` — system shape
+3. `02_supabase_auth_migration.md` — Auth migration
+4. `03_fastapi_websocket_messaging.md` — WS protocol
+5. `04_security_privacy_compliance.md` — security/privacy
+6. `05_execution_roadmap.md` — build order
+7. `todo_auth_websocket_security.md` — checklist
+8. `DECISION_LOG.md` — ADRs
+
+## Do not
+
+- Reintroduce custom password/OTP/JWT session auth for the product path
+- Wire chat through Supabase Realtime
+- Put message history in Redis
+- Skip conversation authorization on subscribe/send
+- Leave live sockets open after block or suspension
+
+Also follow `.cursor/rules/file-structure.mdc` (feature folders, ≤700 lines).

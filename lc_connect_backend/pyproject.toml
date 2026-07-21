@@ -1,0 +1,24 @@
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+extend-exclude = [".venv", "alembic/versions"]
+
+[tool.ruff.lint]
+# Sensible, low-noise default set: pyflakes, pycodestyle, isort, bugbear, pyupgrade.
+select = ["E", "F", "I", "B", "UP"]
+ignore = [
+    "E501",  # line length handled by scripts/check_line_limits.py, not ruff
+    "B008",  # function-call-in-default-argument — this IS the FastAPI Depends()/Query() idiom
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Alembic env.py legitimately imports models for side effects and after config setup.
+"alembic/env.py" = ["E402", "F401"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]

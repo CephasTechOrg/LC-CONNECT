@@ -1,6 +1,6 @@
 import hashlib
 import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy import select
@@ -11,7 +11,6 @@ from app.dependencies import get_current_user
 from app.email import send_reset_otp, send_verification_otp
 from app.models import Profile, User
 from app.schemas import (
-    CurrentUserResponse,
     ForgotPasswordRequest,
     LoginRequest,
     MessageResponse,
@@ -41,7 +40,7 @@ async def register(
         email=email,
         password_hash=hash_password(payload.password),
         verify_otp_hash=hashlib.sha256(otp.encode()).hexdigest(),
-        verify_otp_expires_at=datetime.now(timezone.utc) + timedelta(minutes=15),
+        verify_otp_expires_at=datetime.now(UTC) + timedelta(minutes=15),
     )
     db.add(user)
     await db.flush()
@@ -58,22 +57,15 @@ async def register(
 async def login(payload: LoginRequest, db: AsyncSession = Depends(get_db)) -> TokenResponse:
     email = payload.email.lower().strip()
     user = (await db.execute(select(User).where(User.email == email))).scalar_one_or_none()
-    if user is None or not verify_password(payload.password, user.password_hash):
+    if (
+        user is None
+        or not user.password_hash
+        or not verify_password(payload.password, user.password_hash)
+    ):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Invalid email or password')
     if not user.is_active or user.status != 'active':
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='Account is inactive or suspended')
     return TokenResponse(access_token=create_access_token(user.id))
-
-
-@router.get('/me', response_model=CurrentUserResponse)
-async def me(current_user: User = Depends(get_current_user)) -> CurrentUserResponse:
-    return CurrentUserResponse(
-        id=current_user.id,
-        email=current_user.email,
-        role=current_user.role,
-        status=current_user.status,
-        is_verified=current_user.is_verified,
-    )
 
 
 @router.post('/verify-email', response_model=MessageResponse)
@@ -93,7 +85,7 @@ async def verify_email(
     if not current_user.verify_otp_hash or not current_user.verify_otp_expires_at:
         raise invalid
 
-    if datetime.now(timezone.utc) > current_user.verify_otp_expires_at:
+    if datetime.now(UTC) > current_user.verify_otp_expires_at:
         raise invalid
 
     submitted_hash = hashlib.sha256(payload.otp.encode()).hexdigest()
@@ -119,7 +111,7 @@ async def resend_verification(
 
     otp = str(secrets.randbelow(900000) + 100000)
     current_user.verify_otp_hash = hashlib.sha256(otp.encode()).hexdigest()
-    current_user.verify_otp_expires_at = datetime.now(timezone.utc) + timedelta(minutes=15)
+    current_user.verify_otp_expires_at = datetime.now(UTC) + timedelta(minutes=15)
     await db.commit()
 
     background_tasks.add_task(send_verification_otp, current_user.email, otp)
@@ -143,7 +135,7 @@ async def forgot_password(
 
     otp = str(secrets.randbelow(900000) + 100000)
     user.reset_otp_hash = hashlib.sha256(otp.encode()).hexdigest()
-    user.reset_otp_expires_at = datetime.now(timezone.utc) + timedelta(minutes=15)
+    user.reset_otp_expires_at = datetime.now(UTC) + timedelta(minutes=15)
     await db.commit()
 
     background_tasks.add_task(send_reset_otp, user.email, otp)
@@ -163,7 +155,7 @@ async def reset_password(
     if user is None or not user.reset_otp_hash or not user.reset_otp_expires_at:
         raise invalid
 
-    if datetime.now(timezone.utc) > user.reset_otp_expires_at:
+    if datetime.now(UTC) > user.reset_otp_expires_at:
         raise invalid
 
     submitted_hash = hashlib.sha256(payload.otp.encode()).hexdigest()

@@ -1,5 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../constants/app_constants.dart';
 import '../storage/secure_storage.dart';
 
@@ -13,12 +15,14 @@ class ApiClient {
   late final Dio _dio;
 
   ApiClient(this._storage) {
-    _dio = Dio(BaseOptions(
-      baseUrl: AppConstants.apiBaseUrl,
-      connectTimeout: AppConstants.connectTimeout,
-      receiveTimeout: AppConstants.receiveTimeout,
-      contentType: 'application/json',
-    ));
+    _dio = Dio(
+      BaseOptions(
+        baseUrl: AppConstants.apiBaseUrl,
+        connectTimeout: AppConstants.connectTimeout,
+        receiveTimeout: AppConstants.receiveTimeout,
+        contentType: 'application/json',
+      ),
+    );
     _dio.interceptors.add(_AuthInterceptor(_storage));
   }
 
@@ -34,7 +38,9 @@ class _AuthInterceptor extends Interceptor {
     RequestOptions options,
     RequestInterceptorHandler handler,
   ) async {
-    final token = await _storage.getToken();
+    // Prefer the live Supabase access token; fall back to stored token.
+    final sessionToken = Supabase.instance.client.auth.currentSession?.accessToken;
+    final token = sessionToken ?? await _storage.getToken();
     if (token != null) {
       options.headers['Authorization'] = 'Bearer $token';
     }

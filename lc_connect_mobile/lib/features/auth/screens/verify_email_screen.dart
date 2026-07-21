@@ -4,7 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../../core/api/api_client.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/theme/app_theme.dart';
 import '../providers/auth_provider.dart';
 
@@ -34,17 +34,21 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _loading = true);
     try {
-      final client = ref.read(apiClientProvider);
-      await client.dio.post('/auth/verify-email', data: {
-        'otp': _otpCtrl.text.trim(),
-      });
+      final notifier = ref.read(authNotifierProvider.notifier);
+      final email = notifier.pendingEmail ??
+          ref.read(authNotifierProvider).asData?.value?.email;
+      if (email == null || email.isEmpty) {
+        throw StateError('Missing email for verification.');
+      }
+      await notifier.verifyEmailOtp(email: email, token: _otpCtrl.text.trim());
+    } catch (e) {
       if (!mounted) return;
-      // Update auth state — GoRouter redirect fires automatically via refreshListenable.
-      await ref.read(authNotifierProvider.notifier).refreshVerification();
-    } on DioException catch (e) {
-      if (!mounted) return;
-      final msg = (e.response?.data as Map?)?['detail'] as String? ??
-          'Something went wrong. Please try again.';
+      final msg = e is AuthException
+          ? e.message
+          : e is DioException
+              ? ((e.response?.data as Map?)?['detail'] as String? ??
+                  'Something went wrong. Please try again.')
+              : 'Something went wrong. Please try again.';
       ScaffoldMessenger.of(context).showSnackBar(_snackBar(msg, isError: true));
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -55,17 +59,23 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
     if (_resendCooldown > 0 || _resending) return;
     setState(() => _resending = true);
     try {
-      final client = ref.read(apiClientProvider);
-      await client.dio.post('/auth/resend-verification');
+      final notifier = ref.read(authNotifierProvider.notifier);
+      final email = notifier.pendingEmail ??
+          ref.read(authNotifierProvider).asData?.value?.email;
+      if (email == null || email.isEmpty) {
+        throw StateError('Missing email for resend.');
+      }
+      await notifier.resendSignupOtp(email);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         _snackBar('Code resent. Check your Livingstone email.', isError: false),
       );
       _startCooldown(60);
-    } on DioException catch (e) {
+    } catch (e) {
       if (!mounted) return;
-      final msg = (e.response?.data as Map?)?['detail'] as String? ??
-          'Could not resend. Please try again.';
+      final msg = e is AuthException
+          ? e.message
+          : 'Could not resend. Please try again.';
       ScaffoldMessenger.of(context).showSnackBar(_snackBar(msg, isError: true));
     } finally {
       if (mounted) setState(() => _resending = false);

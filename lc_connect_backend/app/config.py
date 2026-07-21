@@ -15,13 +15,23 @@ class Settings(BaseSettings):
     jwt_secret_key: str = Field(alias='JWT_SECRET_KEY')
     jwt_algorithm: str = Field(default='HS256', alias='JWT_ALGORITHM')
     access_token_expire_minutes: int = Field(default=60 * 24 * 7, alias='ACCESS_TOKEN_EXPIRE_MINUTES')
+    # Keep legacy custom JWTs valid during the Phase 1 rollback window.
+    auth_legacy_enabled: bool = Field(default=True, alias='AUTH_LEGACY_ENABLED')
 
     cors_origins: str = Field(default='', alias='CORS_ORIGINS')
 
     supabase_url: str | None = Field(default=None, alias='SUPABASE_URL')
     supabase_service_role_key: str | None = Field(default=None, alias='SUPABASE_SERVICE_ROLE_KEY')
+    # Required for local/HS256 Supabase projects; JWKS covers asymmetric production keys.
+    supabase_jwt_secret: str | None = Field(default=None, alias='SUPABASE_JWT_SECRET')
+    supabase_jwt_audience: str = Field(default='authenticated', alias='SUPABASE_JWT_AUDIENCE')
     supabase_profile_bucket: str = Field(default='profile-images', alias='SUPABASE_PROFILE_BUCKET')
     max_profile_image_mb: int = Field(default=5, alias='MAX_PROFILE_IMAGE_MB')
+
+    allowed_email_domains: str = Field(
+        default='students.livingstone.edu,livingstone.edu',
+        alias='ALLOWED_EMAIL_DOMAINS',
+    )
 
     # Email provider: auto | resend | smtp | console
     email_provider: str = Field(default='auto', alias='EMAIL_PROVIDER')
@@ -46,6 +56,16 @@ class Settings(BaseSettings):
     @property
     def is_development(self) -> bool:
         return self.environment.lower() in {'dev', 'development', 'local'}
+
+    @property
+    def allowed_email_domain_set(self) -> set[str]:
+        return {item.strip().lower() for item in self.allowed_email_domains.split(',') if item.strip()}
+
+    @property
+    def supabase_jwks_url(self) -> str | None:
+        if not self.supabase_url:
+            return None
+        return f'{self.supabase_url.rstrip("/")}/auth/v1/.well-known/jwks.json'
 
 
 @lru_cache

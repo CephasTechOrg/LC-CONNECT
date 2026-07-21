@@ -1,9 +1,7 @@
 import asyncio
 
-from sqlalchemy import text
-
-from app.database import AsyncSessionLocal, Base, engine
 from app import models  # noqa: F401 — registers all models with metadata
+from app.database import AsyncSessionLocal, Base, engine
 from app.seed import seed_lookup_data
 
 

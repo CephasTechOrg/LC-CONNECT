@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.dependencies import get_current_user
 from app.models import Match, Message, Profile, User
-from app.routers.profiles import get_profile_by_user_id, profile_load_options
+from app.routers.profiles import profile_load_options
 from app.schemas import MessageCreate, MessageRead, MessageThreadRead
 from app.services import profile_to_public, users_are_blocked
 

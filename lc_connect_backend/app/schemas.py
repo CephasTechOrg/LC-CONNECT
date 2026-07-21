@@ -3,14 +3,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 
-_LIVINGSTONE_DOMAINS = {'students.livingstone.edu', 'livingstone.edu'}
-_ALLOWED_TEST_EMAILS = {
-    'cephas.bonsuosei@gmail.com',
-    'asiedudev.hub@gmail.com',
-    'asieduminta27@gmail.com',
-    'auralenx.team@gmail.com',
-    'bdoreen889@gmail.com',
-}
+from app.features.auth.service import normalize_campus_email
 
 
 class RegisterRequest(BaseModel):
@@ -21,16 +14,7 @@ class RegisterRequest(BaseModel):
     @field_validator('email')
     @classmethod
     def must_be_livingstone_email(cls, v: str) -> str:
-        if v.lower() in _ALLOWED_TEST_EMAILS:
-            return v.lower()
-            
-        domain = v.lower().split('@')[-1]
-        if domain not in _LIVINGSTONE_DOMAINS:
-            raise ValueError(
-                'Only Livingstone College email addresses are allowed '
-                '(@students.livingstone.edu or @livingstone.edu)'
-            )
-        return v.lower()
+        return normalize_campus_email(v)
 
 
 class VerifyEmailRequest(BaseModel):

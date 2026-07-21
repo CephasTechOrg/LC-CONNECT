@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import ORJSONResponse
 
 from app.config import settings
+from app.features.auth import router as auth_v2_router
 from app.routers import activities, admin, auth, connections, discovery, lookups, messages, profiles, safety
 
 app = FastAPI(title=settings.app_name, version='0.1.0', default_response_class=ORJSONResponse)
@@ -31,6 +32,8 @@ async def health_check() -> dict[str, str]:
     return {'status': 'ok', 'service': 'lc-connect-api'}
 
 
+# Supabase Auth path (bootstrap + /me). Legacy register/login remain during rollback.
+app.include_router(auth_v2_router, prefix=settings.api_v1_prefix)
 app.include_router(auth.router, prefix=settings.api_v1_prefix)
 app.include_router(lookups.router, prefix=settings.api_v1_prefix)
 app.include_router(profiles.router, prefix=settings.api_v1_prefix)

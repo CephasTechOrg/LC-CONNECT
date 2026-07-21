@@ -1,10 +1,10 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../../core/api/api_client.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/theme/app_theme.dart';
+import '../providers/auth_provider.dart';
 
 class ForgotPasswordScreen extends ConsumerStatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -29,17 +29,25 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _loading = true);
     try {
-      final client = ref.read(apiClientProvider);
-      await client.dio.post('/auth/forgot-password', data: {
-        'email': _emailCtrl.text.trim().toLowerCase(),
-      });
+      await ref.read(authNotifierProvider.notifier).sendPasswordReset(
+            _emailCtrl.text.trim().toLowerCase(),
+          );
       if (!mounted) return;
-      // Navigate to reset screen regardless — prevents email enumeration
-      context.push('/reset-password', extra: _emailCtrl.text.trim().toLowerCase());
-    } on DioException catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(
+          'If that email is registered, a reset link has been sent.',
+          style: GoogleFonts.dmSans(),
+        ),
+        backgroundColor: const Color(0xFF059669),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ));
+      context.pop();
+    } catch (e) {
       if (!mounted) return;
-      final msg = (e.response?.data as Map?)?['detail'] as String? ??
-          'Something went wrong. Please try again.';
+      final msg = e is AuthException
+          ? e.message
+          : 'Something went wrong. Please try again.';
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(msg, style: GoogleFonts.dmSans()),
         backgroundColor: AppColors.error,
@@ -95,7 +103,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  "Enter your email address and we'll send you a 6-digit reset code.",
+                  "Enter your email address and we'll send you a password reset link.",
                   style: GoogleFonts.dmSans(
                     fontSize: 14,
                     color: const Color(0xFF6B7280),
@@ -175,18 +183,18 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _loading = true);
     try {
-      final client = ref.read(apiClientProvider);
-      await client.dio.post('/auth/reset-password', data: {
-        'email': widget.email,
-        'otp': _otpCtrl.text.trim(),
-        'new_password': _passwordCtrl.text,
-      });
+      await ref.read(authNotifierProvider.notifier).resetPasswordWithOtp(
+            email: widget.email,
+            token: _otpCtrl.text.trim(),
+            newPassword: _passwordCtrl.text,
+          );
       if (!mounted) return;
       setState(() => _success = true);
-    } on DioException catch (e) {
+    } catch (e) {
       if (!mounted) return;
-      final msg = (e.response?.data as Map?)?['detail'] as String? ??
-          'Something went wrong. Please try again.';
+      final msg = e is AuthException
+          ? e.message
+          : 'Something went wrong. Please try again.';
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(msg, style: GoogleFonts.dmSans()),
         backgroundColor: AppColors.error,

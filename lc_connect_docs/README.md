@@ -24,18 +24,24 @@ The app should **not** feel like a dating app. It should feel like a safe campus
 
 | File | Purpose |
 |---|---|
+| `local_dev_setup.md` | **First-time Mac setup** — Xcode, iOS Simulator, Flutter, CocoaPods, Postgres, env, migrations |
+| `daily_dev_start.md` | **Daily start guide** — start Postgres, backend, Simulator, Flutter |
 | `overview.md` | High-level product vision, users, goals, and MVP scope |
 | `project_description.md` | Full project description, problem, solution, features, and user flows |
 | `architecture.md` | Technical architecture, system components, API areas, and data flows |
 | `folder_structure.md` | Frontend and backend folder structure |
 | `database.md` | PostgreSQL database design, tables, relationships, and schema |
-| `setup.md` | Full local development setup guide |
+| `setup.md` | Older local setup notes (prefer `local_dev_setup.md`) |
 | `supabase.md` | **Supabase setup** — storage, connection strings, Realtime, RLS policies |
 | `realtime-messaging.md` | **Real-time messaging** — how it works end-to-end, Flutter code, Supabase config, deduplication |
 | `deployment.md` | **Render deployment** — render.yaml, env vars, every failure we hit and how we fixed it |
 | `todo.md` | Feature development progress and remaining tasks |
 
 ## Quick Links for Common Tasks
+
+### New contributor on a Mac
+1. Follow [`local_dev_setup.md`](./local_dev_setup.md) once
+2. Every workday use [`daily_dev_start.md`](./daily_dev_start.md)
 
 ### Setting up Supabase for the first time
 → Read `supabase.md`

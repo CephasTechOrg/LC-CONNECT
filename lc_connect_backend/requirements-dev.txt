@@ -1,0 +1,6 @@
+-r requirements.txt
+
+# Dev/CI-only tooling (not installed in the production image).
+pytest>=8.2.0
+pytest-asyncio>=0.23.0
+ruff>=0.6.0

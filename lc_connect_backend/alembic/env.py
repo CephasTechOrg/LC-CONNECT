@@ -16,14 +16,14 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-import sys
 import os
+import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from app.database import Base
 import app.models  # noqa
 from app.config import settings
+from app.database import Base
 
 target_metadata = Base.metadata
 

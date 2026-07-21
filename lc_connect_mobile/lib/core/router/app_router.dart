@@ -41,6 +41,9 @@ class _AuthRouterNotifier extends ChangeNotifier {
 
   bool get profileCompleted =>
       _ref.read(authNotifierProvider).asData?.value?.profileCompleted ?? false;
+
+  bool get awaitingEmailConfirmation =>
+      _ref.read(authNotifierProvider.notifier).awaitingEmailConfirmation;
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -54,6 +57,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isLoggedIn = notifier.isLoggedIn;
       final isVerified = notifier.isVerified;
       final profileCompleted = notifier.profileCompleted;
+      final awaitingEmailConfirmation = notifier.awaitingEmailConfirmation;
       final loc = state.matchedLocation;
 
       // Screens accessible without a session
@@ -63,6 +67,16 @@ final routerProvider = Provider<GoRouter>((ref) {
           loc == '/reset-password';
       final isVerifyScreen = loc == '/verify-email';
       final isOnboarding = loc == '/onboarding';
+
+      // Pending Supabase email confirmation — allow verify screen
+      if (!isLoggedIn && awaitingEmailConfirmation && isVerifyScreen) {
+        return null;
+      }
+
+      // After signup without session, send user to verify-email
+      if (!isLoggedIn && awaitingEmailConfirmation && !isVerifyScreen) {
+        return '/verify-email';
+      }
 
       // Not logged in — only public screens allowed
       if (!isLoggedIn && !isPublicScreen) return '/login';

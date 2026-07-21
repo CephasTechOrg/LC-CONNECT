@@ -1,18 +1,11 @@
+"""Custom HS256 app tokens — retained only for the Phase 1 rollback window."""
+
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
-import bcrypt
 from jose import JWTError, jwt
 
 from app.config import settings
-
-
-def hash_password(password: str) -> str:
-    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
-
-
-def verify_password(plain_password: str, password_hash: str) -> bool:
-    return bcrypt.checkpw(plain_password.encode(), password_hash.encode())
 
 
 def create_access_token(user_id: UUID) -> str:

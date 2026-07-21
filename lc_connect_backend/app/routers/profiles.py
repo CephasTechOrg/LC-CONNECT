@@ -8,7 +8,17 @@ from sqlalchemy.orm import selectinload
 from app.config import settings
 from app.database import get_db
 from app.dependencies import get_current_user
-from app.models import ActivityParticipant, Interest, Language, LookingForOption, Match, Message, Profile, User, UserLanguage
+from app.models import (
+    ActivityParticipant,
+    Interest,
+    Language,
+    LookingForOption,
+    Match,
+    Message,
+    Profile,
+    User,
+    UserLanguage,
+)
 from app.schemas import MyProfileRead, ProfilePublic, ProfileUpdate
 from app.services import profile_to_public, storage_service
 
