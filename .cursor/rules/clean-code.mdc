@@ -1,0 +1,41 @@
+---
+description: Clean-code guidance (advisory) — how to write healthy functions in LC Connect
+alwaysApply: true
+---
+
+# Clean Code (guidance, not gates)
+
+Advisory craft guidance — nothing here is CI-enforced (that's `file-structure.mdc`). Exercise judgment;
+when a principle conflicts with readability, readability wins. Full version: `CODE_STYLE.md`.
+
+Optimize for the next person reading the code. Clarity beats cleverness.
+
+## Functions
+- One job; the name says what it does (if it needs "and", it's two functions).
+- Short enough to see at once (~50 lines is a gut check, not a limit).
+- Few parameters (>3–4 → group into a small object / dataclass / model).
+- Return early with guard clauses; avoid deep nesting.
+- Prefer pure functions — push I/O (DB, network, storage) to the edges. Backend: rules in `service.py`,
+  I/O in routers / `shared/storage.py`.
+- No hidden side effects or global-state reach-ins.
+
+## Naming
+- Name by intent, not type/mechanism (`activeStudents`, not `list2`).
+- Booleans read as questions: `isVerified`, `hasJoined`.
+- Avoid abbreviations; consistency over brevity.
+
+## Abstraction & complexity
+- DRY, but not prematurely — rule of three. A wrong abstraction costs more than a little duplication.
+- Shallow nesting matters more than line count. One level of abstraction per function.
+- Prefer types/enums to make illegal states unrepresentable.
+
+## Comments & errors
+- Comments explain **why**, not what. Delete dead code and stale comments.
+- Fail loudly and early; handle errors at the layer that can act on them.
+
+## Language notes
+- Python: type hints on public functions; small models over loose dicts.
+- Dart/Flutter: `const` where possible; extract widgets instead of growing `build`; state in providers,
+  presentation in widgets.
+
+The test: *could a teammate understand this without asking you?* If not, fix the clarity — not the line count.

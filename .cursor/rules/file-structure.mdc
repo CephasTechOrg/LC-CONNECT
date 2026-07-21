@@ -1,65 +1,85 @@
 ---
-description: Feature-based file structure and 700-line hard limit for LC Connect
+description: Feature-first structure and 400/600-line rules for LC Connect
 alwaysApply: true
 ---
 
 # File Structure & Size Limits
 
-Read and follow this before creating or editing any code in this repo.
+Read and follow this before creating or editing any code in this repo. The canonical reference is
+`CONVENTIONS.md` at the repo root; full layout in `lc_connect_docs/folder_structure.md`.
 
-## Hard limit
+## Line rules (enforced in CI via `scripts/check_line_limits.py`)
 
-- **No file may exceed 700 lines.** If a change would push a file over 700, split it first.
-- Prefer small, single-purpose files with clear names.
+- **≤ 300** ideal · **≤ 400** soft target (a warning over this, CI still passes) · **> 600 fails CI.**
+- The count is a proxy for single-responsibility. If a change pushes a file over 600, split it first
+  (use the widget / service patterns below) or add a reviewed entry to `ALLOWLIST` in the script.
+- Check before committing: `python scripts/check_line_limits.py` (covers `.py` and `.dart`).
 
 ## Backend (`lc_connect_backend/`)
 
-Organize by **feature**, not by layer dumps. Each feature owns its own router, service, and schemas:
+Organize by **feature**, not by layer dumps. Each feature owns its router, service, and schemas:
 
 ```text
 app/features/<feature>/
   router.py      # HTTP/WS routes only — thin
-  service.py     # business logic for this feature
+  service.py     # business logic for this feature (omit if none, e.g. lookups)
   schema.py      # Pydantic request/response models
+  __init__.py    # exposes `router`
 ```
 
-Examples: `auth/`, `connections/`, `messages/`, `profiles/`, `discovery/`, `activities/`, `safety/`, `admin/`.
+Features: `auth/`, `profiles/`, `discovery/`, `connections/`, `messages/`, `activities/`, `safety/`,
+`admin/`, `lookups/`.
 
 Shared infrastructure stays outside features:
 
 ```text
 app/
   models.py          # ONE central SQLAlchemy models file (do not split per feature)
-  dependencies.py
-  database.py
-  config.py
-  main.py
+  dependencies.py  database.py  config.py  main.py
   security/          # JWT/JWKS verification helpers (not feature business logic)
+  shared/            # cross-feature kernel — helpers/DTOs used by 2+ features:
+    schemas.py       #   ProfilePublic, ReportRead
+    serializers.py   #   profile_to_public
+    policies.py      #   users_are_blocked
+    profiles.py      #   get_profile_by_user_id, profile_load_options
+    storage.py       #   SupabaseStorageService
 ```
 
-Do **not** add new domain logic into a global `services.py` or `schemas.py`. Put it under the feature.
+Rules:
+- Do **not** add domain logic to a global `services.py`/`schemas.py` — put it under the feature.
+- A feature must **never** import another feature's `service.py`. Cross-feature needs go through
+  `app/shared/`.
+- **Legacy island:** `app/routers/auth.py` + `app/schemas.py` hold the transitional password/OTP auth
+  only. Do not extend them; they are scheduled for deletion once Supabase auth is confirmed. New auth
+  work goes in `app/features/auth/`.
+- The API is snapshot-guarded: after any backend change run `pytest` (from `lc_connect_backend/`) — a
+  pure refactor must stay byte-identical. Regenerate only for intentional API changes with
+  `UPDATE_SNAPSHOTS=1 pytest`.
 
 ## Mobile (`lc_connect_mobile/`)
 
-Already feature-based — keep it that way:
+Feature-based — keep it that way:
 
 ```text
 lib/features/<feature>/
-  providers/
-  screens/
-  widgets/           # extract when a screen approaches 700 lines
+  providers/         # Riverpod state + ALL data access (API calls live here, not in screens)
+  screens/           # thin — compose widgets, read providers
+  widgets/           # extracted sub-widgets
 ```
 
-Shared cross-feature code lives in `lib/core/` or `lib/shared/`.
+- Keep screens thin. When a screen grows past the cap, extract sub-widgets into `widgets/` using Dart
+  **`part` / `part of`** files: the screen declares `part '../widgets/<name>.dart';` and each widget
+  file begins with `part of '../screens/<screen>.dart';`. This keeps them private and shares the
+  screen's imports/helpers. Verify with `flutter analyze`.
+- Shared cross-feature code lives in `lib/core/` or `lib/shared/`.
 
 ## Naming
 
 - Prefer `router.py` / `service.py` / `schema.py` (singular) inside a feature folder.
-- Names should describe the feature, not the layer alone (e.g. `connections/service.py`, not a mega `services.py`).
-- When splitting an oversized screen or service, name the pieces by responsibility (e.g. `chat_message_list.dart`, `connection_request_card.dart`).
+- Name splits by responsibility (e.g. `chat_message_list.dart`, `connections_incoming_card.dart`).
 
 ## Before you write
 
 1. Confirm which feature folder the change belongs in.
-2. Check the target file’s line count; split if near or over 700.
-3. Keep routers thin — logic goes in `service.py`.
+2. Check the target file's line count; split if approaching 600.
+3. Keep routers/screens thin — logic goes in `service.py` / `providers/`.

@@ -36,4 +36,4 @@ Before changing authentication, messaging, realtime, Redis, privacy, or security
 - Skip conversation authorization on subscribe/send
 - Leave live sockets open after block or suspension
 
-Also follow `.cursor/rules/file-structure.mdc` (feature folders, ≤700 lines).
+Also follow `.cursor/rules/file-structure.mdc` (feature folders; 400 soft / 600 hard line cap).

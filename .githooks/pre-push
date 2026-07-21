@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# Pre-push guard: abort the push if any source file exceeds the 600-line hard cap.
+# Fast local mirror of the CI "line-limits" job. See CONVENTIONS.md.
+#
+# Enable once per clone:   git config core.hooksPath .githooks
+# Bypass in an emergency:  git push --no-verify
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+
+PY="$(command -v python3 || command -v python || true)"
+if [ -z "$PY" ]; then
+  echo "pre-push: python not found; skipping line-limit check." >&2
+  exit 0
+fi
+
+if ! "$PY" "$REPO_ROOT/scripts/check_line_limits.py"; then
+  echo "" >&2
+  echo "❌ pre-push blocked: a file exceeds the 600-line hard cap (see above)." >&2
+  echo "   Split the file, or bypass with:  git push --no-verify" >&2
+  exit 1
+fi

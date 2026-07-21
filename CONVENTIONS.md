@@ -19,12 +19,25 @@ The line count is a **proxy for single responsibility**, not a law. A file a lit
 cap is a prompt to split *or* justify — not automatically a defect. Genuine, reviewed
 exceptions go in the `ALLOWLIST` in `scripts/check_line_limits.py` with a one-line reason.
 
-Run locally before pushing:
+Run locally anytime:
 
 ```bash
 python scripts/check_line_limits.py            # whole repo
 python scripts/check_line_limits.py --warn-only
 ```
+
+### Enforcement layers
+
+- **CI** (`.github/workflows/ci.yml`) — the authority; the `line-limits` job fails on any file > 600.
+  Turn on GitHub branch protection ("require status checks") to block merges into `main`.
+- **Pre-push hook** (`.githooks/pre-push`) — fast local guard that aborts a push on a hard-cap
+  violation. **Enable once per clone:**
+
+  ```bash
+  git config core.hooksPath .githooks
+  ```
+
+  Bypass in an emergency with `git push --no-verify`. The hook only mirrors CI; CI stays the real gate.
 
 ---
 
