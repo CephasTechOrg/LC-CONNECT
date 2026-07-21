@@ -1,258 +1,161 @@
 # LC Connect — Folder Structure
 
-This document defines the recommended folder structure for the MVP.
-
-The project should be separated into a mobile app and backend API.
-
-```text
-lc-connect/
-  mobile/
-  backend/
-  docs/
-  README.md
-```
-
-## 1. Root Folder
+This document describes the actual folder structure. The project follows a **feature-first
+(vertical slice)** architecture on both the backend and mobile. The rules that govern it
+(file-length limits, feature ownership, dependency direction) live in
+[`CONVENTIONS.md`](../CONVENTIONS.md) at the repo root — read that first.
 
 ```text
 lc-connect/
   lc_connect_mobile/   # Flutter app
   lc_connect_backend/  # FastAPI backend
-  supabase/            # Supabase migrations
+  supabase/            # Supabase SQL migrations (RLS, publications)
   lc_connect_docs/     # Project documentation
-  README.md            # Main project README
+  scripts/             # repo tooling (check_line_limits.py)
+  CONVENTIONS.md       # engineering conventions (structure + line rules)
+  .github/workflows/   # CI (line limits, backend tests/lint, flutter analyze)
+  README.md
   .gitignore
 ```
 
-## 2. Mobile App Folder Structure
+## 1. Feature-first principle
+
+Both apps are organized **by feature**, and layered **inside** each feature. A developer
+moving between backend and mobile sees the same shape. Cross-cutting infrastructure lives in a
+shared kernel (`core`/`shared` on mobile, root modules + `shared/` on the backend); features
+depend on the kernel, never sideways on each other.
+
+## 2. Mobile App (`lc_connect_mobile/`)
 
 Technology: **Flutter + Dart + Riverpod + supabase_flutter**
 
-Actual structure:
-
 ```text
-lc_connect_mobile/
-  lib/
-    main.dart                        # app entry point — Supabase.initialize, ProviderScope
-    core/
-      api/
-        api_client.dart              # Dio HTTP client with JWT interceptor
-        health_provider.dart         # backend connectivity check
-      constants/
-        app_constants.dart           # shared constants
-      router/
-        app_router.dart              # GoRouter navigation and auth guards
-      storage/
-        secure_storage.dart          # flutter_secure_storage JWT persistence
-      theme/
-        app_theme.dart               # ThemeData, AppColors
-      widgets/
-        avatar_widget.dart           # reusable avatar with fallback initials
-    features/
-      auth/
-        providers/
-          auth_provider.dart         # AuthNotifier — login, register, logout, setAuth
-        screens/
-          login_screen.dart
-          register_screen.dart
-          verify_email_screen.dart
-          forgot_password_screen.dart
-      onboarding/
-        providers/
-          onboarding_provider.dart
-        screens/
-          onboarding_screen.dart
-      discovery/
-        providers/
-          discovery_provider.dart
-        screens/
-          discovery_screen.dart
-      connections/
-        providers/
-          connections_provider.dart
-        screens/
-          connections_screen.dart
-      messages/
-        providers/
-          messages_provider.dart     # thread list state
-        screens/
-          messages_screen.dart       # conversation list
-          chat_screen.dart           # individual chat with Realtime subscription
-      activities/
-        providers/
-          activities_provider.dart
-        screens/
-          activities_screen.dart
-          activity_detail_screen.dart
-          create_activity_screen.dart
-      profile/
-        providers/
-          profile_provider.dart      # MyProfile, PublicProfile models
-        screens/
-          profile_screen.dart
-          public_profile_screen.dart
-          edit_profile_screen.dart
-      home/
-        screens/
-          home_screen.dart
-      safety/
-        providers/
-          safety_provider.dart
-        widgets/
-          safety_sheet.dart
-    shared/
-      widgets/
-        nav_shell.dart               # bottom navigation wrapper
-  test/
-    features/
-      auth/
-      messages/
-      profile/
-  assets/
-  pubspec.yaml
-  .env                               # SUPABASE_URL, SUPABASE_ANON_KEY, API_BASE_URL
+lib/
+  main.dart                          # entry point — Supabase.initialize, ProviderScope
+  core/                              # cross-cutting infrastructure
+    api/          api_client.dart, health_provider.dart
+    constants/    app_constants.dart
+    router/       app_router.dart     # GoRouter + auth guards
+    storage/      secure_storage.dart
+    theme/        app_theme.dart
+    widgets/      avatar_widget.dart
+  features/
+    <feature>/
+      providers/   # Riverpod state + ALL data access (API calls live here)
+      screens/     # thin — compose widgets, read providers
+      widgets/     # extracted presentational sub-widgets
+  shared/
+    widgets/      nav_shell.dart      # bottom navigation used across features
 ```
 
-## 3. Mobile App Folder Explanation
+Features: `auth`, `onboarding`, `home`, `discovery`, `connections`, `messages`, `activities`,
+`profile`, `safety`.
 
-### `lib/main.dart`
+### Screens stay thin — `widgets/` holds the pieces
 
-App entry point. Calls `WidgetsFlutterBinding.ensureInitialized()`, loads `.env`, initialises Supabase, then starts the app inside a `ProviderScope`.
-
-### `lib/core/`
-
-Cross-feature infrastructure shared by all features.
-
-- `api_client.dart` — Dio client with a JWT interceptor that attaches `Authorization: Bearer <token>` to every request
-- `app_router.dart` — GoRouter with redirect guards for unauthenticated and unverified users
-- `secure_storage.dart` — read/write/delete the JWT token from device secure storage
-- `app_theme.dart` — `ThemeData` and `AppColors` used everywhere
-
-### `lib/features/`
-
-One sub-folder per feature. Each feature contains:
-
-- `providers/` — Riverpod `AsyncNotifierProvider` or `FutureProvider` for state
-- `screens/` — `ConsumerWidget` or `ConsumerStatefulWidget` screens
-
-Key provider notes:
-
-- `auth_provider.dart` — manages `AuthUser?` state; calls `Supabase.instance.client.realtime.setAuth(token)` after every login/register/startup and `setAuth(null)` on logout
-- `chat_screen.dart` — manages a Supabase Realtime channel subscription per conversation; subscribes in `initState()`, unsubscribes in `dispose()`
-
-### `lib/shared/`
-
-Widgets used across multiple features (e.g., `nav_shell.dart` — bottom navigation bar with tab routing).
-
-## 4. Backend Folder Structure
-
-Technology: **FastAPI + PostgreSQL (Supabase) + SQLAlchemy + Alembic**
-
-Actual structure:
+Large screens are decomposed so no file exceeds the 600-line cap (target 400). Sub-widgets are
+extracted into `features/<feature>/widgets/` using Dart **`part` files**: the screen declares
+`part '../widgets/<name>.dart';` and each widget file starts with
+`part of '../screens/<screen>.dart';`. This keeps the sub-widgets private to the screen library
+and lets them share the screen's imports and helpers, while each file stays small. Example —
+`home/`:
 
 ```text
-lc_connect_backend/
-  app/
-    main.py              # FastAPI app, CORS, router includes
-    config.py            # Settings from .env via pydantic-settings
-    database.py          # async SQLAlchemy engine and session
-    dependencies.py      # get_current_user dependency (JWT → User)
-    models.py            # all SQLAlchemy ORM models in one file
-    schemas.py           # all Pydantic request/response schemas
-    security.py          # password hashing, JWT create/decode
-    services.py          # business logic (messaging rules, discovery filters)
-    email.py             # OTP email sending
-    seed.py              # seed interests, languages, looking-for options
-    routers/
-      auth.py            # register, login, verify-email, forgot-password
-      profiles.py        # profile setup and retrieval
-      discovery.py       # discovery cards
-      connections.py     # connection requests and match creation
-      messages.py        # message threads and send
-      activities.py      # activity CRUD and join/leave
-      safety.py          # block and report
-      admin.py           # admin moderation endpoints
-      lookups.py         # interests, languages, looking-for options
-  alembic/
-    versions/
-      3ffad56200ff_initial_schema.py
-  alembic.ini
-  requirements.txt
-  .env
-  .env.example
+home/
+  screens/home_screen.dart           # state + wiring only (~190 lines)
+  widgets/
+    home_header.dart                 # part of home_screen.dart
+    home_feed_sections.dart
+    home_student_card.dart
+    home_activity_list.dart
+    home_match_cards.dart
 ```
 
-## 5. Backend Folder Explanation
+## 3. Backend (`lc_connect_backend/`)
 
-### `main.py`
-
-FastAPI app entry point. Creates the FastAPI app, adds CORS middleware, and includes all routers.
-
-### `routers/`
-
-Thin route files. Business logic lives in `services.py`, not here.
-
-### `models.py`
-
-All SQLAlchemy ORM models in a single file: `User`, `Profile`, `Interest`, `Language`, `LookingForOption`, `UserLanguage`, `ConnectionRequest`, `Match`, `Message`, `Activity`, `ActivityParticipant`, `Block`, `Report`, `VerificationRequest`.
-
-### `schemas.py`
-
-All Pydantic request/response schemas. Controls what the frontend sends and receives.
-
-### `services.py`
-
-Business logic. This is where important rules live:
-
-- Users cannot message without a match
-- Blocked users cannot interact
-- Discovery excludes blocked and hidden users
-- Matches are created only after an accepted connection request
-
-### `security.py`
-
-Password hashing (bcrypt) and JWT token creation/decoding. The JWT payload includes `role: authenticated` so that Supabase can verify the token and resolve `auth.uid()` in RLS policies.
-
-### `dependencies.py`
-
-FastAPI dependency `get_current_user` — decodes the Bearer JWT and returns the authenticated `User`.
-
-## 6. Supabase Folder
+Technology: **FastAPI + PostgreSQL (Supabase) + async SQLAlchemy + Alembic**
 
 ```text
-supabase/
-  migrations/
-    20260510000000_messages_rls.sql   # RLS policies for the messages table
+app/
+  main.py               # FastAPI app, CORS, includes every feature router
+  config.py             # pydantic-settings from .env
+  database.py           # async engine + session (get_db)
+  dependencies.py       # auth dependencies: get_current_user, require_verified_student,
+                        #   require_admin, require_admin_aal2, get_supabase_claims
+  security/             # supabase_jwt (JWKS verify), legacy_jwt, passwords
+  models.py             # ALL SQLAlchemy models (one metadata — intentionally centralized)
+  email.py  seed.py     # infra
+  shared/               # cross-feature kernel
+    schemas.py          # shared DTOs: ProfilePublic, ReportRead
+    serializers.py      # profile_to_public
+    policies.py         # users_are_blocked
+    profiles.py         # get_profile_by_user_id, profile_load_options
+    storage.py          # SupabaseStorageService / storage_service
+  features/
+    <feature>/
+      router.py         # thin — HTTP only
+      service.py        # business rules (omit when the feature has none, e.g. lookups)
+      schema.py         # Pydantic request/response models for this feature
+      __init__.py       # exposes `router`
+  routers/              # LEGACY — transitional auth only (see §5)
+    auth.py
+  schemas.py            # LEGACY — auth DTOs only (see §5)
+alembic/                # migrations
+pyproject.toml          # ruff + pytest config
+requirements.txt        # runtime deps
+requirements-dev.txt    # + pytest, pytest-asyncio, ruff (CI/dev only)
+tests/                  # regression safety net (see §6)
 ```
 
-The `supabase/migrations/` folder holds versioned SQL files for database-level changes that Alembic does not manage (RLS policies, publications). Run these in **Supabase Dashboard → SQL Editor** or via `supabase db push` when setting up a new environment. See `lc_connect_docs/security_rls_messages.md` for details.
+Features: `auth`, `profiles`, `discovery`, `connections`, `messages`, `activities`, `safety`,
+`admin`, `lookups`.
 
-## 7. Docs Folder Structure
+### Ownership rules
+
+- **Routers stay thin.** Business logic lives in `service.py`, not the router.
+- **A feature owns its slice** (router + service + schema). There is no shared `services.py`.
+- **Dependencies point inward.** A feature may import from root modules (`config`, `database`,
+  `dependencies`, `models`, `security`) and from `shared/`, but **never** from another feature's
+  `service.py`. Genuinely cross-feature helpers/DTOs live in `shared/` (that is why
+  `ProfilePublic`, `ReportRead`, `profile_to_public`, and `users_are_blocked` are there).
+- **Models stay centralized** in `models.py` — one SQLAlchemy metadata avoids circular imports.
+
+## 4. Supabase (`supabase/`)
 
 ```text
-lc_connect_docs/
-  project_description.md    # app vision, MVP features, user stories
-  architecture.md           # system diagram, tech stack, data flows
-  folder_structure.md       # this file — folder layout and explanations
-  database.md               # table schemas, column names, RLS notes
-  realtime-messaging.md     # Supabase Realtime implementation end-to-end
-  security_rls_messages.md  # RLS setup, JWT wiring, policy documentation
+supabase/migrations/    # versioned SQL Alembic does not manage (RLS policies, publications)
 ```
 
-## 8. Recommended Development Order
+Run in Supabase Dashboard → SQL Editor or via `supabase db push`. See
+`security_rls_messages.md`.
 
-Build in this order:
+## 5. Legacy auth island (transitional)
 
-1. Backend project setup
-2. Database models/migrations
-3. Auth/register/login
-4. Profile setup
-5. Mobile app setup
-6. Mobile auth screens
-7. Profile onboarding screens
-8. Discovery cards
-9. Connection requests
-10. Matches and messaging
-11. Activities board
-12. Report/block
-13. Testing and campus pilot
+`app/routers/auth.py` and `app/schemas.py` are the **only** parts not yet feature-sliced. They
+hold the transitional password/OTP auth flow that runs alongside the Supabase-auth path during
+rollout. This is deliberate: the flow is scheduled for removal once the Supabase migration is
+confirmed, so it is not worth relocating code that will be deleted.
+
+**Retirement step:** when the password flow is retired, delete `app/routers/auth.py`,
+`app/schemas.py`, and the `app/routers/` package, then regenerate the API baseline
+(`UPDATE_SNAPSHOTS=1 pytest`). The new Supabase-auth endpoints already live in
+`app/features/auth/`.
+
+## 6. Regression safety net (`lc_connect_backend/tests/`)
+
+No live database needed — these inspect the assembled app only:
+
+- `test_openapi_snapshot.py` — full `app.openapi()` vs committed `tests/baseline/openapi.json`.
+- `test_route_inventory.py` — the `(METHOD, PATH)` set vs `tests/baseline/routes.txt`.
+- `test_import_smoke.py` — every `app.*` module imports.
+
+Run `pytest`. Regenerate the baseline only for intentional API changes with
+`UPDATE_SNAPSHOTS=1 pytest`.
+
+## 7. Docs (`lc_connect_docs/`)
+
+```text
+project_description.md  architecture.md  folder_structure.md (this file)
+database.md  realtime-messaging.md  security_rls_messages.md
+local_dev_setup.md  daily_dev_start.md  deployment.md  ...
+```

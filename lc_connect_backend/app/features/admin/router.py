@@ -1,13 +1,16 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.dependencies import require_admin_aal2
-from app.models import Activity, Profile, Report, User
-from app.schemas import AdminUserRead, ReportRead, SuspendUserRequest
+from app.features.admin.schema import AdminUserRead, SuspendUserRequest
+from app.features.admin.service import remove_activity as do_remove_activity
+from app.features.admin.service import suspend_user as do_suspend_user
+from app.models import Profile, Report, User
+from app.shared.schemas import ReportRead
 
 router = APIRouter(prefix='/admin', tags=['admin'])
 
@@ -46,12 +49,7 @@ async def suspend_user(
     _: User = Depends(require_admin_aal2),
     db: AsyncSession = Depends(get_db),
 ):
-    user = await db.get(User, user_id)
-    if user is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='User not found')
-    user.status = 'suspended'
-    user.is_active = False
-    await db.commit()
+    user = await do_suspend_user(db, user_id)
     return {'status': 'suspended', 'user_id': str(user.id), 'reason': payload.reason}
 
 
@@ -61,9 +59,5 @@ async def remove_activity(
     _: User = Depends(require_admin_aal2),
     db: AsyncSession = Depends(get_db),
 ):
-    activity = await db.get(Activity, activity_id)
-    if activity is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Activity not found')
-    activity.is_cancelled = True
-    await db.commit()
+    activity = await do_remove_activity(db, activity_id)
     return {'status': 'removed', 'activity_id': str(activity.id)}

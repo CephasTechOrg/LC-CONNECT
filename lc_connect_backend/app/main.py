@@ -3,8 +3,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import ORJSONResponse
 
 from app.config import settings
+from app.features.activities import router as activities_router
+from app.features.admin import router as admin_router
 from app.features.auth import router as auth_v2_router
-from app.routers import activities, admin, auth, connections, discovery, lookups, messages, profiles, safety
+from app.features.connections import router as connections_router
+from app.features.discovery import router as discovery_router
+from app.features.lookups import router as lookups_router
+from app.features.messages import router as messages_router
+from app.features.profiles import router as profiles_router
+from app.features.safety import router as safety_router
+from app.routers import auth
 
 app = FastAPI(title=settings.app_name, version='0.1.0', default_response_class=ORJSONResponse)
 
@@ -35,11 +43,11 @@ async def health_check() -> dict[str, str]:
 # Supabase Auth path (bootstrap + /me). Legacy register/login remain during rollback.
 app.include_router(auth_v2_router, prefix=settings.api_v1_prefix)
 app.include_router(auth.router, prefix=settings.api_v1_prefix)
-app.include_router(lookups.router, prefix=settings.api_v1_prefix)
-app.include_router(profiles.router, prefix=settings.api_v1_prefix)
-app.include_router(discovery.router, prefix=settings.api_v1_prefix)
-app.include_router(connections.router, prefix=settings.api_v1_prefix)
-app.include_router(messages.router, prefix=settings.api_v1_prefix)
-app.include_router(activities.router, prefix=settings.api_v1_prefix)
-app.include_router(safety.router, prefix=settings.api_v1_prefix)
-app.include_router(admin.router, prefix=settings.api_v1_prefix)
+app.include_router(lookups_router, prefix=settings.api_v1_prefix)
+app.include_router(profiles_router, prefix=settings.api_v1_prefix)
+app.include_router(discovery_router, prefix=settings.api_v1_prefix)
+app.include_router(connections_router, prefix=settings.api_v1_prefix)
+app.include_router(messages_router, prefix=settings.api_v1_prefix)
+app.include_router(activities_router, prefix=settings.api_v1_prefix)
+app.include_router(safety_router, prefix=settings.api_v1_prefix)
+app.include_router(admin_router, prefix=settings.api_v1_prefix)

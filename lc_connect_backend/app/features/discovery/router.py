@@ -5,10 +5,11 @@ from sqlalchemy.orm import selectinload
 
 from app.database import get_db
 from app.dependencies import get_current_user
+from app.features.discovery.schema import DiscoveryCard
+from app.features.discovery.service import calculate_match
 from app.models import Block, ConnectionRequest, Match, Profile, User, UserLanguage
-from app.routers.profiles import get_profile_by_user_id
-from app.schemas import DiscoveryCard
-from app.services import calculate_match, profile_to_public
+from app.shared.profiles import get_profile_by_user_id
+from app.shared.serializers import profile_to_public
 
 router = APIRouter(prefix='/discovery', tags=['discovery'])
 

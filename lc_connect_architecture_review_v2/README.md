@@ -36,6 +36,14 @@ The existing Supabase Realtime implementation depends on custom FastAPI JWTs, sh
 8. `DECISION_LOG.md` — accepted architecture decisions.
 9. `SOURCES.md` — primary references.
 
+## Engineering conventions
+
+Before implementing any phase, follow [`CONVENTIONS.md`](../CONVENTIONS.md) — the feature-first
+structure and file-length rules the codebase now enforces. The backend has been sliced into
+`app/features/<domain>/{router,service,schema}` with a `shared/` kernel, and mobile screens are
+decomposed into `features/<feature>/widgets/`. See
+[`lc_connect_docs/folder_structure.md`](../lc_connect_docs/folder_structure.md) for the full layout.
+
 ## Immediate implementation order
 
 1. Establish migrations and backups.

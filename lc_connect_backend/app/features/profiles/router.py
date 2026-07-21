@@ -3,75 +3,24 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from app.config import settings
 from app.database import get_db
 from app.dependencies import get_current_user
-from app.models import (
-    ActivityParticipant,
-    Interest,
-    Language,
-    LookingForOption,
-    Match,
-    Message,
-    Profile,
-    User,
-    UserLanguage,
+from app.features.profiles.schema import MyProfileRead, ProfileUpdate
+from app.features.profiles.service import (
+    compute_profile_completed,
+    get_looking_for_options,
+    get_or_create_interests,
+    get_or_create_languages,
 )
-from app.schemas import MyProfileRead, ProfilePublic, ProfileUpdate
-from app.services import profile_to_public, storage_service
+from app.models import ActivityParticipant, Match, Message, Profile, User, UserLanguage
+from app.shared.profiles import get_profile_by_user_id, profile_load_options
+from app.shared.schemas import ProfilePublic
+from app.shared.serializers import profile_to_public
+from app.shared.storage import storage_service
 
 router = APIRouter(prefix='/profiles', tags=['profiles'])
-
-
-def profile_load_options():
-    return [
-        selectinload(Profile.user),
-        selectinload(Profile.interests),
-        selectinload(Profile.looking_for_options),
-        selectinload(Profile.languages).selectinload(UserLanguage.language),
-    ]
-
-
-async def get_profile_by_user_id(db: AsyncSession, user_id: UUID) -> Profile:
-    profile = (await db.execute(select(Profile).options(*profile_load_options()).where(Profile.user_id == user_id))).scalar_one_or_none()
-    if profile is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Profile not found')
-    return profile
-
-
-async def get_or_create_interests(db: AsyncSession, names: list[str]) -> list[Interest]:
-    items: list[Interest] = []
-    for name in sorted({name.strip().title() for name in names if name.strip()}):
-        item = (await db.execute(select(Interest).where(Interest.name == name))).scalar_one_or_none()
-        if item is None:
-            item = Interest(name=name, category='custom')
-            db.add(item)
-            await db.flush()
-        items.append(item)
-    return items
-
-
-async def get_or_create_languages(db: AsyncSession, names: list[str]) -> list[Language]:
-    items: list[Language] = []
-    for name in sorted({name.strip().title() for name in names if name.strip()}):
-        item = (await db.execute(select(Language).where(Language.name == name))).scalar_one_or_none()
-        if item is None:
-            item = Language(name=name)
-            db.add(item)
-            await db.flush()
-        items.append(item)
-    return items
-
-
-async def get_looking_for_options(db: AsyncSession, codes: list[str]) -> list[LookingForOption]:
-    clean_codes = sorted({code.strip().lower() for code in codes if code.strip()})
-    return list((await db.execute(select(LookingForOption).where(LookingForOption.code.in_(clean_codes)))).scalars().all())
-
-
-def compute_profile_completed(profile: Profile) -> bool:
-    return bool(profile.display_name and profile.major and profile.class_year and profile.looking_for_options)
 
 
 @router.get('/me', response_model=MyProfileRead)

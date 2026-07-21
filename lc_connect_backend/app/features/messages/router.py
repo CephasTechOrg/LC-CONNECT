@@ -6,33 +6,20 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.dependencies import get_current_user
+from app.features.messages.schema import MessageCreate, MessageRead, MessageThreadRead
+from app.features.messages.service import get_match_for_user, message_read, partner_id
 from app.models import Match, Message, Profile, User
-from app.routers.profiles import profile_load_options
-from app.schemas import MessageCreate, MessageRead, MessageThreadRead
-from app.services import profile_to_public, users_are_blocked
+from app.shared.policies import users_are_blocked
+from app.shared.profiles import profile_load_options
+from app.shared.serializers import profile_to_public
 
 router = APIRouter(prefix='/messages', tags=['messages'])
-
-
-async def get_match_for_user(db: AsyncSession, match_id: UUID, user: User) -> Match:
-    match = await db.get(Match, match_id)
-    if match is None or user.id not in {match.user_a_id, match.user_b_id}:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Match not found')
-    return match
-
-
-def partner_id(match: Match, user: User) -> UUID:
-    return match.user_b_id if match.user_a_id == user.id else match.user_a_id
-
-
-def message_read(message: Message) -> MessageRead:
-    return MessageRead(id=message.id, match_id=message.match_id, sender_id=message.sender_id, body=message.body, created_at=message.created_at, read_at=message.read_at)
 
 
 @router.get('/threads', response_model=list[MessageThreadRead])
 async def list_threads(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     matches = (await db.execute(select(Match).where(or_(Match.user_a_id == current_user.id, Match.user_b_id == current_user.id)).order_by(Match.created_at.desc()))).scalars().all()
-    
+
     if not matches:
         return []
 

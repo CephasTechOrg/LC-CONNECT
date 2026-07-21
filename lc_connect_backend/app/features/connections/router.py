@@ -7,22 +7,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.dependencies import get_current_user
+from app.features.connections.schema import (
+    ConnectionRequestCreate,
+    ConnectionRequestEnriched,
+    ConnectionRequestRead,
+    MatchRead,
+)
+from app.features.connections.service import existing_match, ordered_pair
 from app.models import ConnectionRequest, Match, Profile, User
-from app.routers.profiles import get_profile_by_user_id, profile_load_options
-from app.schemas import ConnectionRequestCreate, ConnectionRequestEnriched, ConnectionRequestRead, MatchRead
-from app.services import profile_to_public, users_are_blocked
+from app.shared.policies import users_are_blocked
+from app.shared.profiles import get_profile_by_user_id, profile_load_options
+from app.shared.serializers import profile_to_public
 
 router = APIRouter(prefix='/connections', tags=['connections'])
-
-
-def ordered_pair(user_a: UUID, user_b: UUID) -> tuple[UUID, UUID]:
-    ordered = sorted([user_a, user_b], key=lambda value: str(value))
-    return ordered[0], ordered[1]
-
-
-async def existing_match(db: AsyncSession, user_a: UUID, user_b: UUID) -> Match | None:
-    left, right = ordered_pair(user_a, user_b)
-    return (await db.execute(select(Match).where(Match.user_a_id == left, Match.user_b_id == right))).scalar_one_or_none()
 
 
 @router.post('/request', response_model=ConnectionRequestRead, status_code=status.HTTP_201_CREATED)
@@ -129,7 +126,7 @@ async def decline_request(request_id: UUID, current_user: User = Depends(get_cur
 @router.get('/matches', response_model=list[MatchRead])
 async def list_matches(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     matches = list((await db.execute(select(Match).where(or_(Match.user_a_id == current_user.id, Match.user_b_id == current_user.id)).order_by(Match.created_at.desc()))).scalars().all())
-    
+
     if not matches:
         return []
 
