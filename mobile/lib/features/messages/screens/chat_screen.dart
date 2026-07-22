@@ -89,10 +89,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       if (!mounted) return;
       final page = _parsePage(resp.data as List); // newest-first → ascending
       setState(() {
-        _messages
-          ..clear()
-          ..addAll(page);
-        _seenServerIds.addAll(page.map((m) => m.id));
+        _absorb(page); // merge — preserve any live messages that arrived during the load
         _hasMore = page.length >= _pageSize;
         _loading = false;
       });
@@ -118,10 +115,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         },
       );
       if (!mounted) return;
-      final older = _parsePage(resp.data as List).where((m) => !_seenServerIds.contains(m.id)).toList();
+      final older = _parsePage(resp.data as List);
       setState(() {
-        _messages.insertAll(0, older);
-        _seenServerIds.addAll(older.map((m) => m.id));
+        _absorb(older);
         _hasMore = older.length >= _pageSize;
       });
     } catch (_) {
@@ -145,8 +141,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         },
       );
       if (!mounted) return;
-      for (final msg in _parseAscending(resp.data as List)) {
-        _mergeIncoming(msg);
+      final missed = _parseAscending(resp.data as List);
+      if (missed.isNotEmpty) {
+        setState(() => _absorb(missed));
+        _scrollToBottom();
       }
     } catch (_) {}
   }
@@ -164,6 +162,33 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final list = raw.map((j) => ChatMessage.fromJson(j as Map<String, dynamic>)).toList();
     list.sort((a, b) => a.createdAt.compareTo(b.createdAt));
     return list;
+  }
+
+  /// Merge server messages into the list by id — never clobbers live messages that
+  /// arrived during a load, and drops an optimistic row once its server row appears.
+  /// (Call inside setState.)
+  void _absorb(List<ChatMessage> serverMessages) {
+    final incomingClientIds = <String>{
+      for (final m in serverMessages)
+        if (m.clientMessageId != null) m.clientMessageId!,
+    };
+    final byId = <String, ChatMessage>{};
+    for (final m in _messages) {
+      if (m.id.startsWith('local:') &&
+          m.clientMessageId != null &&
+          incomingClientIds.contains(m.clientMessageId)) {
+        continue; // superseded by its server version below
+      }
+      byId[m.id] = m;
+    }
+    for (final m in serverMessages) {
+      byId[m.id] = m;
+      _seenServerIds.add(m.id);
+    }
+    final merged = byId.values.toList()..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+    _messages
+      ..clear()
+      ..addAll(merged);
   }
 
   // ── live events ───────────────────────────────────────────────────
@@ -186,13 +211,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   void _mergeIncoming(ChatMessage msg) {
-    if (_seenServerIds.contains(msg.id)) return;
+    if (_seenServerIds.contains(msg.id)) {
+      if (kDebugMode) debugPrint('chat: skip (seen) ${msg.id}');
+      return;
+    }
     // Our own message echoed back — already reconciled via ack.
     if (msg.clientMessageId != null &&
         _messages.any((m) => m.clientMessageId == msg.clientMessageId)) {
+      if (kDebugMode) debugPrint('chat: skip (dedup client ${msg.clientMessageId}) ${msg.id}');
       _seenServerIds.add(msg.id);
       return;
     }
+    if (kDebugMode) debugPrint('chat: merged ${msg.id} from ${msg.senderId}');
     setState(() {
       _seenServerIds.add(msg.id);
       _messages.add(msg);

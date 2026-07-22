@@ -107,6 +107,13 @@ class RealtimeClient {
     } catch (_) {
       return;
     }
+    if (kDebugMode) {
+      if (raw['type'] == 'error') {
+        debugPrint('WS<- error code=${raw['code']} msg=${raw['message']}');
+      } else {
+        debugPrint('WS<- ${raw['type']} conv=${raw['conversation_id']}');
+      }
+    }
     final event = parseInbound(raw);
     if (event is AuthOk) {
       _attempt = 0;
@@ -185,6 +192,9 @@ class RealtimeClient {
 
   void _sink(Map<String, dynamic> frame) {
     if (_status.value == RealtimeStatus.ready || frame['type'] == 'auth') {
+      if (kDebugMode && frame['type'] != 'auth') {
+        debugPrint('WS-> ${frame['type']} conv=${frame['conversation_id']}');
+      }
       _channel?.sink.add(jsonEncode(frame));
     }
   }

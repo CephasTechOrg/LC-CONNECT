@@ -2,6 +2,8 @@
 /// (see backend `app/features/realtime/protocol.py`). No I/O — unit-testable.
 library;
 
+const int kProtocolVersion = 1;
+
 // ── Outbound frames (client → server) ─────────────────────────────────────────
 
 Map<String, dynamic> authFrame(String accessToken, {String? deviceId, String? appVersion}) => {
@@ -9,6 +11,7 @@ Map<String, dynamic> authFrame(String accessToken, {String? deviceId, String? ap
       'access_token': accessToken,
       'device_id': ?deviceId,
       'app_version': ?appVersion,
+      'protocol_version': kProtocolVersion,
     };
 
 Map<String, dynamic> subscribeFrame(String requestId, String conversationId) => {
@@ -55,7 +58,8 @@ sealed class InboundEvent {
 class AuthOk extends InboundEvent {
   final String userId;
   final int heartbeatSeconds;
-  const AuthOk(this.userId, this.heartbeatSeconds);
+  final int protocolVersion;
+  const AuthOk(this.userId, this.heartbeatSeconds, this.protocolVersion);
 }
 
 class MessageAck extends InboundEvent {
@@ -107,7 +111,11 @@ InboundEvent parseInbound(Map<String, dynamic> raw) {
   final type = raw['type'] as String?;
   switch (type) {
     case 'auth.ok':
-      return AuthOk(raw['user_id'] as String, (raw['heartbeat_interval_seconds'] as num?)?.toInt() ?? 25);
+      return AuthOk(
+        raw['user_id'] as String,
+        (raw['heartbeat_interval_seconds'] as num?)?.toInt() ?? 25,
+        (raw['protocol_version'] as num?)?.toInt() ?? 1,
+      );
     case 'message.ack':
       return MessageAck(
         raw['client_message_id'] as String?,

@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field, TypeAdapter, field_validator
 from app.models import Message
 
 MAX_BODY_CHARS = 2000
+PROTOCOL_VERSION = 1
 
 
 # ── Error + close codes ───────────────────────────────────────────────────────
@@ -45,6 +46,7 @@ class AuthFrame(BaseModel):
     access_token: str = Field(min_length=1, max_length=4096)
     device_id: str | None = Field(default=None, max_length=200)
     app_version: str | None = Field(default=None, max_length=40)
+    protocol_version: int | None = None
 
 
 class SubscribeFrame(BaseModel):
@@ -119,7 +121,12 @@ def serialize_message(message: Message) -> dict[str, Any]:
 
 
 def auth_ok(user_id: UUID, heartbeat_seconds: int) -> dict[str, Any]:
-    return {'type': 'auth.ok', 'user_id': str(user_id), 'heartbeat_interval_seconds': heartbeat_seconds}
+    return {
+        'type': 'auth.ok',
+        'user_id': str(user_id),
+        'heartbeat_interval_seconds': heartbeat_seconds,
+        'protocol_version': PROTOCOL_VERSION,
+    }
 
 
 def error(code: str, message: str, request_id: UUID | None = None) -> dict[str, Any]:

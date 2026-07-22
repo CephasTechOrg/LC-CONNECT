@@ -58,13 +58,13 @@ def _ensure_account_ok(user: User) -> None:
         raise WsForbidden('Verified student required')
 
 
-async def authorize_conversation(db: AsyncSession, user: User, match_id: UUID) -> Match:
+async def authorize_conversation(db: AsyncSession, user_id: UUID, match_id: UUID) -> Match:
     """Confirm the user may access the conversation. Generic forbidden on any failure."""
     match = await db.get(Match, match_id)
-    if match is None or user.id not in {match.user_a_id, match.user_b_id}:
+    if match is None or user_id not in {match.user_a_id, match.user_b_id}:
         raise WsForbidden('Conversation not accessible')
-    partner_id = match.user_b_id if match.user_a_id == user.id else match.user_a_id
-    if await users_are_blocked(db, user.id, partner_id):
+    partner_id = match.user_b_id if match.user_a_id == user_id else match.user_a_id
+    if await users_are_blocked(db, user_id, partner_id):
         raise WsForbidden('Conversation not accessible')
     return match
 

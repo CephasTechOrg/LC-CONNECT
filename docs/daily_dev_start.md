@@ -1,7 +1,7 @@
 # LC Connect — Daily Development Start
 
 Use this every time you sit down to work.  
-For first-time Mac setup, see [`local_dev_setup.md`](./local_dev_setup.md).
+For first-time Mac setup, see `[local_dev_setup.md](./local_dev_setup.md)`.
 
 You need **two terminals** (plus the iOS Simulator).
 
@@ -41,11 +41,13 @@ flutter run -d <DEVICE_ID>
 
 Leave this running. Hot keys:
 
-| Key | Action |
-|-----|--------|
-| `r` | Hot reload (UI/code tweaks) |
+
+| Key | Action                                                 |
+| --- | ------------------------------------------------------ |
+| `r` | Hot reload (UI/code tweaks)                            |
 | `R` | Hot restart (state reset; needed after `.env` changes) |
-| `q` | Quit the app session |
+| `q` | Quit the app session                                   |
+
 
 ---
 
@@ -189,7 +191,7 @@ SUPABASE_JWT_SECRET=<legacy-jwt-secret>
 After editing either `.env`:
 
 - Backend: uvicorn `--reload` usually picks it up; if not, stop and restart Terminal A.
-- Mobile: press **`R`** (hot restart) or quit (`q`) and `flutter run` again.
+- Mobile: press `**R**` (hot restart) or quit (`q`) and `flutter run` again.
 
 ---
 
@@ -214,15 +216,17 @@ Simulator app
 
 ## Common daily issues
 
-| Symptom | Fix |
-|---------|-----|
-| `flutter: command not found` | `source ~/.zshrc` or open a new terminal |
-| `No module named 'asyncpg'` / weird import errors | You forgot `source .venv/bin/activate` |
-| Port 8000 in use | `lsof -i :8000` → `kill <PID>` → start uvicorn again |
-| App hits Render instead of local | Mobile `.env` still on production URL → switch to localhost → `R` |
-| No iPhone device | `open -a Simulator` then `flutter devices` |
-| Signup network / SocketException | Restart Simulator + full `flutter run`; check VPN / Wi‑Fi |
-| 401 after login | Backend missing/wrong `SUPABASE_JWT_SECRET`; restart uvicorn |
+
+| Symptom                                           | Fix                                                               |
+| ------------------------------------------------- | ----------------------------------------------------------------- |
+| `flutter: command not found`                      | `source ~/.zshrc` or open a new terminal                          |
+| `No module named 'asyncpg'` / weird import errors | You forgot `source .venv/bin/activate`                            |
+| Port 8000 in use                                  | `lsof -i :8000` → `kill <PID>` → start uvicorn again              |
+| App hits Render instead of local                  | Mobile `.env` still on production URL → switch to localhost → `R` |
+| No iPhone device                                  | `open -a Simulator` then `flutter devices`                        |
+| Signup network / SocketException                  | Restart Simulator + full `flutter run`; check VPN / Wi‑Fi         |
+| 401 after login                                   | Backend missing/wrong `SUPABASE_JWT_SECRET`; restart uvicorn      |
+
 
 ---
 
@@ -261,9 +265,10 @@ flutter doctor
 
 ## Suggested daily checklist
 
-- [ ] Postgres running
-- [ ] Backend terminal: `.venv` activated + uvicorn on `:8000`
-- [ ] `curl http://localhost:8000/health` OK
-- [ ] Checked `xcrun simctl list devices booted` (know which phones are up)
-- [ ] Mobile `.env` points at `http://localhost:8000/api/v1`
-- [ ] `flutter run -d <id>` on the intended simulator(s)
+- Postgres running
+- Backend terminal: `.venv` activated + uvicorn on `:8000`
+- `curl http://localhost:8000/health` OK
+- Checked `xcrun simctl list devices booted` (know which phones are up)
+- Mobile `.env` points at `http://localhost:8000/api/v1`
+- `flutter run -d <id>` on the intended simulator(s)
+

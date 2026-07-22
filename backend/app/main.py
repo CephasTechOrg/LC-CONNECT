@@ -1,3 +1,6 @@
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import ORJSONResponse
@@ -12,10 +15,25 @@ from app.features.lookups import router as lookups_router
 from app.features.messages import router as messages_router
 from app.features.profiles import router as profiles_router
 from app.features.realtime import router as realtime_router
+from app.features.realtime.protocol import CloseCode
+from app.features.realtime.runtime import manager as ws_manager
 from app.features.safety import router as safety_router
 from app.routers import auth
 
-app = FastAPI(title=settings.app_name, version='0.1.0', default_response_class=ORJSONResponse)
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
+    yield
+    # Close live WebSockets cleanly on shutdown/restart (clients reconnect + REST-sync).
+    await ws_manager.shutdown(CloseCode.GOING_AWAY)
+
+
+app = FastAPI(
+    title=settings.app_name,
+    version='0.1.0',
+    default_response_class=ORJSONResponse,
+    lifespan=lifespan,
+)
 
 if settings.is_development:
     allowed_origins = ['*']
