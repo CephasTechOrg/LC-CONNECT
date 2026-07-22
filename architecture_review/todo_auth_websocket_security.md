@@ -9,7 +9,7 @@
 - [x] Contributor setup docs (`docs/local_dev_setup.md`)
 - [x] Daily start docs (`docs/daily_dev_start.md`)
 - [x] Cursor rules (architecture + file structure)
-- [ ] Dependency lock strategy (`requirements.lock` / pinned CI)
+- [x] Dependency lock — direct deps pinned to exact versions in `requirements.txt` + `requirements-dev.txt` (reproducible across CI, Render, local; Render/CI install these directly)
 - [x] CI pipeline (`.github/workflows/ci.yml` — line limits + backend snapshot tests + `flutter analyze`)
 - [x] Backend regression harness (`backend/tests/` — OpenAPI snapshot, route inventory, import smoke)
 - [x] File-length enforcement (`scripts/check_line_limits.py`, 600 hard cap; pre-push hook + CI)
@@ -31,38 +31,47 @@
 - [x] Admin `require_admin_aal2` wired on admin routes
 - [x] Apply `require_verified_student` to student-protected REST routes (profiles, discovery, connections, messages, activities, safety — all endpoints; unverified users get 403)
 - [x] Token refresh behavior — Dio interceptor recovers a 401 by refreshing the session once and replaying the request (shared in-flight refresh); `AuthNotifier` listens to `onAuthStateChange` to keep the stored token fresh and sign out on session death. (Reconnect/backoff is Phase 2 WebSocket work.)
-- [ ] Recovery deep links (iOS URL scheme / universal links) fully configured
+- [x] Password recovery functional — OTP-code flow (`resetPasswordForEmail` → `verifyOTP(recovery)` → `updateUser`); no deep link required
+- [ ] (Optional) Recovery **deep links** — tap-email-to-open-app UX. Deferred: needs iOS `Info.plist` URL scheme + `passwordRecovery` auth-event routing + **Supabase dashboard redirect-URL allow-list** (external). Not needed for the feature to work.
 - [ ] Formal existing-user linking runbook / backfill script
 - [ ] Retire custom auth (`AUTH_LEGACY_ENABLED=false`)
 - [ ] Drop old credential columns (`password_hash`, OTP fields)
 - [ ] Rotate old custom JWT secret
 - [~] Auth automated tests — done: verified/unverified, active/suspended, admin-aal2 (all cases), missing-token 401, and route-wiring (unverified → 403 on all student GET routes) in `tests/test_auth_guards.py`. Still open: bootstrap concurrency + real expired/invalid token cases.
 
+## Phase 2 — Slice 1 (backend gateway) — DONE
+
+Single-instance, in-memory `ConnectionManager` behind an `EventBus` seam (Redis-ready).
+Backend `app/features/realtime/` + `messages` REST paging/sync + idempotency. 25 realtime
+tests (protocol, rate-limit, manager backpressure/revocation, gateway lifecycle over TestClient).
+Deferred to later slices: Redis fan-out, push (FCM/APNs), presence, Flutter client, app-level
+idle reaper + graceful-shutdown lifespan (uvicorn ping/pong covers dead-socket detection now).
+
 ## WebSocket (Phase 2+)
 
-- [ ] `/api/v1/ws`
-- [ ] Auth-first protocol
-- [ ] Stable schemas/errors
-- [ ] Heartbeat and timeout
-- [ ] Payload limits
-- [ ] Malformed-event limits
-- [ ] Graceful shutdown
+- [x] `/api/v1/ws`
+- [x] Auth-first protocol
+- [x] Stable schemas/errors (typed discriminated-union frames + error codes)
+- [x] Auth timeout (idle reaper + close-on-idle deferred; uvicorn ping/pong detects dead sockets)
+- [x] Payload limits (frame size + body length)
+- [x] Malformed-event limits (bounded, then close)
+- [ ] Graceful shutdown lifespan (manager.shutdown wired, lifespan not yet mounted)
 - [ ] Metrics without content/tokens
-- [ ] Flutter connection-state provider
-- [ ] Reconnect/backoff/jitter
-- [ ] Restore subscriptions
-- [ ] Clear on logout
+- [ ] Flutter connection-state provider (next slice)
+- [ ] Reconnect/backoff/jitter (next slice)
+- [ ] Restore subscriptions (next slice)
+- [ ] Clear on logout (next slice)
 
-## Authorization
+## Authorization — DONE (Slice 1)
 
-- [ ] Subscribe/unsubscribe
-- [ ] Match membership
-- [ ] Active/verified state
-- [ ] Block check
-- [ ] Subscription limits
-- [ ] Reauthorize sends
-- [ ] Revoke on block
-- [ ] Revoke on suspension
+- [x] Subscribe/unsubscribe
+- [x] Match membership
+- [x] Active/verified state
+- [x] Block check
+- [x] Subscription limits
+- [x] Reauthorize sends (re-queried per send — catches mid-session block/suspend)
+- [x] Revoke on block (safety.add_block → manager.revoke_pair)
+- [x] Revoke on suspension (admin.suspend_user → manager.close_user)
 
 ## Redis
 
@@ -77,29 +86,29 @@
 - [ ] Outage behavior
 - [ ] Health metrics
 
-## Messages
+## Messages — DONE (Slice 1, except Flutter retry UI)
 
-- [ ] `client_message_id`
-- [ ] Unique sender/client constraint
-- [ ] Idempotent insert
-- [ ] Persist before publish
-- [ ] `message.ack`
-- [ ] `message.created`
-- [ ] Cursor pagination
-- [ ] Reconnect sync
-- [ ] Read/unread support
-- [ ] Message and URL limits
-- [ ] Retry UI
+- [x] `client_message_id`
+- [x] Unique sender/client constraint (partial-unique index)
+- [x] Idempotent insert (shared by REST + WS)
+- [x] Persist before publish
+- [x] `message.ack`
+- [x] `message.created`
+- [x] Cursor pagination (keyset `GET /threads/{id}?before_created_at&before_id&limit`)
+- [x] Reconnect sync (`GET /threads/{id}/sync?after_created_at&after_id`)
+- [x] Read/unread support (`messages.read` → `messages.receipt`)
+- [x] Message length limit (URL-specific limits: later)
+- [ ] Retry UI (Flutter, next slice)
 
 ## Typing/presence
 
-- [ ] `typing.start`
-- [ ] `typing.stop`
-- [ ] Throttle
-- [ ] 3–4 second expiry
-- [ ] Ignore self
-- [ ] Never persist typing
-- [ ] Presence privacy setting if enabled
+- [x] `typing.start`
+- [x] `typing.stop`
+- [x] Throttle (token bucket per user+conversation)
+- [ ] 3–4 second expiry (client-side via active:false now; Redis TTL later)
+- [x] Ignore self (excluded from broadcast)
+- [x] Never persist typing
+- [ ] Presence privacy setting if enabled (deferred)
 
 ## Notifications
 

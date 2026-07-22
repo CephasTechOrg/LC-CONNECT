@@ -202,6 +202,14 @@ class AuthNotifier extends AsyncNotifier<AuthUser?> {
     _pendingEmail = null;
     await _auth.signOut();
     await ref.read(secureStorageProvider).deleteToken();
+    // Force a state transition so GoRouter refreshListenable always fires,
+    // even when we were already AsyncData(null) (pending-confirm signup).
+    state = const AsyncLoading();
     state = const AsyncData(null);
+  }
+
+  /// Leave the verify-email gate and return to login/register.
+  Future<void> cancelEmailConfirmation() async {
+    await logout();
   }
 }

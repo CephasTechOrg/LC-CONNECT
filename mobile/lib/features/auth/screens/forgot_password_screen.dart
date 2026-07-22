@@ -301,7 +301,7 @@ class _Form extends StatelessWidget {
               style: GoogleFonts.dmSans(
                   fontSize: 14, color: const Color(0xFF6B7280), height: 1.5),
               children: [
-                const TextSpan(text: 'We sent a 6-digit code to '),
+                const TextSpan(text: 'We sent an 8-digit code to '),
                 TextSpan(
                   text: email,
                   style: const TextStyle(
@@ -316,12 +316,12 @@ class _Form extends StatelessWidget {
           // OTP field
           _InputField(
             controller: otpCtrl,
-            hintText: '6-digit code',
+            hintText: '8-digit code',
             icon: Icons.pin_outlined,
             keyboardType: TextInputType.number,
-            maxLength: 6,
+            maxLength: 8,
             validator: (v) {
-              if (v == null || v.length != 6) return 'Enter the 6-digit code';
+              if (v == null || v.length != 8) return 'Enter the 8-digit code';
               if (int.tryParse(v) == null) return 'Code must be numbers only';
               return null;
             },

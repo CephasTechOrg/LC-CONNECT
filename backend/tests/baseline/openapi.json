@@ -734,6 +734,18 @@
             "minLength": 1,
             "title": "Body",
             "type": "string"
+          },
+          "client_message_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Message Id"
           }
         },
         "required": [
@@ -747,6 +759,18 @@
           "body": {
             "title": "Body",
             "type": "string"
+          },
+          "client_message_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Message Id"
           },
           "created_at": {
             "format": "date-time",
@@ -2846,6 +2870,7 @@
     },
     "/api/v1/messages/threads/{match_id}": {
       "get": {
+        "description": "Newest-first page of a conversation. Pass the oldest row's (created_at, id) as\n`before_*` to fetch the next older page (keyset pagination).",
         "operationId": "get_thread_api_v1_messages_threads__match_id__get",
         "parameters": [
           {
@@ -2856,6 +2881,52 @@
               "format": "uuid",
               "title": "Match Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "before_created_at",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Before Created At"
+            }
+          },
+          {
+            "in": "query",
+            "name": "before_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Before Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
             }
           }
         ],
@@ -2947,6 +3018,91 @@
           }
         ],
         "summary": "Send Message",
+        "tags": [
+          "messages"
+        ]
+      }
+    },
+    "/api/v1/messages/threads/{match_id}/sync": {
+      "get": {
+        "description": "Oldest-first messages after a cursor \u2014 reconnect catch-up.",
+        "operationId": "sync_thread_endpoint_api_v1_messages_threads__match_id__sync_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "match_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Match Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "after_created_at",
+            "required": true,
+            "schema": {
+              "format": "date-time",
+              "title": "After Created At",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "after_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "After Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MessageRead"
+                  },
+                  "title": "Response Sync Thread Endpoint Api V1 Messages Threads  Match Id  Sync Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Sync Thread Endpoint",
         "tags": [
           "messages"
         ]

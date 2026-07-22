@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/theme/app_theme.dart';
@@ -94,8 +95,10 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
     });
   }
 
-  Future<void> _signOut() async {
-    await ref.read(authNotifierProvider.notifier).logout();
+  Future<void> _backToLogin() async {
+    await ref.read(authNotifierProvider.notifier).cancelEmailConfirmation();
+    if (!mounted) return;
+    context.go('/login');
   }
 
   SnackBar _snackBar(String msg, {required bool isError}) => SnackBar(
@@ -107,13 +110,26 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final email = ref.watch(authNotifierProvider).value?.email ?? '';
+    final notifier = ref.watch(authNotifierProvider.notifier);
+    final email = notifier.pendingEmail ??
+        ref.watch(authNotifierProvider).value?.email ??
+        '';
 
     return Scaffold(
       backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded,
+              size: 18, color: Color(0xFF111827)),
+          onPressed: _backToLogin,
+          tooltip: 'Back to login',
+        ),
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(24, 48, 24, 32),
+          padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
           child: Form(
             key: _formKey,
             child: Column(
@@ -160,9 +176,9 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
                       height: 1.6,
                     ),
                     children: [
-                      const TextSpan(text: 'We sent a 6-digit verification code to\n'),
+                      const TextSpan(text: 'We sent an 8-digit verification code to\n'),
                       TextSpan(
-                        text: email,
+                        text: email.isEmpty ? 'your email' : email,
                         style: const TextStyle(
                           fontWeight: FontWeight.w700,
                           color: Color(0xFF111827),
@@ -220,12 +236,12 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
                 ),
                 const SizedBox(height: 48),
 
-                // Sign out
+                // Back to login
                 Center(
                   child: GestureDetector(
-                    onTap: _signOut,
+                    onTap: _backToLogin,
                     child: Text(
-                      'Wrong account? Sign out',
+                      'Back to login',
                       style: GoogleFonts.dmSans(
                         fontSize: 13,
                         color: const Color(0xFF9CA3AF),
@@ -268,7 +284,7 @@ class _OtpField extends StatelessWidget {
       child: TextFormField(
         controller: controller,
         keyboardType: TextInputType.number,
-        maxLength: 6,
+        maxLength: 8,
         textAlign: TextAlign.center,
         style: GoogleFonts.dmSans(
           fontSize: 28,
@@ -277,12 +293,12 @@ class _OtpField extends StatelessWidget {
           color: const Color(0xFF111827),
         ),
         validator: (v) {
-          if (v == null || v.length != 6) return 'Enter the 6-digit code';
+          if (v == null || v.length != 8) return 'Enter the 8-digit code';
           if (int.tryParse(v) == null) return 'Numbers only';
           return null;
         },
         decoration: InputDecoration(
-          hintText: '······',
+          hintText: '········',
           hintStyle: GoogleFonts.dmSans(
             fontSize: 28,
             letterSpacing: 10,

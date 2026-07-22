@@ -68,22 +68,21 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isVerifyScreen = loc == '/verify-email';
       final isOnboarding = loc == '/onboarding';
 
-      // Pending Supabase email confirmation — allow verify screen
-      if (!isLoggedIn && awaitingEmailConfirmation && isVerifyScreen) {
-        return null;
-      }
-
-      // After signup without session, send user to verify-email
-      if (!isLoggedIn && awaitingEmailConfirmation && !isVerifyScreen) {
+      // Pending Supabase email confirmation — allow verify + public auth screens
+      // so the user can go back to login/register after canceling.
+      if (!isLoggedIn && awaitingEmailConfirmation) {
+        if (isVerifyScreen || isPublicScreen) return null;
         return '/verify-email';
       }
 
       // Not logged in — only public screens allowed
       if (!isLoggedIn && !isPublicScreen) return '/login';
 
-      // Logged in but not verified — gate to verify-email only
-      if (isLoggedIn && !isVerified && !isVerifyScreen) return '/verify-email';
-
+      // Logged in but not verified — allow verify + logout path to login/register
+      if (isLoggedIn && !isVerified) {
+        if (isVerifyScreen || isPublicScreen) return null;
+        return '/verify-email';
+      }
       // Logged in + verified on a public or verify screen → move forward
       if (isLoggedIn && isVerified && (isPublicScreen || isVerifyScreen)) {
         return profileCompleted ? '/home' : '/onboarding';

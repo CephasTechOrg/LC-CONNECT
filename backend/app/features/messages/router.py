@@ -1,13 +1,21 @@
+from datetime import datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.dependencies import require_verified_student
 from app.features.messages.schema import MessageCreate, MessageRead, MessageThreadRead
-from app.features.messages.service import get_match_for_user, message_read, partner_id
+from app.features.messages.service import (
+    get_match_for_user,
+    message_read,
+    page_thread,
+    partner_id,
+    persist_message_idempotent,
+    sync_thread,
+)
 from app.models import Match, Message, Profile, User
 from app.shared.policies import users_are_blocked
 from app.shared.profiles import profile_load_options
@@ -48,9 +56,37 @@ async def list_threads(current_user: User = Depends(require_verified_student), d
 
 
 @router.get('/threads/{match_id}', response_model=list[MessageRead])
-async def get_thread(match_id: UUID, current_user: User = Depends(require_verified_student), db: AsyncSession = Depends(get_db)):
+async def get_thread(
+    match_id: UUID,
+    current_user: User = Depends(require_verified_student),
+    db: AsyncSession = Depends(get_db),
+    before_created_at: datetime | None = Query(default=None),
+    before_id: UUID | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=100),
+):
+    """Newest-first page of a conversation. Pass the oldest row's (created_at, id) as
+    `before_*` to fetch the next older page (keyset pagination)."""
     await get_match_for_user(db, match_id, current_user)
-    messages = (await db.execute(select(Message).where(Message.match_id == match_id).order_by(Message.created_at.asc()))).scalars().all()
+    messages = await page_thread(
+        db, match_id, before_created_at=before_created_at, before_id=before_id, limit=limit
+    )
+    return [message_read(message) for message in messages]
+
+
+@router.get('/threads/{match_id}/sync', response_model=list[MessageRead])
+async def sync_thread_endpoint(
+    match_id: UUID,
+    after_created_at: datetime = Query(...),
+    after_id: UUID = Query(...),
+    current_user: User = Depends(require_verified_student),
+    db: AsyncSession = Depends(get_db),
+    limit: int = Query(default=100, ge=1, le=200),
+):
+    """Oldest-first messages after a cursor — reconnect catch-up."""
+    await get_match_for_user(db, match_id, current_user)
+    messages = await sync_thread(
+        db, match_id, after_created_at=after_created_at, after_id=after_id, limit=limit
+    )
     return [message_read(message) for message in messages]
 
 
@@ -59,8 +95,11 @@ async def send_message(match_id: UUID, payload: MessageCreate, current_user: Use
     match = await get_match_for_user(db, match_id, current_user)
     if await users_are_blocked(db, current_user.id, partner_id(match, current_user)):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='Messaging is blocked')
-    message = Message(match_id=match.id, sender_id=current_user.id, body=payload.body.strip())
-    db.add(message)
-    await db.commit()
-    await db.refresh(message)
+    message, _ = await persist_message_idempotent(
+        db,
+        sender_id=current_user.id,
+        match_id=match.id,
+        body=payload.body.strip(),
+        client_message_id=payload.client_message_id,
+    )
     return message_read(message)

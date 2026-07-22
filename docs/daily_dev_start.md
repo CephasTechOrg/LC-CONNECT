@@ -24,12 +24,19 @@ Application startup complete.
 Uvicorn running on http://0.0.0.0:8000
 ```
 
-### Terminal B — Mobile
+### Terminal B — Mobile (one simulator)
 
 ```bash
+# See what is already running
+xcrun simctl list devices booted
+
+# If nothing is booted, start one (pick any available iPhone name)
+xcrun simctl boot "iPhone 17"
 open -a Simulator
+
 cd /Users/cephas/Projects/LC-CONNECT/mobile
-flutter run
+flutter devices
+flutter run -d <DEVICE_ID>
 ```
 
 Leave this running. Hot keys:
@@ -75,27 +82,89 @@ curl http://localhost:8000/health
 
 Docs: [http://localhost:8000/docs](http://localhost:8000/docs)
 
-### 3. Start the iOS Simulator
+### 3. Start the iOS Simulator(s)
+
+#### List available iPhones
 
 ```bash
+xcrun simctl list devices available | grep iPhone
+```
+
+#### See what is already booted (avoid duplicates)
+
+```bash
+xcrun simctl list devices booted
+```
+
+Example:
+
+```text
+iPhone 17 (63A084EA-565F-465D-B48D-3A5AC02C2A93) (Booted)
+```
+
+#### Boot one device by name
+
+```bash
+xcrun simctl boot "iPhone 17"
 open -a Simulator
 ```
 
-Pick an iPhone device if needed (e.g. **iPhone 17**).
+#### Boot a second, *different* device (two-account / chat testing)
 
-### 4. Start Flutter
+```bash
+# Only boot if it is NOT already in the booted list
+xcrun simctl boot "iPhone 17 Pro"
+open -a Simulator
+xcrun simctl list devices booted
+```
+
+If you see `Unable to boot device in current state: Booted`, that device is already running — skip boot and use its id below.
+
+#### Boot by UUID (most precise)
+
+```bash
+xcrun simctl boot 63A084EA-565F-465D-B48D-3A5AC02C2A93   # iPhone 17 example
+xcrun simctl boot 3317DDEF-EFF2-4754-B96E-864E9C3A2730   # iPhone 17 Pro example
+```
+
+> Device UUIDs are unique to your Mac. Always copy them from `xcrun simctl list devices` on your machine.
+
+#### Shut down a simulator
+
+```bash
+xcrun simctl shutdown 63A084EA-565F-465D-B48D-3A5AC02C2A93
+# or shut down all:
+xcrun simctl shutdown all
+```
+
+### 4. Start Flutter (choose a device by id)
 
 ```bash
 cd /Users/cephas/Projects/LC-CONNECT/mobile
 flutter devices
-flutter run
 ```
 
-If multiple devices appear, pick the iPhone simulator when prompted, or:
+**One phone:**
 
 ```bash
-flutter run -d <device_id>
+flutter run
+# or pin to a specific simulator:
+flutter run -d 63A084EA-565F-465D-B48D-3A5AC02C2A93
 ```
+
+**Two phones (two terminals — different ids):**
+
+```bash
+# Terminal B — phone 1
+cd /Users/cephas/Projects/LC-CONNECT/mobile
+flutter run -d 63A084EA-565F-465D-B48D-3A5AC02C2A93
+
+# Terminal C — phone 2 (different id!)
+cd /Users/cephas/Projects/LC-CONNECT/mobile
+flutter run -d 3317DDEF-EFF2-4754-B96E-864E9C3A2730
+```
+
+Rule: same id twice = same phone. Different ids = two separate simulators.
 
 ---
 
@@ -195,6 +264,6 @@ flutter doctor
 - [ ] Postgres running
 - [ ] Backend terminal: `.venv` activated + uvicorn on `:8000`
 - [ ] `curl http://localhost:8000/health` OK
-- [ ] Simulator open
+- [ ] Checked `xcrun simctl list devices booted` (know which phones are up)
 - [ ] Mobile `.env` points at `http://localhost:8000/api/v1`
-- [ ] `flutter run` on iPhone Simulator
+- [ ] `flutter run -d <id>` on the intended simulator(s)

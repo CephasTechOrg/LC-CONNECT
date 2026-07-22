@@ -8,12 +8,15 @@ from app.shared.schemas import ProfilePublic
 
 class MessageCreate(BaseModel):
     body: str = Field(min_length=1, max_length=2000)
+    # Optional idempotency key; a retry with the same value returns the original message.
+    client_message_id: UUID | None = None
 
 
 class MessageRead(BaseModel):
     id: UUID
     match_id: UUID
     sender_id: UUID
+    client_message_id: UUID | None = None
     body: str
     created_at: datetime
     read_at: datetime | None

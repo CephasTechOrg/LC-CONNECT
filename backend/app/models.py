@@ -1,7 +1,20 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Table, Text, UniqueConstraint, func
+from sqlalchemy import (
+    Boolean,
+    Column,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Table,
+    Text,
+    UniqueConstraint,
+    func,
+    text,
+)
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -134,10 +147,25 @@ class Match(Base):
 
 class Message(Base):
     __tablename__ = 'messages'
+    __table_args__ = (
+        # Idempotency: a sender's client_message_id maps to exactly one server row.
+        # Partial so legacy rows (NULL client_message_id) are exempt.
+        Index(
+            'uq_messages_sender_client',
+            'sender_id',
+            'client_message_id',
+            unique=True,
+            postgresql_where=text('client_message_id IS NOT NULL'),
+        ),
+        # Keyset pagination + reconnect sync: newest-first within a conversation.
+        Index('ix_messages_match_created_id', text('match_id'), text('created_at DESC'), text('id DESC')),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     match_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('matches.id', ondelete='CASCADE'), index=True, nullable=False)
     sender_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('users.id', ondelete='CASCADE'), index=True, nullable=False)
+    # Client-generated idempotency key; NULL for legacy rows, required for new sends.
+    client_message_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     body: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True, nullable=False)
     read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

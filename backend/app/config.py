@@ -33,6 +33,32 @@ class Settings(BaseSettings):
         alias='ALLOWED_EMAIL_DOMAINS',
     )
 
+    # WebSocket real-time gateway (Phase 2). redis_url is the seam for multi-instance
+    # fan-out later; unused while the gateway runs single-instance (in-memory).
+    redis_url: str | None = Field(default=None, alias='REDIS_URL')
+    ws_heartbeat_seconds: int = Field(default=25, alias='WS_HEARTBEAT_SECONDS')
+    ws_auth_timeout_seconds: int = Field(default=10, alias='WS_AUTH_TIMEOUT_SECONDS')
+    ws_idle_timeout_seconds: int = Field(default=90, alias='WS_IDLE_TIMEOUT_SECONDS')
+    ws_max_sockets_per_user: int = Field(default=5, alias='WS_MAX_SOCKETS_PER_USER')
+    ws_max_frame_bytes: int = Field(default=8192, alias='WS_MAX_FRAME_BYTES')
+    ws_send_rate_per_10s: int = Field(default=20, alias='WS_SEND_RATE_PER_10S')
+    ws_typing_rate_per_10s: int = Field(default=10, alias='WS_TYPING_RATE_PER_10S')
+    ws_subscribe_rate_per_10s: int = Field(default=15, alias='WS_SUBSCRIBE_RATE_PER_10S')
+    ws_max_malformed_frames: int = Field(default=10, alias='WS_MAX_MALFORMED_FRAMES')
+    ws_outbox_max_size: int = Field(default=256, alias='WS_OUTBOX_MAX_SIZE')
+
+    @property
+    def environment_slug(self) -> str:
+        """Short env token for Redis channel prefixes (lcconnect:<slug>:...)."""
+        value = self.environment.lower()
+        if value in {'dev', 'development', 'local'}:
+            return 'dev'
+        if value in {'stage', 'staging'}:
+            return 'staging'
+        if value in {'prod', 'production'}:
+            return 'prod'
+        return value
+
     # Email provider: auto | resend | smtp | console
     email_provider: str = Field(default='auto', alias='EMAIL_PROVIDER')
 

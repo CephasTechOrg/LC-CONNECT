@@ -7,6 +7,7 @@ from uuid import UUID
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.features.realtime.runtime import disconnect_user
 from app.models import Activity, User
 
 
@@ -17,6 +18,8 @@ async def suspend_user(db: AsyncSession, user_id: UUID) -> User:
     user.status = 'suspended'
     user.is_active = False
     await db.commit()
+    # Immediately close the suspended user's live sockets (core rule 6/10).
+    await disconnect_user(user_id)
     return user
 
 

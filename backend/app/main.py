@@ -11,6 +11,7 @@ from app.features.discovery import router as discovery_router
 from app.features.lookups import router as lookups_router
 from app.features.messages import router as messages_router
 from app.features.profiles import router as profiles_router
+from app.features.realtime import router as realtime_router
 from app.features.safety import router as safety_router
 from app.routers import auth
 
@@ -51,3 +52,4 @@ app.include_router(messages_router, prefix=settings.api_v1_prefix)
 app.include_router(activities_router, prefix=settings.api_v1_prefix)
 app.include_router(safety_router, prefix=settings.api_v1_prefix)
 app.include_router(admin_router, prefix=settings.api_v1_prefix)
+app.include_router(realtime_router, prefix=settings.api_v1_prefix)

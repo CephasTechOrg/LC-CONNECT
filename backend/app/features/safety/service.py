@@ -7,6 +7,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.features.realtime.runtime import revoke_pair_access
 from app.features.safety.schema import ReportCreate
 from app.models import Block, Report
 
@@ -16,6 +17,8 @@ async def add_block(db: AsyncSession, blocker_id: UUID, blocked_id: UUID) -> Non
     if existing is None:
         db.add(Block(blocker_id=blocker_id, blocked_id=blocked_id))
         await db.commit()
+        # Immediately drop any live conversation the two users share (core rule 6/10).
+        await revoke_pair_access(blocker_id, blocked_id)
 
 
 async def remove_block(db: AsyncSession, blocker_id: UUID, blocked_id: UUID) -> None:
