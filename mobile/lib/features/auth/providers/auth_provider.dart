@@ -49,6 +49,25 @@ class AuthNotifier extends AsyncNotifier<AuthUser?> {
 
   @override
   Future<AuthUser?> build() async {
+    // React to Supabase session changes: keep the stored token fresh after a
+    // background refresh, and flip to signed-out (→ router redirects to login)
+    // when the session is revoked or the refresh token expires.
+    final sub = _auth.onAuthStateChange.listen((data) {
+      switch (data.event) {
+        case AuthChangeEvent.tokenRefreshed:
+          final refreshed = data.session;
+          if (refreshed != null) {
+            ref.read(secureStorageProvider).saveToken(refreshed.accessToken);
+          }
+        case AuthChangeEvent.signedOut:
+          ref.read(secureStorageProvider).deleteToken();
+          state = const AsyncData(null);
+        default:
+          break;
+      }
+    });
+    ref.onDispose(sub.cancel);
+
     final session = _auth.currentSession;
     if (session == null) {
       await ref.read(secureStorageProvider).deleteToken();

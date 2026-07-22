@@ -177,16 +177,16 @@ lib/
 
 ```bash
 git clone <repo-url>
-cd lc_connect
+cd LC-CONNECT
 ```
 
 ### Option B — Create new local repo
 
 ```bash
-mkdir lc_connect
-cd lc_connect
+mkdir LC-CONNECT
+cd LC-CONNECT
 git init
-mkdir backend mobile docs infra
+mkdir backend mobile docs supabase
 ```
 
 Add a root `.gitignore`:

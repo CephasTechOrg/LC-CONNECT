@@ -29,7 +29,7 @@ Verified:
 
 | Phase | Status |
 |-------|--------|
-| **0 — Baseline** | Mostly done (docs, branch, local DB, Alembic). Missing: dependency lock + CI |
+| **0 — Baseline** | Done (docs, branch, local DB, Alembic, **CI + backend test harness + line-limit enforcement**). Missing: dependency lock only |
 | **1 — Supabase Auth** | **Core done** (JWT verify, bootstrap, Flutter Auth). Open: wire verified-student on routes, deep links, retire legacy auth, tests |
 | **2+ — WebSocket / Redis / messages** | Not started |
 
@@ -46,12 +46,12 @@ Full item checklist: [`todo_auth_websocket_security.md`](./todo_auth_websocket_s
 
 ## Remaining Phase 1 hardening (do before / early in Phase 2)
 
-1. **Wire `require_verified_student`** on student REST routers (discovery, connections, messages, activities, etc.) — dependency exists but is not applied everywhere yet  
-2. **Auth tests** for bootstrap, invalid/expired tokens, suspended users  
+1. ~~**Wire `require_verified_student`** on student REST routers~~ — ✅ **Done.** Applied to all endpoints in profiles, discovery, connections, messages, activities, safety. Unverified users now get `403 Verified student required`. (Not gated, by design: `/auth/bootstrap`, `/auth/me`, public `/lookups`; admin uses `require_admin_aal2`.)  
+2. **Auth tests** — ✅ mostly done: `backend/tests/test_auth_guards.py` covers verified/unverified, active/suspended, admin-aal2 (all cases), missing-token 401, and route-wiring (unverified → 403 on every student GET route). Still open: bootstrap concurrency + real expired/invalid token cases.  
 3. **Token refresh story** for long sessions (critical once WebSockets land)  
 4. **Recovery deep links** for iOS if password reset should open the app  
 5. Keep `AUTH_LEGACY_ENABLED=true` until mobile is fully on Supabase Auth in all environments, then retire custom auth columns  
-6. Optional: CI + locked Python deps
+6. Locked Python deps (`requirements.lock`) — CI itself is now in place (`.github/workflows/ci.yml`)
 
 ## Do not start yet
 

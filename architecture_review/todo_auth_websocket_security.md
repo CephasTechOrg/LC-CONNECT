@@ -10,7 +10,9 @@
 - [x] Daily start docs (`docs/daily_dev_start.md`)
 - [x] Cursor rules (architecture + file structure)
 - [ ] Dependency lock strategy (`requirements.lock` / pinned CI)
-- [ ] CI pipeline
+- [x] CI pipeline (`.github/workflows/ci.yml` — line limits + backend snapshot tests + `flutter analyze`)
+- [x] Backend regression harness (`backend/tests/` — OpenAPI snapshot, route inventory, import smoke)
+- [x] File-length enforcement (`scripts/check_line_limits.py`, 600 hard cap; pre-push hook + CI)
 
 ## Supabase Auth (Phase 1)
 
@@ -27,14 +29,14 @@
 - [x] Dio uses current Supabase access token
 - [x] `require_verified_student` dependency **exists**
 - [x] Admin `require_admin_aal2` wired on admin routes
-- [ ] Apply `require_verified_student` to student-protected REST routes (discovery, connections, messages, etc.)
+- [x] Apply `require_verified_student` to student-protected REST routes (profiles, discovery, connections, messages, activities, safety — all endpoints; unverified users get 403)
 - [ ] Token refresh / reconnect behavior (needed especially for WebSockets in Phase 2)
 - [ ] Recovery deep links (iOS URL scheme / universal links) fully configured
 - [ ] Formal existing-user linking runbook / backfill script
 - [ ] Retire custom auth (`AUTH_LEGACY_ENABLED=false`)
 - [ ] Drop old credential columns (`password_hash`, OTP fields)
 - [ ] Rotate old custom JWT secret
-- [ ] Auth automated tests (bootstrap concurrency, token cases)
+- [~] Auth automated tests — done: verified/unverified, active/suspended, admin-aal2 (all cases), missing-token 401, and route-wiring (unverified → 403 on all student GET routes) in `tests/test_auth_guards.py`. Still open: bootstrap concurrency + real expired/invalid token cases.
 
 ## WebSocket (Phase 2+)
 
@@ -138,7 +140,7 @@
 
 - [ ] Supabase token tests
 - [ ] Bootstrap concurrency
-- [ ] Verified/suspended tests
+- [x] Verified/suspended tests (`tests/test_auth_guards.py`)
 - [ ] WebSocket auth tests
 - [ ] Subscription authorization
 - [ ] Active-chat block revocation

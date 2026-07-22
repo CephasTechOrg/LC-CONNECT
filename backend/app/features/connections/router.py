@@ -6,7 +6,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.dependencies import get_current_user
+from app.dependencies import require_verified_student
 from app.features.connections.schema import (
     ConnectionRequestCreate,
     ConnectionRequestEnriched,
@@ -23,7 +23,7 @@ router = APIRouter(prefix='/connections', tags=['connections'])
 
 
 @router.post('/request', response_model=ConnectionRequestRead, status_code=status.HTTP_201_CREATED)
-async def send_connection_request(payload: ConnectionRequestCreate, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)) -> ConnectionRequestRead:
+async def send_connection_request(payload: ConnectionRequestCreate, current_user: User = Depends(require_verified_student), db: AsyncSession = Depends(get_db)) -> ConnectionRequestRead:
     if payload.receiver_id == current_user.id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='You cannot connect with yourself')
     receiver = await db.get(User, payload.receiver_id)
@@ -77,19 +77,19 @@ async def _enrich(db: AsyncSession, requests: list[ConnectionRequest], partner_u
 
 
 @router.get('/incoming', response_model=list[ConnectionRequestEnriched])
-async def incoming_requests(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def incoming_requests(current_user: User = Depends(require_verified_student), db: AsyncSession = Depends(get_db)):
     requests = list((await db.execute(select(ConnectionRequest).where(ConnectionRequest.receiver_id == current_user.id, ConnectionRequest.status == 'pending').order_by(ConnectionRequest.created_at.desc()))).scalars().all())
     return await _enrich(db, requests, lambda r: r.sender_id)
 
 
 @router.get('/outgoing', response_model=list[ConnectionRequestEnriched])
-async def outgoing_requests(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def outgoing_requests(current_user: User = Depends(require_verified_student), db: AsyncSession = Depends(get_db)):
     requests = list((await db.execute(select(ConnectionRequest).where(ConnectionRequest.sender_id == current_user.id, ConnectionRequest.status == 'pending').order_by(ConnectionRequest.created_at.desc()))).scalars().all())
     return await _enrich(db, requests, lambda r: r.receiver_id)
 
 
 @router.post('/{request_id}/accept', response_model=MatchRead)
-async def accept_request(request_id: UUID, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def accept_request(request_id: UUID, current_user: User = Depends(require_verified_student), db: AsyncSession = Depends(get_db)):
     request = await db.get(ConnectionRequest, request_id)
     if request is None or request.receiver_id != current_user.id or request.status != 'pending':
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Pending request not found')
@@ -112,7 +112,7 @@ async def accept_request(request_id: UUID, current_user: User = Depends(get_curr
 
 
 @router.post('/{request_id}/decline', response_model=ConnectionRequestRead)
-async def decline_request(request_id: UUID, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def decline_request(request_id: UUID, current_user: User = Depends(require_verified_student), db: AsyncSession = Depends(get_db)):
     request = await db.get(ConnectionRequest, request_id)
     if request is None or request.receiver_id != current_user.id or request.status != 'pending':
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Pending request not found')
@@ -124,7 +124,7 @@ async def decline_request(request_id: UUID, current_user: User = Depends(get_cur
 
 
 @router.get('/matches', response_model=list[MatchRead])
-async def list_matches(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def list_matches(current_user: User = Depends(require_verified_student), db: AsyncSession = Depends(get_db)):
     matches = list((await db.execute(select(Match).where(or_(Match.user_a_id == current_user.id, Match.user_b_id == current_user.id)).order_by(Match.created_at.desc()))).scalars().all())
 
     if not matches:

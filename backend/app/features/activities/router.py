@@ -6,7 +6,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.dependencies import get_current_user
+from app.dependencies import require_verified_student
 from app.features.activities.schema import ActivityCreate, ActivityRead
 from app.features.activities.service import activity_count, activity_read, has_joined
 from app.models import Activity, ActivityParticipant, User
@@ -15,7 +15,7 @@ router = APIRouter(prefix='/activities', tags=['activities'])
 
 
 @router.post('', response_model=ActivityRead, status_code=status.HTTP_201_CREATED)
-async def create_activity(payload: ActivityCreate, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def create_activity(payload: ActivityCreate, current_user: User = Depends(require_verified_student), db: AsyncSession = Depends(get_db)):
     activity = Activity(
         creator_id=current_user.id,
         title=payload.title.strip(),
@@ -35,7 +35,7 @@ async def create_activity(payload: ActivityCreate, current_user: User = Depends(
 
 
 @router.get('', response_model=list[ActivityRead])
-async def list_activities(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db), category: str | None = Query(default=None), limit: int = Query(default=30, ge=1, le=100)):
+async def list_activities(current_user: User = Depends(require_verified_student), db: AsyncSession = Depends(get_db), category: str | None = Query(default=None), limit: int = Query(default=30, ge=1, le=100)):
     count_subq = select(func.count(ActivityParticipant.id)).where(ActivityParticipant.activity_id == Activity.id).scalar_subquery()
     joined_subq = select(ActivityParticipant.id).where(ActivityParticipant.activity_id == Activity.id, ActivityParticipant.user_id == current_user.id).exists().correlate(Activity)
 
@@ -53,7 +53,7 @@ async def list_activities(current_user: User = Depends(get_current_user), db: As
 
 
 @router.get('/{activity_id}', response_model=ActivityRead)
-async def get_activity(activity_id: UUID, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def get_activity(activity_id: UUID, current_user: User = Depends(require_verified_student), db: AsyncSession = Depends(get_db)):
     activity = await db.get(Activity, activity_id)
     if activity is None or activity.is_cancelled:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Activity not found')
@@ -61,7 +61,7 @@ async def get_activity(activity_id: UUID, current_user: User = Depends(get_curre
 
 
 @router.post('/{activity_id}/join', response_model=ActivityRead)
-async def join_activity(activity_id: UUID, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def join_activity(activity_id: UUID, current_user: User = Depends(require_verified_student), db: AsyncSession = Depends(get_db)):
     activity = await db.get(Activity, activity_id)
     if activity is None or activity.is_cancelled:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Activity not found')
@@ -75,7 +75,7 @@ async def join_activity(activity_id: UUID, current_user: User = Depends(get_curr
 
 
 @router.delete('/{activity_id}/leave', response_model=ActivityRead)
-async def leave_activity(activity_id: UUID, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def leave_activity(activity_id: UUID, current_user: User = Depends(require_verified_student), db: AsyncSession = Depends(get_db)):
     activity = await db.get(Activity, activity_id)
     if activity is None or activity.is_cancelled:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Activity not found')

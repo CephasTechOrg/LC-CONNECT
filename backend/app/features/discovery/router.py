@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.database import get_db
-from app.dependencies import get_current_user
+from app.dependencies import require_verified_student
 from app.features.discovery.schema import DiscoveryCard
 from app.features.discovery.service import calculate_match
 from app.models import Block, ConnectionRequest, Match, Profile, User, UserLanguage
@@ -15,7 +15,7 @@ router = APIRouter(prefix='/discovery', tags=['discovery'])
 
 
 @router.get('/cards', response_model=list[DiscoveryCard])
-async def get_discovery_cards(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db), limit: int = Query(default=20, ge=1, le=50)) -> list[DiscoveryCard]:
+async def get_discovery_cards(current_user: User = Depends(require_verified_student), db: AsyncSession = Depends(get_db), limit: int = Query(default=20, ge=1, le=50)) -> list[DiscoveryCard]:
     current_profile = await get_profile_by_user_id(db, current_user.id)
 
     blocks = (await db.execute(select(Block).where(or_(Block.blocker_id == current_user.id, Block.blocked_id == current_user.id)))).scalars().all()
