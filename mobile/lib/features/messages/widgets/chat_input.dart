@@ -83,6 +83,37 @@ class _InputBar extends StatelessWidget {
   }
 }
 
+// ── Connection banner ─────────────────────────────────────────────
+class _ConnectionBanner extends StatelessWidget {
+  final ValueListenable<RealtimeStatus> status;
+  const _ConnectionBanner({required this.status});
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<RealtimeStatus>(
+      valueListenable: status,
+      builder: (context, value, _) {
+        final (String? label, Color color) = switch (value) {
+          RealtimeStatus.ready => (null, AppColors.primary),
+          RealtimeStatus.disconnected => ('Offline — reconnecting…', AppColors.textMuted),
+          _ => ('Connecting…', AppColors.textMuted),
+        };
+        if (label == null) return const SizedBox.shrink();
+        return Container(
+          width: double.infinity,
+          color: color.withAlpha(30),
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.dmSans(fontSize: 11, color: color, fontWeight: FontWeight.w500),
+          ),
+        );
+      },
+    );
+  }
+}
+
 // ── Typing indicator ──────────────────────────────────────────────
 class _TypingIndicator extends StatelessWidget {
   final String name;

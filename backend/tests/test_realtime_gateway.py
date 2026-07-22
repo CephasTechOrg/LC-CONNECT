@@ -22,6 +22,21 @@ class _User:
         self.id = uuid4()
 
 
+class _Match:
+    def __init__(self, user_a_id, user_b_id) -> None:
+        self.user_a_id = user_a_id
+        self.user_b_id = user_b_id
+
+
+def _recv_type(ws, wanted, tries=6):
+    """Read frames until one of `wanted` type arrives (skips interleaved events)."""
+    for _ in range(tries):
+        frame = ws.receive_json()
+        if frame['type'] == wanted:
+            return frame
+    raise AssertionError(f'did not receive {wanted}')
+
+
 def _make_message(match_id, sender_id, client_message_id, body):
     return Message(
         id=uuid4(),
@@ -46,7 +61,7 @@ def happy_auth(monkeypatch):
         return user
 
     async def ok_authorize(db, user_id, match_id):
-        return object()
+        return _Match(user_a_id=user.id, user_b_id=uuid4())
 
     monkeypatch.setattr(service, 'authenticate', ok_authenticate)
     monkeypatch.setattr(service, 'recheck_account', ok_recheck)
@@ -147,13 +162,39 @@ def test_duplicate_send_returns_same_ack(happy_auth, monkeypatch):
         assert ws.receive_json()['type'] == 'auth.ok'
 
         ws.send_json(payload)
-        ack1 = ws.receive_json()
+        ack1 = _recv_type(ws, 'message.ack')  # skips the conversation.updated frame
         ws.send_json({**payload, 'request_id': str(uuid4())})
-        ack2 = ws.receive_json()
+        ack2 = _recv_type(ws, 'message.ack')
 
-    assert ack1['type'] == 'message.ack' and ack1['duplicate'] is False
-    assert ack2['type'] == 'message.ack' and ack2['duplicate'] is True
+    assert ack1['duplicate'] is False
+    assert ack2['duplicate'] is True
     assert ack1['message']['id'] == ack2['message']['id']  # idempotent
+
+
+def test_send_emits_conversation_updated_on_user_channel(happy_auth, monkeypatch):
+    # A single socket avoids TestClient's concurrent-websocket deadlock; the gateway
+    # publishes conversation.updated to BOTH participants' user channels, so the sender
+    # receives it on its own user channel — proving publish_to_user is wired.
+    async def persist(db, *, sender_id, match_id, body, client_message_id):
+        return _make_message(match_id, sender_id, client_message_id, body), True
+
+    monkeypatch.setattr('app.features.realtime.gateway.persist_message_idempotent', persist)
+
+    conv = uuid4()
+    with _client().websocket_connect('/api/v1/ws') as ws:
+        ws.send_json({'type': 'auth', 'access_token': 'good'})
+        assert ws.receive_json()['type'] == 'auth.ok'
+        ws.send_json({
+            'type': 'message.send',
+            'request_id': str(uuid4()),
+            'conversation_id': str(conv),
+            'client_message_id': str(uuid4()),
+            'body': 'hi',
+        })
+        updated = _recv_type(ws, 'conversation.updated')
+
+    assert updated['conversation_id'] == str(conv)
+    assert updated['message']['body'] == 'hi'
 
 
 def test_malformed_frame_gets_error(happy_auth):

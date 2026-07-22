@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/api/api_client.dart';
+import '../../../core/realtime/realtime_client.dart';
+import '../../../core/realtime/ws_protocol.dart';
 import '../../auth/providers/auth_provider.dart';
 
 // ── Message partner (subset of ProfilePublic) ─────────────────────
@@ -44,32 +47,49 @@ class MessagePartner {
 }
 
 // ── Chat message ──────────────────────────────────────────────────
+enum MessageStatus { sending, sent, failed }
+
 class ChatMessage {
   final String id;
   final String matchId;
   final String senderId;
+  final String? clientMessageId;
   final String body;
   final DateTime createdAt;
   final DateTime? readAt;
+  final MessageStatus status;
 
   const ChatMessage({
     required this.id,
     required this.matchId,
     required this.senderId,
+    this.clientMessageId,
     required this.body,
     required this.createdAt,
     this.readAt,
+    this.status = MessageStatus.sent,
   });
 
   factory ChatMessage.fromJson(Map<String, dynamic> j) => ChatMessage(
         id: j['id'] as String,
-        matchId: j['match_id'] as String,
+        matchId: (j['match_id'] ?? j['conversation_id']) as String,
         senderId: j['sender_id'] as String,
+        clientMessageId: j['client_message_id'] as String?,
         body: j['body'] as String,
         createdAt: DateTime.parse(j['created_at'] as String),
-        readAt: j['read_at'] != null
-            ? DateTime.parse(j['read_at'] as String)
-            : null,
+        readAt: j['read_at'] != null ? DateTime.parse(j['read_at'] as String) : null,
+        status: MessageStatus.sent,
+      );
+
+  ChatMessage copyWith({String? id, DateTime? readAt, MessageStatus? status}) => ChatMessage(
+        id: id ?? this.id,
+        matchId: matchId,
+        senderId: senderId,
+        clientMessageId: clientMessageId,
+        body: body,
+        createdAt: createdAt,
+        readAt: readAt ?? this.readAt,
+        status: status ?? this.status,
       );
 }
 
@@ -103,51 +123,35 @@ final threadsNotifierProvider =
         ThreadsNotifier.new);
 
 class ThreadsNotifier extends AsyncNotifier<List<MessageThread>> {
-  RealtimeChannel? _channel;
+  StreamSubscription<InboundEvent>? _sub;
 
   @override
   Future<List<MessageThread>> build() async {
     ref.watch(authNotifierProvider);
     final client = ref.watch(apiClientProvider);
+    // Watching the client ensures the socket connects; user-channel
+    // `conversation.updated` events keep this list live (no Supabase Realtime).
+    final realtime = ref.watch(realtimeClientProvider);
+    _sub = realtime.events.listen((event) {
+      if (event is ConversationUpdated) _onConversationUpdated(event);
+    });
+    ref.onDispose(() => _sub?.cancel());
+
     final response = await client.dio.get('/messages/threads');
-    final threads = (response.data as List)
+    return (response.data as List)
         .map((j) => MessageThread.fromJson(j as Map<String, dynamic>))
         .where((t) => t.partner != null)
         .toList();
-
-    _subscribeToNewMessages();
-    ref.onDispose(() {
-      _channel?.unsubscribe();
-      _channel = null;
-    });
-
-    return threads;
   }
 
-  void _subscribeToNewMessages() {
-    _channel?.unsubscribe();
-    _channel = null;
-    try {
-      _channel = Supabase.instance.client
-          .channel('thread_list_messages')
-          .onPostgresChanges(
-            event: PostgresChangeEvent.insert,
-            schema: 'public',
-            table: 'messages',
-            callback: (payload) => _onNewMessage(payload.newRecord),
-          )
-          .subscribe();
-    } catch (_) {}
-  }
-
-  void _onNewMessage(Map<String, dynamic> record) {
+  void _onConversationUpdated(ConversationUpdated event) {
     final current = state.asData?.value;
     if (current == null) return;
 
-    final msg = ChatMessage.fromJson(record);
-    final idx = current.indexWhere((t) => t.matchId == msg.matchId);
-    if (idx == -1) return;
+    final idx = current.indexWhere((t) => t.matchId == event.conversationId);
+    if (idx == -1) return; // thread not loaded (e.g. brand-new match) — refreshed on return
 
+    final msg = ChatMessage.fromJson(event.message);
     final updated = List<MessageThread>.from(current);
     updated[idx] = MessageThread(
       matchId: current[idx].matchId,

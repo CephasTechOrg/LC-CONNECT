@@ -73,6 +73,24 @@ async def test_deliver_to_empty_conversation_is_noop():
     assert await mgr.deliver_to_conversation(uuid4(), {'x': 1}) == 0
 
 
+
+async def test_deliver_to_user_reaches_all_their_devices():
+    mgr = ConnectionManager()
+    user, other = uuid4(), uuid4()
+    sock1, sock2 = FakeSocket(), FakeSocket()
+    mgr.register(sock1, user)
+    mgr.register(sock2, user)
+    other_conn = mgr.register(FakeSocket(), other)
+
+    reached = mgr.deliver_to_user(user, {'type': 'conversation.updated'})
+    await _tick()
+
+    assert reached == 2
+    assert sock1.sent and sock2.sent
+    assert mgr.deliver_to_user(uuid4(), {'x': 1}) == 0  # unknown user → noop
+    await mgr.unregister(other_conn)
+
+
 # ── revocation ────────────────────────────────────────────────────────────────
 
 async def test_revoke_pair_revokes_shared_conversation():

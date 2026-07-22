@@ -45,6 +45,7 @@ dependencies:
   flutter_dotenv: ^6.0.1
   google_fonts: ^8.1.0
   supabase_flutter: ^2.8.0
+  web_socket_channel: ^3.0.3
 
 dev_dependencies:
   flutter_test:

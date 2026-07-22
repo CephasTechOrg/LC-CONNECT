@@ -1,11 +1,13 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/api/api_client.dart';
+import '../../../core/realtime/realtime_client.dart';
+import '../../../core/realtime/ws_protocol.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/avatar_widget.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -27,151 +29,294 @@ class ChatScreen extends ConsumerStatefulWidget {
 }
 
 class _ChatScreenState extends ConsumerState<ChatScreen> {
+  static const _pageSize = 50;
+  static const _sendTimeout = Duration(seconds: 8);
+
   final _inputController = TextEditingController();
   final _scrollController = ScrollController();
-  List<ChatMessage> _messages = [];
-  final _seenIds = <String>{};
+  final List<ChatMessage> _messages = []; // ascending (oldest → newest)
+  final _seenServerIds = <String>{};
+  final _sendTimers = <String, Timer>{}; // clientMessageId → fail-after timer
+
   bool _loading = true;
-  bool _sending = false;
+  bool _loadingOlder = false;
+  bool _hasMore = true;
   bool _partnerTyping = false;
   String _currentUserId = '';
-  RealtimeChannel? _channel;
-  Timer? _typingTimer;
-  Timer? _typingBroadcastDebounce;
+  DateTime _lastTypingSent = DateTime.fromMillisecondsSinceEpoch(0);
+
+  StreamSubscription<InboundEvent>? _eventsSub;
+  StreamSubscription<void>? _reconnectSub;
+  Timer? _typingResetTimer;
+  Timer? _typingStopTimer;
+
+  RealtimeClient get _rt => ref.read(realtimeClientProvider);
 
   @override
   void initState() {
     super.initState();
     _currentUserId = ref.read(authNotifierProvider).asData?.value?.id ?? '';
-    _fetchMessages();
-    _subscribeToMessages();
+    _rt.subscribe(widget.matchId);
+    _eventsSub = _rt.events.listen(_onEvent);
+    _reconnectSub = _rt.reconnected.listen((_) => _syncAfterReconnect());
+    _scrollController.addListener(_onScroll);
+    _loadInitial();
   }
 
   @override
   void dispose() {
-    _channel?.unsubscribe();
-    _typingTimer?.cancel();
-    _typingBroadcastDebounce?.cancel();
+    _rt.unsubscribe(widget.matchId);
+    _eventsSub?.cancel();
+    _reconnectSub?.cancel();
+    _typingResetTimer?.cancel();
+    _typingStopTimer?.cancel();
+    for (final t in _sendTimers.values) {
+      t.cancel();
+    }
     _inputController.dispose();
     _scrollController.dispose();
     super.dispose();
   }
 
-  void _subscribeToMessages() {
-    try {
-      _channel = Supabase.instance.client
-          .channel('messages:${widget.matchId}')
-          .onPostgresChanges(
-            event: PostgresChangeEvent.insert,
-            schema: 'public',
-            table: 'messages',
-            // No server-side UUID filter — UUID eq filter silently fails in
-            // some Supabase Realtime versions. RLS already restricts events
-            // to the user's own conversations; we filter by match_id here.
-            callback: (payload) {
-              if (!mounted) return;
-              final record = payload.newRecord;
-              if (record['match_id'] != widget.matchId) return;
-              final msg = ChatMessage.fromJson(record);
-              if (_seenIds.contains(msg.id)) return;
-              setState(() {
-                _seenIds.add(msg.id);
-                _messages.add(msg);
-              });
-              _scrollToBottom();
-            },
-          )
-          .onBroadcast(
-            event: 'typing',
-            callback: (_) {
-              if (!mounted) return;
-              setState(() => _partnerTyping = true);
-              _typingTimer?.cancel();
-              _typingTimer = Timer(const Duration(seconds: 3), () {
-                if (mounted) setState(() => _partnerTyping = false);
-              });
-            },
-          )
-          .subscribe();
-    } catch (_) {
-      // Realtime unavailable; messages delivered via REST only
-    }
-  }
+  // ── history (paginated REST) ──────────────────────────────────────
 
-  void _onUserTyping() {
-    _typingBroadcastDebounce?.cancel();
-    _typingBroadcastDebounce = Timer(const Duration(milliseconds: 500), () {
-      _channel?.sendBroadcastMessage(
-        event: 'typing',
-        payload: {'user_id': _currentUserId},
-      );
-    });
-  }
-
-  Future<void> _fetchMessages() async {
+  Future<void> _loadInitial() async {
     try {
-      final client = ref.read(apiClientProvider);
-      final response =
-          await client.dio.get('/messages/threads/${widget.matchId}');
+      final resp = await ref
+          .read(apiClientProvider)
+          .dio
+          .get('/messages/threads/${widget.matchId}', queryParameters: {'limit': _pageSize});
       if (!mounted) return;
-      final msgs = (response.data as List)
-          .map((j) => ChatMessage.fromJson(j as Map<String, dynamic>))
-          .toList();
+      final page = _parsePage(resp.data as List); // newest-first → ascending
       setState(() {
-        _messages = msgs;
-        _seenIds.addAll(msgs.map((m) => m.id));
+        _messages
+          ..clear()
+          ..addAll(page);
+        _seenServerIds.addAll(page.map((m) => m.id));
+        _hasMore = page.length >= _pageSize;
         _loading = false;
       });
       _scrollToBottom(jump: true);
-    } catch (e) {
+      _sendRead();
+    } catch (_) {
       if (mounted) setState(() => _loading = false);
     }
   }
 
-  Future<void> _send() async {
-    final text = _inputController.text.trim();
-    if (text.isEmpty || _sending) return;
-    _inputController.clear();
-    setState(() => _sending = true);
+  Future<void> _loadOlder() async {
+    if (_loadingOlder || !_hasMore || _messages.isEmpty) return;
+    final oldest = _messages.first;
+    if (oldest.id.startsWith('local:')) return; // no server cursor yet
+    _loadingOlder = true;
     try {
-      final client = ref.read(apiClientProvider);
-      final response = await client.dio.post(
+      final resp = await ref.read(apiClientProvider).dio.get(
         '/messages/threads/${widget.matchId}',
-        data: {'body': text},
+        queryParameters: {
+          'before_created_at': oldest.createdAt.toUtc().toIso8601String(),
+          'before_id': oldest.id,
+          'limit': _pageSize,
+        },
       );
       if (!mounted) return;
-      final msg = ChatMessage.fromJson(response.data as Map<String, dynamic>);
+      final older = _parsePage(resp.data as List).where((m) => !_seenServerIds.contains(m.id)).toList();
       setState(() {
-        _sending = false;
-        // Add immediately; deduplicate if realtime also delivers it
-        if (!_seenIds.contains(msg.id)) {
-          _seenIds.add(msg.id);
-          _messages.add(msg);
-        }
+        _messages.insertAll(0, older);
+        _seenServerIds.addAll(older.map((m) => m.id));
+        _hasMore = older.length >= _pageSize;
       });
-      _scrollToBottom();
-    } catch (e) {
+    } catch (_) {
+      // keep _hasMore; user can retry by scrolling
+    } finally {
+      _loadingOlder = false;
+    }
+  }
+
+  Future<void> _syncAfterReconnect() async {
+    _rt.subscribe(widget.matchId);
+    final newest = _newestServerMessage();
+    if (newest == null) return _loadInitial();
+    try {
+      final resp = await ref.read(apiClientProvider).dio.get(
+        '/messages/threads/${widget.matchId}/sync',
+        queryParameters: {
+          'after_created_at': newest.createdAt.toUtc().toIso8601String(),
+          'after_id': newest.id,
+          'limit': 100,
+        },
+      );
       if (!mounted) return;
-      setState(() => _sending = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: const Text('Failed to send message'),
-        backgroundColor: AppColors.error,
-      ));
+      for (final msg in _parseAscending(resp.data as List)) {
+        _mergeIncoming(msg);
+      }
+    } catch (_) {}
+  }
+
+  ChatMessage? _newestServerMessage() {
+    for (var i = _messages.length - 1; i >= 0; i--) {
+      if (!_messages[i].id.startsWith('local:')) return _messages[i];
+    }
+    return null;
+  }
+
+  List<ChatMessage> _parsePage(List<dynamic> raw) => _parseAscending(raw);
+
+  List<ChatMessage> _parseAscending(List<dynamic> raw) {
+    final list = raw.map((j) => ChatMessage.fromJson(j as Map<String, dynamic>)).toList();
+    list.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+    return list;
+  }
+
+  // ── live events ───────────────────────────────────────────────────
+
+  void _onEvent(InboundEvent event) {
+    if (!mounted) return;
+    switch (event) {
+      case MessageCreated(:final conversationId, :final message) when conversationId == widget.matchId:
+        _mergeIncoming(ChatMessage.fromJson(message));
+        _sendRead();
+      case MessageAck(:final message) when message['conversation_id'] == widget.matchId:
+        _reconcileAck(ChatMessage.fromJson(message));
+      case TypingEvent(:final conversationId, :final active) when conversationId == widget.matchId:
+        _setPartnerTyping(active);
+      case ReadReceipt(:final conversationId) when conversationId == widget.matchId:
+        _markMineRead();
+      default:
+        break;
+    }
+  }
+
+  void _mergeIncoming(ChatMessage msg) {
+    if (_seenServerIds.contains(msg.id)) return;
+    // Our own message echoed back — already reconciled via ack.
+    if (msg.clientMessageId != null &&
+        _messages.any((m) => m.clientMessageId == msg.clientMessageId)) {
+      _seenServerIds.add(msg.id);
+      return;
+    }
+    setState(() {
+      _seenServerIds.add(msg.id);
+      _messages.add(msg);
+      _messages.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+    });
+    _scrollToBottom();
+  }
+
+  void _reconcileAck(ChatMessage server) {
+    final cid = server.clientMessageId;
+    final idx = cid == null ? -1 : _messages.indexWhere((m) => m.clientMessageId == cid);
+    _sendTimers.remove(cid)?.cancel();
+    setState(() {
+      _seenServerIds.add(server.id);
+      if (idx == -1) {
+        if (!_messages.any((m) => m.id == server.id)) _messages.add(server);
+      } else {
+        _messages[idx] = server.copyWith(status: MessageStatus.sent);
+      }
+      _messages.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+    });
+  }
+
+  void _setPartnerTyping(bool active) {
+    _typingResetTimer?.cancel();
+    setState(() => _partnerTyping = active);
+    if (active) {
+      _typingResetTimer = Timer(const Duration(seconds: 4), () {
+        if (mounted) setState(() => _partnerTyping = false);
+      });
+    }
+  }
+
+  void _markMineRead() {
+    setState(() {
+      for (var i = 0; i < _messages.length; i++) {
+        final m = _messages[i];
+        if (m.senderId == _currentUserId && m.readAt == null) {
+          _messages[i] = m.copyWith(readAt: DateTime.now());
+        }
+      }
+    });
+  }
+
+  // ── send / typing / read ──────────────────────────────────────────
+
+  void _send() {
+    final text = _inputController.text.trim();
+    if (text.isEmpty) return;
+    _inputController.clear();
+    _typingStopTimer?.cancel();
+    _rt.sendTyping(widget.matchId, active: false);
+    final clientId = uuidV4();
+    final optimistic = ChatMessage(
+      id: 'local:$clientId',
+      matchId: widget.matchId,
+      senderId: _currentUserId,
+      clientMessageId: clientId,
+      body: text,
+      createdAt: DateTime.now(),
+      status: MessageStatus.sending,
+    );
+    setState(() => _messages.add(optimistic));
+    _dispatchSend(clientId, text);
+    _scrollToBottom();
+  }
+
+  void _dispatchSend(String clientId, String body) {
+    _rt.sendMessage(conversationId: widget.matchId, clientMessageId: clientId, body: body);
+    _sendTimers[clientId]?.cancel();
+    _sendTimers[clientId] = Timer(_sendTimeout, () {
+      if (!mounted) return;
+      final idx = _messages.indexWhere((m) => m.clientMessageId == clientId);
+      if (idx != -1 && _messages[idx].status == MessageStatus.sending) {
+        setState(() => _messages[idx] = _messages[idx].copyWith(status: MessageStatus.failed));
+      }
+    });
+  }
+
+  void _retry(ChatMessage failed) {
+    final cid = failed.clientMessageId;
+    if (cid == null) return;
+    final idx = _messages.indexWhere((m) => m.clientMessageId == cid);
+    if (idx == -1) return;
+    setState(() => _messages[idx] = _messages[idx].copyWith(status: MessageStatus.sending));
+    _dispatchSend(cid, failed.body); // same client id → idempotent
+  }
+
+  void _onUserTyping() {
+    final now = DateTime.now();
+    if (now.difference(_lastTypingSent).inMilliseconds > 1500) {
+      _lastTypingSent = now;
+      _rt.sendTyping(widget.matchId, active: true);
+    }
+    _typingStopTimer?.cancel();
+    _typingStopTimer = Timer(const Duration(seconds: 3), () => _rt.sendTyping(widget.matchId, active: false));
+  }
+
+  void _sendRead() {
+    for (var i = _messages.length - 1; i >= 0; i--) {
+      final m = _messages[i];
+      if (!m.id.startsWith('local:')) {
+        _rt.markRead(widget.matchId, m.id);
+        return;
+      }
+    }
+  }
+
+  // ── scroll ────────────────────────────────────────────────────────
+
+  void _onScroll() {
+    if (_scrollController.position.pixels <= 80 && !_loadingOlder && _hasMore) {
+      _loadOlder();
     }
   }
 
   void _scrollToBottom({bool jump = false}) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_scrollController.hasClients) return;
+      final target = _scrollController.position.maxScrollExtent;
       if (jump) {
-        _scrollController
-            .jumpTo(_scrollController.position.maxScrollExtent);
+        _scrollController.jumpTo(target);
       } else {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 280),
-          curve: Curves.easeOut,
-        );
+        _scrollController.animateTo(target, duration: const Duration(milliseconds: 280), curve: Curves.easeOut);
       }
     });
   }
@@ -187,24 +332,25 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           children: [
             _ChatHeader(partner: partner),
             if (partner != null) _PartnerInfoRow(partner: partner),
+            _ConnectionBanner(status: _rt.status),
             Expanded(
               child: _loading
                   ? const Center(child: CircularProgressIndicator())
                   : _messages.isEmpty
-                      ? _EmptyChatState(
-                          name: partner?.displayName ?? 'your match')
+                      ? _EmptyChatState(name: partner?.displayName ?? 'your match')
                       : _MessageList(
                           messages: _messages,
                           currentUserId: _currentUserId,
                           partnerAvatarUrl: partner?.avatarUrl,
                           scrollController: _scrollController,
+                          onRetry: _retry,
                         ),
             ),
             if (_partnerTyping)
               _TypingIndicator(name: partner?.displayName ?? 'Your match'),
             _InputBar(
               controller: _inputController,
-              sending: _sending,
+              sending: false,
               onSend: _send,
               onTyping: _onUserTyping,
             ),
@@ -214,4 +360,3 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
   }
 }
-

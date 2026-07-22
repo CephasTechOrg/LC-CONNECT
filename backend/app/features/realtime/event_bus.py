@@ -30,6 +30,8 @@ class EventBus(Protocol):
         self, conversation_id: UUID, frame: dict[str, Any], exclude_user: UUID | None = None
     ) -> None: ...
 
+    async def publish_to_user(self, user_id: UUID, frame: dict[str, Any]) -> None: ...
+
 
 class InMemoryEventBus:
     """Single-instance bus: publish == deliver to this instance's local sockets."""
@@ -41,3 +43,6 @@ class InMemoryEventBus:
         self, conversation_id: UUID, frame: dict[str, Any], exclude_user: UUID | None = None
     ) -> None:
         await self._manager.deliver_to_conversation(conversation_id, frame, exclude_user)
+
+    async def publish_to_user(self, user_id: UUID, frame: dict[str, Any]) -> None:
+        self._manager.deliver_to_user(user_id, frame)

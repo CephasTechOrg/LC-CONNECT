@@ -57,10 +57,18 @@ idle reaper + graceful-shutdown lifespan (uvicorn ping/pong covers dead-socket d
 - [x] Malformed-event limits (bounded, then close)
 - [ ] Graceful shutdown lifespan (manager.shutdown wired, lifespan not yet mounted)
 - [ ] Metrics without content/tokens
-- [ ] Flutter connection-state provider (next slice)
-- [ ] Reconnect/backoff/jitter (next slice)
-- [ ] Restore subscriptions (next slice)
-- [ ] Clear on logout (next slice)
+- [x] Flutter connection-state banner (`RealtimeClient.status` ValueListenable)
+- [x] Reconnect/backoff/jitter (`backoffDelay` full-jitter, cap 30s; unit-tested)
+- [x] Restore subscriptions (subscription registry re-sent on `auth.ok`)
+- [x] Clear on logout (`realtimeClientProvider` listens to auth → `clear()`)
+
+## Phase 2 — Slice 2 (Flutter client) — DONE
+
+`mobile/lib/core/realtime/` (`ws_protocol.dart` typed frames + `RealtimeClient` single socket) +
+chat rewire off Supabase Realtime. Optimistic send (client_message_id → ack reconcile, retry on
+fail), live receive/typing/read-receipts, keyset-paginated history + load-older, reconnect→REST-sync.
+Thread list stays live via the user-channel `conversation.updated`. 15 Dart unit tests
+(ws_protocol + backoff/uuid). On-device smoke still pending (needs local backend + two sessions).
 
 ## Authorization — DONE (Slice 1)
 
@@ -98,14 +106,14 @@ idle reaper + graceful-shutdown lifespan (uvicorn ping/pong covers dead-socket d
 - [x] Reconnect sync (`GET /threads/{id}/sync?after_created_at&after_id`)
 - [x] Read/unread support (`messages.read` → `messages.receipt`)
 - [x] Message length limit (URL-specific limits: later)
-- [ ] Retry UI (Flutter, next slice)
+- [x] Retry UI (failed optimistic message → tap to retry, reuses client_message_id)
 
 ## Typing/presence
 
 - [x] `typing.start`
 - [x] `typing.stop`
 - [x] Throttle (token bucket per user+conversation)
-- [ ] 3–4 second expiry (client-side via active:false now; Redis TTL later)
+- [x] 3–4 second expiry (client hides after a 4s reset timer + explicit typing.stop; Redis TTL later)
 - [x] Ignore self (excluded from broadcast)
 - [x] Never persist typing
 - [ ] Presence privacy setting if enabled (deferred)

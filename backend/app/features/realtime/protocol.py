@@ -151,6 +151,11 @@ def message_created(message: Message) -> dict[str, Any]:
     return {'type': 'message.created', 'conversation_id': str(message.match_id), 'message': serialize_message(message)}
 
 
+def conversation_updated(message: Message) -> dict[str, Any]:
+    """User-channel event: a conversation has a new latest message (thread-list update)."""
+    return {'type': 'conversation.updated', 'conversation_id': str(message.match_id), 'message': serialize_message(message)}
+
+
 def typing_event(conversation_id: UUID, user_id: UUID, active: bool) -> dict[str, Any]:
     return {
         'type': 'typing',

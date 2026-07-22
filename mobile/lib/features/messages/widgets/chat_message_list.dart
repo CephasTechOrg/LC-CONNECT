@@ -5,11 +5,13 @@ class _MessageList extends StatelessWidget {
   final String currentUserId;
   final String? partnerAvatarUrl;
   final ScrollController scrollController;
+  final void Function(ChatMessage) onRetry;
   const _MessageList({
     required this.messages,
     required this.currentUserId,
     this.partnerAvatarUrl,
     required this.scrollController,
+    required this.onRetry,
   });
 
   @override
@@ -40,9 +42,10 @@ class _MessageList extends StatelessWidget {
         final msg = (item as _MessageItem).message;
         final isMine = msg.senderId == currentUserId;
         return _BubbleTile(
-          message: msg, 
+          message: msg,
           isMine: isMine,
           partnerAvatarUrl: partnerAvatarUrl,
+          onRetry: onRetry,
         );
       },
     );

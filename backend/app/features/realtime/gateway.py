@@ -175,10 +175,11 @@ async def _on_send(conn: Connection, frame: protocol.SendFrame) -> None:
     async with AsyncSessionLocal() as db:
         try:
             await service.recheck_account(db, conn.user_id)
-            await service.authorize_conversation(db, conn.user_id, frame.conversation_id)
+            match = await service.authorize_conversation(db, conn.user_id, frame.conversation_id)
         except service.WsForbidden:
             manager.send(conn, protocol.error(ErrorCode.FORBIDDEN, 'Forbidden', frame.request_id))
             return
+        partner_id = match.user_b_id if match.user_a_id == conn.user_id else match.user_a_id
         message, created = await persist_message_idempotent(
             db,
             sender_id=conn.user_id,
@@ -188,9 +189,13 @@ async def _on_send(conn: Connection, frame: protocol.SendFrame) -> None:
         )
     manager.send(conn, protocol.message_ack(frame.request_id, message, duplicate=not created))
     if created:
-        # No exclusion: subscribers (incl. the sender's other devices) dedupe by
-        # client_message_id against the ack — the canonical merge behavior.
+        # Conversation channel: live message stream to subscribers (they dedupe against
+        # the ack by client_message_id — the canonical merge behavior).
         await event_bus.publish_to_conversation(frame.conversation_id, protocol.message_created(message))
+        # User channels: thread-list update for both participants (regardless of open chat).
+        updated = protocol.conversation_updated(message)
+        await event_bus.publish_to_user(conn.user_id, updated)
+        await event_bus.publish_to_user(partner_id, updated)
 
 
 async def _on_typing(conn: Connection, conversation_id: UUID, active: bool) -> None:

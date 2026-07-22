@@ -128,6 +128,17 @@ class ConnectionManager:
     def send(self, conn: Connection, frame: dict[str, Any]) -> bool:
         return conn.enqueue(frame)
 
+    def deliver_to_user(self, user_id: UUID, frame: dict[str, Any]) -> int:
+        """Enqueue `frame` to every socket a user has open (their user channel).
+
+        Used for conversation-list updates that must reach a user regardless of
+        which conversation they currently have open. O(devices).
+        """
+        conns = self._by_user.get(user_id)
+        if not conns:
+            return 0
+        return sum(1 for conn in tuple(conns) if conn.enqueue(frame))
+
     async def deliver_to_conversation(
         self,
         conversation_id: UUID,
