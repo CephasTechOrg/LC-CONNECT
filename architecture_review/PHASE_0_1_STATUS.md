@@ -48,7 +48,7 @@ Full item checklist: [`todo_auth_websocket_security.md`](./todo_auth_websocket_s
 
 1. ~~**Wire `require_verified_student`** on student REST routers~~ — ✅ **Done.** Applied to all endpoints in profiles, discovery, connections, messages, activities, safety. Unverified users now get `403 Verified student required`. (Not gated, by design: `/auth/bootstrap`, `/auth/me`, public `/lookups`; admin uses `require_admin_aal2`.)  
 2. **Auth tests** — ✅ mostly done: `backend/tests/test_auth_guards.py` covers verified/unverified, active/suspended, admin-aal2 (all cases), missing-token 401, and route-wiring (unverified → 403 on every student GET route). Still open: bootstrap concurrency + real expired/invalid token cases.  
-3. **Token refresh story** for long sessions (critical once WebSockets land)  
+3. ~~**Token refresh story** for long sessions~~ — ✅ **Done.** Dio interceptor refreshes + replays on 401 (single shared refresh for concurrent requests); `AuthNotifier` reacts to `onAuthStateChange` (persist refreshed token, sign out on session death). Reusable pattern for the Phase 2 socket handshake/reconnect.  
 4. **Recovery deep links** for iOS if password reset should open the app  
 5. Keep `AUTH_LEGACY_ENABLED=true` until mobile is fully on Supabase Auth in all environments, then retire custom auth columns  
 6. Locked Python deps (`requirements.lock`) — CI itself is now in place (`.github/workflows/ci.yml`)

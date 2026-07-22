@@ -30,7 +30,7 @@
 - [x] `require_verified_student` dependency **exists**
 - [x] Admin `require_admin_aal2` wired on admin routes
 - [x] Apply `require_verified_student` to student-protected REST routes (profiles, discovery, connections, messages, activities, safety — all endpoints; unverified users get 403)
-- [ ] Token refresh / reconnect behavior (needed especially for WebSockets in Phase 2)
+- [x] Token refresh behavior — Dio interceptor recovers a 401 by refreshing the session once and replaying the request (shared in-flight refresh); `AuthNotifier` listens to `onAuthStateChange` to keep the stored token fresh and sign out on session death. (Reconnect/backoff is Phase 2 WebSocket work.)
 - [ ] Recovery deep links (iOS URL scheme / universal links) fully configured
 - [ ] Formal existing-user linking runbook / backfill script
 - [ ] Retire custom auth (`AUTH_LEGACY_ENABLED=false`)
