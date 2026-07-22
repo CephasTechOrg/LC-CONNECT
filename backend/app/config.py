@@ -47,6 +47,15 @@ class Settings(BaseSettings):
     ws_max_malformed_frames: int = Field(default=10, alias='WS_MAX_MALFORMED_FRAMES')
     ws_outbox_max_size: int = Field(default=256, alias='WS_OUTBOX_MAX_SIZE')
 
+    # Push notifications (FCM). SECRET — set via env/secret, never commit. Absent → push disabled.
+    firebase_credentials_json: str | None = Field(default=None, alias='FIREBASE_CREDENTIALS_JSON')
+    # Grace before an offline push: absorb Wi-Fi↔cellular handoffs / rapid reconnects.
+    push_reconnect_grace_seconds: float = Field(default=3.0, alias='PUSH_RECONNECT_GRACE_SECONDS')
+
+    @property
+    def push_enabled(self) -> bool:
+        return bool(self.firebase_credentials_json)
+
     @property
     def environment_slug(self) -> str:
         """Short env token for Redis channel prefixes (lcconnect:<slug>:...)."""

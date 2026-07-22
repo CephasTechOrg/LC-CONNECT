@@ -38,3 +38,8 @@ node_modules/
 
 # Claude Code personal overrides (keep shared .claude/settings.json committed)
 .claude/settings.local.json
+
+# Firebase / push secrets — never commit
+*.p8
+**/serviceAccount*.json
+**/firebase-adminsdk*.json

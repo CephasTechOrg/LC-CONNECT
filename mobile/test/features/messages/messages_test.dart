@@ -1,10 +1,41 @@
+import 'dart:typed_data';
+
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lc_connect/core/api/api_client.dart';
+import 'package:lc_connect/core/storage/secure_storage.dart';
 import 'package:lc_connect/features/messages/providers/messages_provider.dart';
 import 'package:lc_connect/features/messages/screens/messages_screen.dart';
 import 'package:lc_connect/features/messages/screens/chat_screen.dart';
 import 'package:lc_connect/features/auth/providers/auth_provider.dart';
+import 'package:lc_connect/core/realtime/realtime_client.dart';
+
+/// Dio adapter that answers every request instantly with an empty JSON list, so
+/// ChatScreen's initial thread fetch resolves without a real socket/HTTP timer.
+class _EmptyListAdapter implements HttpClientAdapter {
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async =>
+      ResponseBody.fromString('[]', 200,
+          headers: {
+            Headers.contentTypeHeader: [Headers.jsonContentType]
+          });
+
+  @override
+  void close({bool force = false}) {}
+}
+
+ApiClient _stubApiClient() {
+  final dio = Dio(BaseOptions(baseUrl: 'http://test.local/'))
+    ..httpClientAdapter = _EmptyListAdapter();
+  return ApiClient(SecureStorage(), dio: dio);
+}
 
 // ── Mock notifier ─────────────────────────────────────────────────
 class _MockThreadsNotifier extends ThreadsNotifier {
@@ -85,6 +116,14 @@ final _threadNoMessage = MessageThread(
 
 // ── Model unit tests ──────────────────────────────────────────────
 void main() {
+  // ChatScreen transitively reads AppConstants.apiBaseUrl (via realtimeClientProvider),
+  // which requires dotenv to be initialized. Load harmless test values once.
+  setUpAll(() {
+    dotenv.loadFromString(
+      envString: 'API_BASE_URL=http://localhost:8000/api/v1\nENV=test',
+    );
+  });
+
   group('ChatMessage.fromJson', () {
     test('parses all fields', () {
       final json = {
@@ -294,6 +333,18 @@ void main() {
       return ProviderScope(
         overrides: [
           authNotifierProvider.overrideWith(_MockAuthNotifier.new),
+          // Real client, but never connected: this override omits the auth
+          // listener that calls connect(), so no socket/backoff timer is created
+          // (the widget renders against an idle client). Keeps the test hermetic.
+          realtimeClientProvider.overrideWith((ref) {
+            final client = RealtimeClient(
+              url: Uri.parse('ws://localhost/ws'),
+              tokenProvider: () async => null,
+            );
+            ref.onDispose(client.dispose);
+            return client;
+          }),
+          apiClientProvider.overrideWith((ref) => _stubApiClient()),
         ],
         child: MaterialApp(
           home: ChatScreen(
@@ -306,16 +357,16 @@ void main() {
 
     testWidgets('shows partner name in info row', (tester) async {
       await tester.pumpWidget(chatScope());
-      // Only pump once — _fetchMessages will fail (no real API) but
-      // the header/partner info renders immediately.
-      await tester.pump();
+      // Stub adapter resolves the initial fetch with an empty list, so the
+      // screen settles into its loaded (empty) state.
+      await tester.pumpAndSettle();
 
       expect(find.text('Maya Chen'), findsOneWidget);
     });
 
     testWidgets('shows looking-for tag chips', (tester) async {
       await tester.pumpWidget(chatScope());
-      await tester.pump();
+      await tester.pumpAndSettle();
 
       expect(find.text('Study Partner'), findsOneWidget);
     });
@@ -323,18 +374,15 @@ void main() {
     testWidgets('shows empty chat state on load with no messages',
         (tester) async {
       await tester.pumpWidget(chatScope());
-      // Pump twice: first frame renders loader, after fetchMessages
-      // throws (no real API) loading becomes false → empty state shown.
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pumpAndSettle();
 
-      // Either loading indicator or empty/error state — no crash
+      // Loaded with no messages → screen renders without crashing.
       expect(find.byType(ChatScreen), findsOneWidget);
     });
 
     testWidgets('input bar renders with send button', (tester) async {
       await tester.pumpWidget(chatScope());
-      await tester.pump();
+      await tester.pumpAndSettle();
 
       expect(find.byIcon(Icons.arrow_upward_rounded), findsOneWidget);
       expect(find.byIcon(Icons.add_circle_outline_rounded), findsOneWidget);
@@ -342,11 +390,16 @@ void main() {
 
     testWidgets('typing in input field works', (tester) async {
       await tester.pumpWidget(chatScope());
-      await tester.pump();
+      await tester.pumpAndSettle();
 
       await tester.enterText(
           find.byType(TextField), 'Hello, how are you?');
+      await tester.pump();
       expect(find.text('Hello, how are you?'), findsOneWidget);
+
+      // Entering text starts the typing debounce timers (3–4s); let them fire so
+      // none remain pending at teardown.
+      await tester.pump(const Duration(seconds: 5));
     });
   });
 }

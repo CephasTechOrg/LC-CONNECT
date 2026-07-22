@@ -98,11 +98,13 @@ class MessageThread {
   final String matchId;
   final MessagePartner? partner;
   final ChatMessage? latestMessage;
+  final bool partnerTyping; // transient (live), never from JSON
 
   const MessageThread({
     required this.matchId,
     this.partner,
     this.latestMessage,
+    this.partnerTyping = false,
   });
 
   factory MessageThread.fromJson(Map<String, dynamic> j) => MessageThread(
@@ -115,6 +117,18 @@ class MessageThread {
                 j['latest_message'] as Map<String, dynamic>)
             : null,
       );
+
+  MessageThread copyWith({
+    MessagePartner? partner,
+    ChatMessage? latestMessage,
+    bool? partnerTyping,
+  }) =>
+      MessageThread(
+        matchId: matchId,
+        partner: partner ?? this.partner,
+        latestMessage: latestMessage ?? this.latestMessage,
+        partnerTyping: partnerTyping ?? this.partnerTyping,
+      );
 }
 
 // ── Thread list provider ──────────────────────────────────────────
@@ -124,18 +138,28 @@ final threadsNotifierProvider =
 
 class ThreadsNotifier extends AsyncNotifier<List<MessageThread>> {
   StreamSubscription<InboundEvent>? _sub;
+  final _typingTimers = <String, Timer>{};
 
   @override
   Future<List<MessageThread>> build() async {
     ref.watch(authNotifierProvider);
     final client = ref.watch(apiClientProvider);
     // Watching the client ensures the socket connects; user-channel
-    // `conversation.updated` events keep this list live (no Supabase Realtime).
+    // `conversation.updated` + `typing` events keep this list live.
     final realtime = ref.watch(realtimeClientProvider);
     _sub = realtime.events.listen((event) {
-      if (event is ConversationUpdated) _onConversationUpdated(event);
+      if (event is ConversationUpdated) {
+        _onConversationUpdated(event);
+      } else if (event is TypingEvent) {
+        _onTyping(event);
+      }
     });
-    ref.onDispose(() => _sub?.cancel());
+    ref.onDispose(() {
+      _sub?.cancel();
+      for (final t in _typingTimers.values) {
+        t.cancel();
+      }
+    });
 
     final response = await client.dio.get('/messages/threads');
     return (response.data as List)
@@ -151,13 +175,10 @@ class ThreadsNotifier extends AsyncNotifier<List<MessageThread>> {
     final idx = current.indexWhere((t) => t.matchId == event.conversationId);
     if (idx == -1) return; // thread not loaded (e.g. brand-new match) — refreshed on return
 
+    _typingTimers.remove(event.conversationId)?.cancel(); // a new message clears typing
     final msg = ChatMessage.fromJson(event.message);
     final updated = List<MessageThread>.from(current);
-    updated[idx] = MessageThread(
-      matchId: current[idx].matchId,
-      partner: current[idx].partner,
-      latestMessage: msg,
-    );
+    updated[idx] = current[idx].copyWith(latestMessage: msg, partnerTyping: false);
     updated.sort((a, b) {
       final aTime = a.latestMessage?.createdAt;
       final bTime = b.latestMessage?.createdAt;
@@ -166,6 +187,27 @@ class ThreadsNotifier extends AsyncNotifier<List<MessageThread>> {
       if (bTime == null) return -1;
       return bTime.compareTo(aTime);
     });
+    state = AsyncData(updated);
+  }
+
+  void _onTyping(TypingEvent event) {
+    _setThreadTyping(event.conversationId, event.active);
+    _typingTimers.remove(event.conversationId)?.cancel();
+    if (event.active) {
+      _typingTimers[event.conversationId] = Timer(
+        const Duration(seconds: 4),
+        () => _setThreadTyping(event.conversationId, false),
+      );
+    }
+  }
+
+  void _setThreadTyping(String conversationId, bool typing) {
+    final current = state.asData?.value;
+    if (current == null) return;
+    final idx = current.indexWhere((t) => t.matchId == conversationId);
+    if (idx == -1 || current[idx].partnerTyping == typing) return;
+    final updated = List<MessageThread>.from(current);
+    updated[idx] = updated[idx].copyWith(partnerTyping: typing);
     state = AsyncData(updated);
   }
 }

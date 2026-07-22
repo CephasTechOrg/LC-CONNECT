@@ -148,6 +148,7 @@ class MyProfile {
       );
 
   MyProfile copyWith({
+    String? avatarUrl,
     bool? allowMessagesFromMatchesOnly,
     bool? showProfileToVerifiedOnly,
   }) =>
@@ -161,7 +162,7 @@ class MyProfile {
         countryState: countryState,
         campus: campus,
         bio: bio,
-        avatarUrl: avatarUrl,
+        avatarUrl: avatarUrl ?? this.avatarUrl,
         isHidden: isHidden,
         isVerified: isVerified,
         profileCompleted: profileCompleted,
@@ -207,8 +208,14 @@ class MyProfileNotifier extends AsyncNotifier<MyProfile> {
         contentType: DioMediaType.parse(mimeType),
       ),
     });
-    await client.dio.post('/profiles/me/avatar', data: formData);
-    ref.invalidateSelf();
+    final response = await client.dio.post('/profiles/me/avatar', data: formData);
+    final avatarUrl = (response.data as Map<String, dynamic>)['avatar_url'] as String?;
+    final current = state.asData?.value;
+    if (current != null && avatarUrl != null) {
+      state = AsyncData(current.copyWith(avatarUrl: avatarUrl));
+    } else {
+      ref.invalidateSelf();
+    }
   }
 
   Future<void> updateProfile({

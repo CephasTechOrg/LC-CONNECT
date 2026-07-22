@@ -31,7 +31,7 @@ class ProfileScreen extends ConsumerWidget {
           error: (e, _) => _ErrorState(
             onRetry: () => ref.invalidate(myProfileNotifierProvider),
           ),
-          data: (profile) => _ProfileBody(profile: profile),
+          data: (_) => const _ProfileBody(),
         ),
       ),
     );
@@ -40,8 +40,7 @@ class ProfileScreen extends ConsumerWidget {
 
 // ── Full scrollable body ──────────────────────────────────────────
 class _ProfileBody extends ConsumerStatefulWidget {
-  final MyProfile profile;
-  const _ProfileBody({required this.profile});
+  const _ProfileBody();
 
   @override
   ConsumerState<_ProfileBody> createState() => _ProfileBodyState();
@@ -87,22 +86,27 @@ class _ProfileBodyState extends ConsumerState<_ProfileBody> {
 
   @override
   Widget build(BuildContext context) {
+    final profile = ref.watch(myProfileNotifierProvider).value;
+    if (profile == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
     return ListView(
       children: [
         _Header(ref: ref),
         _HeroSection(
-          profile: widget.profile,
+          profile: profile,
           uploading: _uploading,
           onAvatarTap: _pickAndUpload,
         ),
         const SizedBox(height: 8),
-        _InfoRows(profile: widget.profile),
+        _InfoRows(profile: profile),
         const SizedBox(height: 8),
-        _LookingForSection(lookingFor: widget.profile.lookingFor),
+        _LookingForSection(lookingFor: profile.lookingFor),
         const SizedBox(height: 8),
-        _PreferencesCard(profile: widget.profile),
+        _PreferencesCard(profile: profile),
         const SizedBox(height: 8),
-        _StatsRow(profile: widget.profile),
+        _StatsRow(profile: profile),
         const SizedBox(height: 16),
         _EditProfileButton(),
         const SizedBox(height: 24),

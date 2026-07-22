@@ -180,20 +180,31 @@ class _ThreadCard extends StatelessWidget {
                     ),
                   ],
                   const SizedBox(height: 4),
-                  Text(
-                    latest?.body ?? 'No messages yet — say hello!',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.dmSans(
-                      fontSize: 13,
-                      color: latest != null
-                          ? AppColors.textMid
-                          : AppColors.textMuted,
-                      fontStyle: latest == null
-                          ? FontStyle.italic
-                          : FontStyle.normal,
+                  if (thread.partnerTyping)
+                    Text(
+                      'typing…',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 13,
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w600,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    )
+                  else
+                    Text(
+                      latest?.body ?? 'No messages yet — say hello!',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.dmSans(
+                        fontSize: 13,
+                        color: latest != null
+                            ? AppColors.textMid
+                            : AppColors.textMuted,
+                        fontStyle: latest == null
+                            ? FontStyle.italic
+                            : FontStyle.normal,
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),

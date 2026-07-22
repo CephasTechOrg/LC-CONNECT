@@ -29,12 +29,14 @@ class SocketLike(Protocol):
 class Connection:
     """A single authenticated socket and its outbound pipeline."""
 
-    __slots__ = ('socket', 'user_id', 'subscriptions', 'last_seen', 'alive', '_outbox', '_writer')
+    __slots__ = ('socket', 'user_id', 'subscriptions', 'partners', 'last_seen', 'alive', '_outbox', '_writer')
 
     def __init__(self, socket: SocketLike, user_id: UUID, outbox_max: int) -> None:
         self.socket = socket
         self.user_id = user_id
         self.subscriptions: set[UUID] = set()
+        # conversation_id -> partner user_id, cached at subscribe so typing needs no DB hit.
+        self.partners: dict[UUID, UUID] = {}
         self.last_seen: float = time.monotonic()
         self.alive: bool = True
         self._outbox: asyncio.Queue[Any] = asyncio.Queue(maxsize=outbox_max)
@@ -114,6 +116,7 @@ class ConnectionManager:
 
     def unsubscribe(self, conn: Connection, conversation_id: UUID) -> None:
         conn.subscriptions.discard(conversation_id)
+        conn.partners.pop(conversation_id, None)
         self._detach_conversation(conn, conversation_id)
 
     def _detach_conversation(self, conn: Connection, conversation_id: UUID) -> None:

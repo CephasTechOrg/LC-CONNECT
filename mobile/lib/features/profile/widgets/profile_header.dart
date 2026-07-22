@@ -130,6 +130,7 @@ class _Header extends StatelessWidget {
                 ),
                 onTap: () async {
                   Navigator.of(context).pop();
+                  ref.invalidate(myProfileNotifierProvider);
                   await ref.read(authNotifierProvider.notifier).logout();
                   if (context.mounted) context.go('/login');
                 },

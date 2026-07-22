@@ -27,7 +27,11 @@ class _HeroSection extends StatelessWidget {
                 onTap: uploading ? null : onAvatarTap,
                 child: Stack(
                   children: [
-                    AvatarWidget(imageUrl: profile.avatarUrl, size: 80),
+                    AvatarWidget(
+                      imageUrl: profile.avatarUrl,
+                      cacheScope: profile.userId,
+                      size: 80,
+                    ),
                     Positioned(
                       bottom: 0,
                       right: 0,

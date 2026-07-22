@@ -6,13 +6,19 @@ without importing the gateway (which would create an import cycle).
 
 from __future__ import annotations
 
+import asyncio
 from uuid import UUID
 
+from sqlalchemy import select
+
 from app.config import settings
+from app.database import AsyncSessionLocal
+from app.features.notifications.push import push_sender
 from app.features.realtime import protocol
 from app.features.realtime.event_bus import InMemoryEventBus
 from app.features.realtime.manager import ConnectionManager
 from app.features.realtime.rate_limit import RateLimiter
+from app.models import Profile
 
 manager = ConnectionManager(outbox_max=settings.ws_outbox_max_size)
 event_bus = InMemoryEventBus(manager)
@@ -34,3 +40,24 @@ async def disconnect_user(user_id: UUID) -> None:
     """A suspension happened — close every socket for the user."""
     frame = protocol.error(protocol.ErrorCode.FORBIDDEN, 'Account suspended')
     await manager.close_user(user_id, frame, protocol.CloseCode.FORBIDDEN)
+
+
+async def schedule_offline_push(recipient_id: UUID, sender_id: UUID, conversation_id: UUID) -> None:
+    """Push only if the recipient is *still* offline after a short grace window (rec #1) —
+    absorbs Wi-Fi↔cellular handoffs / rapid reconnects. Fire-and-forget from the send path."""
+    if not push_sender.enabled:
+        return
+    await asyncio.sleep(settings.push_reconnect_grace_seconds)
+    if manager.user_socket_count(recipient_id) != 0:
+        return  # reconnected during the grace window — they'll get it live
+    async with AsyncSessionLocal() as db:
+        name = (
+            await db.execute(select(Profile.display_name).where(Profile.user_id == sender_id))
+        ).scalar_one_or_none()
+        await push_sender.notify_new_message(
+            db,
+            recipient_id=recipient_id,
+            sender_name=name or 'Someone',
+            conversation_id=conversation_id,
+            sender_id=sender_id,
+        )

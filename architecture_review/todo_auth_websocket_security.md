@@ -55,7 +55,7 @@ idle reaper + graceful-shutdown lifespan (uvicorn ping/pong covers dead-socket d
 - [x] Auth timeout (idle reaper + close-on-idle deferred; uvicorn ping/pong detects dead sockets)
 - [x] Payload limits (frame size + body length)
 - [x] Malformed-event limits (bounded, then close)
-- [ ] Graceful shutdown lifespan (manager.shutdown wired, lifespan not yet mounted)
+- [x] Graceful shutdown lifespan (mounted in `app/main.py` → `ws_manager.shutdown(GOING_AWAY)`)
 - [ ] Metrics without content/tokens
 - [x] Flutter connection-state banner (`RealtimeClient.status` ValueListenable)
 - [x] Reconnect/backoff/jitter (`backoffDelay` full-jitter, cap 30s; unit-tested)
@@ -118,15 +118,20 @@ Thread list stays live via the user-channel `conversation.updated`. 15 Dart unit
 - [x] Never persist typing
 - [ ] Presence privacy setting if enabled (deferred)
 
-## Notifications
+## Notifications — Slice 3 (code done; delivery needs Firebase setup)
 
-- [ ] FCM/APNs
-- [ ] Device-token table
-- [ ] Token refresh/revocation
-- [ ] Send after commit
-- [ ] Generic preview default
-- [ ] Conversation deep link
-- [ ] Foreground/background/terminated handling
+Typing + live previews now also show on the Messages **list** (typing routed to the partner's user
+channel). Push: `device_tokens` table + `/devices` endpoints + guarded FCM sender + offline-only
+trigger (3s reconnect grace) + mobile `NotificationService`. Runbook: `docs/push_notifications_setup.md`.
+
+- [x] FCM/APNs (code; guarded — activates after Firebase/APNs setup)
+- [x] Device-token table (`device_tokens`, idempotent upsert)
+- [x] Token refresh/revocation (`onTokenRefresh` re-register; `clear()` unregisters on logout)
+- [x] Send after commit (offline trigger fires after message persist + broadcast)
+- [x] Generic preview default (sender name only; payload = ids, no body)
+- [x] Conversation deep link (tap → `/messages/{conversation_id}`)
+- [~] Foreground/background/terminated (background/terminated tap handled; foreground relies on the
+  live chat/list — no in-app banner yet)
 
 ## Privacy/safety
 
@@ -158,11 +163,11 @@ Thread list stays live via the user-channel `conversation.updated`. 15 Dart unit
 - [ ] Supabase token tests
 - [ ] Bootstrap concurrency
 - [x] Verified/suspended tests (`tests/test_auth_guards.py`)
-- [ ] WebSocket auth tests
-- [ ] Subscription authorization
-- [ ] Active-chat block revocation
-- [ ] Idempotent sends
-- [ ] Cursor sync
+- [x] WebSocket auth tests (`test_realtime_gateway.py` — auth.ok, auth-failed close, unverified close, non-auth-first close)
+- [x] Subscription authorization (`test_realtime_gateway.py::test_subscribe_then_forbidden` + `test_realtime_service.py` member/non-member/blocked/missing-match)
+- [x] Active-chat block revocation (`test_realtime_manager.py::test_revoke_pair_revokes_shared_conversation`)
+- [x] Idempotent sends (WS: `test_duplicate_send_returns_same_ack`; service: `test_messages_service.py::test_persist_returns_existing_row_on_conflict`)
+- [x] Cursor sync (`test_messages_service.py` — keyset direction guards for `page_thread`/`sync_thread`)
 - [ ] Multi-instance Redis
 - [ ] Redis outage
 - [ ] Background/reconnect

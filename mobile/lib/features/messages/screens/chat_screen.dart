@@ -50,11 +50,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   Timer? _typingResetTimer;
   Timer? _typingStopTimer;
 
-  RealtimeClient get _rt => ref.read(realtimeClientProvider);
+  // Captured once in initState: reading a provider via `ref` in dispose() is
+  // unsafe (the element is unmounting). The client is a session singleton, so the
+  // instance never changes while this screen is mounted.
+  late final RealtimeClient _rt;
 
   @override
   void initState() {
     super.initState();
+    _rt = ref.read(realtimeClientProvider);
     _currentUserId = ref.read(authNotifierProvider).asData?.value?.id ?? '';
     _rt.subscribe(widget.matchId);
     _eventsSub = _rt.events.listen(_onEvent);
@@ -212,17 +216,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   void _mergeIncoming(ChatMessage msg) {
     if (_seenServerIds.contains(msg.id)) {
-      if (kDebugMode) debugPrint('chat: skip (seen) ${msg.id}');
       return;
     }
     // Our own message echoed back — already reconciled via ack.
     if (msg.clientMessageId != null &&
         _messages.any((m) => m.clientMessageId == msg.clientMessageId)) {
-      if (kDebugMode) debugPrint('chat: skip (dedup client ${msg.clientMessageId}) ${msg.id}');
       _seenServerIds.add(msg.id);
       return;
     }
-    if (kDebugMode) debugPrint('chat: merged ${msg.id} from ${msg.senderId}');
     setState(() {
       _seenServerIds.add(msg.id);
       _messages.add(msg);

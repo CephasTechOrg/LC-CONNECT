@@ -25,6 +25,7 @@ from app.features.realtime.runtime import (
     event_bus,
     malformed_limiter,
     manager,
+    schedule_offline_push,
     send_limiter,
     subscribe_limiter,
     typing_limiter,
@@ -155,10 +156,14 @@ async def _on_subscribe(conn: Connection, frame: protocol.SubscribeFrame) -> Non
     async with AsyncSessionLocal() as db:
         try:
             await service.recheck_account(db, conn.user_id)
-            await service.authorize_conversation(db, conn.user_id, frame.conversation_id)
+            match = await service.authorize_conversation(db, conn.user_id, frame.conversation_id)
         except service.WsForbidden:
             manager.send(conn, protocol.error(ErrorCode.FORBIDDEN, 'Forbidden', frame.request_id))
             return
+    # Cache the partner so typing needs no per-keystroke DB hit.
+    conn.partners[frame.conversation_id] = (
+        match.user_b_id if match.user_a_id == conn.user_id else match.user_a_id
+    )
     manager.subscribe(conn, frame.conversation_id)
     manager.send(conn, protocol.subscribed(frame.request_id, frame.conversation_id))
 
@@ -196,19 +201,24 @@ async def _on_send(conn: Connection, frame: protocol.SendFrame) -> None:
         updated = protocol.conversation_updated(message)
         await event_bus.publish_to_user(conn.user_id, updated)
         await event_bus.publish_to_user(partner_id, updated)
+        # Offline push: if the recipient has no live socket, notify after a grace recheck.
+        if manager.user_socket_count(partner_id) == 0:
+            asyncio.create_task(schedule_offline_push(partner_id, conn.user_id, frame.conversation_id))
 
 
 async def _on_typing(conn: Connection, conversation_id: UUID, active: bool) -> None:
-    # Authz proxy: must be subscribed. Subscribe was authorized, and a block/suspension
-    # unsubscribes immediately — so this avoids a DB hit per keystroke while staying safe.
-    if conversation_id not in conn.subscriptions:
+    # Authz proxy: the partner is cached only for authorized subscriptions (and cleared on
+    # block/suspension revocation), so this avoids a DB hit per keystroke while staying safe.
+    partner_id = conn.partners.get(conversation_id)
+    if partner_id is None:
         return
     if active and not typing_limiter.allow((conn.user_id, conversation_id)):
         return
-    await event_bus.publish_to_conversation(
-        conversation_id,
+    # Deliver to the partner's USER channel → shows both inside the chat and on their
+    # conversation list (1:1, so the partner is the only other participant).
+    await event_bus.publish_to_user(
+        partner_id,
         protocol.typing_event(conversation_id, conn.user_id, active),
-        exclude_user=conn.user_id,
     )
 
 

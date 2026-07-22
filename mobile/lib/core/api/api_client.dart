@@ -11,10 +11,15 @@ final apiClientProvider = Provider<ApiClient>((ref) {
 });
 
 class ApiClient {
-  final SecureStorage _storage;
   late final Dio _dio;
 
-  ApiClient(this._storage) {
+  /// [dio] is an injection seam for tests: pass a pre-configured Dio (e.g. with a
+  /// stub adapter) to bypass the network + auth interceptor. Production passes none.
+  ApiClient(SecureStorage storage, {Dio? dio}) {
+    if (dio != null) {
+      _dio = dio;
+      return;
+    }
     _dio = Dio(
       BaseOptions(
         baseUrl: AppConstants.apiBaseUrl,
@@ -23,7 +28,7 @@ class ApiClient {
         contentType: 'application/json',
       ),
     );
-    _dio.interceptors.add(_AuthInterceptor(_storage, _dio));
+    _dio.interceptors.add(_AuthInterceptor(storage, _dio));
   }
 
   Dio get dio => _dio;

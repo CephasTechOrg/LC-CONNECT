@@ -4,11 +4,14 @@ import '../theme/app_theme.dart';
 class AvatarWidget extends StatelessWidget {
   final String? imageUrl;
   final double size;
+  /// Optional stable id (e.g. userId) so avatars never share Flutter's image cache.
+  final String? cacheScope;
 
   const AvatarWidget({
     super.key,
     this.imageUrl,
     this.size = 50.0,
+    this.cacheScope,
   });
 
   @override
@@ -26,6 +29,9 @@ class AvatarWidget extends StatelessWidget {
       child: hasImage
           ? Image.network(
               imageUrl!,
+              // ValueKey (+ the backend's ?v=<ts> avatar URLs) busts the cache on update;
+              // Image.network keys its ImageProvider cache by URL, so scopes don't collide.
+              key: ValueKey('${cacheScope ?? ''}|$imageUrl'),
               fit: BoxFit.cover,
               alignment: Alignment.topCenter,
               errorBuilder: (context, error, stackTrace) => _FallbackIcon(size: size),

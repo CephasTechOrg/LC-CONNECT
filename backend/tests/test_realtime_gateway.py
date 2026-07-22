@@ -197,6 +197,39 @@ def test_send_emits_conversation_updated_on_user_channel(happy_auth, monkeypatch
     assert updated['message']['body'] == 'hi'
 
 
+async def test_typing_routes_to_partner_user_channel(monkeypatch):
+    from app.features.realtime import gateway
+    from app.features.realtime.manager import Connection
+
+    class _Sock:
+        async def send_json(self, data):
+            pass
+
+        async def close(self, code=1000):
+            pass
+
+    me, partner, conv = uuid4(), uuid4(), uuid4()
+    conn = Connection(_Sock(), me, outbox_max=8)
+    conn.partners[conv] = partner  # populated at subscribe
+
+    calls = []
+
+    async def fake_publish_to_user(user_id, frame):
+        calls.append((user_id, frame))
+
+    monkeypatch.setattr(gateway.event_bus, 'publish_to_user', fake_publish_to_user)
+
+    await gateway._on_typing(conn, conv, active=True)
+    assert calls, 'typing should be delivered'
+    assert calls[0][0] == partner
+    assert calls[0][1]['type'] == 'typing' and calls[0][1]['active'] is True
+
+    # Unknown/unsubscribed conversation → no partner cached → no-op.
+    calls.clear()
+    await gateway._on_typing(conn, uuid4(), active=True)
+    assert calls == []
+
+
 def test_malformed_frame_gets_error(happy_auth):
     with _client().websocket_connect('/api/v1/ws') as ws:
         ws.send_json({'type': 'auth', 'access_token': 'good'})

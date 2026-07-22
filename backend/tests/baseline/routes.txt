@@ -1,5 +1,6 @@
 DELETE /api/v1/activities/{activity_id}/leave
 DELETE /api/v1/blocks/{user_id}
+DELETE /api/v1/devices/{token}
 GET /
 GET /api/v1/activities
 GET /api/v1/activities/{activity_id}
@@ -33,6 +34,7 @@ POST /api/v1/blocks/{user_id}
 POST /api/v1/connections/request
 POST /api/v1/connections/{request_id}/accept
 POST /api/v1/connections/{request_id}/decline
+POST /api/v1/devices
 POST /api/v1/messages/threads/{match_id}
 POST /api/v1/profiles/me/avatar
 POST /api/v1/reports
