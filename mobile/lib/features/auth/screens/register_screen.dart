@@ -5,25 +5,6 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
 import '../providers/auth_provider.dart';
 
-// Palette aliases aligned with AppColors / login mockup
-class _C {
-  static const textDark = AppColors.textDark;
-  static const textBody = AppColors.textMid;
-  static const textMuted = AppColors.textMuted;
-  static const hintColor = Color(0xFF9CA3AF);
-  static const eyeColor = AppColors.textMuted;
-  static const border = AppColors.border;
-  static const btnShadow = AppColors.primary;
-  static const createText = AppColors.textMid;
-  static const createLink = AppColors.primary;
-  static const noteIconClr = AppColors.primary;
-  static const noteTextClr = AppColors.textMuted;
-  static const noteStrong = AppColors.textDark;
-  static const noteBg = AppColors.background;
-  static const noteBorder = AppColors.border;
-  static const error = AppColors.error;
-}
-
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
 
@@ -61,7 +42,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             error.toString(),
             style: GoogleFonts.dmSans(),
           ),
-          backgroundColor: _C.error,
+          backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
@@ -127,7 +108,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                             _obscure
                                 ? Icons.visibility_off_outlined
                                 : Icons.visibility_outlined,
-                            color: _C.eyeColor,
+                            color: AppColors.textMuted,
                             size: 18,
                           ),
                         ),
@@ -155,14 +136,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                             text: TextSpan(
                               style: GoogleFonts.dmSans(
                                 fontSize: 14,
-                                color: _C.createText,
+                                color: AppColors.textMid,
                               ),
                               children: [
                                 const TextSpan(text: "Already have an account?"),
                                 TextSpan(
                                   text: ' Sign In',
                                   style: GoogleFonts.dmSans(
-                                    color: _C.createLink,
+                                    color: AppColors.primary,
                                     fontWeight: FontWeight.w700,
                                   ),
                                 ),
@@ -209,7 +190,7 @@ class _Branding extends StatelessWidget {
                   style: GoogleFonts.dmSans(
                     fontSize: 25,
                     fontWeight: FontWeight.w700,
-                    color: _C.textDark,
+                    color: AppColors.textDark,
                     letterSpacing: -0.75,
                   ),
                 ),
@@ -218,7 +199,7 @@ class _Branding extends StatelessWidget {
                   'Join the Livingstone College network',
                   style: GoogleFonts.dmSans(
                     fontSize: 14,
-                    color: _C.textMuted,
+                    color: AppColors.textMuted,
                     height: 1.2,
                   ),
                 ),
@@ -258,7 +239,7 @@ class _MockupField extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _C.border),
+        border: Border.all(color: AppColors.border),
         boxShadow: const [
           BoxShadow(
             color: Color(0x0D0F172A),
@@ -272,13 +253,13 @@ class _MockupField extends StatelessWidget {
         keyboardType: keyboardType,
         obscureText:  obscureText,
         validator:    validator,
-        style: GoogleFonts.dmSans(fontSize: 15, color: _C.textBody),
+        style: GoogleFonts.dmSans(fontSize: 15, color: AppColors.textMid),
         decoration: InputDecoration(
           hintText: hintText,
-          hintStyle: GoogleFonts.dmSans(fontSize: 15, color: _C.hintColor),
+          hintStyle: GoogleFonts.dmSans(fontSize: 15, color: const Color(0xFF9CA3AF)),
           prefixIcon: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 14),
-            child: Icon(icon, size: 20, color: _C.textBody),
+            child: Icon(icon, size: 20, color: AppColors.textMid),
           ),
           prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
           suffixIcon: suffixIcon != null
@@ -321,7 +302,7 @@ class _ActionButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: _C.btnShadow.withAlpha(87),
+              color: AppColors.primary.withAlpha(87),
               blurRadius: 16,
               offset: const Offset(0, 6),
             ),
@@ -354,22 +335,22 @@ class _NoteBox extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: _C.noteBg,
-        border: Border.all(color: _C.noteBorder),
+        color: AppColors.background,
+        border: Border.all(color: AppColors.border),
         borderRadius: BorderRadius.circular(15),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.shield_outlined, size: 24, color: _C.noteIconClr),
+          const Icon(Icons.shield_outlined, size: 24, color: AppColors.primary),
           const SizedBox(width: 10),
           Expanded(
             child: RichText(
               text: TextSpan(
                 style: GoogleFonts.dmSans(
                   fontSize: 12.5,
-                  color: _C.noteTextClr,
+                  color: AppColors.textMuted,
                   height: 1.3,
                 ),
                 children: [
@@ -377,7 +358,7 @@ class _NoteBox extends StatelessWidget {
                     text: 'Students only. ',
                     style: GoogleFonts.dmSans(
                       fontWeight: FontWeight.w800,
-                      color: _C.noteStrong,
+                      color: AppColors.textDark,
                     ),
                   ),
                   const TextSpan(

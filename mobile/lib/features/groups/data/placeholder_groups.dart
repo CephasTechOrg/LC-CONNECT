@@ -1,6 +1,8 @@
 /// Placeholder campus groups — UI only until Groups API exists.
 library;
 
+import 'package:flutter/material.dart';
+
 enum IconKind { heart, code, users, link }
 
 class PlaceholderGroup {
@@ -21,6 +23,15 @@ class PlaceholderGroup {
     this.greenTone = false,
     this.icon = IconKind.users,
   });
+
+  String get membersLabel => '$members members';
+
+  IconData get iconData => switch (icon) {
+        IconKind.heart => Icons.favorite_border_rounded,
+        IconKind.code => Icons.code_rounded,
+        IconKind.link => Icons.link_rounded,
+        IconKind.users => Icons.groups_outlined,
+      };
 }
 
 const groupCategories = [

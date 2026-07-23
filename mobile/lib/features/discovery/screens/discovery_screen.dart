@@ -4,6 +4,10 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/avatar_widget.dart';
+import '../../../shared/widgets/app_filter_chip.dart';
+import '../../../shared/widgets/app_shell_header.dart';
+import '../../../shared/widgets/app_states.dart';
+import '../../../shared/widgets/connections_bell_button.dart';
 import '../../groups/widgets/groups_panel.dart';
 import '../providers/discovery_provider.dart';
 import '../../safety/providers/safety_provider.dart';
@@ -132,50 +136,10 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
   }
 
   Widget _buildHeader() {
-    return Container(
-      color: AppColors.surface,
-      padding: const EdgeInsets.fromLTRB(20, 12, 12, 14),
-      child: Row(
-        children: [
-          Image.asset(
-            'assets/images/lclogo.png',
-            width: 36,
-            height: 36,
-            fit: BoxFit.contain,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Discover',
-                  style: GoogleFonts.dmSans(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textDark,
-                    letterSpacing: -0.2,
-                  ),
-                ),
-                Text(
-                  'Students, study partners & groups at Livingstone',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.dmSans(
-                    fontSize: 12,
-                    color: AppColors.textMuted,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          IconButton(
-            onPressed: () => context.push('/connections'),
-            icon: const Icon(Icons.notifications_outlined,
-                color: AppColors.textMuted, size: 22),
-          ),
-        ],
-      ),
+    return const AppShellHeader(
+      title: 'Connect',
+      subtitle: 'Students, study partners & groups at Livingstone',
+      trailing: ConnectionsBellButton(),
     );
   }
 
@@ -280,36 +244,22 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
 
   Widget _buildFilterRow() {
     return SizedBox(
-      height: 34,
+      height: 36,
       child: ListView(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 20),
-        children: _filters.map((f) {
-          final isActive = _activeFilter == f.$1;
-          return GestureDetector(
-            onTap: () => setState(() => _activeFilter = f.$1),
-            child: Container(
-              margin: const EdgeInsets.only(right: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-              decoration: BoxDecoration(
-                color: isActive ? AppColors.primary : AppColors.surface,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: isActive ? AppColors.primary : AppColors.border,
-                  width: 1.5,
+        children: _filters
+            .map(
+              (f) => Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: AppFilterChip(
+                  label: f.$2,
+                  selected: _activeFilter == f.$1,
+                  onTap: () => setState(() => _activeFilter = f.$1),
                 ),
               ),
-              child: Text(
-                f.$2,
-                style: GoogleFonts.dmSans(
-                  fontSize: 13,
-                  fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
-                  color: isActive ? Colors.white : AppColors.textMuted,
-                ),
-              ),
-            ),
-          );
-        }).toList(),
+            )
+            .toList(),
       ),
     );
   }
@@ -347,66 +297,22 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
   }
 
   Widget _buildEmpty() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 72,
-              height: 72,
-              decoration: const BoxDecoration(
-                color: AppColors.primarySoft,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.people_outline,
-                  size: 36, color: AppColors.primary),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              _activeFilter == 'all' && _query.isEmpty
-                  ? "You've seen everyone!"
-                  : 'No students match this filter',
-              style: GoogleFonts.dmSans(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textDark,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              _activeFilter == 'all' && _query.isEmpty
-                  ? 'Check back later as more students join LC Connect.'
-                  : 'Try a different filter or search term.',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.dmSans(
-                  fontSize: 13, color: AppColors.textMuted, height: 1.5),
-            ),
-          ],
-        ),
-      ),
+    return AppEmptyState(
+      icon: Icons.people_outline,
+      title: _activeFilter == 'all' && _query.isEmpty
+          ? "You've seen everyone!"
+          : 'No students match this filter',
+      subtitle: _activeFilter == 'all' && _query.isEmpty
+          ? 'Check back later as more students join LC Connect.'
+          : 'Try a different filter or search term.',
     );
   }
 
   Widget _buildError() {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.wifi_off_rounded,
-              size: 48, color: AppColors.textMuted),
-          const SizedBox(height: 12),
-          Text('Could not load students',
-              style:
-                  GoogleFonts.dmSans(fontSize: 15, color: AppColors.textMuted)),
-          const SizedBox(height: 12),
-          TextButton(
-            onPressed: () => ref.invalidate(discoveryNotifierProvider),
-            child: const Text('Retry'),
-          ),
-        ],
-      ),
+    return AppErrorState(
+      message: 'Could not load students',
+      icon: Icons.wifi_off_rounded,
+      onRetry: () => ref.invalidate(discoveryNotifierProvider),
     );
   }
 }

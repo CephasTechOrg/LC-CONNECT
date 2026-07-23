@@ -5,10 +5,13 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/avatar_widget.dart';
+import '../../../shared/widgets/app_shell_header.dart';
+import '../../../shared/widgets/app_states.dart';
+import '../../../shared/widgets/connections_bell_button.dart';
 import '../../auth/providers/auth_provider.dart';
-import '../../connections/providers/connections_provider.dart';
 import '../../discovery/providers/discovery_provider.dart';
 import '../../activities/providers/activities_provider.dart';
+import '../../groups/data/placeholder_groups.dart';
 import '../../messages/providers/messages_provider.dart';
 
 part '../widgets/home_header.dart';
@@ -87,9 +90,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget build(BuildContext context) {
     final user = ref.watch(authNotifierProvider).asData?.value;
     final firstName = _displayFirstName(user?.email);
-    final incomingCount =
-        ref.watch(connectionsNotifierProvider).asData?.value.incoming.length ??
-            0;
 
     final discoveryAsync = ref.watch(discoveryNotifierProvider);
     final activitiesAsync = ref.watch(activitiesNotifierProvider);
@@ -119,7 +119,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             children: [
               _Header(
                 greeting: '${_greeting()}, $firstName',
-                incomingCount: incomingCount,
               ),
               const SizedBox(height: 12),
               const _SearchBar(),

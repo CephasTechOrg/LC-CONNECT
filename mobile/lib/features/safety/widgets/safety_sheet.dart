@@ -127,7 +127,7 @@ Future<void> _confirmBlock(
         style: GoogleFonts.dmSans(fontWeight: FontWeight.w700),
       ),
       content: Text(
-        "They won't appear in your discovery and won't be able to contact you.",
+        "They won't appear in Connect and won't be able to contact you.",
         style: GoogleFonts.dmSans(color: AppColors.textMid),
       ),
       actions: [

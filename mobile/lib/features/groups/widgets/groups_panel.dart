@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/app_filter_chip.dart';
 import '../data/placeholder_groups.dart';
 
 /// Campus Groups panel matching the Connect mockup. Actions are local-only.
@@ -58,40 +59,11 @@ class _GroupsPanelState extends State<GroupsPanel> {
     return ListView(
       padding: EdgeInsets.zero,
       children: [
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
+        AppFilterChipRow(
+          labels: groupCategories,
+          selected: _category,
+          onSelect: (c) => setState(() => _category = c),
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
-          child: Row(
-            children: groupCategories.map((c) {
-              final on = _category == c;
-              return Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: GestureDetector(
-                  onTap: () => setState(() => _category = c),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: on ? AppColors.primary : AppColors.surface,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: on ? AppColors.primary : AppColors.border,
-                        width: 1.5,
-                      ),
-                    ),
-                    child: Text(
-                      c,
-                      style: GoogleFonts.dmSans(
-                        fontSize: 13,
-                        fontWeight: on ? FontWeight.w600 : FontWeight.w400,
-                        color: on ? Colors.white : AppColors.textMuted,
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
@@ -289,13 +261,6 @@ class _GroupListTile extends StatelessWidget {
     required this.onAction,
   });
 
-  IconData get _icon => switch (group.icon) {
-        IconKind.heart => Icons.favorite_border_rounded,
-        IconKind.code => Icons.code_rounded,
-        IconKind.link => Icons.link_rounded,
-        IconKind.users => Icons.groups_outlined,
-      };
-
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -327,7 +292,7 @@ class _GroupListTile extends StatelessWidget {
                     ),
                   )
                 : Icon(
-                    _icon,
+                    group.iconData,
                     size: 18,
                     color: group.greenTone
                         ? AppColors.green

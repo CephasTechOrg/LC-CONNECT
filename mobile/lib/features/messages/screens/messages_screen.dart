@@ -5,6 +5,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/avatar_widget.dart';
+import '../../../shared/widgets/app_shell_header.dart';
+import '../../../shared/widgets/app_states.dart';
 import '../providers/messages_provider.dart';
 import '../providers/unread_provider.dart';
 
@@ -50,38 +52,12 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 12, 12, 14),
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        border: Border(bottom: BorderSide(color: AppColors.border)),
-      ),
-      child: Row(
-        children: [
-          Image.asset(
-            'assets/images/lclogo.png',
-            width: 36,
-            height: 36,
-            fit: BoxFit.contain,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              'Messages',
-              style: GoogleFonts.dmSans(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textDark,
-                letterSpacing: -0.2,
-              ),
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.edit_outlined,
-                size: 21, color: AppColors.primary),
-            onPressed: () {},
-          ),
-        ],
+    return AppShellHeader(
+      title: 'Messages',
+      trailing: IconButton(
+        icon: const Icon(Icons.edit_outlined,
+            size: 21, color: AppColors.primary),
+        onPressed: () {},
       ),
     );
   }
@@ -251,32 +227,11 @@ class _EmptyState extends StatelessWidget {
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
       children: [
-        SizedBox(height: MediaQuery.of(context).size.height * 0.25),
-        Padding(
-          padding: const EdgeInsets.all(40),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.chat_bubble_outline_rounded,
-                  size: 56, color: AppColors.border),
-              const SizedBox(height: 16),
-              Text(
-                'No messages yet',
-                style: GoogleFonts.dmSans(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textDark,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Accept a connection request to start chatting.',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.dmSans(
-                    fontSize: 13, color: AppColors.textMuted),
-              ),
-            ],
-          ),
+        SizedBox(height: MediaQuery.of(context).size.height * 0.18),
+        const AppEmptyState(
+          icon: Icons.chat_bubble_outline_rounded,
+          title: 'No messages yet',
+          subtitle: 'Accept a connection request to start chatting.',
         ),
       ],
     );
@@ -290,34 +245,9 @@ class _ErrorState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.error_outline,
-              size: 48, color: AppColors.textMuted),
-          const SizedBox(height: 12),
-          Text(
-            'Couldn\'t load messages',
-            style: GoogleFonts.dmSans(
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textDark,
-            ),
-          ),
-          const SizedBox(height: 16),
-          TextButton(
-            onPressed: onRetry,
-            child: Text(
-              'Retry',
-              style: GoogleFonts.dmSans(
-                color: AppColors.primary,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
+    return AppErrorState(
+      message: "Couldn't load messages",
+      onRetry: onRetry,
     );
   }
 }

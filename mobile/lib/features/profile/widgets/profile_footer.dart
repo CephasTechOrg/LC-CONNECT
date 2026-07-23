@@ -32,33 +32,9 @@ class _ErrorState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.error_outline,
-              size: 48, color: AppColors.textMuted),
-          const SizedBox(height: 12),
-          Text(
-            'Couldn\'t load your profile',
-            style: GoogleFonts.dmSans(
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textDark,
-            ),
-          ),
-          const SizedBox(height: 16),
-          TextButton(
-            onPressed: onRetry,
-            child: Text(
-              'Retry',
-              style: GoogleFonts.dmSans(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w600),
-            ),
-          ),
-        ],
-      ),
+    return AppErrorState(
+      message: "Couldn't load your profile",
+      onRetry: onRetry,
     );
   }
 }

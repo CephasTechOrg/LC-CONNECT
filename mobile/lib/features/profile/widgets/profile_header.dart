@@ -7,38 +7,12 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 12, 12, 14),
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        border: Border(bottom: BorderSide(color: AppColors.border)),
-      ),
-      child: Row(
-        children: [
-          Image.asset(
-            'assets/images/lclogo.png',
-            width: 36,
-            height: 36,
-            fit: BoxFit.contain,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              'Profile',
-              style: GoogleFonts.dmSans(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textDark,
-                letterSpacing: -0.2,
-              ),
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.settings_outlined,
-                color: AppColors.textMuted, size: 22),
-            onPressed: () => _showSettings(context, ref),
-          ),
-        ],
+    return AppShellHeader(
+      title: 'Profile',
+      trailing: IconButton(
+        icon: const Icon(Icons.settings_outlined,
+            color: AppColors.textMuted, size: 22),
+        onPressed: () => _showSettings(context, ref),
       ),
     );
   }

@@ -1,55 +1,17 @@
 part of '../screens/home_screen.dart';
 
-class _PlaceholderGroup {
-  final String name;
-  final String members;
-  final IconData? icon;
-  final bool useLc;
-  final bool greenTone;
-  const _PlaceholderGroup({
-    required this.name,
-    required this.members,
-    this.icon,
-    this.useLc = false,
-    this.greenTone = false,
-  });
-}
-
-const _homeGroups = [
-  _PlaceholderGroup(
-    name: 'Livingstone Volleyball',
-    members: '124 members',
-    useLc: true,
-  ),
-  _PlaceholderGroup(
-    name: 'Pre-Health Society',
-    members: '98 members',
-    icon: Icons.favorite_border_rounded,
-  ),
-  _PlaceholderGroup(
-    name: 'Tech Club',
-    members: '76 members',
-    icon: Icons.code_rounded,
-  ),
-  _PlaceholderGroup(
-    name: "Men's Mentorship",
-    members: '85 members',
-    icon: Icons.groups_outlined,
-    greenTone: true,
-  ),
-];
-
 class _CampusGroupsRow extends StatelessWidget {
   const _CampusGroupsRow();
 
   @override
   Widget build(BuildContext context) {
+    final groups = placeholderGroups.take(4).toList();
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 6),
       child: Row(
         children: [
-          ..._homeGroups.map(
+          ...groups.map(
             (g) => Padding(
               padding: const EdgeInsets.only(right: 10),
               child: GestureDetector(
@@ -92,7 +54,7 @@ class _CampusGroupsRow extends StatelessWidget {
                                 ),
                               )
                             : Icon(
-                                g.icon,
+                                g.iconData,
                                 size: 18,
                                 color: g.greenTone
                                     ? AppColors.green
@@ -113,7 +75,7 @@ class _CampusGroupsRow extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        g.members,
+                        g.membersLabel,
                         style: GoogleFonts.dmSans(
                           fontSize: 10.5,
                           color: AppColors.textMuted,

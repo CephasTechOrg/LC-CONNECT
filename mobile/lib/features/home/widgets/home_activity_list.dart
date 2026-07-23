@@ -17,12 +17,12 @@ class _ActivitiesList extends StatelessWidget {
       );
     }
     if (activities.isEmpty) {
-      return _EmptyStateCard(
+      return AppEmptyStateCard(
         icon: Icons.calendar_today_rounded,
         title: 'No upcoming activities',
         subtitle:
             'Looking for something to do? Check out the activities board.',
-        actionLabel: 'Discover Activities',
+        actionLabel: 'Browse Activities',
         onAction: () => context.go('/activities'),
       );
     }
