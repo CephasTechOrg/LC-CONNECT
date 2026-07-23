@@ -19,3 +19,4 @@ orjson==3.11.9
 resend==2.34.0
 alembic==1.18.5
 firebase-admin==7.5.0
+Pillow==12.3.0

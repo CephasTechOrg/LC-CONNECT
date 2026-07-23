@@ -21,15 +21,16 @@ class SupabaseStorageService:
         if settings.supabase_url and settings.supabase_service_role_key:
             self.client = create_client(settings.supabase_url, settings.supabase_service_role_key)
 
-    def upload_profile_image(self, user_id: UUID, filename: str, content_type: str, data: bytes) -> str:
+    def upload_profile_image(self, user_id: UUID, content_type: str, data: bytes) -> str:
         if self.client is None:
             raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='Supabase Storage is not configured')
 
-        extension = filename.rsplit('.', 1)[-1].lower() if '.' in filename else 'jpg'
-        safe_extension = extension if extension in {'jpg', 'jpeg', 'png', 'webp'} else 'jpg'
-        path = f'profiles/{user_id}/avatar.{safe_extension}'
+        # The bytes are already sanitized to a clean JPEG upstream, so the object name is
+        # fully server-controlled (no user-supplied filename/extension reaches storage).
+        path = f'profiles/{user_id}/avatar.jpg'
 
-        # Delete any existing avatar (all extensions) so the upload never hits a conflict.
+        # Delete any existing avatar (all extensions — covers pre-sanitizer uploads) so the
+        # upload never hits a conflict.
         for ext in ('jpg', 'jpeg', 'png', 'webp'):
             try:
                 self.client.storage.from_(settings.supabase_profile_bucket).remove(

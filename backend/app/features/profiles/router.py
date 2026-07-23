@@ -15,6 +15,7 @@ from app.features.profiles.service import (
     get_or_create_languages,
 )
 from app.models import ActivityParticipant, Match, Message, Profile, User, UserLanguage
+from app.shared.image_processing import sanitize_avatar
 from app.shared.profiles import get_profile_by_user_id, profile_load_options
 from app.shared.schemas import ProfilePublic
 from app.shared.serializers import profile_to_public
@@ -88,13 +89,15 @@ async def update_my_profile(payload: ProfileUpdate, current_user: User = Depends
 
 @router.post('/me/avatar', response_model=ProfilePublic)
 async def upload_my_avatar(file: UploadFile = File(...), current_user: User = Depends(require_verified_student), db: AsyncSession = Depends(get_db)) -> ProfilePublic:
-    if file.content_type not in {'image/jpeg', 'image/png', 'image/webp'}:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Only JPEG, PNG, and WebP images are allowed')
+    # Byte cap first (cheap, before we decode), then sanitize: sanitize_avatar validates
+    # the real image bytes (not the spoofable content-type header), strips EXIF/GPS, and
+    # re-encodes to a clean JPEG. We store only that sanitized output.
     data = await file.read()
     if len(data) > settings.max_profile_image_mb * 1024 * 1024:
         raise HTTPException(status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail='Profile image is too large')
+    clean_data, content_type = sanitize_avatar(data)
     profile = await get_profile_by_user_id(db, current_user.id)
-    profile.avatar_url = storage_service.upload_profile_image(current_user.id, file.filename or 'avatar.jpg', file.content_type or 'image/jpeg', data)
+    profile.avatar_url = storage_service.upload_profile_image(current_user.id, content_type, clean_data)
     await db.commit()
     return profile_to_public(await get_profile_by_user_id(db, current_user.id))
 

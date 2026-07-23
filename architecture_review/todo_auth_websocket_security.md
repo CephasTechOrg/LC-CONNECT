@@ -169,15 +169,15 @@ Apple Developer account; iOS in-app sound to be verified on a real device.)
 - [ ] Retention policy
 - [ ] Published policies
 
-## Avatar security
+## Avatar security — DONE (`app/shared/image_processing.py::sanitize_avatar`, 9 tests)
 
-- [ ] Signature validation
-- [ ] Safe decode and pixel cap
-- [ ] EXIF removal
-- [ ] Re-encode
-- [ ] Generated object names
-- [ ] Private bucket/signed URLs evaluation
-- [ ] Avatar deletion/report
+- [x] Signature validation (Pillow decodes the real bytes — spoofed content-type rejected)
+- [x] Safe decode and pixel cap (`MAX_PIXELS` 24 MP decompression-bomb guard → 400)
+- [x] EXIF removal (re-encode drops all metadata → **GPS never reaches storage**; orientation applied first)
+- [x] Re-encode (decode → RGB → downscale ≤1024 → fresh JPEG; neutralizes embedded payloads)
+- [x] Generated object names (server-controlled `avatar.jpg`; no user filename/extension reaches storage)
+- [ ] Private bucket/signed URLs evaluation — deferred (sanitize removes the leak; public OK for pilot)
+- [ ] Avatar deletion/report — deferred (belongs with the safety-enforcement slice)
 
 ## Tests
 
