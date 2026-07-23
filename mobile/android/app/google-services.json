@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "998316406519",
+    "project_id": "lc-connect-7abe7",
+    "storage_bucket": "lc-connect-7abe7.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:998316406519:android:0c87aac1de773773f805f2",
+        "android_client_info": {
+          "package_name": "com.livingstone.lc_connect"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCQnNV5ckS-KndCBW4e7cLraRQGETIGYL4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

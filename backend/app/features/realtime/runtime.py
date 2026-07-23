@@ -7,6 +7,7 @@ without importing the gateway (which would create an import cycle).
 from __future__ import annotations
 
 import asyncio
+import logging
 from uuid import UUID
 
 from sqlalchemy import select
@@ -19,6 +20,8 @@ from app.features.realtime.event_bus import InMemoryEventBus
 from app.features.realtime.manager import ConnectionManager
 from app.features.realtime.rate_limit import RateLimiter
 from app.models import Profile
+
+logger = logging.getLogger('lc_connect.realtime')
 
 manager = ConnectionManager(outbox_max=settings.ws_outbox_max_size)
 event_bus = InMemoryEventBus(manager)
@@ -48,8 +51,11 @@ async def schedule_offline_push(recipient_id: UUID, sender_id: UUID, conversatio
     if not push_sender.enabled:
         return
     await asyncio.sleep(settings.push_reconnect_grace_seconds)
-    if manager.user_socket_count(recipient_id) != 0:
+    after_grace = manager.user_socket_count(recipient_id)
+    if after_grace != 0:
+        logger.info('offline push skipped: recipient=%s reconnected during grace (sockets=%d)', recipient_id, after_grace)
         return  # reconnected during the grace window — they'll get it live
+    logger.info('offline push firing: recipient=%s still offline after grace', recipient_id)
     async with AsyncSessionLocal() as db:
         name = (
             await db.execute(select(Profile.display_name).where(Profile.user_id == sender_id))

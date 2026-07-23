@@ -139,6 +139,69 @@ xcrun simctl shutdown 63A084EA-565F-465D-B48D-3A5AC02C2A93
 xcrun simctl shutdown all
 ```
 
+### 3b. Start the Android emulator (Mac) — for **push-notification** testing
+
+> Why Android: **FCM push only fires on a Google-Play Android target.** iOS push needs a paid
+> Apple Developer account (not set up yet), so the Pixel emulator is how we test real pushes today.
+> Everything else (chat, typing, in-app UI) works on iOS too.
+
+**List Android emulators (the launch-by-id names):**
+
+```bash
+cd /Users/cephas/Projects/LC-CONNECT/mobile
+flutter emulators
+```
+
+```text
+Pixel_7             • Pixel 7       • Google       • android   ← our emulator id
+```
+
+**Launch it (by id):**
+
+```bash
+flutter emulators --launch Pixel_7
+```
+
+(Or just press ▶️ next to Pixel 7 in Android Studio → **Virtual Device Manager**.)
+
+**Confirm it's running — note the device id:**
+
+```bash
+flutter devices
+```
+
+```text
+sdk gphone64 arm64 (mobile) • emulator-5554 • android-arm64 • Android (emulator)
+```
+
+> The running **device id** is `emulator-5554` (the first emulator is always `-5554`; a second is
+> `-5556`, etc.). Use that id with `flutter run -d`. Don't confuse it with the **emulator id**
+> `Pixel_7`, which is only for `flutter emulators --launch`.
+
+**Run the app on it:**
+
+```bash
+flutter run -d emulator-5554
+```
+
+**`adb` (Android's device tool) lives here** — not on `PATH` by default:
+
+```bash
+~/Library/Android/sdk/platform-tools/adb devices
+# Optional convenience — add to PATH once (then just `adb`):
+echo 'export PATH="$HOME/Library/Android/sdk/platform-tools:$PATH"' >> ~/.zshrc && source ~/.zshrc
+```
+
+**Shut the emulator down:** close its window, or:
+
+```bash
+~/Library/Android/sdk/platform-tools/adb -s emulator-5554 emu kill
+```
+
+**Two-account push test:** run the app on **Android** (`emulator-5554` = the recipient that gets the
+🔔) and sign in as the other account on an **iPhone simulator** (the sender). Sign in on Android →
+allow notifications → **close the app** → send from iOS → push arrives on Android in ~3s.
+
 ### 4. Start Flutter (choose a device by id)
 
 ```bash
@@ -150,8 +213,9 @@ flutter devices
 
 ```bash
 flutter run
-# or pin to a specific simulator:
-flutter run -d 63A084EA-565F-465D-B48D-3A5AC02C2A93
+# or pin to a specific device:
+flutter run -d 63A084EA-565F-465D-B48D-3A5AC02C2A93   # an iPhone simulator (by UUID)
+flutter run -d emulator-5554                          # the Android emulator (see 3b)
 ```
 
 **Two phones (two terminals — different ids):**
@@ -224,6 +288,9 @@ Simulator app
 | Port 8000 in use                                  | `lsof -i :8000` → `kill <PID>` → start uvicorn again              |
 | App hits Render instead of local                  | Mobile `.env` still on production URL → switch to localhost → `R` |
 | No iPhone device                                  | `open -a Simulator` then `flutter devices`                        |
+| Android emulator missing from `flutter devices`   | Wait for it to finish booting, or `flutter emulators --launch Pixel_7` |
+| Push never arrives on Android                     | Emulator must use a **Google Play** system image; app must be **closed**; backend log shows `Push enabled (FCM)` |
+| `adb: command not found`                          | Use full path `~/Library/Android/sdk/platform-tools/adb` or add it to `PATH` (see 3b) |
 | Signup network / SocketException                  | Restart Simulator + full `flutter run`; check VPN / Wi‑Fi         |
 | 401 after login                                   | Backend missing/wrong `SUPABASE_JWT_SECRET`; restart uvicorn      |
 

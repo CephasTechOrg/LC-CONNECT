@@ -1,3 +1,4 @@
+import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
@@ -20,6 +21,16 @@ from app.features.realtime.protocol import CloseCode
 from app.features.realtime.runtime import manager as ws_manager
 from app.features.safety import router as safety_router
 from app.routers import auth
+
+# Surface our own loggers (push, realtime) in the uvicorn console. Without this,
+# `lc_connect.*` INFO logs are swallowed (uvicorn only configures its own loggers).
+_app_logger = logging.getLogger('lc_connect')
+if not _app_logger.handlers:
+    _handler = logging.StreamHandler()
+    _handler.setFormatter(logging.Formatter('%(levelname)s:     [%(name)s] %(message)s'))
+    _app_logger.addHandler(_handler)
+    _app_logger.setLevel(logging.INFO)
+    _app_logger.propagate = False
 
 
 @asynccontextmanager

@@ -82,7 +82,7 @@ def test_send_prunes_only_unregistered_tokens(monkeypatch):
         success_count = 1
         failure_count = 2
 
-    monkeypatch.setattr(messaging, 'send_each_for_multicast', lambda _m: _Batch())
+    monkeypatch.setattr(messaging, 'send_each_for_multicast', lambda _m, **_kw: _Batch())
     invalid = sender._send(['t1', 't2', 't3'], 'Sender', uuid4(), uuid4())
     assert invalid == ['t2']
 

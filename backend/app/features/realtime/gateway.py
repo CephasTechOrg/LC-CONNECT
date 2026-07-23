@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import logging
 from uuid import UUID
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
@@ -30,6 +31,8 @@ from app.features.realtime.runtime import (
     subscribe_limiter,
     typing_limiter,
 )
+
+logger = logging.getLogger('lc_connect.realtime')
 
 router = APIRouter()
 
@@ -202,7 +205,14 @@ async def _on_send(conn: Connection, frame: protocol.SendFrame) -> None:
         await event_bus.publish_to_user(conn.user_id, updated)
         await event_bus.publish_to_user(partner_id, updated)
         # Offline push: if the recipient has no live socket, notify after a grace recheck.
-        if manager.user_socket_count(partner_id) == 0:
+        partner_sockets = manager.user_socket_count(partner_id)
+        logger.info(
+            'send: recipient=%s open_sockets=%d -> %s',
+            partner_id,
+            partner_sockets,
+            'scheduling offline push' if partner_sockets == 0 else 'recipient online, delivered live (no push)',
+        )
+        if partner_sockets == 0:
             asyncio.create_task(schedule_offline_push(partner_id, conn.user_id, frame.conversation_id))
 
 

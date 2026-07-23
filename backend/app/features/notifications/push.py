@@ -24,6 +24,7 @@ logger = logging.getLogger('lc_connect.push')
 class PushSender:
     def __init__(self) -> None:
         self._ready = False
+        self._app = None
         self._init()
 
     def _init(self) -> None:
@@ -35,7 +36,9 @@ class PushSender:
             from firebase_admin import credentials
 
             cred = credentials.Certificate(json.loads(settings.firebase_credentials_json))
-            firebase_admin.initialize_app(cred, name='lc-connect-push')
+            # A named (non-default) app: every messaging call MUST pass app=self._app,
+            # else firebase-admin looks for the default app and raises "does not exist".
+            self._app = firebase_admin.initialize_app(cred, name='lc-connect-push')
             self._ready = True
             logger.info('Push enabled (FCM)')
         except Exception as exc:  # noqa: BLE001 - never let push break startup
@@ -76,7 +79,7 @@ class PushSender:
             data={'type': 'message', 'conversation_id': str(conversation_id), 'sender_id': str(sender_id)},
             apns=messaging.APNSConfig(payload=messaging.APNSPayload(aps=messaging.Aps(sound='default'))),
         )
-        response = messaging.send_each_for_multicast(message)
+        response = messaging.send_each_for_multicast(message, app=self._app)
         invalid = [
             token
             for token, result in zip(tokens, response.responses, strict=False)

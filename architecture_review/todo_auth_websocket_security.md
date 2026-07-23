@@ -118,20 +118,29 @@ Thread list stays live via the user-channel `conversation.updated`. 15 Dart unit
 - [x] Never persist typing
 - [ ] Presence privacy setting if enabled (deferred)
 
-## Notifications — Slice 3 (code done; delivery needs Firebase setup)
+## Notifications — Slice 3 (**Android push VERIFIED end-to-end**)
 
 Typing + live previews now also show on the Messages **list** (typing routed to the partner's user
 channel). Push: `device_tokens` table + `/devices` endpoints + guarded FCM sender + offline-only
-trigger (3s reconnect grace) + mobile `NotificationService`. Runbook: `docs/push_notifications_setup.md`.
+trigger (3s reconnect grace) + mobile `NotificationService`. Docs: `docs/notifications/` (how it
+works + `firebase_setup.md`). Delivery confirmed on a real Android emulator (2026-07-23).
 
-- [x] FCM/APNs (code; guarded — activates after Firebase/APNs setup)
+- [x] FCM/APNs (Android **live & verified**; iOS code-ready, awaiting Apple Developer account for APNs)
 - [x] Device-token table (`device_tokens`, idempotent upsert)
 - [x] Token refresh/revocation (`onTokenRefresh` re-register; `clear()` unregisters on logout)
 - [x] Send after commit (offline trigger fires after message persist + broadcast)
+- [x] Offline detection verified (socket-count == 0 → push; online → live, no push)
+- [x] Stale-token self-healing verified (`UnregisteredError` → pruned)
 - [x] Generic preview default (sender name only; payload = ids, no body)
 - [x] Conversation deep link (tap → `/messages/{conversation_id}`)
 - [~] Foreground/background/terminated (background/terminated tap handled; foreground relies on the
-  live chat/list — no in-app banner yet)
+  live chat/list — no in-app banner yet → **next slice**)
+
+### Next slice — messaging polish (gaps identified 2026-07-23)
+- [ ] Unread counts + badges (per-conversation, Messages tab, app icon) — backend has `read_at`
+  per message but no unread **aggregation** yet
+- [ ] In-app banner + sound when app is foregrounded on another screen
+- [ ] Drop the WebSocket on app-background (tightens the backgrounded-but-not-killed push window)
 
 ## Privacy/safety
 
