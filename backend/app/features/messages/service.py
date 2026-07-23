@@ -14,9 +14,10 @@ from fastapi import HTTPException, status
 from sqlalchemy import func, or_, select, tuple_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 
 from app.features.messages.schema import MessageRead
-from app.models import Match, Message, User
+from app.models import ConversationMember, Match, Message, User
 
 
 async def get_match_for_user(db: AsyncSession, match_id: UUID, user: User) -> Match:
@@ -31,26 +32,36 @@ def partner_id(match: Match, user: User) -> UUID:
 
 
 async def unread_summary(db: AsyncSession, user_id: UUID) -> tuple[int, dict[UUID, int]]:
-    """Unread counts for the user, in one grouped query (no N+1).
+    """Unread counts for the user, in one grouped query (no N+1). Keyed by **conversation id**.
 
-    A message is unread *by this user* when it belongs to one of their matches, was sent by
-    the partner (``sender_id != user_id``), and has no ``read_at``. Backed by the partial
-    index ``ix_messages_unread`` so only unread rows are scanned. Returns
-    ``(total, {match_id: count})`` — conversations with zero unread are simply absent.
+    A message is unread *by this user* when it is in a conversation they're an active member
+    of, was sent by someone else, and falls **after their read boundary**
+    (`ConversationMember.last_read_message_id`, compared on the keyset `(created_at, id)`).
+
+    The boundary — rather than the per-message `read_at` — is what makes this work for an
+    N-member group: a single `read_at` column cannot express *which* member has read a
+    message. `read_at` is still maintained for DM read receipts.
     """
+    boundary = aliased(Message)  # the member's last-read message, if any
     rows = (
         await db.execute(
-            select(Message.match_id, func.count(Message.id))
-            .join(Match, Match.id == Message.match_id)
+            select(ConversationMember.conversation_id, func.count(Message.id))
+            .select_from(ConversationMember)
+            .join(Message, Message.conversation_id == ConversationMember.conversation_id)
+            .outerjoin(boundary, boundary.id == ConversationMember.last_read_message_id)
             .where(
-                or_(Match.user_a_id == user_id, Match.user_b_id == user_id),
+                ConversationMember.user_id == user_id,
+                ConversationMember.status == 'active',
                 Message.sender_id != user_id,
-                Message.read_at.is_(None),
+                or_(
+                    ConversationMember.last_read_message_id.is_(None),
+                    tuple_(Message.created_at, Message.id) > tuple_(boundary.created_at, boundary.id),
+                ),
             )
-            .group_by(Message.match_id)
+            .group_by(ConversationMember.conversation_id)
         )
     ).all()
-    per_conversation = {match_id: count for match_id, count in rows}
+    per_conversation = {conversation_id: count for conversation_id, count in rows}
     return sum(per_conversation.values()), per_conversation
 
 
@@ -71,6 +82,7 @@ async def persist_message_idempotent(
     *,
     sender_id: UUID,
     match_id: UUID,
+    conversation_id: UUID,
     body: str,
     client_message_id: UUID | None,
 ) -> tuple[Message, bool]:
@@ -81,7 +93,15 @@ async def persist_message_idempotent(
     Race-safe — the partial-unique index is the arbiter; the loser catches IntegrityError.
     Without one (legacy REST), it is a plain insert.
     """
-    message = Message(sender_id=sender_id, match_id=match_id, client_message_id=client_message_id, body=body)
+    # Dual-write during the transition: `conversation_id` is the new container, while
+    # `match_id` stays populated so the old path remains readable and rollback is trivial.
+    message = Message(
+        sender_id=sender_id,
+        match_id=match_id,
+        conversation_id=conversation_id,
+        client_message_id=client_message_id,
+        body=body,
+    )
     db.add(message)
     try:
         await db.flush()
@@ -104,14 +124,14 @@ async def persist_message_idempotent(
 
 async def page_thread(
     db: AsyncSession,
-    match_id: UUID,
+    conversation_id: UUID,
     *,
     before_created_at: datetime | None,
     before_id: UUID | None,
     limit: int,
 ) -> list[Message]:
     """Newest-first page. `before_*` is the keyset cursor (the oldest row already seen)."""
-    stmt = select(Message).where(Message.match_id == match_id)
+    stmt = select(Message).where(Message.conversation_id == conversation_id)
     if before_created_at is not None and before_id is not None:
         stmt = stmt.where(tuple_(Message.created_at, Message.id) < tuple_(before_created_at, before_id))
     stmt = stmt.order_by(Message.created_at.desc(), Message.id.desc()).limit(limit)
@@ -120,7 +140,7 @@ async def page_thread(
 
 async def sync_thread(
     db: AsyncSession,
-    match_id: UUID,
+    conversation_id: UUID,
     *,
     after_created_at: datetime,
     after_id: UUID,
@@ -130,7 +150,7 @@ async def sync_thread(
     stmt = (
         select(Message)
         .where(
-            Message.match_id == match_id,
+            Message.conversation_id == conversation_id,
             tuple_(Message.created_at, Message.id) > tuple_(after_created_at, after_id),
         )
         .order_by(Message.created_at.asc(), Message.id.asc())

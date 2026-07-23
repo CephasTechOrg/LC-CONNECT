@@ -51,53 +51,37 @@ class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: AppColors.surface,
-      padding: const EdgeInsets.fromLTRB(20, 12, 16, 14),
+      padding: const EdgeInsets.fromLTRB(20, 12, 12, 14),
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        border: Border(bottom: BorderSide(color: AppColors.border)),
+      ),
       child: Row(
         children: [
-          _LCBadge(),
-          const SizedBox(width: 10),
+          Image.asset(
+            'assets/images/lclogo.png',
+            width: 36,
+            height: 36,
+            fit: BoxFit.contain,
+          ),
+          const SizedBox(width: 12),
           Expanded(
             child: Text(
               'Messages',
               style: GoogleFonts.dmSans(
-                fontSize: 20,
+                fontSize: 18,
                 fontWeight: FontWeight.w700,
                 color: AppColors.textDark,
+                letterSpacing: -0.2,
               ),
             ),
           ),
           IconButton(
             icon: const Icon(Icons.edit_outlined,
-                size: 20, color: AppColors.textMuted),
+                size: 21, color: AppColors.primary),
             onPressed: () {},
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _LCBadge extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 34,
-      height: 34,
-      decoration: BoxDecoration(
-        color: AppColors.primary,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      alignment: Alignment.center,
-      child: Text(
-        'LC',
-        style: GoogleFonts.dmSans(
-          color: Colors.white,
-          fontSize: 13,
-          fontWeight: FontWeight.w700,
-        ),
       ),
     );
   }

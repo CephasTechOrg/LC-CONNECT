@@ -84,7 +84,7 @@ async def test_persist_creates_on_clean_insert():
     db.rollback = AsyncMock()
 
     msg, created = await persist_message_idempotent(
-        db, sender_id=uuid4(), match_id=uuid4(), body='hi', client_message_id=uuid4()
+        db, sender_id=uuid4(), match_id=uuid4(), conversation_id=uuid4(), body='hi', client_message_id=uuid4()
     )
 
     assert created is True
@@ -109,8 +109,8 @@ async def test_persist_returns_existing_row_on_conflict():
     db.execute = AsyncMock(return_value=result)
 
     msg, created = await persist_message_idempotent(
-        db, sender_id=existing.sender_id, match_id=existing.match_id, body='hi',
-        client_message_id=uuid4(),
+        db, sender_id=existing.sender_id, match_id=existing.match_id, conversation_id=uuid4(),
+        body='hi', client_message_id=uuid4(),
     )
 
     assert created is False
@@ -188,8 +188,9 @@ async def test_unread_summary_empty_is_zero():
     assert per == {}
 
 
-async def test_unread_summary_only_counts_partner_unread():
-    """The query must filter to unread partner messages (not own, not already read)."""
+async def test_unread_summary_counts_via_the_member_boundary():
+    """The query counts messages after each member's read boundary — not their own, and
+    only in conversations they're an active member of."""
     captured: dict = {}
 
     async def fake_execute(stmt):
@@ -202,7 +203,8 @@ async def test_unread_summary_only_counts_partner_unread():
     db.execute = fake_execute
     await unread_summary(db, uuid4())
     sql = str(captured['stmt'].compile(dialect=postgresql.dialect()))
-    assert 'read_at IS NULL' in sql        # only unread
-    assert 'sender_id !=' in sql           # not my own messages
-    assert 'matches' in sql                # scoped to my conversations
+    assert 'conversation_members' in sql              # membership-scoped
+    assert 'conversation_members.status' in sql       # only active members (value is bound)
+    assert 'sender_id !=' in sql                       # not my own messages
+    assert 'last_read_message_id' in sql               # the per-member read boundary
     assert 'GROUP BY' in sql

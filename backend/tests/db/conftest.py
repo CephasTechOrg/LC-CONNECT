@@ -30,7 +30,8 @@ import app.models  # noqa: F401  — imported so Base.metadata is fully populate
 from app.config import settings
 from app.database import Base, _async_url
 from app.features.connections.service import ordered_pair
-from app.models import Block, Match, Message, Profile, User
+from app.models import Block, Conversation, Match, Message, Profile, User
+from app.shared.conversations import ensure_dm_conversation
 
 TEST_DB_NAME = 'lc_connect_test'
 
@@ -118,12 +119,17 @@ class _Factory:
         return user
 
     async def match(self, user_a: User, user_b: User) -> Match:
-        """Create a match the way production does — via the normalized pair."""
+        """Create a match the way production does — normalized pair + its DM conversation."""
         left, right = ordered_pair(user_a.id, user_b.id)
         match = Match(user_a_id=left, user_b_id=right)
         self.db.add(match)
         await self.db.flush()
+        await ensure_dm_conversation(self.db, match)
         return match
+
+    async def conversation(self, match: Match) -> Conversation:
+        """The match's DM conversation (messaging internals key on this)."""
+        return await ensure_dm_conversation(self.db, match)
 
     async def message(
         self,
@@ -139,7 +145,10 @@ class _Factory:
         *transaction* timestamp, so rows inserted in one transaction would otherwise share
         an identical created_at and make keyset ordering ambiguous.
         """
-        message = Message(match_id=match.id, sender_id=sender.id, body=body)
+        conversation = await ensure_dm_conversation(self.db, match)
+        message = Message(
+            match_id=match.id, conversation_id=conversation.id, sender_id=sender.id, body=body
+        )
         if created_at is not None:
             message.created_at = created_at
         self.db.add(message)

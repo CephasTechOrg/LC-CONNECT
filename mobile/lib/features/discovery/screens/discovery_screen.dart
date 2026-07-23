@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/avatar_widget.dart';
+import '../../groups/widgets/groups_panel.dart';
 import '../providers/discovery_provider.dart';
 import '../../safety/providers/safety_provider.dart';
 import '../../safety/widgets/safety_sheet.dart';
@@ -11,13 +12,16 @@ import '../../safety/widgets/safety_sheet.dart';
 part '../widgets/discovery_student_card.dart';
 part '../widgets/discovery_card_parts.dart';
 
-// ── Filter definitions ─────────────────────────────────────────────
 const _filters = [
   ('all', 'All'),
   ('friendship', 'Friendship'),
   ('study_partner', 'Study Partner'),
   ('language_exchange', 'Language Exchange'),
+  ('events', 'Events'),
+  ('open_connection', 'Open Connection'),
 ];
+
+const _tabs = ['Students', 'Study Partners', 'Groups'];
 
 class DiscoveryScreen extends ConsumerStatefulWidget {
   const DiscoveryScreen({super.key});
@@ -30,6 +34,8 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
   final _searchCtrl = TextEditingController();
   String _query = '';
   String _activeFilter = 'all';
+  String _tab = 'Students';
+  String? _lastQueryTab;
 
   @override
   void dispose() {
@@ -37,8 +43,37 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
     super.dispose();
   }
 
+  void _syncTabFromRoute(BuildContext context) {
+    final tabParam =
+        GoRouterState.of(context).uri.queryParameters['tab']?.toLowerCase();
+    if (tabParam == _lastQueryTab) return;
+    _lastQueryTab = tabParam;
+    final next = switch (tabParam) {
+      'groups' => 'Groups',
+      'study' || 'study_partners' || 'studypartners' => 'Study Partners',
+      'students' => 'Students',
+      _ => null,
+    };
+    if (next != null && next != _tab) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        setState(() {
+          _tab = next;
+          if (next == 'Study Partners') {
+            _activeFilter = 'study_partner';
+          }
+        });
+      });
+    }
+  }
+
   List<DiscoveryCard> _applyFilters(List<DiscoveryCard> cards) {
     var list = cards;
+    if (_tab == 'Study Partners') {
+      list = list
+          .where((c) => c.lookingForCodes.contains('study_partner'))
+          .toList();
+    }
     if (_activeFilter != 'all') {
       list = list
           .where((c) => c.lookingForCodes.contains(_activeFilter))
@@ -58,6 +93,7 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    _syncTabFromRoute(context);
     final discoveryState = ref.watch(discoveryNotifierProvider);
 
     return Scaffold(
@@ -67,151 +103,181 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildHeader(),
-            const SizedBox(height: 14),
-            _buildSearchBar(),
-            const SizedBox(height: 12),
-            _buildFilterRow(),
-            const SizedBox(height: 12),
-            Expanded(
-              child: discoveryState.when(
-                loading: () => const Center(
-                  child: CircularProgressIndicator(),
+            _buildSegmentTabs(),
+            if (_tab == 'Groups')
+              const Expanded(child: GroupsPanel())
+            else ...[
+              const SizedBox(height: 12),
+              _buildSearchBar(),
+              const SizedBox(height: 12),
+              _buildFilterRow(),
+              const SizedBox(height: 12),
+              Expanded(
+                child: discoveryState.when(
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
+                  error: (e, _) => _buildError(),
+                  data: (cards) {
+                    final filtered = _applyFilters(cards);
+                    if (filtered.isEmpty) return _buildEmpty();
+                    return _buildList(filtered);
+                  },
                 ),
-                error: (e, _) => _buildError(),
-                data: (cards) {
-                  final filtered = _applyFilters(cards);
-                  if (filtered.isEmpty) return _buildEmpty();
-                  return _buildList(filtered);
-                },
               ),
-            ),
+            ],
           ],
         ),
       ),
     );
   }
 
-  // ── Header ────────────────────────────────────────────────────────
   Widget _buildHeader() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 16, 0),
+    return Container(
+      color: AppColors.surface,
+      padding: const EdgeInsets.fromLTRB(20, 12, 12, 14),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              color: AppColors.primary,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              'LC',
-              style: GoogleFonts.dmSans(
-                color: Colors.white,
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
+          Image.asset(
+            'assets/images/lclogo.png',
+            width: 36,
+            height: 36,
+            fit: BoxFit.contain,
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Connect',
+                  'Discover',
                   style: GoogleFonts.dmSans(
-                    fontSize: 22,
+                    fontSize: 18,
                     fontWeight: FontWeight.w700,
                     color: AppColors.textDark,
-                    letterSpacing: -0.5,
+                    letterSpacing: -0.2,
                   ),
                 ),
                 Text(
-                  'Discover and connect with students at Livingstone College',
+                  'Students, study partners & groups at Livingstone',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.dmSans(
-                    fontSize: 11.5,
+                    fontSize: 12,
                     color: AppColors.textMuted,
-                    height: 1.3,
                   ),
                 ),
               ],
             ),
           ),
           IconButton(
-            onPressed: () {},
+            onPressed: () => context.push('/connections'),
             icon: const Icon(Icons.notifications_outlined,
-                color: AppColors.textMid),
+                color: AppColors.textMuted, size: 22),
           ),
         ],
       ),
     );
   }
 
-  // ── Search bar ────────────────────────────────────────────────────
+  Widget _buildSegmentTabs() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+      child: Row(
+        children: _tabs.map((t) {
+          final on = _tab == t;
+          return Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 3),
+              child: Material(
+                color: on ? AppColors.primary : AppColors.surface,
+                borderRadius: BorderRadius.circular(10),
+                child: InkWell(
+                  onTap: () => setState(() {
+                    _tab = t;
+                    if (t == 'Study Partners') {
+                      _activeFilter = 'study_partner';
+                    } else if (t == 'Students') {
+                      _activeFilter = 'all';
+                    }
+                  }),
+                  borderRadius: BorderRadius.circular(10),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 9),
+                    child: Text(
+                      t,
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.dmSans(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: on ? Colors.white : AppColors.textMid,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
   Widget _buildSearchBar() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Row(
         children: [
           Expanded(
-            child: SizedBox(
-              height: 42,
-              child: TextField(
-                controller: _searchCtrl,
-                onChanged: (v) => setState(() => _query = v),
-                style: GoogleFonts.dmSans(
-                    fontSize: 13.5, color: AppColors.textDark),
-                decoration: InputDecoration(
-                  hintText: 'Search by name, major, or interests',
-                  hintStyle: GoogleFonts.dmSans(
-                      fontSize: 13, color: AppColors.textMuted),
-                  prefixIcon: const Icon(Icons.search_rounded,
-                      size: 18, color: AppColors.textMuted),
-                  filled: true,
-                  fillColor: AppColors.surface,
-                  contentPadding:
-                      const EdgeInsets.symmetric(vertical: 0, horizontal: 14),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide:
-                        const BorderSide(color: AppColors.border, width: 1.5),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide:
-                        const BorderSide(color: AppColors.border, width: 1.5),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide:
-                        const BorderSide(color: AppColors.primary, width: 2),
-                  ),
+            child: TextField(
+              controller: _searchCtrl,
+              onChanged: (v) => setState(() => _query = v),
+              style:
+                  GoogleFonts.dmSans(fontSize: 14, color: AppColors.textDark),
+              decoration: InputDecoration(
+                hintText: 'Search by name, major, or interests',
+                hintStyle: GoogleFonts.dmSans(
+                    fontSize: 14, color: const Color(0xFF9CA3AF)),
+                prefixIcon: const Icon(Icons.search_rounded,
+                    size: 16, color: AppColors.textMuted),
+                filled: true,
+                fillColor: AppColors.background,
+                contentPadding:
+                    const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide:
+                      const BorderSide(color: AppColors.border, width: 1.5),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide:
+                      const BorderSide(color: AppColors.border, width: 1.5),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide:
+                      const BorderSide(color: AppColors.primary, width: 1.5),
                 ),
               ),
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 10),
           Container(
-            width: 42,
-            height: 42,
+            width: 44,
+            height: 44,
             decoration: BoxDecoration(
               color: AppColors.surface,
               borderRadius: BorderRadius.circular(12),
-              border:
-                  Border.all(color: AppColors.border, width: 1.5),
+              border: Border.all(color: AppColors.border, width: 1.5),
             ),
             child: const Icon(Icons.tune_rounded,
-                size: 18, color: AppColors.textMid),
+                size: 18, color: AppColors.textMuted),
           ),
         ],
       ),
     );
   }
 
-  // ── Filter chips ──────────────────────────────────────────────────
   Widget _buildFilterRow() {
     return SizedBox(
       height: 34,
@@ -222,26 +288,23 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
           final isActive = _activeFilter == f.$1;
           return GestureDetector(
             onTap: () => setState(() => _activeFilter = f.$1),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
+            child: Container(
               margin: const EdgeInsets.only(right: 8),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
               decoration: BoxDecoration(
-                color: isActive ? AppColors.textDark : AppColors.surface,
+                color: isActive ? AppColors.primary : AppColors.surface,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: isActive ? AppColors.textDark : AppColors.border,
+                  color: isActive ? AppColors.primary : AppColors.border,
                   width: 1.5,
                 ),
               ),
               child: Text(
                 f.$2,
                 style: GoogleFonts.dmSans(
-                  fontSize: 12.5,
-                  fontWeight:
-                      isActive ? FontWeight.w600 : FontWeight.w400,
-                  color: isActive ? Colors.white : AppColors.textMid,
+                  fontSize: 13,
+                  fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
+                  color: isActive ? Colors.white : AppColors.textMuted,
                 ),
               ),
             ),
@@ -251,7 +314,6 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
     );
   }
 
-  // ── Card list ─────────────────────────────────────────────────────
   Widget _buildList(List<DiscoveryCard> cards) {
     return ListView.builder(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
@@ -284,7 +346,6 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
     );
   }
 
-  // ── Empty state ───────────────────────────────────────────────────
   Widget _buildEmpty() {
     return Center(
       child: Padding(
@@ -295,7 +356,7 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
             Container(
               width: 72,
               height: 72,
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 color: AppColors.primarySoft,
                 shape: BoxShape.circle,
               ),
@@ -322,24 +383,12 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
               style: GoogleFonts.dmSans(
                   fontSize: 13, color: AppColors.textMuted, height: 1.5),
             ),
-            if (_activeFilter != 'all' || _query.isNotEmpty) ...[
-              const SizedBox(height: 16),
-              OutlinedButton(
-                onPressed: () => setState(() {
-                  _activeFilter = 'all';
-                  _query = '';
-                  _searchCtrl.clear();
-                }),
-                child: const Text('Clear filters'),
-              ),
-            ],
           ],
         ),
       ),
     );
   }
 
-  // ── Error state ───────────────────────────────────────────────────
   Widget _buildError() {
     return Center(
       child: Column(
@@ -353,8 +402,7 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
                   GoogleFonts.dmSans(fontSize: 15, color: AppColors.textMuted)),
           const SizedBox(height: 12),
           TextButton(
-            onPressed: () =>
-                ref.invalidate(discoveryNotifierProvider),
+            onPressed: () => ref.invalidate(discoveryNotifierProvider),
             child: const Text('Retry'),
           ),
         ],

@@ -15,6 +15,7 @@ from app.features.connections.schema import (
 )
 from app.features.connections.service import existing_match, ordered_pair
 from app.models import ConnectionRequest, Match, Profile, User
+from app.shared.conversations import ensure_dm_conversation
 from app.shared.policies import users_are_blocked
 from app.shared.profiles import get_profile_by_user_id, profile_load_options
 from app.shared.serializers import profile_to_public
@@ -39,7 +40,10 @@ async def send_connection_request(payload: ConnectionRequestCreate, current_user
         reverse_request.status = 'accepted'
         reverse_request.responded_at = datetime.now(UTC)
         left, right = ordered_pair(current_user.id, payload.receiver_id)
-        db.add(Match(user_a_id=left, user_b_id=right))
+        new_match = Match(user_a_id=left, user_b_id=right)
+        db.add(new_match)
+        await db.flush()
+        await ensure_dm_conversation(db, new_match)  # every match gets its conversation
         await db.commit()
         await db.refresh(reverse_request)
         return reverse_request
@@ -104,6 +108,7 @@ async def accept_request(request_id: UUID, current_user: User = Depends(require_
         match = Match(user_a_id=left, user_b_id=right)
         db.add(match)
         await db.flush()
+    await ensure_dm_conversation(db, match)  # every match gets its conversation
     await db.commit()
     await db.refresh(match)
     partner_id = match.user_b_id if match.user_a_id == current_user.id else match.user_a_id

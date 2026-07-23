@@ -15,7 +15,7 @@ class _JoinButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = joined
-        ? AppColors.textMuted
+        ? AppColors.green
         : full
             ? AppColors.border
             : AppColors.primary;
@@ -23,11 +23,13 @@ class _JoinButton extends StatelessWidget {
     return SizedBox(
       height: 36,
       child: Material(
-        color: joined ? AppColors.primarySoft : color,
-        borderRadius: BorderRadius.circular(10),
+        color: color,
+        borderRadius: BorderRadius.circular(11),
+        elevation: joined || full ? 0 : 2,
+        shadowColor: AppColors.primary.withValues(alpha: 0.35),
         child: InkWell(
           onTap: full ? null : onTap,
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(11),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 18),
             child: loading
@@ -39,11 +41,15 @@ class _JoinButton extends StatelessWidget {
                   )
                 : Center(
                     child: Text(
-                      joined ? 'Joined' : full ? 'Full' : 'Join',
+                      joined
+                          ? '✓ Joined'
+                          : full
+                              ? 'Full'
+                              : 'Join',
                       style: GoogleFonts.dmSans(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: joined ? AppColors.primary : Colors.white,
+                        color: Colors.white,
                       ),
                     ),
                   ),

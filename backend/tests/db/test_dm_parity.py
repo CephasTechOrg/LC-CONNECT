@@ -33,6 +33,7 @@ async def _conversation(factory, *, count: int = 0):
     alice = await factory.user(display_name='Alice')
     bob = await factory.user(display_name='Bob')
     match = await factory.match(alice, bob)
+    match.conversation = await factory.conversation(match)  # internals key on the conversation
     messages = []
     for i in range(count):
         sender = alice if i % 2 == 0 else bob
@@ -46,7 +47,7 @@ async def _conversation(factory, *, count: int = 0):
 
 async def test_thread_page_is_newest_first(db, factory):
     _, _, match, messages = await _conversation(factory, count=5)
-    page = await page_thread(db, match.id, before_created_at=None, before_id=None, limit=50)
+    page = await page_thread(db, match.conversation.id, before_created_at=None, before_id=None, limit=50)
     assert [m.body for m in page] == [m.body for m in reversed(messages)]
 
 
@@ -57,7 +58,7 @@ async def test_keyset_pagination_has_no_gaps_or_duplicates(db, factory):
     cursor = (None, None)
     for _ in range(5):  # 10 messages, 3 per page
         page = await page_thread(
-            db, match.id, before_created_at=cursor[0], before_id=cursor[1], limit=3
+            db, match.conversation.id, before_created_at=cursor[0], before_id=cursor[1], limit=3
         )
         if not page:
             break
@@ -74,7 +75,7 @@ async def test_sync_returns_only_messages_after_the_cursor_oldest_first(db, fact
     cursor = messages[2]
 
     caught_up = await sync_thread(
-        db, match.id, after_created_at=cursor.created_at, after_id=cursor.id, limit=100
+        db, match.conversation.id, after_created_at=cursor.created_at, after_id=cursor.id, limit=100
     )
     assert [m.body for m in caught_up] == [m.body for m in messages[3:]]
 
@@ -87,8 +88,8 @@ async def test_unread_counts_only_the_partners_unread_messages(db, factory):
     total_a, per_a = await unread_summary(db, alice.id)
     total_b, per_b = await unread_summary(db, bob.id)
 
-    assert total_a == 2 and per_a == {match.id: 2}  # bob's two messages
-    assert total_b == 2 and per_b == {match.id: 2}  # alice's two messages
+    assert total_a == 2 and per_a == {match.conversation.id: 2}  # bob's two messages
+    assert total_b == 2 and per_b == {match.conversation.id: 2}  # alice's two messages
 
 
 async def test_mark_read_clears_partner_messages_up_to_cursor_only(db, factory):
@@ -99,7 +100,7 @@ async def test_mark_read_clears_partner_messages_up_to_cursor_only(db, factory):
 
     total_b, per_b = await unread_summary(db, bob.id)
     assert total_b == 1  # only alice's msg-4 remains unread
-    assert per_b == {match.id: 1}
+    assert per_b == {match.conversation.id: 1}
 
     # Alice's own view is untouched — reading never marks your own messages.
     total_a, _ = await unread_summary(db, alice.id)
@@ -119,10 +120,20 @@ async def test_duplicate_client_message_id_returns_the_same_row(db, factory):
     client_id = uuid4()
 
     first, created_first = await persist_message_idempotent(
-        db, sender_id=alice.id, match_id=match.id, body='hello', client_message_id=client_id
+        db,
+        sender_id=alice.id,
+        match_id=match.id,
+        conversation_id=match.conversation.id,
+        body='hello',
+        client_message_id=client_id,
     )
     second, created_second = await persist_message_idempotent(
-        db, sender_id=alice.id, match_id=match.id, body='hello', client_message_id=client_id
+        db,
+        sender_id=alice.id,
+        match_id=match.id,
+        conversation_id=match.conversation.id,
+        body='hello',
+        client_message_id=client_id,
     )
 
     assert created_first is True
@@ -145,7 +156,7 @@ async def test_duplicate_dm_is_prevented_by_the_normalized_pair(db, factory):
 
 async def test_member_may_access_the_conversation(db, factory):
     alice, _, match, _ = await _conversation(factory)
-    assert (await authorize_conversation(db, alice.id, match.id)).id == match.id
+    assert (await authorize_conversation(db, alice.id, match.id)).id == match.conversation.id
 
 
 async def test_non_member_is_forbidden(db, factory):

@@ -73,18 +73,38 @@ They skip (not fail) if Postgres isn't running.
 
 ---
 
-## P2 — Cut messaging over to `conversation_id` + per-member read boundary
+## P2 — Cut messaging over to `conversation_id` + per-member read boundary ✅ **COMPLETE**
 
-The heaviest phase. Dual-write `match_id` throughout so rollback stays trivial.
+The heaviest phase. `match_id` is **dual-written** throughout so rollback stays trivial.
 
-- [ ] Messages service/router read `conversation_id`
-- [ ] Realtime `authorize_conversation` → `ConversationMember` lookup
-- [ ] Push + unread read conversations
-- [ ] **Introduce `ConversationMember.last_read_message_id`**; migrate unread off per-message `read_at` (see architecture D3)
-- [ ] Keep writing `match_id` (rollback safety)
+- [x] New shared layer `app/shared/conversations.py` — `ensure_dm_conversation` (idempotent
+      get-or-create), `active_member_ids`, `is_active_member`, `match_ids_for_conversations`
+- [x] Messages service reads `conversation_id` (`page_thread` / `sync_thread` / write path
+      dual-writes both ids); router **translates match_id ↔ conversation_id at the edge** so
+      the public API is byte-identical
+- [x] Realtime `authorize_conversation` → **membership lookup** (`ConversationMember`); returns
+      a `Conversation`; DM block rule preserved
+- [x] Gateway send/subscribe use **active members** (partner for a DM, fan-out audience for a
+      group) — push already loops over recipients
+- [x] New matches provision their conversation at creation (`connections/router.py`)
+- [x] **Unread moved to `last_read_message_id`** (`ConversationMember`); `read_at` retained for
+      DM receipts. `mark_read` advances the boundary (forward-only) + stamps `read_at`
+- [x] **Read-state parity migration** `f6a7b8c9d0e1` — seeds the boundary from existing
+      `read_at` so already-read messages don't resurface
 
-**Gate:** the **P0 parity tests pass identically** against the new path · snapshot unchanged for
-DM endpoints · mobile untouched and still green.
+**Gate: ✅ green**
+- **All 13 P0 parity tests pass unchanged against the conversation path** ← the core proof
+- 6 backfill tests (incl. read-boundary parity) · 106 backend tests · ruff clean
+- **OpenAPI snapshot + route inventory unchanged** → mobile untouched and safe
+- Obsolete mock tests retired (`test_realtime_service.py` — its logic moved to `tests/db/`)
+- **Verified on real dev data (53 messages):** `page_thread` returns them via the conversation
+  path; after the read-boundary migration, boundary-unread **equals** the old `read_at`-unread
+  (0=0 for both members)
+
+### The transition invariant (still true after P2)
+Every message has **both** `match_id` and `conversation_id`; the public API still speaks
+`match_id`. So rollback is still just reverting the service layer — the external flip to
+`conversation_id` happens later (P4/P6), with groups.
 
 ---
 

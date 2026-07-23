@@ -13,7 +13,13 @@ interest groups) and the messaging generalization they require.
 
 ## Status
 
-**P0 ✅ · P1 ✅ complete — next up: P2 (cut messaging over to `conversation_id`).**
+**P0 ✅ · P1 ✅ · P2 ✅ complete — next up: P3 (the `Group` entity + join flows).**
+
+Messaging now runs on `conversation_id` internally (authorization is membership-based, unread
+uses the per-member `last_read_message_id` boundary), while the **public API and mobile app are
+completely unchanged** — the router translates at the edge. All 13 parity tests pass against the
+new path; verified on the real dev DB. Groups now largely *fall out* of this: a group is just a
+conversation with N members.
 
 The safety net exists: a Postgres integration harness (`backend/tests/db/`) plus **13 DM
 parity tests** that lock in today's messaging behaviour (ordering, pagination, sync, unread,

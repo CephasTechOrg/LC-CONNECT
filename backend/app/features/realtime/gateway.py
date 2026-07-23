@@ -31,6 +31,7 @@ from app.features.realtime.runtime import (
     subscribe_limiter,
     typing_limiter,
 )
+from app.shared.conversations import active_member_ids
 
 logger = logging.getLogger('lc_connect.realtime')
 
@@ -159,14 +160,15 @@ async def _on_subscribe(conn: Connection, frame: protocol.SubscribeFrame) -> Non
     async with AsyncSessionLocal() as db:
         try:
             await service.recheck_account(db, conn.user_id)
-            match = await service.authorize_conversation(db, conn.user_id, frame.conversation_id)
+            conversation = await service.authorize_conversation(db, conn.user_id, frame.conversation_id)
+            others = await active_member_ids(db, conversation.id, exclude=conn.user_id)
         except service.WsForbidden:
             manager.send(conn, protocol.error(ErrorCode.FORBIDDEN, 'Forbidden', frame.request_id))
             return
-    # Cache the partner so typing needs no per-keystroke DB hit.
-    conn.partners[frame.conversation_id] = (
-        match.user_b_id if match.user_a_id == conn.user_id else match.user_a_id
-    )
+    # Cache the partner so typing needs no per-keystroke DB hit. (DM = exactly one other
+    # member; groups will fan out to `others` instead.)
+    if others:
+        conn.partners[frame.conversation_id] = others[0]
     manager.subscribe(conn, frame.conversation_id)
     manager.send(conn, protocol.subscribed(frame.request_id, frame.conversation_id))
 
@@ -183,15 +185,16 @@ async def _on_send(conn: Connection, frame: protocol.SendFrame) -> None:
     async with AsyncSessionLocal() as db:
         try:
             await service.recheck_account(db, conn.user_id)
-            match = await service.authorize_conversation(db, conn.user_id, frame.conversation_id)
+            conversation = await service.authorize_conversation(db, conn.user_id, frame.conversation_id)
+            recipients = await active_member_ids(db, conversation.id, exclude=conn.user_id)
         except service.WsForbidden:
             manager.send(conn, protocol.error(ErrorCode.FORBIDDEN, 'Forbidden', frame.request_id))
             return
-        partner_id = match.user_b_id if match.user_a_id == conn.user_id else match.user_a_id
         message, created = await persist_message_idempotent(
             db,
             sender_id=conn.user_id,
-            match_id=frame.conversation_id,
+            match_id=conversation.match_id,
+            conversation_id=conversation.id,
             body=frame.body,
             client_message_id=frame.client_message_id,
         )
@@ -203,17 +206,20 @@ async def _on_send(conn: Connection, frame: protocol.SendFrame) -> None:
         # User channels: thread-list update for both participants (regardless of open chat).
         updated = protocol.conversation_updated(message)
         await event_bus.publish_to_user(conn.user_id, updated)
-        await event_bus.publish_to_user(partner_id, updated)
-        # Offline push: if the recipient has no live socket, notify after a grace recheck.
-        partner_sockets = manager.user_socket_count(partner_id)
-        logger.info(
-            'send: recipient=%s open_sockets=%d -> %s',
-            partner_id,
-            partner_sockets,
-            'scheduling offline push' if partner_sockets == 0 else 'recipient online, delivered live (no push)',
-        )
-        if partner_sockets == 0:
-            asyncio.create_task(schedule_offline_push(partner_id, conn.user_id, frame.conversation_id))
+        for recipient_id in recipients:
+            await event_bus.publish_to_user(recipient_id, updated)
+            # Offline push: if this member has no live socket, notify after a grace recheck.
+            open_sockets = manager.user_socket_count(recipient_id)
+            logger.info(
+                'send: recipient=%s open_sockets=%d -> %s',
+                recipient_id,
+                open_sockets,
+                'scheduling offline push' if open_sockets == 0 else 'recipient online, delivered live (no push)',
+            )
+            if open_sockets == 0:
+                asyncio.create_task(
+                    schedule_offline_push(recipient_id, conn.user_id, frame.conversation_id)
+                )
 
 
 async def _on_typing(conn: Connection, conversation_id: UUID, active: bool) -> None:

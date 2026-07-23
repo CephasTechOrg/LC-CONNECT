@@ -8,8 +8,11 @@ class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: AppColors.surface,
       padding: const EdgeInsets.fromLTRB(4, 8, 20, 12),
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        border: Border(bottom: BorderSide(color: AppColors.border)),
+      ),
       child: Row(
         children: [
           IconButton(
@@ -17,6 +20,13 @@ class _Header extends StatelessWidget {
                 size: 18, color: AppColors.textDark),
             onPressed: onBack,
           ),
+          Image.asset(
+            'assets/images/lclogo.png',
+            width: 32,
+            height: 32,
+            fit: BoxFit.contain,
+          ),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

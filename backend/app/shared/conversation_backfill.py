@@ -48,3 +48,23 @@ BACKFILL_STATEMENTS: tuple[str, ...] = (
     _CREATE_DM_MEMBERS,
     _LINK_MESSAGES,
 )
+
+
+# P2 read-state parity: translate the old per-message `read_at` into each member's new
+# `last_read_message_id` boundary, so unread counts match the pre-migration behaviour instead
+# of resurfacing already-read messages. A member has "read" the messages they *received*
+# (sender != them) that carry a `read_at`; their boundary is the newest such message.
+_BACKFILL_READ_BOUNDARY = """
+UPDATE conversation_members cm
+SET last_read_message_id = sub.msg_id
+FROM (
+    SELECT DISTINCT ON (cm2.id) cm2.id AS member_id, m.id AS msg_id
+    FROM conversation_members cm2
+    JOIN messages m ON m.conversation_id = cm2.conversation_id
+    WHERE m.sender_id <> cm2.user_id AND m.read_at IS NOT NULL
+    ORDER BY cm2.id, m.created_at DESC, m.id DESC
+) sub
+WHERE cm.id = sub.member_id AND cm.last_read_message_id IS NULL
+"""
+
+READ_BOUNDARY_BACKFILL: tuple[str, ...] = (_BACKFILL_READ_BOUNDARY,)

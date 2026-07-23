@@ -8,35 +8,28 @@ class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: AppColors.surface,
       padding: const EdgeInsets.fromLTRB(20, 12, 12, 14),
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        border: Border(bottom: BorderSide(color: AppColors.border)),
+      ),
       child: Row(
         children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              color: AppColors.primary,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              'LC',
-              style: GoogleFonts.dmSans(
-                color: Colors.white,
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
+          Image.asset(
+            'assets/images/lclogo.png',
+            width: 36,
+            height: 36,
+            fit: BoxFit.contain,
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 12),
           Expanded(
             child: Text(
-              'LC Connect',
+              'Profile',
               style: GoogleFonts.dmSans(
-                fontSize: 16,
+                fontSize: 18,
                 fontWeight: FontWeight.w700,
                 color: AppColors.textDark,
+                letterSpacing: -0.2,
               ),
             ),
           ),
@@ -82,6 +75,15 @@ class _Header extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 8),
+              ListTile(
+                leading: const Icon(Icons.edit_outlined, color: AppColors.textMid),
+                title: Text('Edit Profile', style: GoogleFonts.dmSans(color: AppColors.textDark, fontWeight: FontWeight.w500)),
+                trailing: const Icon(Icons.chevron_right_rounded, size: 18, color: AppColors.border),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  context.push('/profile/edit');
+                },
+              ),
               ListTile(
                 leading: const Icon(Icons.lock_reset_rounded, color: AppColors.textMid),
                 title: Text('Reset Password', style: GoogleFonts.dmSans(color: AppColors.textDark, fontWeight: FontWeight.w500)),

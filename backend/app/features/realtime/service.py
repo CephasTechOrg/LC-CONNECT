@@ -12,9 +12,11 @@ from uuid import UUID
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 
-from app.models import Match, Message, User
+from app.models import Conversation, ConversationMember, Message, User
 from app.security import verify_supabase_access_token
+from app.shared.conversations import active_member_ids, conversation_for_match_id, is_active_member
 from app.shared.policies import users_are_blocked
 
 
@@ -58,36 +60,83 @@ def _ensure_account_ok(user: User) -> None:
         raise WsForbidden('Verified student required')
 
 
-async def authorize_conversation(db: AsyncSession, user_id: UUID, match_id: UUID) -> Match:
-    """Confirm the user may access the conversation. Generic forbidden on any failure."""
-    match = await db.get(Match, match_id)
-    if match is None or user_id not in {match.user_a_id, match.user_b_id}:
+async def authorize_conversation(db: AsyncSession, user_id: UUID, match_id: UUID) -> Conversation:
+    """Confirm the user may access the conversation. Generic forbidden on any failure.
+
+    Authorization is now **membership-based** (`ConversationMember`), which reads identically
+    for a 2-person DM and an N-person group. `match_id` is still the id clients send during the
+    transition, so it is resolved to its conversation here.
+    """
+    conversation = await conversation_for_match_id(db, match_id)
+    if conversation is None or not await is_active_member(db, conversation.id, user_id):
         raise WsForbidden('Conversation not accessible')
-    partner_id = match.user_b_id if match.user_a_id == user_id else match.user_a_id
-    if await users_are_blocked(db, user_id, partner_id):
-        raise WsForbidden('Conversation not accessible')
-    return match
+
+    # DM-only relationship rule: a block closes the conversation for both sides.
+    if conversation.kind == 'dm':
+        for other_id in await active_member_ids(db, conversation.id, exclude=user_id):
+            if await users_are_blocked(db, user_id, other_id):
+                raise WsForbidden('Conversation not accessible')
+    return conversation
 
 
 async def mark_read(
     db: AsyncSession, *, reader_id: UUID, match_id: UUID, through_message_id: UUID
 ) -> datetime | None:
-    """Mark the partner's messages read up to `through_message_id`. Returns the timestamp."""
-    cursor_created = (
+    """Advance the reader's boundary to `through_message_id`. Returns the timestamp.
+
+    Two things happen:
+    1. `ConversationMember.last_read_message_id` — the **authoritative** unread boundary
+       (per-member, so it works for an N-member group). Only ever moves forward.
+    2. `Message.read_at` — kept for **DM read receipts** (a single column can't express
+       per-member read state, so it is display-only, not the unread source of truth).
+    """
+    conversation = await conversation_for_match_id(db, match_id)
+    if conversation is None:
+        return None
+
+    cursor = (
         await db.execute(
-            select(Message.created_at).where(
-                Message.id == through_message_id, Message.match_id == match_id
+            select(Message.created_at, Message.id).where(
+                Message.id == through_message_id, Message.conversation_id == conversation.id
+            )
+        )
+    ).one_or_none()
+    if cursor is None:
+        return None
+    cursor_created, cursor_id = cursor
+
+    now = datetime.now(UTC)
+
+    # 1. Advance the boundary — never backwards (an out-of-order read must not "unread").
+    member_boundary = aliased(Message)
+    member = (
+        await db.execute(
+            select(ConversationMember)
+            .outerjoin(member_boundary, member_boundary.id == ConversationMember.last_read_message_id)
+            .where(
+                ConversationMember.conversation_id == conversation.id,
+                ConversationMember.user_id == reader_id,
             )
         )
     ).scalar_one_or_none()
-    if cursor_created is None:
+    if member is None:
         return None
+    if member.last_read_message_id is None:
+        member.last_read_message_id = cursor_id
+    else:
+        current = (
+            await db.execute(
+                select(Message.created_at, Message.id).where(Message.id == member.last_read_message_id)
+            )
+        ).one_or_none()
+        if current is None or (current[0], current[1]) < (cursor_created, cursor_id):
+            member.last_read_message_id = cursor_id
 
-    now = datetime.now(UTC)
+    # 2. Keep DM receipts working.
     await db.execute(
         update(Message)
         .where(
-            Message.match_id == match_id,
+            Message.conversation_id == conversation.id,
             Message.sender_id != reader_id,
             Message.created_at <= cursor_created,
             Message.read_at.is_(None),

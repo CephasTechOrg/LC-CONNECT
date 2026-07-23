@@ -2,28 +2,26 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/theme/app_theme.dart';
 import '../providers/auth_provider.dart';
 
-// ── Color palette (matching LoginScreen) ─────────────────────────
+// Palette aliases aligned with AppColors / login mockup
 class _C {
-  static const primary      = Color(0xFF4F8FC2);
-  static const logoTop      = Color(0xFF74A5C8);
-  static const logoBot      = Color(0xFF5F93BF);
-  static const textDark     = Color(0xFF111827);
-  static const textBody     = Color(0xFF1F2937);
-  static const textMuted    = Color(0xFF565C66);
-  static const hintColor    = Color(0xFF8B91A0);
-  static const eyeColor     = Color(0xFF7B8494);
-  static const border       = Color(0xFFDFE6EE);
-  static const btnShadow    = Color(0xFF3F7FB5);
-  static const createText   = Color(0xFF2E3440);
-  static const createLink   = Color(0xFF4E8FC5);
-  static const noteIconClr  = Color(0xFF4E8FC5);
-  static const noteTextClr  = Color(0xFF606875);
-  static const noteStrong   = Color(0xFF1F2937);
-  static const noteBg       = Color(0xFFFBFCFD);
-  static const noteBorder   = Color(0xFFE0E7EF);
-  static const error        = Color(0xFFEF4444);
+  static const textDark = AppColors.textDark;
+  static const textBody = AppColors.textMid;
+  static const textMuted = AppColors.textMuted;
+  static const hintColor = Color(0xFF9CA3AF);
+  static const eyeColor = AppColors.textMuted;
+  static const border = AppColors.border;
+  static const btnShadow = AppColors.primary;
+  static const createText = AppColors.textMid;
+  static const createLink = AppColors.primary;
+  static const noteIconClr = AppColors.primary;
+  static const noteTextClr = AppColors.textMuted;
+  static const noteStrong = AppColors.textDark;
+  static const noteBg = AppColors.background;
+  static const noteBorder = AppColors.border;
+  static const error = AppColors.error;
 }
 
 class RegisterScreen extends ConsumerStatefulWidget {
@@ -192,63 +190,30 @@ class _Branding extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [_C.logoTop, _C.logoBot],
-              ),
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x38789DBD),
-                  blurRadius: 12,
-                  offset: Offset(0, 4),
-                ),
-              ],
-            ),
-            alignment: Alignment.center,
-            child: const Text(
-              'LC',
-              style: TextStyle(
-                fontFamily: 'Georgia',
-                color: Colors.white,
-                fontSize: 24,
-                letterSpacing: -2,
-              ),
-            ),
+          Image.asset(
+            'assets/images/lclogo.png',
+            width: 40,
+            height: 40,
+            fit: BoxFit.contain,
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                RichText(
-                  text: TextSpan(
-                    style: GoogleFonts.dmSans(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w800,
-                      color: _C.textDark,
-                      height: 1.0,
-                      letterSpacing: -1.5,
-                    ),
-                    children: const [
-                      TextSpan(
-                        text: 'LC',
-                        style: TextStyle(color: _C.primary),
-                      ),
-                      TextSpan(text: ' Connect'),
-                    ],
+                Text(
+                  'LC Connect',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 25,
+                    fontWeight: FontWeight.w700,
+                    color: _C.textDark,
+                    letterSpacing: -0.75,
                   ),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 4),
                 Text(
                   'Join the Livingstone College network',
                   style: GoogleFonts.dmSans(

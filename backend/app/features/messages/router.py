@@ -18,6 +18,7 @@ from app.features.messages.service import (
     unread_summary,
 )
 from app.models import Match, Message, Profile, User
+from app.shared.conversations import ensure_dm_conversation, match_ids_for_conversations
 from app.shared.policies import users_are_blocked
 from app.shared.profiles import profile_load_options
 from app.shared.serializers import profile_to_public
@@ -60,7 +61,15 @@ async def list_threads(current_user: User = Depends(require_verified_student), d
 async def get_unread_summary(current_user: User = Depends(require_verified_student), db: AsyncSession = Depends(get_db)):
     """Total + per-conversation unread counts — seeds the tab + per-row badges."""
     total, per_conversation = await unread_summary(db, current_user.id)
-    return UnreadSummary(total=total, per_conversation=per_conversation)
+    # Internal counts are conversation-keyed; clients still address DMs by match id, so
+    # translate at the edge (keeps the API contract byte-identical during the transition).
+    match_ids = await match_ids_for_conversations(db, list(per_conversation))
+    external = {
+        match_ids[conversation_id]: count
+        for conversation_id, count in per_conversation.items()
+        if conversation_id in match_ids
+    }
+    return UnreadSummary(total=sum(external.values()), per_conversation=external)
 
 
 @router.get('/threads/{match_id}', response_model=list[MessageRead])
@@ -74,9 +83,10 @@ async def get_thread(
 ):
     """Newest-first page of a conversation. Pass the oldest row's (created_at, id) as
     `before_*` to fetch the next older page (keyset pagination)."""
-    await get_match_for_user(db, match_id, current_user)
+    match = await get_match_for_user(db, match_id, current_user)
+    conversation = await ensure_dm_conversation(db, match)
     messages = await page_thread(
-        db, match_id, before_created_at=before_created_at, before_id=before_id, limit=limit
+        db, conversation.id, before_created_at=before_created_at, before_id=before_id, limit=limit
     )
     return [message_read(message) for message in messages]
 
@@ -91,9 +101,10 @@ async def sync_thread_endpoint(
     limit: int = Query(default=100, ge=1, le=200),
 ):
     """Oldest-first messages after a cursor — reconnect catch-up."""
-    await get_match_for_user(db, match_id, current_user)
+    match = await get_match_for_user(db, match_id, current_user)
+    conversation = await ensure_dm_conversation(db, match)
     messages = await sync_thread(
-        db, match_id, after_created_at=after_created_at, after_id=after_id, limit=limit
+        db, conversation.id, after_created_at=after_created_at, after_id=after_id, limit=limit
     )
     return [message_read(message) for message in messages]
 
@@ -103,10 +114,12 @@ async def send_message(match_id: UUID, payload: MessageCreate, current_user: Use
     match = await get_match_for_user(db, match_id, current_user)
     if await users_are_blocked(db, current_user.id, partner_id(match, current_user)):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='Messaging is blocked')
+    conversation = await ensure_dm_conversation(db, match)
     message, _ = await persist_message_idempotent(
         db,
         sender_id=current_user.id,
         match_id=match.id,
+        conversation_id=conversation.id,
         body=payload.body.strip(),
         client_message_id=payload.client_message_id,
     )

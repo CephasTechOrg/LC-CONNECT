@@ -1,35 +1,40 @@
 part of '../screens/home_screen.dart';
 
-// ── Header ───────────────────────────────────────────────────────
 class _Header extends StatelessWidget {
-  final String firstName;
+  final String greeting;
   final int incomingCount;
-  const _Header({required this.firstName, required this.incomingCount});
+  const _Header({required this.greeting, required this.incomingCount});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       color: AppColors.surface,
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 14),
+      padding: const EdgeInsets.fromLTRB(20, 12, 12, 14),
       child: Row(
         children: [
-          _LCBadge(size: 40),
+          Image.asset(
+            'assets/images/lclogo.png',
+            width: 36,
+            height: 36,
+            fit: BoxFit.contain,
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Hi, $firstName',
+                  greeting,
                   style: GoogleFonts.dmSans(
-                    fontSize: 20,
+                    fontSize: 18,
                     fontWeight: FontWeight.w700,
                     color: AppColors.textDark,
                     height: 1.2,
+                    letterSpacing: -0.2,
                   ),
                 ),
                 Text(
-                  'Ready to connect on campus?',
+                  'Livingstone College',
                   style: GoogleFonts.dmSans(
                     fontSize: 12,
                     color: AppColors.textMuted,
@@ -38,37 +43,16 @@ class _Header extends StatelessWidget {
               ],
             ),
           ),
-          GestureDetector(
-            onTap: () => context.push('/connections'),
-            child: _BellIcon(badgeCount: incomingCount),
+          IconButton(
+            onPressed: () => context.push('/connections'),
+            style: IconButton.styleFrom(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            icon: _BellIcon(badgeCount: incomingCount),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _LCBadge extends StatelessWidget {
-  final double size;
-  const _LCBadge({required this.size});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: AppColors.primary,
-        borderRadius: BorderRadius.circular(size * 0.22),
-      ),
-      alignment: Alignment.center,
-      child: Text(
-        'LC',
-        style: GoogleFonts.dmSans(
-          color: Colors.white,
-          fontSize: size * 0.38,
-          fontWeight: FontWeight.w700,
-        ),
       ),
     );
   }
@@ -84,25 +68,18 @@ class _BellIcon extends StatelessWidget {
       clipBehavior: Clip.none,
       children: [
         const Icon(Icons.notifications_outlined,
-            color: AppColors.textMuted, size: 24),
+            color: AppColors.textMuted, size: 22),
         if (badgeCount > 0)
           Positioned(
-            top: -4,
-            right: -4,
+            top: 0,
+            right: 0,
             child: Container(
-              padding: const EdgeInsets.all(3),
+              width: 8,
+              height: 8,
               decoration: BoxDecoration(
                 color: AppColors.error,
                 shape: BoxShape.circle,
                 border: Border.all(color: Colors.white, width: 1.5),
-              ),
-              child: Text(
-                badgeCount > 9 ? '9+' : '$badgeCount',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 8,
-                  fontWeight: FontWeight.w700,
-                ),
               ),
             ),
           ),

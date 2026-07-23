@@ -28,6 +28,13 @@ class _Match:
         self.user_b_id = user_b_id
 
 
+class _Conversation:
+    def __init__(self, *, kind='dm', match_id=None) -> None:
+        self.id = uuid4()
+        self.kind = kind
+        self.match_id = match_id or uuid4()
+
+
 def _recv_type(ws, wanted, tries=6):
     """Read frames until one of `wanted` type arrives (skips interleaved events)."""
     for _ in range(tries):
@@ -51,8 +58,10 @@ def _make_message(match_id, sender_id, client_message_id, body):
 
 @pytest.fixture
 def happy_auth(monkeypatch):
-    """authenticate/recheck/authorize all succeed for a fixed user."""
+    """authenticate/recheck/authorize all succeed for a fixed user; the conversation has one
+    other member (a DM). Keeps the gateway tests DB-free."""
     user = _User()
+    partner_id = uuid4()
 
     async def ok_authenticate(db, token):
         return user
@@ -61,11 +70,15 @@ def happy_auth(monkeypatch):
         return user
 
     async def ok_authorize(db, user_id, match_id):
-        return _Match(user_a_id=user.id, user_b_id=uuid4())
+        return _Conversation(kind='dm', match_id=match_id)
+
+    async def ok_members(db, conversation_id, *, exclude=None):
+        return [partner_id]
 
     monkeypatch.setattr(service, 'authenticate', ok_authenticate)
     monkeypatch.setattr(service, 'recheck_account', ok_recheck)
     monkeypatch.setattr(service, 'authorize_conversation', ok_authorize)
+    monkeypatch.setattr('app.features.realtime.gateway.active_member_ids', ok_members)
     return user
 
 
@@ -141,7 +154,7 @@ def test_subscribe_then_forbidden(happy_auth, monkeypatch):
 def test_duplicate_send_returns_same_ack(happy_auth, monkeypatch):
     cache: dict = {}
 
-    async def fake_persist(db, *, sender_id, match_id, body, client_message_id):
+    async def fake_persist(db, *, sender_id, match_id, conversation_id, body, client_message_id):
         created = client_message_id not in cache
         if created:
             cache[client_message_id] = _make_message(match_id, sender_id, client_message_id, body)
@@ -175,7 +188,7 @@ def test_send_emits_conversation_updated_on_user_channel(happy_auth, monkeypatch
     # A single socket avoids TestClient's concurrent-websocket deadlock; the gateway
     # publishes conversation.updated to BOTH participants' user channels, so the sender
     # receives it on its own user channel — proving publish_to_user is wired.
-    async def persist(db, *, sender_id, match_id, body, client_message_id):
+    async def persist(db, *, sender_id, match_id, conversation_id, body, client_message_id):
         return _make_message(match_id, sender_id, client_message_id, body), True
 
     monkeypatch.setattr('app.features.realtime.gateway.persist_message_idempotent', persist)

@@ -10,13 +10,20 @@ from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import text
 
-from app.shared.conversation_backfill import BACKFILL_STATEMENTS
+from app.features.messages.service import unread_summary
+from app.shared.conversation_backfill import BACKFILL_STATEMENTS, READ_BOUNDARY_BACKFILL
 
 BASE = datetime(2026, 1, 1, 12, 0, 0, tzinfo=UTC)
 
 
 async def _backfill(db):
     for statement in BACKFILL_STATEMENTS:
+        await db.execute(text(statement))
+    await db.flush()
+
+
+async def _backfill_read_boundary(db):
+    for statement in READ_BOUNDARY_BACKFILL:
         await db.execute(text(statement))
     await db.flush()
 
@@ -130,3 +137,31 @@ async def test_match_id_is_left_untouched(db, factory):
 
     null_match_ids = (await db.execute(text('SELECT count(*) FROM messages WHERE match_id IS NULL'))).scalar()
     assert null_match_ids == 0
+
+
+async def test_read_boundary_backfill_preserves_existing_read_state(db, factory):
+    """After the boundary backfill, unread counts match the OLD read_at-based view — already
+    read messages don't resurface as unread."""
+    from app.features.realtime.service import mark_read
+
+    a = await factory.user(display_name='A')
+    b = await factory.user(display_name='B')
+    match = await factory.match(a, b)
+    msgs = [
+        await factory.message(match, a if i % 2 == 0 else b, f'm{i}', created_at=BASE + timedelta(minutes=i))
+        for i in range(6)
+    ]
+    # Simulate pre-migration read state: B read up to msg index 3, and A read nothing.
+    # (mark_read stamps read_at AND the boundary; then we clear the boundary to mimic
+    # a DB that only had the old read_at.)
+    await mark_read(db, reader_id=b.id, match_id=match.id, through_message_id=msgs[3].id)
+    await db.execute(text('UPDATE conversation_members SET last_read_message_id = NULL'))
+    await db.flush()
+
+    # Old view (read_at): B has 1 unread (a's msg-4), A has 3 unread (all of b's).
+    await _backfill_read_boundary(db)
+
+    total_b, _ = await unread_summary(db, b.id)
+    total_a, _ = await unread_summary(db, a.id)
+    assert total_b == 1  # boundary restored → only the post-read message is unread
+    assert total_a == 3

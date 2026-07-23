@@ -16,41 +16,25 @@ part '../widgets/home_feed_sections.dart';
 part '../widgets/home_student_card.dart';
 part '../widgets/home_activity_list.dart';
 part '../widgets/home_match_cards.dart';
+part '../widgets/home_groups.dart';
 
-// ── Category definitions ──────────────────────────────────────────
-class _Cat {
-  final String label;
-  final IconData icon;
-  final String? code; // null = show all
-  const _Cat(this.label, this.icon, this.code);
-}
-
-const _cats = [
-  _Cat('Friendship',        Icons.people_outline_rounded,  'friendship'),
-  _Cat('Study Partner',     Icons.menu_book_outlined,      'study_partner'),
-  _Cat('Language Exchange', Icons.language_outlined,       'language_exchange'),
-  _Cat('Events',            Icons.calendar_month_outlined, null),
-  _Cat('Open Connection',   Icons.link_rounded,            'open_connection'),
-];
-
-// ── Helpers ───────────────────────────────────────────────────────
 String _categoryEmoji(String category) => switch (category.toLowerCase()) {
-      'study'   => '📖',
-      'sports'  => '🏃',
-      'social'  => '☕',
-      'arts'    => '🎨',
-      'food'    => '🍕',
-      'music'   => '🎵',
-      'tech'    => '💻',
-      _         => '📅',
+      'study' => '📖',
+      'sports' => '🏀',
+      'social' => '☕',
+      'arts' => '🎨',
+      'food' => '🍕',
+      'music' => '🎵',
+      'tech' => '💻',
+      _ => '📅',
     };
 
 String _timeAgo(DateTime dt) {
   final diff = DateTime.now().difference(dt);
   if (diff.inMinutes < 1) return 'Just now';
-  if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
-  if (diff.inHours < 24) return '${diff.inHours}h ago';
-  return '${diff.inDays}d ago';
+  if (diff.inMinutes < 60) return '${diff.inMinutes}m';
+  if (diff.inHours < 24) return '${diff.inHours}h';
+  return '${diff.inDays}d';
 }
 
 String _studentSub(String? major, int? classYear) {
@@ -62,7 +46,20 @@ String _studentSub(String? major, int? classYear) {
   return 'LC Student';
 }
 
-// ── Screen ────────────────────────────────────────────────────────
+String _greeting() {
+  final hour = DateTime.now().hour;
+  if (hour < 12) return 'Good morning';
+  if (hour < 17) return 'Good afternoon';
+  return 'Good evening';
+}
+
+String _displayFirstName(String? email) {
+  if (email == null || email.isEmpty) return 'there';
+  final raw = email.split('@').first;
+  if (raw.isEmpty) return 'there';
+  return raw[0].toUpperCase() + raw.substring(1);
+}
+
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
@@ -71,12 +68,13 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
-  String _selectedCat = 'Friendship';
-
-  Future<void> _connect(DiscoveryCard card, String? intent) async {
+  Future<void> _connect(DiscoveryCard card) async {
     try {
       await ref.read(discoveryNotifierProvider.notifier).connect(
-            card.userId, card.profileId, intent ?? 'open_connection');
+            card.userId,
+            card.profileId,
+            'open_connection',
+          );
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
@@ -88,20 +86,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(authNotifierProvider).asData?.value;
-    final firstName = user?.email.split('@').first ?? 'there';
+    final firstName = _displayFirstName(user?.email);
     final incomingCount =
-        ref.watch(connectionsNotifierProvider).asData?.value.incoming.length ?? 0;
+        ref.watch(connectionsNotifierProvider).asData?.value.incoming.length ??
+            0;
 
     final discoveryAsync = ref.watch(discoveryNotifierProvider);
     final activitiesAsync = ref.watch(activitiesNotifierProvider);
     final threadsAsync = ref.watch(threadsNotifierProvider);
 
-    final selectedCat = _cats.firstWhere((c) => c.label == _selectedCat);
     final allCards = discoveryAsync.asData?.value ?? [];
-    final filteredCards = selectedCat.code == null
-        ? allCards
-        : allCards.where((c) => c.lookingForCodes.contains(selectedCat.code)).toList();
-
     final cutoff = DateTime.now().subtract(const Duration(hours: 1));
     final upcoming = (activitiesAsync.asData?.value ?? [])
         .where((a) => a.startTime.isAfter(cutoff))
@@ -123,44 +117,52 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           },
           child: ListView(
             children: [
-              _Header(firstName: firstName, incomingCount: incomingCount),
-              const SizedBox(height: 12),
-              _SearchBar(),
-              const SizedBox(height: 12),
-              _CategoryChips(
-                selected: _selectedCat,
-                onSelect: (c) => setState(() => _selectedCat = c),
+              _Header(
+                greeting: '${_greeting()}, $firstName',
+                incomingCount: incomingCount,
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 12),
+              const _SearchBar(),
+              const SizedBox(height: 16),
+              const _HeroBanner(),
+              const SizedBox(height: 16),
+              const _QuickActions(),
               _SectionHeader(
                 title: 'Recommended for you',
                 action: 'View all',
                 onAction: () => context.go('/discover'),
               ),
-              const SizedBox(height: 10),
               _StudentCardsRow(
-                cards: filteredCards.take(5).toList(),
+                cards: allCards.take(5).toList(),
                 loading: discoveryAsync.isLoading,
-                onConnect: (card) => _connect(card, selectedCat.code),
+                onConnect: _connect,
               ),
-              const SizedBox(height: 18),
               _SectionHeader(
-                title: "Today's activities",
-                action: 'View calendar',
+                title: 'Study Partners',
+                action: null,
+                onAction: null,
+              ),
+              const _StudyPartnersCta(),
+              _SectionHeader(
+                title: 'Upcoming Activities',
+                action: 'See all',
                 onAction: () => context.go('/activities'),
               ),
-              const SizedBox(height: 10),
               _ActivitiesList(
                 activities: upcoming.take(3).toList(),
                 loading: activitiesAsync.isLoading,
               ),
-              const SizedBox(height: 18),
               _SectionHeader(
-                title: 'Recent matches',
-                action: 'View messages',
+                title: 'Campus Groups',
+                action: 'See all',
+                onAction: () => context.go('/discover?tab=groups'),
+              ),
+              const _CampusGroupsRow(),
+              _SectionHeader(
+                title: 'Messages',
+                action: 'View all',
                 onAction: () => context.go('/messages'),
               ),
-              const SizedBox(height: 10),
               if (recentThread != null)
                 _RecentMatchCard(
                   thread: recentThread,
@@ -178,7 +180,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ),
                 )
               else
-                _NoMatchesYet(),
+                const _NoMatchesYet(),
               const SizedBox(height: 24),
             ],
           ),

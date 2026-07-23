@@ -1,6 +1,5 @@
 part of '../screens/home_screen.dart';
 
-// ── Activities list ──────────────────────────────────────────────
 class _ActivitiesList extends StatelessWidget {
   final List<Activity> activities;
   final bool loading;
@@ -21,7 +20,8 @@ class _ActivitiesList extends StatelessWidget {
       return _EmptyStateCard(
         icon: Icons.calendar_today_rounded,
         title: 'No upcoming activities',
-        subtitle: 'Looking for something to do? Check out the activities board.',
+        subtitle:
+            'Looking for something to do? Check out the activities board.',
         actionLabel: 'Discover Activities',
         onAction: () => context.go('/activities'),
       );
@@ -59,15 +59,15 @@ class _ActivityItem extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
+        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 12),
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(color: AppColors.border),
           boxShadow: const [
             BoxShadow(
-              color: Color(0x0A000000),
-              blurRadius: 4,
+              color: Color(0x0D111827),
+              blurRadius: 3,
               offset: Offset(0, 1),
             ),
           ],
@@ -75,14 +75,14 @@ class _ActivityItem extends StatelessWidget {
         child: Row(
           children: [
             Container(
-              width: 38,
-              height: 38,
+              width: 40,
+              height: 40,
               decoration: BoxDecoration(
                 color: AppColors.primarySoft,
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(11),
               ),
               alignment: Alignment.center,
-              child: Text(emoji, style: const TextStyle(fontSize: 18)),
+              child: Text(emoji, style: const TextStyle(fontSize: 19)),
             ),
             const SizedBox(width: 11),
             Expanded(
@@ -94,47 +94,50 @@ class _ActivityItem extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.dmSans(
-                      fontSize: 13,
+                      fontSize: 13.5,
                       fontWeight: FontWeight.w600,
                       color: AppColors.textDark,
                     ),
                   ),
+                  const SizedBox(height: 1),
                   Text(
                     activity.location,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.dmSans(
-                      fontSize: 11,
+                      fontSize: 11.5,
                       color: AppColors.textMuted,
                     ),
                   ),
                 ],
               ),
             ),
-            Row(
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                const Icon(Icons.people_outline_rounded,
-                    size: 13, color: AppColors.textMuted),
-                const SizedBox(width: 3),
                 Text(
-                  '${activity.participantCount} going',
+                  timeLabel,
                   style: GoogleFonts.dmSans(
-                      fontSize: 11, color: AppColors.textMuted),
+                    fontSize: 12.5,
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Row(
+                  children: [
+                    const Icon(Icons.people_outline_rounded,
+                        size: 13, color: AppColors.textMuted),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${activity.participantCount} going',
+                      style: GoogleFonts.dmSans(
+                          fontSize: 11, color: AppColors.textMuted),
+                    ),
+                  ],
                 ),
               ],
             ),
-            const SizedBox(width: 8),
-            Text(
-              timeLabel,
-              style: GoogleFonts.dmSans(
-                fontSize: 12,
-                color: AppColors.primary,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(width: 4),
-            const Icon(Icons.chevron_right_rounded,
-                size: 16, color: AppColors.textMuted),
           ],
         ),
       ),

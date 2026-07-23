@@ -1,6 +1,5 @@
 part of '../screens/home_screen.dart';
 
-// ── Recent match card ─────────────────────────────────────────────
 class _RecentMatchCard extends StatelessWidget {
   final MessageThread thread;
   final VoidCallback onTap;
@@ -8,26 +7,26 @@ class _RecentMatchCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final partner = thread.partner!; // provider filters out null-partner threads
+    final partner = thread.partner!;
     final latest = thread.latestMessage;
-    final sub = _studentSub(partner.major, partner.classYear);
     final previewText = latest?.body ?? 'New match — say hello!';
     final timeText = latest != null ? _timeAgo(latest.createdAt) : '';
+    final unread = latest != null && latest.readAt == null;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
       child: GestureDetector(
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 12),
+          padding: const EdgeInsets.all(13),
           decoration: BoxDecoration(
             color: AppColors.surface,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(14),
             border: Border.all(color: AppColors.border),
             boxShadow: const [
               BoxShadow(
-                color: Color(0x0A000000),
-                blurRadius: 4,
+                color: Color(0x0D111827),
+                blurRadius: 3,
                 offset: Offset(0, 1),
               ),
             ],
@@ -37,19 +36,20 @@ class _RecentMatchCard extends StatelessWidget {
               Stack(
                 children: [
                   AvatarWidget(imageUrl: partner.avatarUrl, size: 44),
-                  Positioned(
-                    top: 0,
-                    left: 0,
-                    child: Container(
-                      width: 11,
-                      height: 11,
-                      decoration: BoxDecoration(
-                        color: AppColors.primary,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 2),
+                  if (unread)
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      child: Container(
+                        width: 11,
+                        height: 11,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                        ),
                       ),
                     ),
-                  ),
                 ],
               ),
               const SizedBox(width: 11),
@@ -60,15 +60,10 @@ class _RecentMatchCard extends StatelessWidget {
                     Text(
                       partner.displayName ?? 'LC Student',
                       style: GoogleFonts.dmSans(
-                        fontSize: 13,
+                        fontSize: 13.5,
                         fontWeight: FontWeight.w600,
                         color: AppColors.textDark,
                       ),
-                    ),
-                    Text(
-                      sub,
-                      style: GoogleFonts.dmSans(
-                          fontSize: 11, color: AppColors.textMuted),
                     ),
                     const SizedBox(height: 2),
                     Text(
@@ -91,9 +86,17 @@ class _RecentMatchCard extends StatelessWidget {
                       style: GoogleFonts.dmSans(
                           fontSize: 10, color: AppColors.textMuted),
                     ),
-                  const SizedBox(height: 4),
-                  const Icon(Icons.chevron_right_rounded,
-                      size: 16, color: AppColors.textMuted),
+                  if (unread) ...[
+                    const SizedBox(height: 4),
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(
+                        color: AppColors.primary,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ],
@@ -104,21 +107,21 @@ class _RecentMatchCard extends StatelessWidget {
   }
 }
 
-// ── No matches yet ────────────────────────────────────────────────
 class _NoMatchesYet extends StatelessWidget {
+  const _NoMatchesYet();
+
   @override
   Widget build(BuildContext context) {
     return _EmptyStateCard(
       icon: Icons.people_outline_rounded,
-      title: 'No matches yet',
-      subtitle: 'Accept a connection request or swipe to find study partners.',
+      title: 'No messages yet',
+      subtitle: 'Accept a connection request or find study partners.',
       actionLabel: 'Find Study Partners',
-      onAction: () => context.go('/discover'),
+      onAction: () => context.go('/discover?tab=study'),
     );
   }
 }
 
-// ── Premium Empty State Card ──────────────────────────────────────
 class _EmptyStateCard extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -148,7 +151,7 @@ class _EmptyStateCard extends StatelessWidget {
         children: [
           Container(
             padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               color: AppColors.primarySoft,
               shape: BoxShape.circle,
             ),

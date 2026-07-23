@@ -1,6 +1,5 @@
 part of '../screens/home_screen.dart';
 
-// ── Student cards row ─────────────────────────────────────────────
 class _StudentCardsRow extends StatelessWidget {
   final List<DiscoveryCard> cards;
   final bool loading;
@@ -23,7 +22,7 @@ class _StudentCardsRow extends StatelessWidget {
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         child: Text(
-          'No matches for this category yet.\nTry another or check back later.',
+          'No recommendations yet.\nCheck back soon or explore Connect.',
           textAlign: TextAlign.center,
           style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.textMuted),
         ),
@@ -31,7 +30,7 @@ class _StudentCardsRow extends StatelessWidget {
     }
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -53,7 +52,7 @@ class _StudentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tags = card.interests.take(2).toList();
+    final tag = card.interests.isNotEmpty ? card.interests.first : null;
     final sub = _studentSub(card.major, card.classYear);
 
     return GestureDetector(
@@ -62,164 +61,104 @@ class _StudentCard extends StatelessWidget {
         extra: card.displayName,
       ),
       child: Container(
-        width: 132,
+        width: 152,
+        padding: const EdgeInsets.fromLTRB(14, 16, 14, 14),
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: AppColors.border),
           boxShadow: const [
             BoxShadow(
-              color: Color(0x0F000000),
-              blurRadius: 10,
-              offset: Offset(0, 2),
+              color: Color(0x0D111827),
+              blurRadius: 3,
+              offset: Offset(0, 1),
             ),
           ],
         ),
-        clipBehavior: Clip.antiAlias,
         child: Column(
-          mainAxisSize: MainAxisSize.min,
           children: [
-            Stack(
-              clipBehavior: Clip.none,
-              children: [
-                // School background
-                Container(
-                  height: 90,
-                  width: double.infinity,
-                  color: AppColors.primaryPale,
-                  child: Image.asset(
-                    'assets/images/school.png',
-                    fit: BoxFit.cover,
-                    color: Colors.white.withAlpha(140),
-                    colorBlendMode: BlendMode.lighten,
-                    opacity: const AlwaysStoppedAnimation(0.45),
-                  ),
-                ),
-                // Avatar overlapping below
-                Positioned(
-                  bottom: -22,
-                  left: 0,
-                  right: 0,
-                  child: Center(
-                    child: Container(
-                      width: 50,
-                      height: 50,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 3),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Color(0x1F000000),
-                            blurRadius: 8,
-                            offset: Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: AvatarWidget(imageUrl: card.avatarUrl, size: 50),
-                    ),
-                  ),
-                ),
-                // Match score badge
-                Positioned(
-                  bottom: -18,
-                  right: 12,
-                  child: Container(
-                    width: 20,
-                    height: 20,
-                    decoration: BoxDecoration(
-                      color: AppColors.primary,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2),
-                    ),
-                    child: const Icon(
-                      Icons.people_rounded,
-                      color: Colors.white,
-                      size: 10,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 28),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              child: Column(
-                children: [
-                  Text(
-                    card.displayName ?? 'LC Student',
-                    textAlign: TextAlign.center,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.dmSans(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textDark,
-                    ),
-                  ),
-                  const SizedBox(height: 1),
-                  Text(
-                    sub,
-                    textAlign: TextAlign.center,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.dmSans(
-                      fontSize: 10,
-                      color: AppColors.textMuted,
-                    ),
+            Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 2),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x1F111827),
+                    blurRadius: 10,
+                    offset: Offset(0, 2),
                   ),
                 ],
               ),
+              child: AvatarWidget(imageUrl: card.avatarUrl, size: 60),
             ),
-            const SizedBox(height: 6),
-            if (tags.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: Wrap(
-                  alignment: WrapAlignment.center,
-                  spacing: 4,
-                  runSpacing: 4,
-                  children: tags
-                      .map((t) => Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 7, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: AppColors.primarySoft,
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              t,
-                              style: GoogleFonts.dmSans(
-                                fontSize: 10,
-                                color: AppColors.primary,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ))
-                      .toList(),
+            const SizedBox(height: 10),
+            Text(
+              card.displayName ?? 'LC Student',
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.dmSans(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textDark,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              sub,
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.dmSans(
+                fontSize: 11,
+                color: AppColors.textMuted,
+              ),
+            ),
+            if (tag != null) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppColors.primarySoft,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  tag,
+                  style: GoogleFonts.dmSans(
+                    fontSize: 10.5,
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
-            const SizedBox(height: 8),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(10, 0, 10, 12),
-              child: SizedBox(
-                width: double.infinity,
-                child: Material(
-                  color: AppColors.primary,
-                  borderRadius: BorderRadius.circular(8),
-                  child: InkWell(
-                    onTap: () => onConnect(card),
-                    borderRadius: BorderRadius.circular(8),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 7),
-                      child: Text(
-                        'Connect',
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.dmSans(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
+            ],
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: Material(
+                color: AppColors.primary,
+                borderRadius: BorderRadius.circular(10),
+                child: InkWell(
+                  onTap: () => onConnect(card),
+                  borderRadius: BorderRadius.circular(10),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 9),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.person_add_alt_1,
+                            color: Colors.white, size: 15),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Connect',
+                          style: GoogleFonts.dmSans(
+                            color: Colors.white,
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
-                      ),
+                      ],
                     ),
                   ),
                 ),
