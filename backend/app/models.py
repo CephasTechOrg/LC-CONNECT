@@ -203,10 +203,14 @@ class Message(Base):
             unique=True,
             postgresql_where=text('client_message_id IS NOT NULL'),
         ),
-        # Keyset pagination + reconnect sync: newest-first within a conversation.
+        # Keyset pagination + reconnect sync, keyed by the conversation (the live path since
+        # P2). Newest-first within a conversation; also serves the unread boundary scan.
+        Index('ix_messages_conversation_created_id', text('conversation_id'), text('created_at DESC'), text('id DESC')),
+        # Legacy match-keyed keyset index — retained during the transition (match_id is still
+        # dual-written) so a rollback to the match path stays fast. Droppable post-cutover.
         Index('ix_messages_match_created_id', text('match_id'), text('created_at DESC'), text('id DESC')),
-        # Unread counting: partner messages not yet read, grouped by conversation (partial
-        # so the index only holds unread rows — small and fast for the unread-summary query).
+        # Legacy unread index (match/read_at based). Superseded by the boundary scan; kept for
+        # rollback safety, droppable post-cutover.
         Index('ix_messages_unread', 'match_id', 'sender_id', postgresql_where=text('read_at IS NULL')),
     )
 

@@ -14,6 +14,7 @@ from __future__ import annotations
 from uuid import UUID
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Conversation, ConversationMember, Match
@@ -21,21 +22,35 @@ from app.models import Conversation, ConversationMember, Match
 ACTIVE = 'active'
 
 
+async def _dm_conversation(db: AsyncSession, match_id: UUID) -> Conversation | None:
+    return (
+        await db.execute(select(Conversation).where(Conversation.match_id == match_id))
+    ).scalar_one_or_none()
+
+
 async def ensure_dm_conversation(db: AsyncSession, match: Match) -> Conversation:
     """The DM conversation for `match`, creating it (and both members) if absent.
 
-    Idempotent: `Conversation.match_id` is UNIQUE, so a match can never gain a second
+    Race-safe: `Conversation.match_id` is UNIQUE, so two concurrent creators can't both
+    succeed — the loser catches the IntegrityError and reloads the winner's row (the same
+    arbiter pattern as message idempotency). A match therefore never gains a second
     conversation.
     """
-    existing = (
-        await db.execute(select(Conversation).where(Conversation.match_id == match.id))
-    ).scalar_one_or_none()
+    existing = await _dm_conversation(db, match.id)
     if existing is not None:
         return existing
 
     conversation = Conversation(kind='dm', match_id=match.id)
     db.add(conversation)
-    await db.flush()
+    try:
+        await db.flush()
+    except IntegrityError:
+        await db.rollback()
+        winner = await _dm_conversation(db, match.id)
+        if winner is None:  # pragma: no cover — the unique violation guarantees a row exists
+            raise
+        return winner
+
     for user_id in (match.user_a_id, match.user_b_id):
         db.add(
             ConversationMember(

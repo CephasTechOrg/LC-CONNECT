@@ -106,6 +106,23 @@ Every message has **both** `match_id` and `conversation_id`; the public API stil
 `match_id`. So rollback is still just reverting the service layer — the external flip to
 `conversation_id` happens later (P4/P6), with groups.
 
+### P1/P2 hardening pass ✅
+Reviewed the foundation before P3 and closed the gaps:
+- **Race safety** — `ensure_dm_conversation` now catches the `IntegrityError` from the UNIQUE
+  `match_id` and reloads the winner (two concurrent creators can't duplicate a conversation).
+- **Indexing** — added `ix_messages_conversation_created_id (conversation_id, created_at DESC,
+  id DESC)` (migration `a7b8c9d0e1f2`), the conversation-keyed equivalent of the old match
+  keyset index; serves paging, sync, and the unread boundary scan. Legacy match indexes kept
+  for rollback.
+- **Cleanup** — removed dead `outerjoin`/`aliased` from `mark_read`; fixed the stale
+  "(match_id, …)" service docstring.
+- **New edge-case tests** (`tests/db/test_conversation_hardening.py`): `mark_read` boundary is
+  **forward-only** (out-of-order reads can't un-read), `ensure_dm_conversation` idempotent (no
+  duplicate conversation/members), new matches provisioned with a conversation.
+
+**Gate: ✅** 109 backend tests · ruff clean · single alembic head (`a7b8c9d0e1f2`) · app boots ·
+line limits pass.
+
 ---
 
 ## P3 — `Group` entity, membership & join flows

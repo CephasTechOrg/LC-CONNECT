@@ -12,7 +12,6 @@ from uuid import UUID
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import aliased
 
 from app.models import Conversation, ConversationMember, Message, User
 from app.security import verify_supabase_access_token
@@ -108,12 +107,9 @@ async def mark_read(
     now = datetime.now(UTC)
 
     # 1. Advance the boundary — never backwards (an out-of-order read must not "unread").
-    member_boundary = aliased(Message)
     member = (
         await db.execute(
-            select(ConversationMember)
-            .outerjoin(member_boundary, member_boundary.id == ConversationMember.last_read_message_id)
-            .where(
+            select(ConversationMember).where(
                 ConversationMember.conversation_id == conversation.id,
                 ConversationMember.user_id == reader_id,
             )

@@ -1,8 +1,8 @@
 """Messages domain logic: access checks, serialization, idempotent write, keyset paging.
 
 `persist_message_idempotent` is the single write path shared by the REST endpoint and
-the WebSocket gateway. Paging uses the composite index (match_id, created_at, id) — a
-keyset scan (O(limit)), never OFFSET.
+the WebSocket gateway. Paging uses the composite index (conversation_id, created_at, id) —
+a keyset scan (O(limit)), never OFFSET.
 """
 
 from __future__ import annotations
