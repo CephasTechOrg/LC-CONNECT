@@ -186,15 +186,15 @@ Other lines you'll see and what they mean:
 - Stale-token self-healing
 - Tap-to-open deep link
 - Guarded init (runs fine with no Firebase)
+- **Unread counts + badges** — see [`unread_counts.md`](./unread_counts.md)
+- **In-app banner + sound** — foreground messages pop a tap-to-open banner + chime
+  (suppressed for the open chat / the Messages list / your own messages / a backgrounded app)
+- **Drop the socket on background** — the app suspends its WebSocket when backgrounded
+  (`RealtimeLifecycleObserver`), so "backgrounded" reads as "offline" **immediately** and the
+  push fires without waiting for a ping-timeout. Resuming reconnects + REST-syncs.
 
-**Known gaps (planned next):**
-1. **Unread counts + badges** — per-conversation, Messages tab, app icon. The backend
-   tracks `read_at` per message but has no unread **aggregation** yet, and the UI has no
-   unread badge. *(Highest-value gap.)*
-2. **In-app banner + sound** — when the app is open but you're on another screen, a new
-   message currently updates the list silently. No banner/sound yet.
-3. **Drop the socket on background** — tightens the "backgrounded but not fully killed"
-   window where the socket lingers and no push fires briefly.
+**Remaining (external, not code):**
+- **iOS system push** — needs an Apple Developer account for APNs (see `firebase_setup.md` §4).
+- **iOS in-app sound** — verify on a real iPhone (the Simulator doesn't reliably play audio).
 
-These are enhancements, not bugs — the current system is correct and complete for the
-"message to a closed app" case.
+The messaging notification system is otherwise complete and verified on Android.

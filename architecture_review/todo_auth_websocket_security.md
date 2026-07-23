@@ -146,7 +146,13 @@ works + `firebase_setup.md`). Delivery confirmed on a real Android emulator (202
   haptic + subtle chime (`audioplayers`, generated `assets/sounds/new_message.wav`, guarded).
   Suppressed for: own messages · the open chat (`activeConversationId`) · the Messages list ·
   backgrounded app (push covers it). 6 unit/widget tests.
-- [ ] Drop the WebSocket on app-background (tightens the backgrounded-but-not-killed push window) ← **only gap left**
+- [x] Drop the WebSocket on app-background — `RealtimeLifecycleObserver` suspends the socket on
+  `paused`/`detached` (keeps subscriptions; no auto-reconnect) and resumes on `resumed`; the
+  auth-listener connect is gated on foreground so a background token-refresh can't reopen it.
+  So "backgrounded" reads as "offline" instantly → push fires without waiting for a ping-timeout.
+
+**Messaging polish slice: COMPLETE.** (Remaining messaging work is external: iOS APNs needs the
+Apple Developer account; iOS in-app sound to be verified on a real device.)
 
 ## Privacy/safety
 

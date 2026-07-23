@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' hide AuthUser;
 import 'package:web_socket_channel/web_socket_channel.dart';
@@ -199,13 +200,28 @@ class RealtimeClient {
     _teardown();
   }
 
-  void _teardown() {
+  /// App backgrounded: drop the socket so the server sees us offline (push fires
+  /// promptly instead of waiting for a ping-timeout), but KEEP subscriptions, queued
+  /// sends, and the "had a connection" flag so [resume] reconnects and REST-syncs.
+  /// No auto-reconnect happens until [resume].
+  void suspend() {
+    if (_disposed) return;
+    _teardown(keepConnectionFlag: true);
+  }
+
+  /// App foregrounded: reconnect. On `auth.ok` this restores subscriptions and fires
+  /// `reconnected` (the cue to REST-sync any messages missed while backgrounded).
+  void resume() => connect();
+
+  void _teardown({bool keepConnectionFlag = false}) {
     _cancelReconnect();
     _sub?.cancel();
     _sub = null;
     _channel?.sink.close();
     _channel = null;
-    _hadConnection = false;
+    // Keep _hadConnection on suspend so resume()'s auth.ok counts as a reconnect
+    // (→ fires `reconnected` → REST-sync). Reset it on logout/dispose.
+    if (!keepConnectionFlag) _hadConnection = false;
     if (!_disposed) _status.value = RealtimeStatus.disconnected;
   }
 
@@ -224,19 +240,66 @@ Uri _wsUrl() {
   return Uri.parse('$ws/ws');
 }
 
-/// Singleton client tied to auth: connects when signed in, clears on sign-out.
+/// Suspends the socket when the app is backgrounded and resumes it on foreground.
+/// Transient states (`inactive`/`hidden` — control centre, app switcher) are ignored so
+/// the socket only drops on a real background.
+class RealtimeLifecycleObserver extends WidgetsBindingObserver {
+  final VoidCallback onBackground;
+  final VoidCallback onForeground;
+  RealtimeLifecycleObserver({required this.onBackground, required this.onForeground});
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    switch (state) {
+      case AppLifecycleState.paused:
+      case AppLifecycleState.detached:
+        onBackground();
+      case AppLifecycleState.resumed:
+        onForeground();
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.hidden:
+        break;
+    }
+  }
+}
+
+/// Singleton client tied to auth + app lifecycle: connected only while signed in AND
+/// foregrounded. Backgrounding suspends the socket (so "backgrounded" == "offline" →
+/// push fires promptly); foregrounding resumes it. Clears on sign-out.
 final realtimeClientProvider = Provider<RealtimeClient>((ref) {
   final client = RealtimeClient(
     url: _wsUrl(),
     tokenProvider: () async => Supabase.instance.client.auth.currentSession?.accessToken,
   );
+
+  var foreground = true;
+  bool signedIn() => ref.read(authNotifierProvider).asData?.value != null;
+
+  final observer = RealtimeLifecycleObserver(
+    onBackground: () {
+      foreground = false;
+      client.suspend();
+    },
+    onForeground: () {
+      foreground = true;
+      if (signedIn()) client.resume();
+    },
+  );
+  WidgetsBinding.instance.addObserver(observer);
+
   ref.listen<AsyncValue<AuthUser?>>(authNotifierProvider, (_, next) {
     if (next.asData?.value != null) {
-      client.connect();
+      // Defer connecting until foreground so a token refresh while backgrounded
+      // can't silently reopen the socket (which would defeat the offline push).
+      if (foreground) client.connect();
     } else {
       client.clear();
     }
   }, fireImmediately: true);
-  ref.onDispose(client.dispose);
+
+  ref.onDispose(() {
+    WidgetsBinding.instance.removeObserver(observer);
+    client.dispose();
+  });
   return client;
 });
