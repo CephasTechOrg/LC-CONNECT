@@ -33,6 +33,8 @@ async def create_report(db: AsyncSession, reporter_id: UUID, payload: ReportCrea
         reporter_id=reporter_id,
         reported_user_id=payload.reported_user_id,
         activity_id=payload.activity_id,
+        group_id=payload.group_id,
+        message_id=payload.message_id,
         reason=payload.reason.strip(),
         details=payload.details,
     )

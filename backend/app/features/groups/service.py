@@ -206,6 +206,43 @@ async def leave_group(db: AsyncSession, group: Group, member: ConversationMember
     member.status = 'removed'
 
 
+async def update_group(db: AsyncSession, group: Group, changes: dict) -> None:
+    for field in ('name', 'description', 'category', 'visibility', 'join_policy', 'max_members'):
+        if field in changes:
+            setattr(group, field, changes[field].strip() if field == 'name' else changes[field])
+
+
+async def set_avatar(db: AsyncSession, group: Group, url: str) -> None:
+    group.avatar_url = url
+
+
+async def change_role(
+    db: AsyncSession, group: Group, actor: ConversationMember, target_user_id: UUID, new_role: str
+) -> None:
+    """Promote/demote a member (admin↔member). Owner rank is only granted via transfer."""
+    if new_role not in {'admin', 'member'}:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Role must be admin or member')
+    target = await membership(db, group.conversation_id, target_user_id)
+    if target is None or target.status != ACTIVE:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Member not found')
+    if not can_moderate(actor.role, target.role):  # can't act on equal/higher rank (or the owner)
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='Cannot change this member')
+    target.role = new_role
+
+
+async def transfer_ownership(db: AsyncSession, group: Group, owner: ConversationMember, new_owner_id: UUID) -> None:
+    """Owner-only. Preserves the "always exactly one owner" invariant: the new owner becomes
+    owner and the old owner steps down to admin."""
+    target = await membership(db, group.conversation_id, new_owner_id)
+    if target is None or target.status != ACTIVE:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Member not found')
+    if target.user_id == owner.user_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Already the owner')
+    owner.role = 'admin'
+    target.role = 'owner'
+    group.owner_id = new_owner_id
+
+
 async def remove_member(
     db: AsyncSession, group: Group, actor: ConversationMember, target_user_id: UUID, *, ban: bool
 ) -> None:

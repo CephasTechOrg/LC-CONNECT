@@ -21,33 +21,31 @@ class SupabaseStorageService:
         if settings.supabase_url and settings.supabase_service_role_key:
             self.client = create_client(settings.supabase_url, settings.supabase_service_role_key)
 
-    def upload_profile_image(self, user_id: UUID, content_type: str, data: bytes) -> str:
+    def _upload_avatar(self, prefix: str, content_type: str, data: bytes) -> str:
+        """Replace-and-return a public URL for a sanitized avatar at `{prefix}/avatar.jpg`.
+
+        Bytes are already sanitized upstream, so the object name is fully server-controlled.
+        """
         if self.client is None:
             raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='Supabase Storage is not configured')
 
-        # The bytes are already sanitized to a clean JPEG upstream, so the object name is
-        # fully server-controlled (no user-supplied filename/extension reaches storage).
-        path = f'profiles/{user_id}/avatar.jpg'
-
-        # Delete any existing avatar (all extensions — covers pre-sanitizer uploads) so the
-        # upload never hits a conflict.
+        bucket = self.client.storage.from_(settings.supabase_profile_bucket)
+        path = f'{prefix}/avatar.jpg'
+        # Remove any prior avatar (all extensions — covers pre-sanitizer uploads).
         for ext in ('jpg', 'jpeg', 'png', 'webp'):
             try:
-                self.client.storage.from_(settings.supabase_profile_bucket).remove(
-                    [f'profiles/{user_id}/avatar.{ext}']
-                )
+                bucket.remove([f'{prefix}/avatar.{ext}'])
             except Exception:
                 pass
+        bucket.upload(path=path, file=data, file_options={'content-type': content_type, 'cache-control': '3600'})
+        # `?v=<ts>` busts Flutter's Image.network cache after every update.
+        return f'{str(bucket.get_public_url(path))}?v={int(time.time())}'
 
-        self.client.storage.from_(settings.supabase_profile_bucket).upload(
-            path=path,
-            file=data,
-            file_options={'content-type': content_type, 'cache-control': '3600'},
-        )
+    def upload_profile_image(self, user_id: UUID, content_type: str, data: bytes) -> str:
+        return self._upload_avatar(f'profiles/{user_id}', content_type, data)
 
-        # Append a timestamp so Flutter's Image.network re-fetches after every update.
-        public_url = str(self.client.storage.from_(settings.supabase_profile_bucket).get_public_url(path))
-        return f'{public_url}?v={int(time.time())}'
+    def upload_group_image(self, group_id: UUID, content_type: str, data: bytes) -> str:
+        return self._upload_avatar(f'groups/{group_id}', content_type, data)
 
 
 storage_service = SupabaseStorageService()

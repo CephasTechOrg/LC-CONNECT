@@ -13,7 +13,7 @@ interest groups) and the messaging generalization they require.
 
 ## Status
 
-**P0–P4 ✅ complete — next up: P5 (group discovery polish + avatar + moderation reports).**
+**P0–P5 ✅ complete — the group backend is feature-complete. Next: P6 (wire the mobile UI).**
 
 Groups now **chat**: a group is addressed by its conversation id, messages fan out to all
 members (typing too), push skips muted members, and removing a member closes their live socket.

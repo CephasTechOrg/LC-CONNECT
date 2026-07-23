@@ -192,14 +192,28 @@ surfaced as a fake "circular import". Restored + made the groups package import-
 
 ---
 
-## P5 — Group discovery, profile & moderation
+## P5 — Group admin surface, profile & moderation ✅ **COMPLETE**
 
-- [ ] Discovery/search respecting `visibility` (`public` listed, `unlisted` link-only, `private` hidden)
-- [ ] Group profile + **avatar reusing `sanitize_avatar`**
-- [ ] Report targets: nullable `group_id` / `message_id` on `Report`
-- [ ] Member remove/ban surfaced to admins
+- [x] Discovery/search respecting `visibility` (done in P3: `public` listed, `unlisted`/`private`
+      never listed; get-by-id gated)
+- [x] **Group avatar** — `POST /groups/{id}/avatar` reuses `sanitize_avatar` (EXIF/GPS stripped)
+      via a generalized `storage._upload_avatar` + `upload_group_image`
+- [x] **Edit group** — `PATCH /groups/{id}` (admin/owner)
+- [x] **Role management** — `PATCH /groups/{id}/members/{user_id}` (promote/demote, `can_moderate`
+      enforced) · **`POST /groups/{id}/transfer`** (owner-only; old owner steps down to admin so
+      there is always exactly one owner) · **`DELETE /groups/{id}`** (owner-only; deletes the
+      conversation → cascades to group + members + messages)
+- [x] **Report targets** — nullable `group_id` / `message_id` on `Report` (migration
+      `d0e1f2a3b4c5`); safety schema + service accept them; a target is required
+- [x] Member remove/ban shipped in P4
 
-**Gate:** visibility tests (each policy) · report-target tests.
+**Gate: ✅ green**
+- 8 admin tests: edit · promote · **transfer keeps exactly one owner** · admin-can't-moderate-admin ·
+  **delete cascade** (group+members+messages gone) · report a group · report a message · target-required
+- 140 backend tests · ruff clean · snapshot regenerated · single head `d0e1f2a3b4c5` · line limits
+
+**The group backend is now feature-complete for the MVP.** Remaining: **P6 — wire the mobile UI**
+(the coordinated `match_id`→`conversation_id` API flip + group thread-list variant + group unread).
 
 ---
 

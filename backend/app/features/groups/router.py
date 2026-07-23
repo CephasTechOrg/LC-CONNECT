@@ -3,9 +3,10 @@ transactional capacity come from `service.py`. Routers stay thin."""
 
 from uuid import UUID
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Body, Depends, File, HTTPException, Query, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.database import get_db
 from app.dependencies import require_verified_student
 from app.features.groups import service
@@ -15,9 +16,12 @@ from app.features.groups.schema import (
     GroupMemberRead,
     GroupRead,
     GroupSummary,
+    GroupUpdate,
     JoinResult,
 )
-from app.models import Group, User
+from app.models import Conversation, Group, User
+from app.shared.image_processing import sanitize_avatar
+from app.shared.storage import storage_service
 
 router = APIRouter(prefix='/groups', tags=['groups'])
 
@@ -83,6 +87,44 @@ async def get_group(group_id: UUID, current_user: User = Depends(require_verifie
     return await service.to_read(db, group, member)
 
 
+@router.patch('/{group_id}', response_model=GroupRead)
+async def edit_group(group_id: UUID, payload: GroupUpdate, current_user: User = Depends(require_verified_student), db: AsyncSession = Depends(get_db)):
+    group, member = await _visible_group(group_id, current_user, db)
+    _require(member, GroupAction.EDIT_GROUP)
+    await service.update_group(db, group, payload.model_dump(exclude_unset=True))
+    await db.commit()
+    return await service.to_read(db, group, member)
+
+
+@router.post('/{group_id}/avatar', response_model=GroupRead)
+async def upload_group_avatar(
+    group_id: UUID,
+    file: UploadFile = File(...),
+    current_user: User = Depends(require_verified_student),
+    db: AsyncSession = Depends(get_db),
+):
+    group, member = await _visible_group(group_id, current_user, db)
+    _require(member, GroupAction.EDIT_GROUP)
+    data = await file.read()
+    if len(data) > settings.max_profile_image_mb * 1024 * 1024:
+        raise HTTPException(status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail='Image is too large')
+    clean, content_type = sanitize_avatar(data)  # validates bytes + strips EXIF/GPS (same as profiles)
+    await service.set_avatar(db, group, storage_service.upload_group_image(group.id, content_type, clean))
+    await db.commit()
+    return await service.to_read(db, group, member)
+
+
+@router.delete('/{group_id}', status_code=status.HTTP_204_NO_CONTENT)
+async def delete_group(group_id: UUID, current_user: User = Depends(require_verified_student), db: AsyncSession = Depends(get_db)):
+    group, member = await _visible_group(group_id, current_user, db)
+    _require(member, GroupAction.DELETE_GROUP)  # owner only
+    # Delete the conversation: the group (via its ON DELETE CASCADE FK), members, and messages
+    # all cascade from it.
+    conversation = await db.get(Conversation, group.conversation_id)
+    await db.delete(conversation)
+    await db.commit()
+
+
 # ── join / invite / leave ─────────────────────────────────────────────────────────
 
 @router.post('/{group_id}/join', response_model=JoinResult)
@@ -146,6 +188,33 @@ async def leave(group_id: UUID, current_user: User = Depends(require_verified_st
     if _active_role(member) is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Not a member')
     await service.leave_group(db, group, member)
+    await db.commit()
+
+
+@router.patch('/{group_id}/members/{user_id}', status_code=status.HTTP_204_NO_CONTENT)
+async def change_member_role(
+    group_id: UUID,
+    user_id: UUID,
+    role: str = Body(..., embed=True),
+    current_user: User = Depends(require_verified_student),
+    db: AsyncSession = Depends(get_db),
+):
+    group, member = await _visible_group(group_id, current_user, db)
+    _require(member, GroupAction.EDIT_GROUP)
+    await service.change_role(db, group, member, user_id, role)
+    await db.commit()
+
+
+@router.post('/{group_id}/transfer', status_code=status.HTTP_204_NO_CONTENT)
+async def transfer_ownership(
+    group_id: UUID,
+    user_id: UUID = Body(..., embed=True),
+    current_user: User = Depends(require_verified_student),
+    db: AsyncSession = Depends(get_db),
+):
+    group, member = await _visible_group(group_id, current_user, db)
+    _require(member, GroupAction.TRANSFER_OWNERSHIP)  # owner only
+    await service.transfer_ownership(db, group, member, user_id)
     await db.commit()
 
 

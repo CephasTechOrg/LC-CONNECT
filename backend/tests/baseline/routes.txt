@@ -1,6 +1,7 @@
 DELETE /api/v1/activities/{activity_id}/leave
 DELETE /api/v1/blocks/{user_id}
 DELETE /api/v1/devices/{token}
+DELETE /api/v1/groups/{group_id}
 DELETE /api/v1/groups/{group_id}/members/me
 DELETE /api/v1/groups/{group_id}/members/{user_id}
 GET /
@@ -26,6 +27,8 @@ GET /api/v1/messages/unread-summary
 GET /api/v1/profiles/me
 GET /api/v1/profiles/{profile_id}
 GET /health
+PATCH /api/v1/groups/{group_id}
+PATCH /api/v1/groups/{group_id}/members/{user_id}
 PATCH /api/v1/profiles/me
 POST /api/v1/activities
 POST /api/v1/activities/{activity_id}/join
@@ -44,11 +47,13 @@ POST /api/v1/connections/{request_id}/accept
 POST /api/v1/connections/{request_id}/decline
 POST /api/v1/devices
 POST /api/v1/groups
+POST /api/v1/groups/{group_id}/avatar
 POST /api/v1/groups/{group_id}/invites
 POST /api/v1/groups/{group_id}/invites/accept
 POST /api/v1/groups/{group_id}/join
 POST /api/v1/groups/{group_id}/requests/{user_id}/approve
 POST /api/v1/groups/{group_id}/requests/{user_id}/reject
+POST /api/v1/groups/{group_id}/transfer
 POST /api/v1/messages/threads/{match_id}
 POST /api/v1/profiles/me/avatar
 POST /api/v1/reports
