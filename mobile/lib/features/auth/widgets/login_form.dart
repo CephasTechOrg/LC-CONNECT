@@ -24,20 +24,21 @@ class _FormSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 20, 24, 26),
+      padding: const EdgeInsets.fromLTRB(28, 12, 28, 28),
       child: Form(
         key: formKey,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisAlignment: MainAxisAlignment.start,
           children: [
             Row(
               children: [
                 const _LcBadge(size: 40),
-                const SizedBox(width: 10),
+                const SizedBox(width: 12),
                 Text(
                   'LC Connect',
                   style: GoogleFonts.dmSans(
-                    fontSize: 25,
+                    fontSize: 24,
                     fontWeight: FontWeight.w700,
                     color: AppColors.textDark,
                     letterSpacing: -0.75,
@@ -49,12 +50,12 @@ class _FormSection extends StatelessWidget {
             Text(
               'Find friends, study partners, and campus groups.',
               style: GoogleFonts.dmSans(
-                fontSize: 14,
+                fontSize: 13.5,
                 color: AppColors.textMuted,
                 height: 1.4,
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 22),
             _MockupField(
               controller: emailCtrl,
               hintText: 'Email address',
@@ -82,31 +83,34 @@ class _FormSection extends StatelessWidget {
               validator: (v) =>
                   v != null && v.isNotEmpty ? null : 'Enter your password',
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 18),
             _SignInButton(isLoading: isLoading, onTap: onSubmit),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             Align(
               alignment: Alignment.centerRight,
               child: GestureDetector(
                 onTap: () => context.push('/forgot-password'),
-                child: Text(
-                  'Forgot password?',
-                  style: GoogleFonts.dmSans(
-                    fontSize: 13,
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w500,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: Text(
+                    'Forgot password?',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 13,
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
               ),
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 20),
             Row(
               children: [
                 const Expanded(
                   child: Divider(color: AppColors.border, thickness: 1),
                 ),
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
                   child: Text(
                     'OR',
                     style: GoogleFonts.dmSans(
@@ -121,7 +125,7 @@ class _FormSection extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 20),
             _CreateAccountButton(onTap: onRegister),
           ],
         ),
@@ -172,8 +176,10 @@ class _MockupField extends StatelessWidget {
                 child: suffixIcon,
               )
             : null,
-        suffixIconConstraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        suffixIconConstraints:
+            const BoxConstraints(minWidth: 36, minHeight: 36),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: AppColors.border, width: 1.5),

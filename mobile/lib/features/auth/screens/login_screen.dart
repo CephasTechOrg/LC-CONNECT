@@ -55,26 +55,39 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final isLoading = ref.watch(authNotifierProvider).isLoading;
+    final screenH = MediaQuery.sizeOf(context).height;
+    final heroH = (screenH * 0.42).clamp(250.0, 320.0);
 
     return Scaffold(
       backgroundColor: AppColors.surface,
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const _HeroScene(),
-            _FormSection(
-              formKey: _formKey,
-              emailCtrl: _emailCtrl,
-              passwordCtrl: _passwordCtrl,
-              obscure: _obscure,
-              isLoading: isLoading,
-              onToggleObscure: () => setState(() => _obscure = !_obscure),
-              onSubmit: _submit,
-              onRegister: () => context.go('/register'),
+      body: Column(
+        children: [
+          _HeroScene(height: heroH),
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  keyboardDismissBehavior:
+                      ScrollViewKeyboardDismissBehavior.onDrag,
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                    child: _FormSection(
+                      formKey: _formKey,
+                      emailCtrl: _emailCtrl,
+                      passwordCtrl: _passwordCtrl,
+                      obscure: _obscure,
+                      isLoading: isLoading,
+                      onToggleObscure: () =>
+                          setState(() => _obscure = !_obscure),
+                      onSubmit: _submit,
+                      onRegister: () => context.go('/register'),
+                    ),
+                  ),
+                );
+              },
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

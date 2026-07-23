@@ -2,19 +2,22 @@ part of '../screens/login_screen.dart';
 
 /// Full-bleed campus hero with white wave cut into the form below.
 class _HeroScene extends StatelessWidget {
-  const _HeroScene();
+  final double height;
+  const _HeroScene({required this.height});
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 320,
+      height: height,
       child: Stack(
         fit: StackFit.expand,
         children: [
           Image.asset(
             'assets/images/groupstudents.png',
             fit: BoxFit.cover,
-            alignment: const Alignment(0, -0.6),
+            // Slightly lower than top-crop so more of the students show
+            // under the wave (less empty/blurred cut-off at the bottom).
+            alignment: const Alignment(0, -0.2),
           ),
           Positioned(
             left: 0,

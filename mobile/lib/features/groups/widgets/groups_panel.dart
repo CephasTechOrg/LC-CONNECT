@@ -1,49 +1,55 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/app_filter_chip.dart';
-import '../data/placeholder_groups.dart';
+import '../data/group_models.dart';
+import '../data/placeholder_groups.dart' show groupCategories;
+import '../providers/groups_provider.dart';
+import 'create_group_sheet.dart';
 
-/// Campus Groups panel matching the Connect mockup. Actions are local-only.
-class GroupsPanel extends StatefulWidget {
+/// Campus Groups panel — now wired to the live `/groups` API.
+class GroupsPanel extends ConsumerStatefulWidget {
   const GroupsPanel({super.key});
 
   @override
-  State<GroupsPanel> createState() => _GroupsPanelState();
+  ConsumerState<GroupsPanel> createState() => _GroupsPanelState();
 }
 
-class _GroupsPanelState extends State<GroupsPanel> {
+class _GroupsPanelState extends ConsumerState<GroupsPanel> {
   String _category = 'All';
-  late Map<String, String> _states;
+  final _busy = <String>{}; // group ids with a join in flight
 
-  @override
-  void initState() {
-    super.initState();
-    _states = {
-      for (final g in placeholderGroups) g.name: g.action,
-    };
+  String? get _apiCategory => _category == 'All' ? null : groupApiCategories[_category];
+
+  Future<void> _join(GroupSummary group) async {
+    if (_busy.contains(group.id)) return;
+    setState(() => _busy.add(group.id));
+    try {
+      final status = await ref.read(groupsRepositoryProvider).join(group.id);
+      if (!mounted) return;
+      ref.invalidate(discoverGroupsProvider(_apiCategory));
+      _snack(status == 'active' ? 'Joined ${group.name}' : 'Request sent to ${group.name}');
+    } catch (_) {
+      if (mounted) _snack('Could not join — try again', error: true);
+    } finally {
+      if (mounted) setState(() => _busy.remove(group.id));
+    }
   }
 
-  void _toggle(String name) {
-    setState(() {
-      final cur = _states[name] ?? 'Join';
-      _states[name] = switch (cur) {
-        'Join' => 'Joined',
-        'Joined' => 'Join',
-        'Request' => 'Pending',
-        'Pending' => 'Request',
-        _ => cur,
-      };
-    });
+  Future<void> _createGroup() async {
+    final created = await showCreateGroupSheet(context, ref);
+    if (created != null && mounted) {
+      ref.invalidate(discoverGroupsProvider(_apiCategory));
+      _snack('Created ${created.name}');
+    }
   }
 
-  void _comingSoon() {
+  void _snack(String message, {bool error = false}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(
-          'Groups will be available soon.',
-          style: GoogleFonts.dmSans(),
-        ),
+        content: Text(message, style: GoogleFonts.dmSans(color: Colors.white)),
+        backgroundColor: error ? AppColors.textDark : AppColors.primary,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
@@ -52,9 +58,7 @@ class _GroupsPanelState extends State<GroupsPanel> {
 
   @override
   Widget build(BuildContext context) {
-    final list = placeholderGroups
-        .where((g) => _category == 'All' || g.category == _category)
-        .toList();
+    final async = ref.watch(discoverGroupsProvider(_apiCategory));
 
     return ListView(
       padding: EdgeInsets.zero,
@@ -66,35 +70,20 @@ class _GroupsPanelState extends State<GroupsPanel> {
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-          child: _FeaturedGroupCard(
-            state: _states['Pre-Health Society'] ?? 'Join',
-            onAction: () => _toggle('Pre-Health Society'),
-          ),
-        ),
-        Padding(
           padding: const EdgeInsets.fromLTRB(20, 14, 20, 4),
           child: Row(
             children: [
               Text(
                 'All Groups',
-                style: GoogleFonts.dmSans(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textDark,
-                ),
+                style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textDark),
               ),
               const Spacer(),
               TextButton.icon(
-                onPressed: _comingSoon,
+                onPressed: _createGroup,
                 icon: const Icon(Icons.add, size: 14, color: AppColors.primary),
                 label: Text(
                   'Create Group',
-                  style: GoogleFonts.dmSans(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.primary,
-                  ),
+                  style: GoogleFonts.dmSans(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primary),
                 ),
                 style: TextButton.styleFrom(
                   padding: EdgeInsets.zero,
@@ -105,161 +94,81 @@ class _GroupsPanelState extends State<GroupsPanel> {
             ],
           ),
         ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-          child: Column(
-            children: list
-                .map(
-                  (g) => Padding(
-                    padding: const EdgeInsets.only(bottom: 9),
-                    child: _GroupListTile(
-                      group: g,
-                      state: _states[g.name] ?? g.action,
-                      onAction: () => _toggle(g.name),
-                    ),
-                  ),
-                )
-                .toList(),
+        async.when(
+          loading: () => const Padding(
+            padding: EdgeInsets.only(top: 60),
+            child: Center(child: CircularProgressIndicator()),
           ),
+          error: (e, _) => _PanelMessage(
+            text: 'Couldn\'t load groups',
+            onRetry: () => ref.invalidate(discoverGroupsProvider(_apiCategory)),
+          ),
+          data: (groups) => groups.isEmpty
+              ? const _PanelMessage(text: 'No groups yet — create the first one!')
+              : Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+                  child: Column(
+                    children: [
+                      for (final g in groups)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 9),
+                          child: _GroupListTile(
+                            group: g,
+                            busy: _busy.contains(g.id),
+                            onAction: () => _join(g),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
         ),
       ],
     );
   }
 }
 
-class _FeaturedGroupCard extends StatelessWidget {
-  final String state;
-  final VoidCallback onAction;
-  const _FeaturedGroupCard({required this.state, required this.onAction});
+class _PanelMessage extends StatelessWidget {
+  final String text;
+  final VoidCallback? onRetry;
+  const _PanelMessage({required this.text, this.onRetry});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.border),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x12000000),
-            blurRadius: 18,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
-      clipBehavior: Clip.antiAlias,
+    return Padding(
+      padding: const EdgeInsets.only(top: 60),
       child: Column(
         children: [
-          SizedBox(
-            height: 108,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                ColoredBox(color: AppColors.primaryPale),
-                Positioned(
-                  right: -20,
-                  top: 0,
-                  bottom: 0,
-                  child: Opacity(
-                    opacity: 0.55,
-                    child: Image.asset(
-                      'assets/images/school.png',
-                      fit: BoxFit.contain,
-                    ),
-                  ),
-                ),
-                DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        AppColors.primaryPale.withValues(alpha: 0.98),
-                        AppColors.primaryPale.withValues(alpha: 0.05),
-                      ],
-                    ),
-                  ),
-                ),
-                Positioned(
-                  top: 12,
-                  left: 15,
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      'FEATURED',
-                      style: GoogleFonts.dmSans(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                        letterSpacing: 0.6,
-                      ),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  left: 15,
-                  bottom: 12,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Pre-Health Society',
-                        style: GoogleFonts.dmSans(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textDark,
-                        ),
-                      ),
-                      Text(
-                        '98 members · Academic',
-                        style: GoogleFonts.dmSans(
-                          fontSize: 11,
-                          color: AppColors.textMid,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+          Text(text, style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.textMuted)),
+          if (onRetry != null)
+            TextButton(
+              onPressed: onRetry,
+              child: Text('Retry', style: GoogleFonts.dmSans(color: AppColors.primary, fontWeight: FontWeight.w600)),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(15, 12, 15, 14),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'For students pursuing careers in medicine, nursing, and public health.',
-                    style: GoogleFonts.dmSans(
-                      fontSize: 12.5,
-                      color: AppColors.textMuted,
-                      height: 1.5,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                _GroupActionBtn(state: state, onTap: onAction),
-              ],
-            ),
-          ),
         ],
       ),
     );
   }
 }
 
+IconData _iconFor(String category) => switch (category) {
+      'housing' => Icons.home_outlined,
+      'class' => Icons.school_outlined,
+      'club' => Icons.groups_outlined,
+      _ => Icons.favorite_border_rounded,
+    };
+
+String _categoryLabel(String category) => switch (category) {
+      'club' => 'Clubs & Sports',
+      'class' => 'Academic',
+      'housing' => 'Housing',
+      _ => 'Interest',
+    };
+
 class _GroupListTile extends StatelessWidget {
-  final PlaceholderGroup group;
-  final String state;
+  final GroupSummary group;
+  final bool busy;
   final VoidCallback onAction;
-  const _GroupListTile({
-    required this.group,
-    required this.state,
-    required this.onAction,
-  });
+  const _GroupListTile({required this.group, required this.busy, required this.onAction});
 
   @override
   Widget build(BuildContext context) {
@@ -275,29 +184,13 @@ class _GroupListTile extends StatelessWidget {
           Container(
             width: 42,
             height: 42,
-            decoration: BoxDecoration(
-              color: group.greenTone
-                  ? const Color(0xFFECFDF5)
-                  : AppColors.primarySoft,
-              borderRadius: BorderRadius.circular(12),
-            ),
+            decoration: BoxDecoration(color: AppColors.primarySoft, borderRadius: BorderRadius.circular(12)),
             alignment: Alignment.center,
-            child: group.useLc
-                ? Text(
-                    'LC',
-                    style: GoogleFonts.dmSans(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 14,
-                    ),
-                  )
-                : Icon(
-                    group.iconData,
-                    size: 18,
-                    color: group.greenTone
-                        ? AppColors.green
-                        : AppColors.primary,
-                  ),
+            clipBehavior: Clip.antiAlias,
+            child: group.avatarUrl != null
+                ? Image.network(group.avatarUrl!, fit: BoxFit.cover, width: 42, height: 42,
+                    errorBuilder: (_, _, _) => Icon(_iconFor(group.category), size: 18, color: AppColors.primary))
+                : Icon(_iconFor(group.category), size: 18, color: AppColors.primary),
           ),
           const SizedBox(width: 11),
           Expanded(
@@ -306,23 +199,18 @@ class _GroupListTile extends StatelessWidget {
               children: [
                 Text(
                   group.name,
-                  style: GoogleFonts.dmSans(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textDark,
-                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textDark),
                 ),
                 Text(
-                  '${group.category} · ${group.members} members',
-                  style: GoogleFonts.dmSans(
-                    fontSize: 11,
-                    color: AppColors.textMuted,
-                  ),
+                  '${_categoryLabel(group.category)} · ${group.memberCount} members',
+                  style: GoogleFonts.dmSans(fontSize: 11, color: AppColors.textMuted),
                 ),
               ],
             ),
           ),
-          _GroupActionBtn(state: state, onTap: onAction),
+          _GroupActionBtn(label: group.actionLabel, enabled: group.actionEnabled, busy: busy, onTap: onAction),
         ],
       ),
     );
@@ -330,14 +218,16 @@ class _GroupListTile extends StatelessWidget {
 }
 
 class _GroupActionBtn extends StatelessWidget {
-  final String state;
+  final String label;
+  final bool enabled;
+  final bool busy;
   final VoidCallback onTap;
-  const _GroupActionBtn({required this.state, required this.onTap});
+  const _GroupActionBtn({required this.label, required this.enabled, required this.busy, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    final (bg, border, color) = switch (state) {
-      'Join' => (AppColors.primary, AppColors.primary, Colors.white),
+    final (bg, border, color) = switch (label) {
+      'Join' || 'Accept' => (AppColors.primary, AppColors.primary, Colors.white),
       'Joined' => (AppColors.surface, AppColors.border, AppColors.textMid),
       'Request' => (AppColors.surface, AppColors.primary, AppColors.primary),
       _ => (AppColors.surface, AppColors.border, AppColors.textMuted),
@@ -347,22 +237,14 @@ class _GroupActionBtn extends StatelessWidget {
       color: bg,
       borderRadius: BorderRadius.circular(9),
       child: InkWell(
-        onTap: onTap,
+        onTap: enabled && !busy ? onTap : null,
         borderRadius: BorderRadius.circular(9),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 6),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(9),
-            border: Border.all(color: border, width: 1.5),
-          ),
-          child: Text(
-            state,
-            style: GoogleFonts.dmSans(
-              fontSize: 11.5,
-              fontWeight: FontWeight.w600,
-              color: color,
-            ),
-          ),
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(9), border: Border.all(color: border, width: 1.5)),
+          child: busy
+              ? const SizedBox(width: 13, height: 13, child: CircularProgressIndicator(strokeWidth: 2))
+              : Text(label, style: GoogleFonts.dmSans(fontSize: 11.5, fontWeight: FontWeight.w600, color: color)),
         ),
       ),
     );
