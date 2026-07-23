@@ -1659,6 +1659,31 @@
         "title": "TokenResponse",
         "type": "object"
       },
+      "UnreadSummary": {
+        "description": "Total unread + per-conversation counts (conversations with 0 unread are omitted).",
+        "properties": {
+          "per_conversation": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "propertyNames": {
+              "format": "uuid"
+            },
+            "title": "Per Conversation",
+            "type": "object"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "per_conversation"
+        ],
+        "title": "UnreadSummary",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -3207,6 +3232,33 @@
           }
         ],
         "summary": "Sync Thread Endpoint",
+        "tags": [
+          "messages"
+        ]
+      }
+    },
+    "/api/v1/messages/unread-summary": {
+      "get": {
+        "description": "Total + per-conversation unread counts \u2014 seeds the tab + per-row badges.",
+        "operationId": "get_unread_summary_api_v1_messages_unread_summary_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnreadSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Unread Summary",
         "tags": [
           "messages"
         ]

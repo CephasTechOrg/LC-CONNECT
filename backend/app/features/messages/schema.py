@@ -26,3 +26,10 @@ class MessageThreadRead(BaseModel):
     match_id: UUID
     partner: ProfilePublic | None
     latest_message: MessageRead | None
+
+
+class UnreadSummary(BaseModel):
+    """Total unread + per-conversation counts (conversations with 0 unread are omitted)."""
+
+    total: int
+    per_conversation: dict[UUID, int]

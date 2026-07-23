@@ -159,6 +159,9 @@ class Message(Base):
         ),
         # Keyset pagination + reconnect sync: newest-first within a conversation.
         Index('ix_messages_match_created_id', text('match_id'), text('created_at DESC'), text('id DESC')),
+        # Unread counting: partner messages not yet read, grouped by conversation (partial
+        # so the index only holds unread rows — small and fast for the unread-summary query).
+        Index('ix_messages_unread', 'match_id', 'sender_id', postgresql_where=text('read_at IS NULL')),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)

@@ -66,6 +66,17 @@ ProviderScope _threadScope({
         () => _MockThreadsNotifier(threads),
       ),
       authNotifierProvider.overrideWith(_MockAuthNotifier.new),
+      // _ThreadCard now reads unreadProvider, which builds the realtime client + fetches
+      // the unread summary — keep both hermetic (idle socket, stub HTTP).
+      realtimeClientProvider.overrideWith((ref) {
+        final client = RealtimeClient(
+          url: Uri.parse('ws://localhost/ws'),
+          tokenProvider: () async => null,
+        );
+        ref.onDispose(client.dispose);
+        return client;
+      }),
+      apiClientProvider.overrideWith((ref) => _stubApiClient()),
     ],
     child: MaterialApp(home: child ?? const MessagesScreen()),
   );

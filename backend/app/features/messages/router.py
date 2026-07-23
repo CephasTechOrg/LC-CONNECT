@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.dependencies import require_verified_student
-from app.features.messages.schema import MessageCreate, MessageRead, MessageThreadRead
+from app.features.messages.schema import MessageCreate, MessageRead, MessageThreadRead, UnreadSummary
 from app.features.messages.service import (
     get_match_for_user,
     message_read,
@@ -15,6 +15,7 @@ from app.features.messages.service import (
     partner_id,
     persist_message_idempotent,
     sync_thread,
+    unread_summary,
 )
 from app.models import Match, Message, Profile, User
 from app.shared.policies import users_are_blocked
@@ -53,6 +54,13 @@ async def list_threads(current_user: User = Depends(require_verified_student), d
         if partner_profile:
             threads.append(MessageThreadRead(match_id=match.id, partner=profile_to_public(partner_profile), latest_message=message_read(latest) if latest else None))
     return threads
+
+
+@router.get('/unread-summary', response_model=UnreadSummary)
+async def get_unread_summary(current_user: User = Depends(require_verified_student), db: AsyncSession = Depends(get_db)):
+    """Total + per-conversation unread counts — seeds the tab + per-row badges."""
+    total, per_conversation = await unread_summary(db, current_user.id)
+    return UnreadSummary(total=total, per_conversation=per_conversation)
 
 
 @router.get('/threads/{match_id}', response_model=list[MessageRead])

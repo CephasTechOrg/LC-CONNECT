@@ -12,6 +12,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/avatar_widget.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../providers/messages_provider.dart';
+import '../providers/unread_provider.dart';
 
 part '../widgets/chat_header.dart';
 part '../widgets/chat_message_list.dart';
@@ -54,12 +55,25 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   // unsafe (the element is unmounting). The client is a session singleton, so the
   // instance never changes while this screen is mounted.
   late final RealtimeClient _rt;
+  // Captured in initState so dispose() never touches `ref` while unmounting.
+  late final UnreadNotifier _unread;
 
   @override
   void initState() {
     super.initState();
     _rt = ref.read(realtimeClientProvider);
     _currentUserId = ref.read(authNotifierProvider).asData?.value?.id ?? '';
+    // Mark this chat active + optimistically zero its badge. Deferred to a microtask
+    // because initState runs during the build phase and Riverpod forbids mutating a
+    // provider then. Any message landing in the sub-millisecond gap is harmless — it's
+    // this conversation, which `clearConversation` immediately zeroes anyway. The real
+    // read still goes out via WS (_sendRead).
+    _unread = ref.read(unreadProvider.notifier);
+    Future.microtask(() {
+      if (!mounted) return;
+      _unread.enterConversation(widget.matchId);
+      _unread.clearConversation(widget.matchId);
+    });
     _rt.subscribe(widget.matchId);
     _eventsSub = _rt.events.listen(_onEvent);
     _reconnectSub = _rt.reconnected.listen((_) => _syncAfterReconnect());
@@ -69,6 +83,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   @override
   void dispose() {
+    _unread.leaveConversation();
     _rt.unsubscribe(widget.matchId);
     _eventsSub?.cancel();
     _reconnectSub?.cancel();

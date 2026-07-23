@@ -24,6 +24,7 @@ from app.features.messages.service import (
     partner_id,
     persist_message_idempotent,
     sync_thread,
+    unread_summary,
 )
 from app.models import Match, Message
 
@@ -161,3 +162,47 @@ async def test_sync_thread_is_oldest_first_with_forward_cursor():
     )
     assert 'ORDER BY messages.created_at ASC, messages.id ASC' in sql
     assert ') > (' in sql  # catch-up scans strictly *newer* than the cursor
+
+
+# ── unread summary ─────────────────────────────────────────────────────────────
+
+async def _run_unread(rows):
+    """Run unread_summary against a session whose grouped query yields `rows`."""
+    result = MagicMock()
+    result.all.return_value = rows
+    db = MagicMock()
+    db.execute = AsyncMock(return_value=result)
+    return await unread_summary(db, uuid4())
+
+
+async def test_unread_summary_aggregates_total_and_per_conversation():
+    m1, m2 = uuid4(), uuid4()
+    total, per = await _run_unread([(m1, 3), (m2, 1)])
+    assert total == 4
+    assert per == {m1: 3, m2: 1}
+
+
+async def test_unread_summary_empty_is_zero():
+    total, per = await _run_unread([])
+    assert total == 0
+    assert per == {}
+
+
+async def test_unread_summary_only_counts_partner_unread():
+    """The query must filter to unread partner messages (not own, not already read)."""
+    captured: dict = {}
+
+    async def fake_execute(stmt):
+        captured['stmt'] = stmt
+        r = MagicMock()
+        r.all.return_value = []
+        return r
+
+    db = MagicMock()
+    db.execute = fake_execute
+    await unread_summary(db, uuid4())
+    sql = str(captured['stmt'].compile(dialect=postgresql.dialect()))
+    assert 'read_at IS NULL' in sql        # only unread
+    assert 'sender_id !=' in sql           # not my own messages
+    assert 'matches' in sql                # scoped to my conversations
+    assert 'GROUP BY' in sql

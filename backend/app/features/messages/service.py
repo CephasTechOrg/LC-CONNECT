@@ -11,7 +11,7 @@ from datetime import datetime
 from uuid import UUID
 
 from fastapi import HTTPException, status
-from sqlalchemy import select, tuple_
+from sqlalchemy import func, or_, select, tuple_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -28,6 +28,30 @@ async def get_match_for_user(db: AsyncSession, match_id: UUID, user: User) -> Ma
 
 def partner_id(match: Match, user: User) -> UUID:
     return match.user_b_id if match.user_a_id == user.id else match.user_a_id
+
+
+async def unread_summary(db: AsyncSession, user_id: UUID) -> tuple[int, dict[UUID, int]]:
+    """Unread counts for the user, in one grouped query (no N+1).
+
+    A message is unread *by this user* when it belongs to one of their matches, was sent by
+    the partner (``sender_id != user_id``), and has no ``read_at``. Backed by the partial
+    index ``ix_messages_unread`` so only unread rows are scanned. Returns
+    ``(total, {match_id: count})`` — conversations with zero unread are simply absent.
+    """
+    rows = (
+        await db.execute(
+            select(Message.match_id, func.count(Message.id))
+            .join(Match, Match.id == Message.match_id)
+            .where(
+                or_(Match.user_a_id == user_id, Match.user_b_id == user_id),
+                Message.sender_id != user_id,
+                Message.read_at.is_(None),
+            )
+            .group_by(Message.match_id)
+        )
+    ).all()
+    per_conversation = {match_id: count for match_id, count in rows}
+    return sum(per_conversation.values()), per_conversation
 
 
 def message_read(message: Message) -> MessageRead:

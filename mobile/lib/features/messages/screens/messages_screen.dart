@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/avatar_widget.dart';
 import '../providers/messages_provider.dart';
+import '../providers/unread_provider.dart';
 
 class MessagesScreen extends ConsumerWidget {
   const MessagesScreen({super.key});
@@ -123,14 +124,15 @@ class _ThreadList extends StatelessWidget {
   }
 }
 
-class _ThreadCard extends StatelessWidget {
+class _ThreadCard extends ConsumerWidget {
   final MessageThread thread;
   const _ThreadCard({required this.thread});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final p = thread.partner!; // provider filters out null-partner threads
     final latest = thread.latestMessage;
+    final unread = ref.watch(unreadProvider.select((s) => s.countFor(thread.matchId)));
 
     return InkWell(
       onTap: () => context.push('/messages/${thread.matchId}', extra: thread),
@@ -180,35 +182,76 @@ class _ThreadCard extends StatelessWidget {
                     ),
                   ],
                   const SizedBox(height: 4),
-                  if (thread.partnerTyping)
-                    Text(
-                      'typing…',
-                      style: GoogleFonts.dmSans(
-                        fontSize: 13,
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.w600,
-                        fontStyle: FontStyle.italic,
+                  Row(
+                    children: [
+                      Expanded(
+                        child: thread.partnerTyping
+                            ? Text(
+                                'typing…',
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 13,
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.w600,
+                                  fontStyle: FontStyle.italic,
+                                ),
+                              )
+                            : Text(
+                                latest?.body ?? 'No messages yet — say hello!',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 13,
+                                  // Unread → darker + semibold (WhatsApp-style emphasis).
+                                  color: unread > 0
+                                      ? AppColors.textDark
+                                      : (latest != null
+                                          ? AppColors.textMid
+                                          : AppColors.textMuted),
+                                  fontWeight:
+                                      unread > 0 ? FontWeight.w600 : FontWeight.w400,
+                                  fontStyle: latest == null
+                                      ? FontStyle.italic
+                                      : FontStyle.normal,
+                                ),
+                              ),
                       ),
-                    )
-                  else
-                    Text(
-                      latest?.body ?? 'No messages yet — say hello!',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.dmSans(
-                        fontSize: 13,
-                        color: latest != null
-                            ? AppColors.textMid
-                            : AppColors.textMuted,
-                        fontStyle: latest == null
-                            ? FontStyle.italic
-                            : FontStyle.normal,
-                      ),
-                    ),
+                      if (unread > 0) ...[
+                        const SizedBox(width: 8),
+                        _UnreadBubble(count: unread),
+                      ],
+                    ],
+                  ),
                 ],
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Unread count bubble ───────────────────────────────────────────
+class _UnreadBubble extends StatelessWidget {
+  final int count;
+  const _UnreadBubble({required this.count});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(minWidth: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: AppColors.primary,
+        borderRadius: BorderRadius.circular(11),
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        count > 99 ? '99+' : '$count',
+        style: GoogleFonts.dmSans(
+          color: Colors.white,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
         ),
       ),
     );

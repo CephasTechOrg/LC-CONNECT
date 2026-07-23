@@ -15,6 +15,7 @@ GET /api/v1/lookups
 GET /api/v1/messages/threads
 GET /api/v1/messages/threads/{match_id}
 GET /api/v1/messages/threads/{match_id}/sync
+GET /api/v1/messages/unread-summary
 GET /api/v1/profiles/me
 GET /api/v1/profiles/{profile_id}
 GET /health

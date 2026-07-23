@@ -137,9 +137,11 @@ works + `firebase_setup.md`). Delivery confirmed on a real Android emulator (202
   live chat/list — no in-app banner yet → **next slice**)
 
 ### Next slice — messaging polish (gaps identified 2026-07-23)
-- [ ] Unread counts + badges (per-conversation, Messages tab, app icon) — backend has `read_at`
-  per message but no unread **aggregation** yet
-- [ ] In-app banner + sound when app is foregrounded on another screen
+- [x] Unread counts + badges (per-conversation + Messages tab) — `GET /messages/unread-summary`
+  (grouped query + partial index `ix_messages_unread`) seeds a single-source `unreadProvider`;
+  live via WS `conversation.updated`, re-seeds on reconnect/resume, cleared on chat open.
+  App-icon badge deferred (launcher-dependent + needs push payload; revisit with iOS push).
+- [ ] In-app banner + sound when app is foregrounded on another screen ← **next**
 - [ ] Drop the WebSocket on app-background (tightens the backgrounded-but-not-killed push window)
 
 ## Privacy/safety
