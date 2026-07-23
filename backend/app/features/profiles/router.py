@@ -75,7 +75,11 @@ async def update_my_profile(payload: ProfileUpdate, current_user: User = Depends
     if payload.looking_for_codes is not None:
         profile.looking_for_options = await get_looking_for_options(db, payload.looking_for_codes)
     if payload.languages_spoken is not None or payload.languages_learning is not None:
+        # clear() alone is not enough: SQLAlchemy may INSERT the replacements
+        # before DELETEing the old rows in the same flush, which trips
+        # uq_user_language_kind. Flush the orphan deletes first.
         profile.languages.clear()
+        await db.flush()
         spoken = await get_or_create_languages(db, payload.languages_spoken or [])
         learning = await get_or_create_languages(db, payload.languages_learning or [])
         for language in spoken:

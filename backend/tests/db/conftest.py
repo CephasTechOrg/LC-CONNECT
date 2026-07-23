@@ -79,8 +79,9 @@ async def _prepare_schema(engine) -> None:
 
 
 @pytest_asyncio.fixture
-async def db() -> AsyncSession:
-    """A session against a clean test database. Skips if Postgres isn't available."""
+async def _engine():
+    """A clean test-DB engine (NullPool, so concurrent sessions each get their own
+    connection — needed for the capacity race test). Skips if Postgres isn't available."""
     url = test_database_url()
     engine = None
     try:
@@ -90,14 +91,26 @@ async def db() -> AsyncSession:
     except Exception as exc:  # noqa: BLE001 — any connectivity/permission problem → skip
         if engine is not None:
             await engine.dispose()
-        pytest.skip(f'Postgres test DB unavailable ({type(exc).__name__}: {exc}) — skipping DB parity tests')
+        pytest.skip(f'Postgres test DB unavailable ({type(exc).__name__}: {exc}) — skipping DB tests')
+    yield engine
+    await engine.dispose()
 
+
+@pytest_asyncio.fixture
+async def db(_engine) -> AsyncSession:
+    """A session against a clean test database."""
     session_factory = async_sessionmaker(
-        bind=engine, class_=AsyncSession, expire_on_commit=False, autoflush=False
+        bind=_engine, class_=AsyncSession, expire_on_commit=False, autoflush=False
     )
     async with session_factory() as session:
         yield session
-    await engine.dispose()
+
+
+@pytest_asyncio.fixture
+def sessions(_engine):
+    """Factory for *additional* independent sessions on the same test DB — for concurrency
+    tests where two transactions must contend (e.g. simultaneous group joins)."""
+    return async_sessionmaker(bind=_engine, class_=AsyncSession, expire_on_commit=False, autoflush=False)
 
 
 @pytest_asyncio.fixture

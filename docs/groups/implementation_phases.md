@@ -125,17 +125,34 @@ line limits pass.
 
 ---
 
-## P3 — `Group` entity, membership & join flows
+## P3 — `Group` entity, membership & join flows ✅ **COMPLETE**
 
-- [ ] `Group` table + its `Conversation(kind='group')`
-- [ ] `ConversationMember.role` (`owner|admin|member`) + `status` (`invited|requested|active|removed|banned`)
-- [ ] Endpoints: create · my groups · get group · update · leave · remove/ban · promote/transfer
-- [ ] Join flows: **open** · **approval-required** (request → admin approves) · **direct admin invite**
-- [ ] **Transactional capacity** for `max_members` (must not copy Activities' naive count)
-- [ ] Group policy module (centralized permissions + invariants: always an owner; transfer before leaving; admin can't remove owner; banned can't rejoin)
+New feature module `app/features/groups/` (router/service/schema/policies) + `Group` model.
 
-**Gate:** permission/invariant tests · **concurrent-join capacity race test** · join-flow tests
-(open/approval/invite) · unauthorized-action tests.
+- [x] `Group` table (migration `b8c9d0e1f2a3`) owning a `Conversation(kind='group')`; membership
+      reuses `ConversationMember` (`role` owner|admin|member, `status`
+      invited|requested|active|removed|banned)
+- [x] Endpoints: create · my groups · discover · get (visibility-gated) · members · requests ·
+      approve · reject · invite · accept-invite · leave
+- [x] Join flows: **open** (instant) · **approval** (request → admin approves) · **invite**
+      (admin invite → accept); banned users rejected
+- [x] **Transactional capacity** — `SELECT … FOR UPDATE` on the group row serializes concurrent
+      joins (`service._reserve_capacity`); enforced at join *and* approve
+- [x] Centralized **policy module** (`policies.py`) — action→min-role matrix, `can_moderate`
+      (strict-outrank), owner-only actions never granted to admins; owner-must-transfer-before-leaving
+- [x] OpenAPI snapshot regenerated for the new `/groups` routes
+
+**Gate: ✅ green**
+- **Real concurrent-join race test** (`test_capacity_is_race_safe_under_concurrent_joins`) — two
+  sessions contend for a 1-slot group; exactly one wins, final active count is never exceeded
+- 12 group integration tests (create/open/approval/invite/banned/capacity/visibility/leave) +
+  6 policy unit tests
+- 126 backend tests · ruff clean · single alembic head · line limits pass
+
+### Deferred to a follow-up (P3b / P5 moderation) — noted, not built
+`PATCH /groups/{id}` (edit) · avatar upload (reuses `sanitize_avatar`) · remove/ban a member ·
+promote/demote admin · transfer ownership · delete group. The `policies.py` matrix already
+covers these actions; only the routes/service wiring remain.
 
 ---
 

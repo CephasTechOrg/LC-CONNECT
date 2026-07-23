@@ -13,7 +13,13 @@ interest groups) and the messaging generalization they require.
 
 ## Status
 
-**P0 ✅ · P1 ✅ · P2 ✅ complete — next up: P3 (the `Group` entity + join flows).**
+**P0–P3 ✅ complete — next up: P4 (group messaging + realtime fan-out).**
+
+Groups are real: `POST /groups`, discover, join (open/approval/invite), approve/reject, invite,
+leave — with **transactionally race-safe capacity** and a centralized permission matrix. A group
+is a `Conversation(kind='group')` owned by a `Group` domain entity. Because P2 already made
+messaging membership-based, **group chat mostly falls out in P4** (it just needs fan-out + a
+thread-list variant).
 
 Messaging now runs on `conversation_id` internally (authorization is membership-based, unread
 uses the per-member `last_read_message_id` boundary), while the **public API and mobile app are
