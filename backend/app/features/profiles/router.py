@@ -16,6 +16,7 @@ from app.features.profiles.service import (
 )
 from app.models import ActivityParticipant, Match, Message, Profile, User, UserLanguage
 from app.shared.image_processing import sanitize_avatar
+from app.shared.policies import assert_profile_visible
 from app.shared.profiles import get_profile_by_user_id, profile_load_options
 from app.shared.schemas import ProfilePublic
 from app.shared.serializers import profile_to_public
@@ -105,6 +106,8 @@ async def upload_my_avatar(file: UploadFile = File(...), current_user: User = De
 @router.get('/{profile_id}', response_model=ProfilePublic)
 async def get_profile(profile_id: UUID, current_user: User = Depends(require_verified_student), db: AsyncSession = Depends(get_db)) -> ProfilePublic:
     profile = (await db.execute(select(Profile).options(*profile_load_options()).where(Profile.id == profile_id))).scalar_one_or_none()
-    if profile is None or profile.is_hidden:
+    if profile is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Profile not found')
+    # Enforce hidden / verified-only / block visibility (was only checking is_hidden).
+    await assert_profile_visible(db, viewer=current_user, profile=profile)
     return profile_to_public(profile)

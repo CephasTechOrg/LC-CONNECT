@@ -156,9 +156,12 @@ Apple Developer account; iOS in-app sound to be verified on a real device.)
 
 ## Privacy/safety
 
-- [ ] Centralized profile visibility
-- [ ] Block enforcement on profile reads
-- [ ] Verified-only enforcement
+- [x] Centralized profile visibility (`app/shared/policies.py::assert_profile_visible` — hidden /
+  verified-only / block, always 404, self-view bypass; 7 tests)
+- [x] Block enforcement on profile reads (`GET /profiles/{id}` now calls `assert_profile_visible`;
+  was only checking `is_hidden`)
+- [x] Verified-only enforcement (`assert_profile_visible` on direct reads + a discovery-query filter
+  for unverified viewers)
 - [ ] Block/history policy
 - [ ] Message reporting
 - [ ] Report limits/workflow

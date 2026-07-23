@@ -7,26 +7,28 @@ class _SignInButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: isLoading ? null : onTap,
-      child: Container(
-        height: 48,
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFF5A94C2), Color(0xFF3E7EB4)],
+    return Material(
+      color: AppColors.primary,
+      borderRadius: BorderRadius.circular(13),
+      elevation: 0,
+      shadowColor: AppColors.primary.withValues(alpha: 0.3),
+      child: InkWell(
+        onTap: isLoading ? null : onTap,
+        borderRadius: BorderRadius.circular(13),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(13),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withValues(alpha: 0.3),
+                blurRadius: 14,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: _C.btnShadow.withAlpha(87),  // .34 opacity
-              blurRadius: 16,
-              offset: const Offset(0, 6),
-            ),
-          ],
-        ),
-        child: Center(
+          alignment: Alignment.center,
           child: isLoading
               ? const SizedBox(
                   width: 20,
@@ -36,24 +38,13 @@ class _SignInButton extends StatelessWidget {
                     color: Colors.white,
                   ),
                 )
-              : Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.lock_outline_rounded,
-                      color: Colors.white,
-                      size: 18,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Sign In',
-                      style: GoogleFonts.dmSans(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
+              : Text(
+                  'Sign In',
+                  style: GoogleFonts.dmSans(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
         ),
       ),
@@ -61,86 +52,31 @@ class _SignInButton extends StatelessWidget {
   }
 }
 
-// ── Continue with school email button ────────────────────────────
-class _SchoolEmailButton extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () {},
-      child: Container(
-        height: 48,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border.all(color: _C.outlineBdr, width: 1.5),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.mail_outline_rounded,
-                size: 20, color: _C.textBody),
-            const SizedBox(width: 12),
-            Text(
-              'Continue with school email',
-              style: GoogleFonts.dmSans(
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-                color: _C.outlineText,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
+class _CreateAccountButton extends StatelessWidget {
+  final VoidCallback onTap;
+  const _CreateAccountButton({required this.onTap});
 
-// ── Students-only note ────────────────────────────────────────────
-class _NoteBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(minHeight: 64),
-      decoration: BoxDecoration(
-        color: _C.noteBg,
-        border: Border.all(color: _C.noteBorder),
-        borderRadius: BorderRadius.circular(15),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x090F172A),  // ~.035 opacity
-            blurRadius: 16,
-            offset: Offset(0, 6),
-          ),
-        ],
+    return OutlinedButton(
+      onPressed: onTap,
+      style: OutlinedButton.styleFrom(
+        foregroundColor: AppColors.textDark,
+        side: const BorderSide(color: AppColors.border, width: 1.5),
+        minimumSize: const Size(double.infinity, 48),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.shield_outlined,
-              size: 24, color: _C.noteIconClr),
-          const SizedBox(width: 10),
-          Expanded(
-            child: RichText(
-              text: TextSpan(
-                style: GoogleFonts.dmSans(
-                  fontSize: 12.5,
-                  color: _C.noteTextClr,
-                  height: 1.3,
-                ),
-                children: [
-                  TextSpan(
-                    text: 'Students only. ',
-                    style: GoogleFonts.dmSans(
-                      fontWeight: FontWeight.w800,
-                      color: _C.noteStrong,
-                    ),
-                  ),
-                  const TextSpan(
-                    text: 'Verified Livingstone College students can access LC Connect.',
-                  ),
-                ],
-              ),
+          Icon(Icons.school_outlined, size: 20, color: AppColors.primary),
+          const SizedBox(width: 8),
+          Text(
+            'Create account',
+            style: GoogleFonts.dmSans(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textDark,
             ),
           ),
         ],

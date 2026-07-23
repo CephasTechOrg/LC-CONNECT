@@ -48,6 +48,8 @@ const IMG = {
   students: 'uploads/students.png',
   school:   'uploads/school.png',
   headshot: 'uploads/headshots.png',
+  hero:     'uploads/groupstudents.png',
+  logo:     'uploads/lclogo.png',
 };
 
 /* ── Inline SVG icon set (Feather/Lucide style) ── */
@@ -83,14 +85,14 @@ const Ico = {
   padlock:    c => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>,
   link:       c => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>,
   studyHat:   c => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5-10-5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>,
+  personPlus: c => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M13 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="7.5" cy="7" r="4"/><path d="M20 8v6M23 11h-6"/></svg>,
+  code:       c => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>,
 };
 
 /* ── Primitive components ── */
 function LCBadge({ size = 38 }) {
   return (
-    <div style={{ width: size, height: size, borderRadius: size * 0.22, background: C.blue, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-      <span style={{ color: '#fff', fontWeight: 700, fontSize: size * 0.42, letterSpacing: '-0.02em' }}>LC</span>
-    </div>
+    <img src={IMG.logo} alt="Livingstone College Blue Bears" style={{ width: size, height: size, objectFit: 'contain', flexShrink: 0 }} />
   );
 }
 
@@ -151,113 +153,95 @@ function SearchBar({ placeholder = 'Search...', suffix }) {
   );
 }
 
-Object.assign(window, { C, IMG, Ico, LCBadge, Avatar, Chip, Toggle, BottomNav, SearchBar });
+function SectionHeader({ title, action, onAction }) {
+  return (
+    <div style={{ padding: '22px 20px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <span style={{ fontSize: 16, fontWeight: 700, color: C.dark, letterSpacing: '-0.01em' }}>{title}</span>
+      {action && <span onClick={onAction} style={{ fontSize: 13, color: C.blue, fontWeight: 600, cursor: 'pointer' }}>{action}</span>}
+    </div>
+  );
+}
+
+/* ── Shared header system ── */
+const HDR_TOP = 60; /* safe-area status bar sits above this inside the frame */
+function IconBtn({ label, onClick, badge, children }) {
+  return (
+    <button aria-label={label} onClick={onClick} style={{ position: 'relative', width: 40, height: 40, borderRadius: 12, border: 'none', background: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
+      {children}
+      {badge && <span aria-hidden="true" style={{ position: 'absolute', top: 7, right: 8, width: 8, height: 8, borderRadius: '50%', background: '#EF4444', border: '1.5px solid white' }} />}
+    </button>
+  );
+}
+function AppHeader({ title, subtitle, action }) {
+  return (
+    <div style={{ background: C.white, padding: `${HDR_TOP}px 20px 14px`, display: 'flex', alignItems: 'center', gap: 12, borderBottom: `1px solid ${C.border}` }}>
+      <LCBadge size={36} />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <h2 style={{ fontSize: 18, fontWeight: 700, color: C.dark, lineHeight: 1.2, letterSpacing: '-0.01em' }}>{title}</h2>
+        {subtitle && <p style={{ fontSize: 12, color: C.muted, marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{subtitle}</p>}
+      </div>
+      {action}
+    </div>
+  );
+}
+
+Object.assign(window, { C, IMG, Ico, LCBadge, Avatar, Chip, Toggle, BottomNav, SearchBar, SectionHeader, AppHeader, IconBtn, HDR_TOP });
 </script>
 
 <!-- ─────────────── SCREEN 1 · LOGIN ─────────────────────────── -->
 <script type="text/babel">
 function LoginScreen({ onSignIn }) {
+  const [showPw, setShowPw] = React.useState(false);
   return (
     <div style={{ background: C.white, minHeight: '100%', display: 'flex', flexDirection: 'column' }}>
 
-      {/* ── HERO ── */}
-      <div style={{ position: 'relative', flexShrink: 0, background: '#EDF5FB' }}>
-
-        {/* Branding row — padded below status bar + dynamic island (~62px) */}
-        <div style={{ position: 'relative', zIndex: 10, paddingTop: 68, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'center', width: '100%', paddingLeft: 20, paddingRight: 20 }}>
-            <LCBadge size={46} />
-            <span style={{ fontSize: 28, fontWeight: 700, color: C.dark, letterSpacing: '-0.03em', whiteSpace: 'nowrap' }}>LC Connect</span>
-          </div>
-          <p style={{ fontSize: 14, color: C.muted, textAlign: 'center', lineHeight: 1.5 }}>
-            Find friends, study partners,<br />and campus activities
-          </p>
-        </div>
-
-        {/* Illustration stage — school behind, students in front */}
-        <div style={{ position: 'relative', height: 260, overflow: 'hidden', marginTop: 0 }}>
-          {/* school.png — fills the stage as the campus backdrop */}
-          <img
-            src={IMG.school}
-            alt=""
-            style={{
-              position: 'absolute',
-              bottom: 0,
-              left: '50%',
-              transform: 'translateX(-50%)',
-              width: '105%',
-              height: '100%',
-              objectFit: 'contain',
-              objectPosition: 'bottom center',
-              opacity: 0.8,
-              zIndex: 1,
-            }}
-          />
-          {/* students.png — layered in front, bottom-aligned */}
-          <img
-            src={IMG.students}
-            alt="LC Connect students"
-            style={{
-              position: 'absolute',
-              bottom: 0,
-              left: '50%',
-              transform: 'translateX(-50%)',
-              height: '95%',
-              width: 'auto',
-              maxWidth: '96%',
-              objectFit: 'contain',
-              objectPosition: 'bottom center',
-              zIndex: 2,
-            }}
-          />
-        </div>
+      {/* ── HERO — single campus photo, full-bleed under status bar ── */}
+      <div style={{ position: 'relative', flexShrink: 0, height: 320, overflow: 'hidden' }}>
+        <img src={IMG.hero} alt="Livingstone College students" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: '50% 20%' }} />
+        <svg viewBox="0 0 400 40" preserveAspectRatio="none" style={{ position: 'absolute', bottom: -1, left: 0, width: '100%', height: 40, display: 'block' }}>
+          <path d="M0 26 Q200 2 400 26 L400 40 L0 40 Z" fill={C.white} />
+        </svg>
       </div>
 
       {/* ── FORM ── */}
-      <div style={{ flex: 1, padding: '22px 22px 28px', display: 'flex', flexDirection: 'column', gap: 13 }}>
+      <div style={{ flex: 1, padding: '20px 24px 26px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <LCBadge size={40} />
+          <span style={{ fontSize: 25, fontWeight: 700, color: C.dark, letterSpacing: '-0.03em', whiteSpace: 'nowrap' }}>LC Connect</span>
+        </div>
+        <p style={{ fontSize: 14, color: C.muted, lineHeight: 1.4, marginTop: -4 }}>Find friends, study partners, and campus groups.</p>
+
         {/* Email */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, border: `1.5px solid ${C.border}`, borderRadius: 12, padding: '12px 14px', background: C.bg }}>
-          {Ico.mail(C.muted)}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, border: `1.5px solid ${C.border}`, borderRadius: 12, padding: '12px 14px', background: C.bg, marginTop: 6 }}>
+          {Ico.mail(C.blue)}
           <input placeholder="Email address" style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', fontSize: 14, color: C.dark }} />
         </div>
         {/* Password */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, border: `1.5px solid ${C.border}`, borderRadius: 12, padding: '12px 14px', background: C.bg }}>
-          {Ico.padlock(C.muted)}
-          <input type="password" placeholder="Password" style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', fontSize: 14, color: C.dark }} />
-          {Ico.eye(C.muted)}
+          {Ico.padlock(C.blue)}
+          <input type={showPw ? 'text' : 'password'} placeholder="Password" style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', fontSize: 14, color: C.dark }} />
+          <span onClick={() => setShowPw(v => !v)} style={{ cursor: 'pointer', display: 'flex' }}>{Ico.eye(C.muted)}</span>
         </div>
-        {/* Forgot */}
-        <div style={{ textAlign: 'right', marginTop: -5 }}>
-          <span style={{ fontSize: 13, color: C.blue, fontWeight: 500, cursor: 'pointer' }}>Forgot password?</span>
-        </div>
+
         {/* Sign In */}
-        <button onClick={onSignIn} style={{ width: '100%', padding: '14px', borderRadius: 13, background: C.blue, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: '0 4px 14px rgba(63,127,181,0.3)' }}>
-          {Ico.padlock('#fff')}
+        <button onClick={onSignIn} style={{ width: '100%', padding: '14px', borderRadius: 13, background: C.blue, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 14px rgba(63,127,181,0.3)', marginTop: 2 }}>
           <span style={{ color: '#fff', fontSize: 15, fontWeight: 700 }}>Sign In</span>
         </button>
+        {/* Forgot */}
+        <div style={{ textAlign: 'right', marginTop: -6 }}>
+          <span style={{ fontSize: 13, color: C.blue, fontWeight: 500, cursor: 'pointer' }}>Forgot password?</span>
+        </div>
         {/* OR divider */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{ flex: 1, height: 1, background: C.border }} />
           <span style={{ fontSize: 11, color: C.muted, letterSpacing: '0.05em' }}>OR</span>
           <div style={{ flex: 1, height: 1, background: C.border }} />
         </div>
-        {/* School email */}
-        <button style={{ width: '100%', padding: '13px', borderRadius: 13, background: C.white, border: `1.5px solid ${C.border}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-          {Ico.mail(C.dark)}
-          <span style={{ color: C.dark, fontSize: 14, fontWeight: 500 }}>Continue with school email</span>
-        </button>
         {/* Create account */}
-        <p style={{ textAlign: 'center', fontSize: 13, color: C.muted }}>
-          Don't have an account?{'  '}
-          <span style={{ color: C.blue, fontWeight: 600, cursor: 'pointer' }}>Create account</span>
-        </p>
-        {/* Safety note */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, background: C.bg, borderRadius: 12, padding: '11px 13px', border: `1px solid ${C.border}` }}>
-          {Ico.shield(C.blueLight)}
-          <p style={{ fontSize: 12, color: C.muted, lineHeight: 1.55 }}>
-            <strong style={{ color: C.mid }}>Students only.</strong> Verified Livingstone College students can access LC Connect.
-          </p>
-        </div>
+        <button style={{ width: '100%', padding: '13px', borderRadius: 13, background: C.white, border: `1.5px solid ${C.border}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+          {Ico.studyHat(C.blue)}
+          <span style={{ color: C.dark, fontSize: 14, fontWeight: 600 }}>Create account</span>
+        </button>
       </div>
     </div>
   );
@@ -267,12 +251,17 @@ Object.assign(window, { LoginScreen });
 
 <!-- ─────────────── SCREEN 2 · HOME ──────────────────────────── -->
 <script type="text/babel">
-const HOME_CATS = [
-  { label: 'Friendship',        icon: c => Ico.users(c) },
-  { label: 'Study Partner',     icon: c => Ico.bookOpen(c) },
-  { label: 'Language Exchange', icon: c => Ico.globe(c) },
-  { label: 'Events',            icon: c => Ico.calendar(c) },
-  { label: 'Open Connection',   icon: c => Ico.link(c) },
+const QUICK_ACTIONS = [
+  { label: 'Connect',    icon: Ico.personPlus, screen: 'connect' },
+  { label: 'Groups',     icon: Ico.users,      screen: 'connect', tab: 'Groups' },
+  { label: 'Activities', icon: Ico.calendar,   screen: 'activities' },
+  { label: 'Messages',   icon: Ico.message,    screen: 'messages' },
+];
+const HOME_GROUPS = [
+  { name: 'Livingstone Volleyball', sub: '124 members', icon: 'lc' },
+  { name: 'Pre-Health Society',    sub: '98 members',  icon: c => Ico.heart(c) },
+  { name: 'Tech Club',              sub: '76 members',  icon: c => Ico.code(c) },
+  { name: "Men's Mentorship",       sub: '85 members',  icon: c => Ico.users(c), tone: 'green' },
 ];
 const HOME_STUDENTS = [
   { name: 'Malik J.',  sub: "Computer Science '26", tags: ['Coding', 'Soccer'] },
@@ -286,119 +275,123 @@ const HOME_ACTS = [
 ];
 
 function HomeScreen({ onNav }) {
-  const [cat, setCat] = React.useState('Friendship');
   return (
     <div style={{ background: C.bg }}>
-      {/* Header */}
-      <div style={{ background: C.white, padding: '12px 20px 14px', display: 'flex', alignItems: 'center', gap: 12 }}>
-        <LCBadge size={40} />
-        <div style={{ flex: 1 }}>
-          <h2 style={{ fontSize: 20, fontWeight: 700, color: C.dark, lineHeight: 1.2 }}>Hi, Cephas</h2>
-          <p style={{ fontSize: 12, color: C.muted }}>Ready to connect on campus?</p>
-        </div>
-        <div style={{ position: 'relative', cursor: 'pointer' }}>
-          {Ico.bell(C.muted)}
-          <div style={{ position: 'absolute', top: -2, right: -2, width: 8, height: 8, borderRadius: '50%', background: '#EF4444', border: '1.5px solid white' }} />
-        </div>
-      </div>
+      <AppHeader title="Good morning, Cephas" subtitle="Livingstone College" action={<IconBtn label="Notifications, 1 unread" badge>{Ico.bell(C.muted)}</IconBtn>} />
 
       {/* Search */}
       <div style={{ padding: '12px 20px 0' }}>
-        <SearchBar placeholder="Search people, interests, or activities" />
+        <SearchBar placeholder="Search students, groups, or activities" />
       </div>
 
-      {/* Category chips */}
-      <div style={{ overflowX: 'auto', display: 'flex', gap: 10, padding: '12px 20px' }}>
-        {HOME_CATS.map(c2 => {
-          const on = cat === c2.label;
-          return (
-            <button key={c2.label} onClick={() => setCat(c2.label)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, background: on ? C.blueSoft : C.white, border: `1.5px solid ${on ? C.blue : C.border}`, borderRadius: 14, padding: '9px 13px', cursor: 'pointer', minWidth: 68, flexShrink: 0 }}>
-              <span style={{ color: on ? C.blue : C.muted }}>{c2.icon(on ? C.blue : C.muted)}</span>
-              <span style={{ fontSize: 10, fontWeight: on ? 600 : 400, color: on ? C.blue : C.muted, textAlign: 'center', lineHeight: 1.3 }}>{c2.label}</span>
-            </button>
-          );
-        })}
-        <div style={{ width: 4, flexShrink: 0 }} />
+      {/* Hero banner */}
+      <div style={{ margin: '16px 20px 4px', borderRadius: 16, overflow: 'hidden', position: 'relative', background: C.blue, display: 'flex', minHeight: 150 }}>
+        <div style={{ flex: 1, padding: '16px 8px 16px 18px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 7, position: 'relative', zIndex: 2 }}>
+          <span style={{ display: 'inline-block', fontSize: 10, fontWeight: 600, color: '#fff', background: 'rgba(255,255,255,0.18)', padding: '3px 9px', borderRadius: 20, width: 'fit-content' }}>Welcome to LC Connect</span>
+          <h2 style={{ fontSize: 19, fontWeight: 700, color: '#fff', lineHeight: 1.22 }}>Your campus.<br />Your community.</h2>
+          <p style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.85)', lineHeight: 1.4, maxWidth: 148 }}>Find your people, join groups, and achieve more together.</p>
+          <button onClick={() => onNav('connect')} style={{ marginTop: 4, padding: '8px 16px', borderRadius: 10, background: '#fff', border: 'none', color: C.blue, fontSize: 12, fontWeight: 700, cursor: 'pointer', width: 'fit-content' }}>Get Started</button>
+        </div>
+        <div style={{ width: 128, position: 'relative', flexShrink: 0 }}>
+          <img src={IMG.hero} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: '25% 25%' }} />
+          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to right, rgba(63,127,181,0.95), rgba(63,127,181,0))' }} />
+        </div>
+      </div>
+
+      {/* Quick actions */}
+      <div style={{ display: 'flex', padding: '16px 20px 4px', gap: 8 }}>
+        {QUICK_ACTIONS.map(qa => (
+          <button key={qa.label} onClick={() => onNav(qa.screen, qa.tab)} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7, background: 'none', border: 'none', cursor: 'pointer' }}>
+            <div style={{ width: 52, height: 52, borderRadius: 15, background: C.blueSoft, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{qa.icon(C.blue)}</div>
+            <span style={{ fontSize: 11, color: C.mid, fontWeight: 500 }}>{qa.label}</span>
+          </button>
+        ))}
       </div>
 
       {/* Recommended for you */}
-      <div style={{ padding: '0 20px 8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ fontSize: 15, fontWeight: 700, color: C.dark }}>Recommended for you</span>
-        <span style={{ fontSize: 12, color: C.blue, fontWeight: 500, cursor: 'pointer' }}>View all</span>
-      </div>
-
-      <div style={{ overflowX: 'auto', display: 'flex', gap: 12, padding: '0 20px 16px' }}>
+      <SectionHeader title="Recommended for you" action="View all" onAction={() => onNav('connect')} />
+      <div style={{ overflowX: 'auto', display: 'flex', gap: 12, padding: '0 20px 4px' }}>
         {HOME_STUDENTS.map((s, i) => (
-          <div key={i} style={{ background: C.white, borderRadius: 16, padding: '0 0 12px', border: `1px solid ${C.border}`, minWidth: 130, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0, boxShadow: '0 2px 10px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
-            {/* Avatar card with school bg */}
-            <div style={{ width: '100%', height: 90, position: 'relative', background: C.bluePale }}>
-              <img src={IMG.school} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center', opacity: 0.45 }} />
-              <div style={{ position: 'absolute', bottom: -22, left: '50%', transform: 'translateX(-50%)' }}>
-                <Avatar size={50} sx={{ border: '3px solid white', boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }} />
-              </div>
-              {/* connect badge */}
-              <div style={{ position: 'absolute', bottom: -18, right: 12, width: 20, height: 20, borderRadius: '50%', background: C.blue, border: '2px solid white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                {Ico.users('#fff')}
-              </div>
+          <div key={i} style={{ background: C.white, borderRadius: 16, border: `1px solid ${C.border}`, minWidth: 152, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '16px 14px 14px', gap: 10, boxShadow: '0 1px 3px rgba(17,24,39,0.05)' }}>
+            <Avatar size={60} sx={{ border: '2px solid #fff', boxShadow: '0 2px 10px rgba(17,24,39,0.12)' }} />
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: C.dark }}>{s.name}</div>
+              <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{s.sub}</div>
             </div>
-            <div style={{ height: 26 }} />
-            <div style={{ textAlign: 'center', padding: '0 10px' }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: C.dark }}>{s.name}</div>
-              <div style={{ fontSize: 10, color: C.muted, marginTop: 1 }}>{s.sub}</div>
-            </div>
-            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: 'center', padding: '6px 8px' }}>
-              {s.tags.map(t => <span key={t} style={{ fontSize: 10, color: C.blue, background: C.blueSoft, padding: '2px 7px', borderRadius: 20, fontWeight: 500 }}>{t}</span>)}
-            </div>
-            <button style={{ margin: '0 10px', width: 'calc(100% - 20px)', padding: '7px 0', borderRadius: 8, background: C.blue, border: 'none', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Connect</button>
+            <span style={{ fontSize: 10.5, color: C.blue, background: C.blueSoft, padding: '3px 10px', borderRadius: 20, fontWeight: 500 }}>{s.tags[0]}</span>
+            <button style={{ width: '100%', padding: '9px 0', borderRadius: 10, background: C.blue, border: 'none', color: '#fff', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+              <span style={{ display: 'flex', width: 15, height: 15, alignItems: 'center', justifyContent: 'center' }}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M13 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="7.5" cy="7" r="4"/><path d="M20 8v6M23 11h-6"/></svg></span>Connect
+            </button>
           </div>
         ))}
         <div style={{ width: 4, flexShrink: 0 }} />
       </div>
 
-      {/* Today's activities */}
-      <div style={{ padding: '0 20px 8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ fontSize: 15, fontWeight: 700, color: C.dark }}>Today's activities</span>
-        <span style={{ fontSize: 12, color: C.blue, fontWeight: 500, cursor: 'pointer' }}>View calendar</span>
+      {/* Study partners CTA */}
+      <SectionHeader title="Study Partners" />
+      <div style={{ padding: '0 20px' }}>
+        <div onClick={() => onNav('connect', 'Study Partners')} style={{ background: C.white, borderRadius: 14, padding: '14px', border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', boxShadow: '0 1px 3px rgba(17,24,39,0.05)' }}>
+          <div style={{ width: 42, height: 42, borderRadius: 12, background: C.blueSoft, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{Ico.studyHat(C.blue)}</div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 13.5, fontWeight: 600, color: C.dark }}>Find a study partner</div>
+            <div style={{ fontSize: 11.5, color: C.muted, marginTop: 1 }}>Connect with students in your classes.</div>
+          </div>
+          {Ico.chevron(C.muted)}
+        </div>
       </div>
+
+      {/* Upcoming activities */}
+      <SectionHeader title="Upcoming Activities" action="See all" onAction={() => onNav('activities')} />
       <div style={{ padding: '0 20px', display: 'flex', flexDirection: 'column', gap: 9 }}>
         {HOME_ACTS.map((a, i) => (
-          <div key={i} style={{ background: C.white, borderRadius: 12, padding: '11px 13px', border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 11, boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
-            <div style={{ width: 38, height: 38, borderRadius: 10, background: C.blueSoft, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>{a.em}</div>
+          <div key={i} onClick={() => onNav('activities')} style={{ background: C.white, borderRadius: 14, padding: '12px 13px', border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 11, boxShadow: '0 1px 3px rgba(17,24,39,0.05)', cursor: 'pointer' }}>
+            <div style={{ width: 40, height: 40, borderRadius: 11, background: C.blueSoft, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 19, flexShrink: 0 }}>{a.em}</div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: C.dark }}>{a.name}</div>
-              <div style={{ fontSize: 11, color: C.muted }}>{a.loc}</div>
+              <div style={{ fontSize: 13.5, fontWeight: 600, color: C.dark }}>{a.name}</div>
+              <div style={{ fontSize: 11.5, color: C.muted, marginTop: 1 }}>{a.loc}</div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              {Ico.usersSm(C.muted)}
-              <span style={{ fontSize: 11, color: C.muted }}>{a.going} going</span>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3 }}>
+              <span style={{ fontSize: 12.5, color: C.blue, fontWeight: 700 }}>{a.time}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>{Ico.usersSm(C.muted)}<span style={{ fontSize: 11, color: C.muted }}>{a.going} going</span></div>
             </div>
-            <span style={{ fontSize: 12, color: C.blue, fontWeight: 600 }}>{a.time}</span>
-            {Ico.chevron(C.muted)}
           </div>
         ))}
       </div>
 
-      {/* Recent matches */}
-      <div style={{ padding: '14px 20px 8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ fontSize: 15, fontWeight: 700, color: C.dark }}>Recent matches</span>
-        <span onClick={() => onNav('messages')} style={{ fontSize: 12, color: C.blue, fontWeight: 500, cursor: 'pointer' }}>View messages</span>
+      {/* Campus groups */}
+      <SectionHeader title="Campus Groups" action="See all" onAction={() => onNav('connect', 'Groups')} />
+      <div style={{ overflowX: 'auto', display: 'flex', gap: 10, padding: '0 20px 6px' }}>
+        {HOME_GROUPS.map((g, i) => (
+          <div key={i} onClick={() => onNav('connect', 'Groups')} style={{ background: C.white, borderRadius: 14, border: `1px solid ${C.border}`, padding: '13px', minWidth: 122, flexShrink: 0, cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 9, boxShadow: '0 1px 3px rgba(17,24,39,0.05)' }}>
+            <div style={{ width: 38, height: 38, borderRadius: 11, background: g.tone === 'green' ? '#ECFDF5' : C.blueSoft, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {g.icon === 'lc' ? <span style={{ color: C.blue, fontWeight: 700, fontSize: 13 }}>LC</span> : g.icon(g.tone === 'green' ? C.green : C.blue)}
+            </div>
+            <div>
+              <div style={{ fontSize: 12.5, fontWeight: 600, color: C.dark, lineHeight: 1.3 }}>{g.name}</div>
+              <div style={{ fontSize: 10.5, color: C.muted, marginTop: 2 }}>{g.sub}</div>
+            </div>
+          </div>
+        ))}
+        <div style={{ width: 4, flexShrink: 0 }} />
       </div>
-      <div style={{ padding: '0 20px 22px' }}>
-        <div onClick={() => onNav('messages')} style={{ background: C.white, borderRadius: 12, padding: '12px 13px', border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 11, boxShadow: '0 1px 4px rgba(0,0,0,0.04)', cursor: 'pointer' }}>
+
+      {/* Recent messages */}
+      <SectionHeader title="Messages" action="View all" onAction={() => onNav('messages')} />
+      <div style={{ padding: '0 20px 24px' }}>
+        <div onClick={() => onNav('messages')} style={{ background: C.white, borderRadius: 14, padding: '13px', border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 11, boxShadow: '0 1px 3px rgba(17,24,39,0.05)', cursor: 'pointer' }}>
           <div style={{ position: 'relative' }}>
             <Avatar size={44} />
             <div style={{ position: 'absolute', top: 0, left: 0, width: 11, height: 11, borderRadius: '50%', background: C.blue, border: '2px solid white' }} />
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: C.dark }}>Sophie L.</div>
-            <div style={{ fontSize: 11, color: C.muted }}>Biology '27</div>
+            <div style={{ fontSize: 13.5, fontWeight: 600, color: C.dark }}>Sophie L.</div>
             <div style={{ fontSize: 12, color: C.mid, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               Hey! I'm also taking BIO 201. Want to study together this week?
             </div>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-            <span style={{ fontSize: 10, color: C.muted }}>2h ago</span>
-            {Ico.chevron(C.muted)}
+            <span style={{ fontSize: 10, color: C.muted }}>2h</span>
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: C.blue }} />
           </div>
         </div>
       </div>
@@ -412,22 +405,103 @@ Object.assign(window, { HomeScreen });
 
 <!-- ─────────────── SCREEN 3 · CONNECT ───────────────────────── -->
 <script type="text/babel">
-function ConnectScreen({ onNav }) {
-  const [filter, setFilter] = React.useState('All');
+const GROUPS_LIST = [
+  { name: 'Livingstone Volleyball',   cat: 'Clubs & Sports', members: 124, icon: 'lc',                     state: 'Joined' },
+  { name: 'Pre-Health Society',      cat: 'Academic',       members: 98,  icon: c => Ico.heart(c),        state: 'Join' },
+  { name: 'Tech Club',               cat: 'Academic',       members: 76,  icon: c => Ico.code(c),         state: 'Join' },
+  { name: "Men's Mentorship Circle", cat: 'Wellness',       members: 85,  icon: c => Ico.users(c), tone: 'green', state: 'Request' },
+  { name: 'Livingstone Choir',       cat: 'Creative',       members: 52,  icon: c => Ico.heart(c),        state: 'Join' },
+  { name: 'Career Connect Network',  cat: 'Career',         members: 64,  icon: c => Ico.link(c),         state: 'Join' },
+];
+const GROUP_CATS = ['All', 'Academic', 'Clubs & Sports', 'Wellness', 'Career', 'Creative'];
+
+function GroupActionBtn({ state, onClick }) {
+  const map = {
+    Join:      { bg: C.blue, border: C.blue, color: '#fff', label: 'Join' },
+    Joined:    { bg: C.white, border: C.border, color: C.mid, label: 'Joined' },
+    Request:   { bg: C.white, border: C.blue, color: C.blue, label: 'Request' },
+    Pending:   { bg: C.white, border: C.border, color: C.muted, label: 'Pending' },
+  };
+  const s = map[state];
+  return (
+    <button onClick={onClick} style={{ padding: '6px 13px', borderRadius: 9, background: s.bg, border: `1.5px solid ${s.border}`, color: s.color, fontSize: 11.5, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>{s.label}</button>
+  );
+}
+
+function GroupsPanel() {
+  const [groupCat, setGroupCat] = React.useState('All');
+  const [states, setStates] = React.useState(() => Object.fromEntries(GROUPS_LIST.map(g => [g.name, g.state])));
+  const toggle = (g) => setStates(s => ({ ...s, [g.name]: s[g.name] === 'Join' ? 'Joined' : s[g.name] === 'Joined' ? 'Join' : s[g.name] === 'Request' ? 'Pending' : 'Request' }));
+  const list = GROUPS_LIST.filter(g => groupCat === 'All' || g.cat === groupCat);
+
+  return (
+    <div>
+      <div style={{ overflowX: 'auto', display: 'flex', gap: 8, padding: '12px 20px 4px' }}>
+        {GROUP_CATS.map(c2 => <Chip key={c2} label={c2} active={groupCat === c2} onClick={() => setGroupCat(c2)} />)}
+      </div>
+
+      {/* Featured group */}
+      <div style={{ padding: '14px 20px 0' }}>
+        <div style={{ background: C.white, borderRadius: 18, border: `1px solid ${C.border}`, overflow: 'hidden', boxShadow: '0 4px 18px rgba(0,0,0,0.07)' }}>
+          <div style={{ height: 108, position: 'relative', background: C.bluePale, overflow: 'hidden' }}>
+            <img src={IMG.school} alt="" style={{ position: 'absolute', right: -20, top: 0, height: '100%', width: 'auto', opacity: 0.55, objectFit: 'contain' }} />
+            <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to right, rgba(239,246,251,0.98) 42%, rgba(239,246,251,0.05))' }} />
+            <div style={{ position: 'absolute', top: 12, left: 15 }}>
+              <span style={{ background: C.blue, color: '#fff', fontSize: 9, fontWeight: 700, padding: '3px 8px', borderRadius: 6, letterSpacing: '0.06em' }}>FEATURED</span>
+            </div>
+            <div style={{ position: 'absolute', bottom: 12, left: 15 }}>
+              <h2 style={{ fontSize: 17, fontWeight: 700, color: C.dark }}>Pre-Health Society</h2>
+              <span style={{ fontSize: 11, color: C.mid }}>98 members · Academic</span>
+            </div>
+          </div>
+          <div style={{ padding: '12px 15px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
+            <p style={{ flex: 1, fontSize: 12.5, color: C.muted, lineHeight: 1.5 }}>For students pursuing careers in medicine, nursing, and public health.</p>
+            <GroupActionBtn state={states['Pre-Health Society']} onClick={() => toggle({ name: 'Pre-Health Society' })} />
+          </div>
+        </div>
+      </div>
+
+      {/* Group list */}
+      <div style={{ padding: '14px 20px 4px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span style={{ fontSize: 14, fontWeight: 700, color: C.dark }}>All Groups</span>
+        <button style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'none', border: 'none', color: C.blue, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>{Ico.plus(C.blue, 14)}Create Group</button>
+      </div>
+      <div style={{ padding: '0 20px 20px', display: 'flex', flexDirection: 'column', gap: 9 }}>
+        {list.map((g, i) => (
+          <div key={i} style={{ background: C.white, borderRadius: 14, padding: '11px 13px', border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 11, boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+            <div style={{ width: 42, height: 42, borderRadius: 12, background: g.tone === 'green' ? '#ECFDF5' : C.blueSoft, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              {g.icon === 'lc' ? <span style={{ color: C.blue, fontWeight: 700, fontSize: 14 }}>LC</span> : g.icon(g.tone === 'green' ? C.green : C.blue)}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: C.dark }}>{g.name}</div>
+              <div style={{ fontSize: 11, color: C.muted, marginTop: 1 }}>{g.cat} · {g.members} members</div>
+            </div>
+            <GroupActionBtn state={states[g.name]} onClick={() => toggle(g)} />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ConnectScreen({ onNav, initialTab }) {
+  const [tab, setTab] = React.useState(initialTab || 'Students');
+  const [filter, setFilter] = React.useState(initialTab === 'Study Partners' ? 'Study Partner' : 'All');
   const filters = ['All', 'Friendship', 'Study Partner', 'Language Exchange', 'Events', 'Open Connection'];
 
   return (
     <div style={{ background: C.bg }}>
-      {/* Header */}
-      <div style={{ background: C.white, padding: '12px 20px 14px', display: 'flex', alignItems: 'center', gap: 12 }}>
-        <LCBadge size={40} />
-        <div style={{ flex: 1 }}>
-          <h2 style={{ fontSize: 20, fontWeight: 700, color: C.dark }}>Connect</h2>
-          <p style={{ fontSize: 11, color: C.muted }}>Discover and connect with students at Livingstone College.</p>
-        </div>
-        {Ico.bell(C.muted)}
+      <AppHeader title="Discover" subtitle="Students, study partners & groups at Livingstone" action={<IconBtn label="Notifications, 1 unread" badge>{Ico.bell(C.muted)}</IconBtn>} />
+
+      {/* Segmented tabs */}
+      <div style={{ display: 'flex', gap: 6, padding: '12px 20px 0' }}>
+        {['Students', 'Study Partners', 'Groups'].map(t => (
+          <button key={t} onClick={() => setTab(t)} style={{ flex: 1, padding: '9px 0', borderRadius: 10, border: 'none', background: tab === t ? C.blue : C.white, color: tab === t ? '#fff' : C.mid, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>{t}</button>
+        ))}
       </div>
 
+      {tab === 'Groups' ? <GroupsPanel /> : (
+      <React.Fragment>
       <div style={{ padding: '12px 20px 0' }}>
         <div style={{ display: 'flex', gap: 10 }}>
           <SearchBar placeholder="Search by name, major, or interests" />
@@ -530,6 +604,8 @@ function ConnectScreen({ onNav }) {
           </div>
         </div>
       </div>
+      </React.Fragment>
+      )}
 
       <BottomNav active="connect" onNav={onNav} />
     </div>
@@ -554,20 +630,10 @@ function ActivitiesScreen({ onNav }) {
 
   return (
     <div style={{ background: C.bg }}>
-      {/* Header */}
-      <div style={{ background: C.white, padding: '12px 20px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
-        <LCBadge size={36} />
-        <span style={{ fontSize: 16, fontWeight: 700, color: C.dark, flex: 1 }}>LC Connect</span>
-        <div style={{ position: 'relative', cursor: 'pointer' }}>
-          {Ico.bell(C.muted)}
-          <div style={{ position: 'absolute', top: -2, right: -2, width: 8, height: 8, borderRadius: '50%', background: '#EF4444', border: '1.5px solid white' }} />
-        </div>
-      </div>
+      <AppHeader title="Activities" subtitle="Find something happening on campus" action={<IconBtn label="Notifications, 1 unread" badge>{Ico.bell(C.muted)}</IconBtn>} />
 
-      <div style={{ padding: '16px 20px 0' }}>
-        <h1 style={{ fontSize: 27, fontWeight: 700, color: C.dark, letterSpacing: '-0.03em' }}>Activities</h1>
-        <p style={{ fontSize: 13, color: C.muted, marginTop: 2 }}>Find something happening on campus</p>
-        <div style={{ overflowX: 'auto', display: 'flex', gap: 8, marginTop: 13, paddingBottom: 4 }}>
+      <div style={{ padding: '14px 20px 0' }}>
+        <div style={{ overflowX: 'auto', display: 'flex', gap: 8, paddingBottom: 4 }}>
           {filters.map(f => <Chip key={f} label={f} active={activeFilter === f} onClick={() => setFilter(f)} />)}
         </div>
       </div>
@@ -648,12 +714,7 @@ const CHAT_MSGS = [
 function MessagesScreen({ onNav }) {
   return (
     <div style={{ background: C.white, minHeight: '100%', display: 'flex', flexDirection: 'column' }}>
-      {/* Header */}
-      <div style={{ padding: '10px 20px 12px', display: 'flex', alignItems: 'center', gap: 10, borderBottom: `1px solid ${C.border}` }}>
-        <LCBadge size={34} />
-        <h2 style={{ flex: 1, fontSize: 17, fontWeight: 700, color: C.dark, textAlign: 'center' }}>Messages</h2>
-        {Ico.compose(C.blue)}
-      </div>
+      <AppHeader title="Messages" action={<IconBtn label="New message">{Ico.compose(C.blue)}</IconBtn>} />
 
       {/* Maya context card */}
       <div style={{ margin: '12px 16px', background: C.bg, borderRadius: 16, border: `1px solid ${C.border}` }}>
@@ -756,12 +817,7 @@ function ProfileScreen({ onNav }) {
 
   return (
     <div style={{ background: C.bg }}>
-      {/* Header */}
-      <div style={{ background: C.white, padding: '10px 20px 12px', display: 'flex', alignItems: 'center', gap: 10 }}>
-        <LCBadge size={32} />
-        <span style={{ fontSize: 15, fontWeight: 700, color: C.dark, flex: 1 }}>LC Connect</span>
-        {Ico.settings(C.muted)}
-      </div>
+      <AppHeader title="Profile" action={<IconBtn label="Settings">{Ico.settings(C.muted)}</IconBtn>} />
 
       {/* Profile card */}
       <div style={{ background: C.white, padding: '18px 20px 20px', borderBottom: `1px solid ${C.border}` }}>
@@ -795,7 +851,7 @@ function ProfileScreen({ onNav }) {
           {Ico.shield(C.blue)}
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 13, fontWeight: 600, color: C.dark }}>Verified Student</div>
-            <div style={{ fontSize: 11, color: C.muted }}>Your profile is verified by Livingston College.</div>
+            <div style={{ fontSize: 11, color: C.muted }}>Your profile is verified by Livingstone College.</div>
           </div>
           {Ico.chevron(C.muted)}
         </div>
@@ -886,16 +942,18 @@ const SCREEN_LABELS = { login: 'Login', home: 'Home', connect: 'Connect', activi
 
 function App() {
   const [screen, setScreen] = React.useState('login');
+  const [connectTab, setConnectTab] = React.useState('Students');
+  const navigate = (s, tab) => { setScreen(s); if (tab) setConnectTab(tab); };
 
   const renderScreen = () => {
     switch (screen) {
-      case 'login':      return <LoginScreen      onSignIn={() => setScreen('home')} />;
-      case 'home':       return <HomeScreen        onNav={setScreen} />;
-      case 'connect':    return <ConnectScreen     onNav={setScreen} />;
-      case 'activities': return <ActivitiesScreen  onNav={setScreen} />;
-      case 'messages':   return <MessagesScreen    onNav={setScreen} />;
-      case 'profile':    return <ProfileScreen     onNav={setScreen} />;
-      default:           return <HomeScreen        onNav={setScreen} />;
+      case 'login':      return <LoginScreen      onSignIn={() => navigate('home')} />;
+      case 'home':       return <HomeScreen        onNav={navigate} />;
+      case 'connect':    return <ConnectScreen     onNav={navigate} initialTab={connectTab} />;
+      case 'activities': return <ActivitiesScreen  onNav={navigate} />;
+      case 'messages':   return <MessagesScreen    onNav={navigate} />;
+      case 'profile':    return <ProfileScreen     onNav={navigate} />;
+      default:           return <HomeScreen        onNav={navigate} />;
     }
   };
 

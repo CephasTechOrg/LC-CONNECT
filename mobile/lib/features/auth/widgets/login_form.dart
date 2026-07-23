@@ -24,41 +24,67 @@ class _FormSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 26),
       child: Form(
         key: formKey,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Email field
-            _MockupField(
-              controller:   emailCtrl,
-              hintText:     'Email address',
-              icon:         Icons.mail_outline_rounded,
-              keyboardType: TextInputType.emailAddress,
-              validator:    (v) => v != null && v.contains('@') ? null : 'Enter a valid email',
+            Row(
+              children: [
+                const _LcBadge(size: 40),
+                const SizedBox(width: 10),
+                Text(
+                  'LC Connect',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 25,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textDark,
+                    letterSpacing: -0.75,
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 10),
-            // Password field
+            Text(
+              'Find friends, study partners, and campus groups.',
+              style: GoogleFonts.dmSans(
+                fontSize: 14,
+                color: AppColors.textMuted,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 20),
             _MockupField(
-              controller:  passwordCtrl,
-              hintText:    'Password',
-              icon:        Icons.lock_outline_rounded,
+              controller: emailCtrl,
+              hintText: 'Email address',
+              icon: Icons.mail_outline_rounded,
+              keyboardType: TextInputType.emailAddress,
+              validator: (v) =>
+                  v != null && v.contains('@') ? null : 'Enter a valid email',
+            ),
+            const SizedBox(height: 14),
+            _MockupField(
+              controller: passwordCtrl,
+              hintText: 'Password',
+              icon: Icons.lock_outline_rounded,
               obscureText: obscure,
               suffixIcon: GestureDetector(
                 onTap: onToggleObscure,
                 child: Icon(
                   obscure
-                      ? Icons.visibility_off_outlined
-                      : Icons.visibility_outlined,
-                  color: _C.eyeColor,
+                      ? Icons.visibility_outlined
+                      : Icons.visibility_off_outlined,
+                  color: AppColors.textMuted,
                   size: 18,
                 ),
               ),
-              validator: (v) => v != null && v.isNotEmpty ? null : 'Enter your password',
+              validator: (v) =>
+                  v != null && v.isNotEmpty ? null : 'Enter your password',
             ),
-            const SizedBox(height: 6),
-            // Forgot password
+            const SizedBox(height: 16),
+            _SignInButton(isLoading: isLoading, onTap: onSubmit),
+            const SizedBox(height: 8),
             Align(
               alignment: Alignment.centerRight,
               child: GestureDetector(
@@ -67,65 +93,36 @@ class _FormSection extends StatelessWidget {
                   'Forgot password?',
                   style: GoogleFonts.dmSans(
                     fontSize: 13,
-                    color: _C.forgotBlue,
+                    color: AppColors.primary,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
               ),
             ),
             const SizedBox(height: 14),
-            // Sign In button
-            _SignInButton(isLoading: isLoading, onTap: onSubmit),
-            const SizedBox(height: 14),
-            // OR divider
             Row(
               children: [
-                const Expanded(child: Divider(color: _C.divLine, thickness: 1)),
+                const Expanded(
+                  child: Divider(color: AppColors.border, thickness: 1),
+                ),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   child: Text(
                     'OR',
                     style: GoogleFonts.dmSans(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: _C.divText,
+                      fontSize: 11,
+                      color: AppColors.textMuted,
+                      letterSpacing: 0.5,
                     ),
                   ),
                 ),
-                const Expanded(child: Divider(color: _C.divLine, thickness: 1)),
+                const Expanded(
+                  child: Divider(color: AppColors.border, thickness: 1),
+                ),
               ],
             ),
-            const SizedBox(height: 12),
-            // Continue with school email
-            _SchoolEmailButton(),
             const SizedBox(height: 14),
-            // Create account link
-            Center(
-              child: GestureDetector(
-                onTap: onRegister,
-                child: RichText(
-                  text: TextSpan(
-                    style: GoogleFonts.dmSans(
-                      fontSize: 14,
-                      color: _C.createText,
-                    ),
-                    children: [
-                      const TextSpan(text: "Don't have an account?"),
-                      TextSpan(
-                        text: ' Create account',
-                        style: GoogleFonts.dmSans(
-                          color: _C.createLink,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            // Students-only note
-            _NoteBox(),
+            _CreateAccountButton(onTap: onRegister),
           ],
         ),
       ),
@@ -133,8 +130,6 @@ class _FormSection extends StatelessWidget {
   }
 }
 
-// ── Mockup-spec input field ───────────────────────────────────────
-// White background, 56 px tall, border #DFE6EE, radius 14, subtle shadow.
 class _MockupField extends StatelessWidget {
   final TextEditingController controller;
   final String hintText;
@@ -156,58 +151,46 @@ class _MockupField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 48,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _C.border),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x0D0F172A),
-            blurRadius: 12,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
-      child: TextFormField(
-        controller:   controller,
-        keyboardType: keyboardType,
-        obscureText:  obscureText,
-        validator:    validator,
-        style: GoogleFonts.dmSans(
-          fontSize: 15,
-          color: _C.textBody,
+    return TextFormField(
+      controller: controller,
+      keyboardType: keyboardType,
+      obscureText: obscureText,
+      validator: validator,
+      style: GoogleFonts.dmSans(fontSize: 14, color: AppColors.textDark),
+      decoration: InputDecoration(
+        hintText: hintText,
+        hintStyle: GoogleFonts.dmSans(
+          fontSize: 14,
+          color: const Color(0xFF9CA3AF),
         ),
-        decoration: InputDecoration(
-          hintText: hintText,
-          hintStyle: GoogleFonts.dmSans(
-            fontSize: 15,
-            color: _C.hintColor,
-          ),
-          prefixIcon: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            child: Icon(icon, size: 20, color: _C.textBody),
-          ),
-          prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
-          suffixIcon: suffixIcon != null
-              ? Padding(
-                  padding: const EdgeInsets.only(right: 12),
-                  child: suffixIcon,
-                )
-              : null,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 14),
-          // Override all borders so the Container border shows
-          border:       InputBorder.none,
-          enabledBorder: InputBorder.none,
-          focusedBorder: InputBorder.none,
-          errorBorder:   InputBorder.none,
-          focusedErrorBorder: InputBorder.none,
-          filled: false,
+        filled: true,
+        fillColor: AppColors.background,
+        prefixIcon: Icon(icon, size: 18, color: AppColors.primary),
+        suffixIcon: suffixIcon != null
+            ? Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: suffixIcon,
+              )
+            : null,
+        suffixIconConstraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.border, width: 1.5),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.border, width: 1.5),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.error),
         ),
       ),
     );
   }
 }
-
-// ── Sign In gradient button ───────────────────────────────────────

@@ -10,7 +10,7 @@ class NavShell extends ConsumerWidget {
 
   static const _tabs = [
     _Tab(label: 'Home', icon: Icons.home_outlined, path: '/home'),
-    _Tab(label: 'Discover', icon: Icons.search_outlined, path: '/discover'),
+    _Tab(label: 'Connect', icon: Icons.people_outline, path: '/discover'),
     _Tab(label: 'Activities', icon: Icons.calendar_today_outlined, path: '/activities'),
     _Tab(label: 'Messages', icon: Icons.message_outlined, path: '/messages'),
     _Tab(label: 'Profile', icon: Icons.person_outline, path: '/profile'),

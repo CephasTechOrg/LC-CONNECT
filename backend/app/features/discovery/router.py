@@ -28,13 +28,16 @@ async def get_discovery_cards(current_user: User = Depends(require_verified_stud
     pending_ids = {r.receiver_id if r.sender_id == current_user.id else r.sender_id for r in requests}
 
     excluded = {current_user.id} | blocked_ids | matched_ids | pending_ids
-    result = await db.execute(
+    stmt = (
         select(Profile)
         .join(User, User.id == Profile.user_id)
         .options(selectinload(Profile.user), selectinload(Profile.interests), selectinload(Profile.looking_for_options), selectinload(Profile.languages).selectinload(UserLanguage.language))
         .where(Profile.user_id.not_in(excluded), Profile.is_hidden.is_(False), Profile.profile_completed.is_(True), User.is_active.is_(True), User.status == 'active')
-        .limit(150)
     )
+    # Respect owners who restrict visibility to email-verified users (no-op for verified viewers).
+    if not current_user.is_verified:
+        stmt = stmt.where(Profile.show_profile_to_verified_only.is_(False))
+    result = await db.execute(stmt.limit(150))
     candidates = result.scalars().unique().all()
 
     scored = []

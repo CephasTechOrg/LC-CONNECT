@@ -35,6 +35,8 @@ The app should **not** feel like a dating app. It should feel like a safe campus
 | `supabase.md` | **Supabase setup** — storage, connection strings, Realtime, RLS policies |
 | `realtime-messaging.md` | **Real-time messaging** — how it works end-to-end, Flutter code, Supabase config, deduplication |
 | `deployment.md` | **Render deployment** — render.yaml, env vars, every failure we hit and how we fixed it |
+| `notifications/` | **Notifications** — how push + unread counts work end-to-end, and the Firebase setup runbook |
+| `groups/` | **Groups (campus communities)** — architecture, decision log, and the phased implementation plan |
 | `todo.md` | Feature development progress and remaining tasks |
 
 ## Quick Links for Common Tasks

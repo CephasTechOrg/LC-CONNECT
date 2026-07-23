@@ -77,6 +77,9 @@ flutter:
     - assets/images/students.png
     - assets/images/school.png
     - assets/images/headshots.png
+    - assets/images/groupstudents.png
+    - assets/images/lclogo.png
+    - assets/images/groupstudent.png
     - assets/sounds/new_message.wav
 
   # To add custom fonts to your application, add a fonts section here,

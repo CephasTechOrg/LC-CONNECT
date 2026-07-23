@@ -145,6 +145,52 @@ class Match(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
 
+class Conversation(Base):
+    """Messaging container. `kind='dm'` wraps a Match (2 members); `kind='group'` is owned by
+    a Group (N members). Introduced additively in P1 — see docs/groups/."""
+
+    __tablename__ = 'conversations'
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    kind: Mapped[str] = mapped_column(String(20), default='dm', index=True, nullable=False)
+    # DM conversations point at their Match, inheriting its normalized-pair uniqueness
+    # (uq_match_pair) — that is what prevents duplicate DM conversations. NULL for groups.
+    match_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey('matches.id', ondelete='CASCADE'), unique=True, nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
+class ConversationMember(Base):
+    """Per-member state in a conversation: role, lifecycle status, and the read boundary."""
+
+    __tablename__ = 'conversation_members'
+    __table_args__ = (
+        UniqueConstraint('conversation_id', 'user_id', name='uq_conversation_member'),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    conversation_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey('conversations.id', ondelete='CASCADE'), index=True, nullable=False
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey('users.id', ondelete='CASCADE'), index=True, nullable=False
+    )
+    role: Mapped[str] = mapped_column(String(20), default='member', nullable=False)  # owner|admin|member
+    status: Mapped[str] = mapped_column(String(20), default='active', index=True, nullable=False)
+    # invited|requested|active|removed|banned
+    invited_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey('users.id', ondelete='SET NULL'), nullable=True
+    )
+    # Per-member unread boundary. A single Message.read_at cannot express "who has read this"
+    # in an N-member conversation, so groups require this. Adopted in P2.
+    last_read_message_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey('messages.id', ondelete='SET NULL'), nullable=True
+    )
+    muted: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    joined_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
 class Message(Base):
     __tablename__ = 'messages'
     __table_args__ = (
@@ -166,6 +212,11 @@ class Message(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     match_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('matches.id', ondelete='CASCADE'), index=True, nullable=False)
+    # P1: additive + nullable. Backfilled for every existing message; nothing reads it until
+    # P2. `match_id` stays written throughout the cutover so rollback is trivial.
+    conversation_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey('conversations.id', ondelete='CASCADE'), index=True, nullable=True
+    )
     sender_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('users.id', ondelete='CASCADE'), index=True, nullable=False)
     # Client-generated idempotency key; NULL for legacy rows, required for new sends.
     client_message_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
