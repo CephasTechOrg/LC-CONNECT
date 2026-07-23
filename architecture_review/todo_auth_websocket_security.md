@@ -141,8 +141,12 @@ works + `firebase_setup.md`). Delivery confirmed on a real Android emulator (202
   (grouped query + partial index `ix_messages_unread`) seeds a single-source `unreadProvider`;
   live via WS `conversation.updated`, re-seeds on reconnect/resume, cleared on chat open.
   App-icon badge deferred (launcher-dependent + needs push payload; revisit with iOS push).
-- [ ] In-app banner + sound when app is foregrounded on another screen ← **next**
-- [ ] Drop the WebSocket on app-background (tightens the backgrounded-but-not-killed push window)
+- [x] In-app banner + sound when app is foregrounded on another screen — floating tap-to-open
+  banner (`InAppBannerHost` in `MaterialApp.builder`) driven by `inAppMessageListenerProvider`;
+  haptic + subtle chime (`audioplayers`, generated `assets/sounds/new_message.wav`, guarded).
+  Suppressed for: own messages · the open chat (`activeConversationId`) · the Messages list ·
+  backgrounded app (push covers it). 6 unit/widget tests.
+- [ ] Drop the WebSocket on app-background (tightens the backgrounded-but-not-killed push window) ← **only gap left**
 
 ## Privacy/safety
 

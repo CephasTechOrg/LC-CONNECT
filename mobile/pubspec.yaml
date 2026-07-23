@@ -48,6 +48,7 @@ dependencies:
   web_socket_channel: ^3.0.3
   firebase_core: ^4.12.1
   firebase_messaging: ^16.4.3
+  audioplayers: ^6.1.0
 
 dev_dependencies:
   flutter_test:
@@ -76,6 +77,7 @@ flutter:
     - assets/images/students.png
     - assets/images/school.png
     - assets/images/headshots.png
+    - assets/sounds/new_message.wav
 
   # To add custom fonts to your application, add a fonts section here,
   # in this "flutter" section. Each entry in this list should have a
