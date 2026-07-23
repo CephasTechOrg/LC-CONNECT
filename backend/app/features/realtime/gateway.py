@@ -31,7 +31,7 @@ from app.features.realtime.runtime import (
     subscribe_limiter,
     typing_limiter,
 )
-from app.shared.conversations import active_member_ids
+from app.shared.conversations import active_member_ids, active_members_with_mute
 
 logger = logging.getLogger('lc_connect.realtime')
 
@@ -165,10 +165,9 @@ async def _on_subscribe(conn: Connection, frame: protocol.SubscribeFrame) -> Non
         except service.WsForbidden:
             manager.send(conn, protocol.error(ErrorCode.FORBIDDEN, 'Forbidden', frame.request_id))
             return
-    # Cache the partner so typing needs no per-keystroke DB hit. (DM = exactly one other
-    # member; groups will fan out to `others` instead.)
-    if others:
-        conn.partners[frame.conversation_id] = others[0]
+    # Cache the other members so typing needs no per-keystroke DB hit. One for a DM, N-1 for
+    # a group — typing fans out to all of them.
+    conn.partners[frame.conversation_id] = others
     manager.subscribe(conn, frame.conversation_id)
     manager.send(conn, protocol.subscribed(frame.request_id, frame.conversation_id))
 
@@ -186,7 +185,8 @@ async def _on_send(conn: Connection, frame: protocol.SendFrame) -> None:
         try:
             await service.recheck_account(db, conn.user_id)
             conversation = await service.authorize_conversation(db, conn.user_id, frame.conversation_id)
-            recipients = await active_member_ids(db, conversation.id, exclude=conn.user_id)
+            # (user_id, muted) for every other active member — live to all, push skips muted.
+            recipients = await active_members_with_mute(db, conversation.id, exclude=conn.user_id)
         except service.WsForbidden:
             manager.send(conn, protocol.error(ErrorCode.FORBIDDEN, 'Forbidden', frame.request_id))
             return
@@ -206,16 +206,13 @@ async def _on_send(conn: Connection, frame: protocol.SendFrame) -> None:
         # User channels: thread-list update for both participants (regardless of open chat).
         updated = protocol.conversation_updated(message)
         await event_bus.publish_to_user(conn.user_id, updated)
-        for recipient_id in recipients:
-            await event_bus.publish_to_user(recipient_id, updated)
-            # Offline push: if this member has no live socket, notify after a grace recheck.
+        for recipient_id, muted in recipients:
+            await event_bus.publish_to_user(recipient_id, updated)  # live to all (even muted)
+            # Offline push: only for members who are muted-off and have no live socket.
             open_sockets = manager.user_socket_count(recipient_id)
-            logger.info(
-                'send: recipient=%s open_sockets=%d -> %s',
-                recipient_id,
-                open_sockets,
-                'scheduling offline push' if open_sockets == 0 else 'recipient online, delivered live (no push)',
-            )
+            if muted or open_sockets != 0:
+                continue
+            logger.info('send: recipient=%s offline+unmuted -> scheduling offline push', recipient_id)
             if open_sockets == 0:
                 asyncio.create_task(
                     schedule_offline_push(recipient_id, conn.user_id, frame.conversation_id)
@@ -223,19 +220,18 @@ async def _on_send(conn: Connection, frame: protocol.SendFrame) -> None:
 
 
 async def _on_typing(conn: Connection, conversation_id: UUID, active: bool) -> None:
-    # Authz proxy: the partner is cached only for authorized subscriptions (and cleared on
-    # block/suspension revocation), so this avoids a DB hit per keystroke while staying safe.
-    partner_id = conn.partners.get(conversation_id)
-    if partner_id is None:
+    # Authz proxy: members are cached only for authorized subscriptions (and cleared on
+    # block/suspension/removal revocation), so this avoids a DB hit per keystroke while safe.
+    partners = conn.partners.get(conversation_id)
+    if not partners:
         return
     if active and not typing_limiter.allow((conn.user_id, conversation_id)):
         return
-    # Deliver to the partner's USER channel → shows both inside the chat and on their
-    # conversation list (1:1, so the partner is the only other participant).
-    await event_bus.publish_to_user(
-        partner_id,
-        protocol.typing_event(conversation_id, conn.user_id, active),
-    )
+    # Deliver to every other member's USER channel → shows inside the chat and on their list.
+    # One recipient for a DM, all others for a group.
+    frame = protocol.typing_event(conversation_id, conn.user_id, active)
+    for partner_id in partners:
+        await event_bus.publish_to_user(partner_id, frame)
 
 
 async def _on_read(conn: Connection, frame: protocol.ReadFrame) -> None:

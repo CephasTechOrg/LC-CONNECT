@@ -13,7 +13,12 @@ interest groups) and the messaging generalization they require.
 
 ## Status
 
-**P0–P3 ✅ complete — next up: P4 (group messaging + realtime fan-out).**
+**P0–P4 ✅ complete — next up: P5 (group discovery polish + avatar + moderation reports).**
+
+Groups now **chat**: a group is addressed by its conversation id, messages fan out to all
+members (typing too), push skips muted members, and removing a member closes their live socket.
+Verified end-to-end on the dev DB. The one thing still on `match_id` externally — the thread
+list + unread surfacing — is the coordinated breaking change that lands with the mobile UI (P6).
 
 Groups are real: `POST /groups`, discover, join (open/approval/invite), approve/reject, invite,
 leave — with **transactionally race-safe capacity** and a centralized permission matrix. A group

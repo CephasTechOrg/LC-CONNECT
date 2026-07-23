@@ -75,10 +75,14 @@ def happy_auth(monkeypatch):
     async def ok_members(db, conversation_id, *, exclude=None):
         return [partner_id]
 
+    async def ok_members_muted(db, conversation_id, *, exclude=None):
+        return [(partner_id, False)]  # one other member, not muted
+
     monkeypatch.setattr(service, 'authenticate', ok_authenticate)
     monkeypatch.setattr(service, 'recheck_account', ok_recheck)
     monkeypatch.setattr(service, 'authorize_conversation', ok_authorize)
     monkeypatch.setattr('app.features.realtime.gateway.active_member_ids', ok_members)
+    monkeypatch.setattr('app.features.realtime.gateway.active_members_with_mute', ok_members_muted)
     return user
 
 
@@ -221,9 +225,9 @@ async def test_typing_routes_to_partner_user_channel(monkeypatch):
         async def close(self, code=1000):
             pass
 
-    me, partner, conv = uuid4(), uuid4(), uuid4()
+    me, p1, p2, conv = uuid4(), uuid4(), uuid4(), uuid4()
     conn = Connection(_Sock(), me, outbox_max=8)
-    conn.partners[conv] = partner  # populated at subscribe
+    conn.partners[conv] = [p1, p2]  # cached member list at subscribe (group = fans out to all)
 
     calls = []
 
@@ -233,11 +237,10 @@ async def test_typing_routes_to_partner_user_channel(monkeypatch):
     monkeypatch.setattr(gateway.event_bus, 'publish_to_user', fake_publish_to_user)
 
     await gateway._on_typing(conn, conv, active=True)
-    assert calls, 'typing should be delivered'
-    assert calls[0][0] == partner
-    assert calls[0][1]['type'] == 'typing' and calls[0][1]['active'] is True
+    assert {c[0] for c in calls} == {p1, p2}  # every other member gets typing
+    assert all(c[1]['type'] == 'typing' and c[1]['active'] is True for c in calls)
 
-    # Unknown/unsubscribed conversation → no partner cached → no-op.
+    # Unknown/unsubscribed conversation → no members cached → no-op.
     calls.clear()
     await gateway._on_typing(conn, uuid4(), active=True)
     assert calls == []

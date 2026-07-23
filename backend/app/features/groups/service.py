@@ -13,6 +13,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.features.groups.policies import can_moderate
 from app.features.groups.schema import GroupCreate, GroupMemberRead, GroupRead, GroupSummary, JoinResult
 from app.models import Conversation, ConversationMember, Group, Profile, User
 from app.shared.profiles import profile_load_options
@@ -203,6 +204,19 @@ async def leave_group(db: AsyncSession, group: Group, member: ConversationMember
             detail='Transfer ownership before leaving the group',
         )
     member.status = 'removed'
+
+
+async def remove_member(
+    db: AsyncSession, group: Group, actor: ConversationMember, target_user_id: UUID, *, ban: bool
+) -> None:
+    """Admin/owner removes (or bans) a member. Enforces the moderation rank rule and returns
+    the target's user id so the caller can close their live socket."""
+    target = await membership(db, group.conversation_id, target_user_id)
+    if target is None or target.status not in {ACTIVE, 'requested', 'invited'}:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Member not found')
+    if not can_moderate(actor.role, target.role):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='Cannot moderate this member')
+    target.status = 'banned' if ban else 'removed'
 
 
 # ── listings ─────────────────────────────────────────────────────────────────────

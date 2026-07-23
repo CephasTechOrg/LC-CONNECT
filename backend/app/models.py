@@ -215,7 +215,9 @@ class Message(Base):
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    match_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('matches.id', ondelete='CASCADE'), index=True, nullable=False)
+    # Nullable since P4: DM messages carry a match_id (+ conversation_id), but GROUP messages
+    # have only a conversation_id (no match). conversation_id is the universal container.
+    match_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey('matches.id', ondelete='CASCADE'), index=True, nullable=True)
     # P1: additive + nullable. Backfilled for every existing message; nothing reads it until
     # P2. `match_id` stays written throughout the cutover so rollback is trivial.
     conversation_id: Mapped[uuid.UUID | None] = mapped_column(

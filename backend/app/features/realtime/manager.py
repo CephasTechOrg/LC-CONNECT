@@ -35,8 +35,9 @@ class Connection:
         self.socket = socket
         self.user_id = user_id
         self.subscriptions: set[UUID] = set()
-        # conversation_id -> partner user_id, cached at subscribe so typing needs no DB hit.
-        self.partners: dict[UUID, UUID] = {}
+        # conversation_id -> other active member ids, cached at subscribe so typing needs no DB
+        # hit. One entry for a DM, N-1 for a group.
+        self.partners: dict[UUID, list[UUID]] = {}
         self.last_seen: float = time.monotonic()
         self.alive: bool = True
         self._outbox: asyncio.Queue[Any] = asyncio.Queue(maxsize=outbox_max)
@@ -179,6 +180,17 @@ class ConnectionManager:
         for conn in tuple(subs):
             conn.enqueue(frame)
             self.unsubscribe(conn, conversation_id)
+
+    async def revoke_member(self, conversation_id: UUID, user_id: UUID, frame: dict[str, Any]) -> None:
+        """Unsubscribe a single user from a conversation (e.g. removed/banned from a group).
+        Their other conversations are untouched."""
+        subs = self._by_conversation.get(conversation_id)
+        if not subs:
+            return
+        for conn in tuple(subs):
+            if conn.user_id == user_id:
+                conn.enqueue(frame)
+                self.unsubscribe(conn, conversation_id)
 
     async def revoke_pair(self, user_a: UUID, user_b: UUID, frame: dict[str, Any]) -> None:
         """Revoke conversations both users are actively subscribed to (a block).

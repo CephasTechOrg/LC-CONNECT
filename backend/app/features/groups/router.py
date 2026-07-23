@@ -147,3 +147,25 @@ async def leave(group_id: UUID, current_user: User = Depends(require_verified_st
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Not a member')
     await service.leave_group(db, group, member)
     await db.commit()
+
+
+@router.delete('/{group_id}/members/{user_id}', status_code=status.HTTP_204_NO_CONTENT)
+async def remove_member(
+    group_id: UUID,
+    user_id: UUID,
+    ban: bool = Query(default=False),
+    current_user: User = Depends(require_verified_student),
+    db: AsyncSession = Depends(get_db),
+):
+    group, member = await _visible_group(group_id, current_user, db)
+    _require(member, GroupAction.BAN_MEMBER if ban else GroupAction.REMOVE_MEMBER)
+    await service.remove_member(db, group, member, user_id, ban=ban)
+    await db.commit()
+    # Close the removed member's live subscription so they stop receiving the group's messages.
+    # Lazy import avoids a module-load cycle with the realtime package.
+    from app.features.realtime.protocol import ErrorCode, error
+    from app.features.realtime.runtime import manager as ws_manager
+
+    await ws_manager.revoke_member(
+        group.conversation_id, user_id, error(ErrorCode.FORBIDDEN, 'Removed from group')
+    )

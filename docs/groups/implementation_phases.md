@@ -156,21 +156,39 @@ covers these actions; only the routes/service wiring remain.
 
 ---
 
-## P4 — Group messaging + realtime fan-out
+## P4 — Group messaging + realtime fan-out ✅ **COMPLETE**
 
-Group chat largely *falls out* of P2. What's new is fan-out.
+Group chat mostly fell out of P2. What P4 added:
 
-- [ ] Broadcast to **all** members (not "the partner"); typing to all others
-- [ ] **Push fan-out** to all *offline, non-sender, non-muted* members
-- [ ] **Revoke-on-removal** (removed/banned member's subscription is closed immediately)
-- [ ] Thread-list **group variant** (group title + avatar instead of partner)
-- [ ] Group unread via the per-member boundary
+- [x] **Address by conversation id** — `resolve_conversation` accepts a group's conversation id
+      *or* a DM's match id, so the same gateway path serves both. `authorize_conversation` +
+      `mark_read` use it.
+- [x] `messages.match_id` **made nullable** (migration `c9d0e1f2a3b4`) — group messages have only
+      a `conversation_id`; DM messages still carry both.
+- [x] Broadcast to **all** members; **typing fans out to every other member** (`conn.partners`
+      is now a list, cached at subscribe)
+- [x] **Push fan-out** to all *offline, non-sender, non-muted* members
+      (`active_members_with_mute`)
+- [x] **Revoke-on-removal** — `manager.revoke_member` closes a removed/banned member's
+      subscription; wired into `DELETE /groups/{id}/members/{user_id}?ban=`
+- [x] Group unread via the per-member boundary (already conversation-keyed from P2)
 
-**First vertical slice (end-to-end):** create an open group → discover it → join → open its
-conversation → send/receive a text message → mark read → leave.
+**Gate: ✅ green**
+- 6 group-messaging integration tests (send-by-conversation-id · non-member rejected · fan-out ·
+  muted-flagged · per-member unread boundary · removed-member-loses-access)
+- Realtime gateway/manager tests updated for the member-list + muted fan-out
+- 132 backend tests · ruff clean · snapshot regenerated (new remove-member route) · single head
+- **Verified on dev DB:** created a group, member joined, sent a message addressed by
+  conversation id, owner's group unread = 1 — then cleaned up
 
-**Gate:** fan-out tests · removal-revocation test · group unread test · sender/muted exclusion
-tests.
+### Deferred (breaking mobile change → lands in P6 with the UI)
+Thread-list **group variant** + surfacing group unread through `/messages/*` (the router still
+translates to `match_id` and drops groups). That's the coordinated `match_id`→`conversation_id`
+API flip, done with the mobile wiring.
+
+### Fixed during P4
+A stray file rename had turned `groups/service.py` into a file literally named `.py`, which
+surfaced as a fake "circular import". Restored + made the groups package import-order-robust.
 
 ---
 

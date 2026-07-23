@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Conversation, ConversationMember, Message, User
 from app.security import verify_supabase_access_token
-from app.shared.conversations import active_member_ids, conversation_for_match_id, is_active_member
+from app.shared.conversations import active_member_ids, is_active_member, resolve_conversation
 from app.shared.policies import users_are_blocked
 
 
@@ -59,14 +59,14 @@ def _ensure_account_ok(user: User) -> None:
         raise WsForbidden('Verified student required')
 
 
-async def authorize_conversation(db: AsyncSession, user_id: UUID, match_id: UUID) -> Conversation:
+async def authorize_conversation(db: AsyncSession, user_id: UUID, conversation_ref: UUID) -> Conversation:
     """Confirm the user may access the conversation. Generic forbidden on any failure.
 
-    Authorization is now **membership-based** (`ConversationMember`), which reads identically
-    for a 2-person DM and an N-person group. `match_id` is still the id clients send during the
-    transition, so it is resolved to its conversation here.
+    Authorization is **membership-based** (`ConversationMember`), which reads identically for a
+    2-person DM and an N-person group. `conversation_ref` is a group's conversation id or a DM's
+    match id (resolved here) — so the same gateway path serves both.
     """
-    conversation = await conversation_for_match_id(db, match_id)
+    conversation = await resolve_conversation(db, conversation_ref)
     if conversation is None or not await is_active_member(db, conversation.id, user_id):
         raise WsForbidden('Conversation not accessible')
 
@@ -81,6 +81,7 @@ async def authorize_conversation(db: AsyncSession, user_id: UUID, match_id: UUID
 async def mark_read(
     db: AsyncSession, *, reader_id: UUID, match_id: UUID, through_message_id: UUID
 ) -> datetime | None:
+    # `match_id` here is really a conversation-ref (DM match id or group conversation id).
     """Advance the reader's boundary to `through_message_id`. Returns the timestamp.
 
     Two things happen:
@@ -89,7 +90,7 @@ async def mark_read(
     2. `Message.read_at` — kept for **DM read receipts** (a single column can't express
        per-member read state, so it is display-only, not the unread source of truth).
     """
-    conversation = await conversation_for_match_id(db, match_id)
+    conversation = await resolve_conversation(db, match_id)
     if conversation is None:
         return None
 

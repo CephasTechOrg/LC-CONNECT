@@ -12,7 +12,7 @@ from app.features.admin import router as admin_router
 from app.features.auth import router as auth_v2_router
 from app.features.connections import router as connections_router
 from app.features.discovery import router as discovery_router
-from app.features.groups import router as groups_router
+from app.features.groups.router import router as groups_router
 from app.features.lookups import router as lookups_router
 from app.features.messages import router as messages_router
 from app.features.notifications import router as notifications_router

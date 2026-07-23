@@ -69,6 +69,33 @@ async def conversation_for_match_id(db: AsyncSession, match_id: UUID) -> Convers
     return await ensure_dm_conversation(db, match)
 
 
+async def resolve_conversation(db: AsyncSession, ref: UUID) -> Conversation | None:
+    """Resolve a client-supplied id to a conversation.
+
+    `ref` may be a **conversation id** (groups address their chat directly) or a **match id**
+    (DMs are still addressed by match during the transition). Tries the conversation table
+    first, then falls back to the match → DM-conversation path.
+    """
+    conversation = await db.get(Conversation, ref)
+    if conversation is not None:
+        return conversation
+    return await conversation_for_match_id(db, ref)
+
+
+async def active_members_with_mute(
+    db: AsyncSession, conversation_id: UUID, *, exclude: UUID | None = None
+) -> list[tuple[UUID, bool]]:
+    """Active members as `(user_id, muted)`. Live delivery goes to all of them; push skips the
+    muted ones."""
+    stmt = select(ConversationMember.user_id, ConversationMember.muted).where(
+        ConversationMember.conversation_id == conversation_id,
+        ConversationMember.status == 'active',
+    )
+    if exclude is not None:
+        stmt = stmt.where(ConversationMember.user_id != exclude)
+    return [(user_id, muted) for user_id, muted in (await db.execute(stmt)).all()]
+
+
 async def match_ids_for_conversations(
     db: AsyncSession, conversation_ids: list[UUID]
 ) -> dict[UUID, UUID]:
