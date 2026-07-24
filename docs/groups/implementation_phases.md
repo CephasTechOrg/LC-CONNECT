@@ -346,8 +346,40 @@ Backend `/reports` already accepted `group_id`. Test: `Report group flow` in `sa
 **Gate: ✅ green** — 147 backend tests · 135 mobile tests · ruff + analyze clean · line limits pass ·
 snapshot updated.
 
-**Still open (deferred, backend not yet built for these):** avatar-at-creation, a "Your Groups"
-list, and membership-event notifications.
+**F6 ✅ — avatar at creation.** The create sheet now has a tappable avatar picker; on submit it
+creates the group then uploads the photo via the existing `/groups/{id}/avatar` endpoint (a failed
+upload keeps the group — the owner can add a photo later). Mobile-only, no backend change.
+
+**F7 ✅ — "Your Groups" strip.** A horizontal quick-access row of the groups you're in, at the top
+of the Groups panel (`YourGroupsSection` + the already-existing `myGroupsProvider`); tapping opens
+the chat. Refreshed after join/create. Mobile-only.
+
+**Gate: ✅ green** — 147 backend tests · 135 mobile tests · analyze clean · line limits pass.
+
+**F8 ✅ — in-app notification center.** Membership events now notify the affected user (and admins
+on new join requests), with a persistent store + live delivery + a bell/badge that ticks down when
+viewed.
+- **Backend:** new `Notification` model + migration (`e1f2a3b4c5d6`); notifications feature extended
+  with `create_notification` / `list_notifications` / `unread_count` / `mark_all_read`; new inbox
+  routes `GET /notifications`, `GET /notifications/unread-count`, `POST /notifications/read`.
+  `runtime.emit_notification` persists + delivers live via the user WS channel (`notification`
+  frame); the group router fires it on invite / approve / reject / promote / demote / remove, plus
+  `group_join_request` to all admins (`service.admin_ids`). Structured payload (type + group +
+  actor), so renamed groups/people read correctly. Snapshot regenerated. Tests:
+  `test_notifications_inbox.py` (4).
+- **Mobile:** `notifications` feature — `AppNotification` model (composes the sentence per type),
+  `notificationCountProvider` (seeds from unread-count, +1 on live WS `notification`, re-seeds on
+  reconnect/resume, zeroes on open — mirrors the message unread pattern), a bell with a badge in
+  the home header, and a `NotificationsScreen` (list + tap-through to the group; opening marks all
+  read). Tests: `notification_models_test.dart` (9).
+
+**Gate: ✅ green** — 151 backend tests · 144 mobile tests · ruff + analyze clean · line limits pass ·
+snapshot updated (migration single-head at `e1f2a3b4c5d6`).
+
+**Note:** offline *push* for these events is not wired (the in-app store + badge already deliver
+them on next open); the `PushSender` seam is there if you later want them to buzz a closed phone.
+
+**Groups feature: complete — all deferred items now shipped.**
 
 ---
 

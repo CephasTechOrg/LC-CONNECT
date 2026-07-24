@@ -187,3 +187,8 @@ def read_receipt(conversation_id: UUID, user_id: UUID, through_message_id: UUID,
         'through_message_id': str(through_message_id),
         'read_at': read_at_iso,
     }
+
+
+def notification_event(notification: dict[str, Any]) -> dict[str, Any]:
+    """User-channel event: a new in-app notification (already serialized to a plain dict)."""
+    return {'type': 'notification', 'notification': notification}

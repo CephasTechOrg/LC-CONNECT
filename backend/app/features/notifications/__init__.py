@@ -1,3 +1,3 @@
-from app.features.notifications.router import router
+from app.features.notifications.router import inbox_router, router
 
-__all__ = ['router']
+__all__ = ['inbox_router', 'router']

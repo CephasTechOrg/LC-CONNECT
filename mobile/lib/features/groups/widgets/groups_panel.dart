@@ -12,6 +12,7 @@ import '../providers/groups_provider.dart';
 import 'create_group_sheet.dart';
 import 'group_search_field.dart';
 import 'pending_invites.dart';
+import 'your_groups_section.dart';
 
 /// Campus Groups panel — now wired to the live `/groups` API.
 class GroupsPanel extends ConsumerStatefulWidget {
@@ -62,6 +63,7 @@ class _GroupsPanelState extends ConsumerState<GroupsPanel> {
       final status = await ref.read(groupsRepositoryProvider).join(group.id);
       if (!mounted) return;
       ref.invalidate(discoverGroupsProvider);
+      ref.invalidate(myGroupsProvider); // joined an open group → refresh Your Groups
       _snack(
         status == 'active'
             ? 'Joined ${group.name}'
@@ -93,6 +95,7 @@ class _GroupsPanelState extends ConsumerState<GroupsPanel> {
     final created = await showCreateGroupSheet(context, ref);
     if (created != null && mounted) {
       ref.invalidate(discoverGroupsProvider);
+      ref.invalidate(myGroupsProvider); // new group → show it in Your Groups
       _snack('Created ${created.name}');
     }
   }
@@ -116,6 +119,7 @@ class _GroupsPanelState extends ConsumerState<GroupsPanel> {
       padding: EdgeInsets.zero,
       children: [
         const PendingInvitesSection(),
+        const YourGroupsSection(),
         GroupSearchField(
           controller: _searchController,
           hasText: _query.isNotEmpty,

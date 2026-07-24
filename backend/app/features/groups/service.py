@@ -278,6 +278,18 @@ async def remove_member(
 
 # ── listings ─────────────────────────────────────────────────────────────────────
 
+async def admin_ids(db: AsyncSession, conversation_id: UUID) -> list[UUID]:
+    """User ids of the group's active admins + owner — the recipients for admin-facing alerts."""
+    rows = await db.execute(
+        select(ConversationMember.user_id).where(
+            ConversationMember.conversation_id == conversation_id,
+            ConversationMember.status == ACTIVE,
+            ConversationMember.role.in_(('admin', 'owner')),
+        )
+    )
+    return list(rows.scalars().all())
+
+
 async def my_groups(db: AsyncSession, user_id: UUID) -> list[tuple[Group, ConversationMember]]:
     rows = (
         await db.execute(

@@ -33,6 +33,27 @@ subscribe_limiter = RateLimiter(settings.ws_subscribe_rate_per_10s, 10)
 malformed_limiter = RateLimiter(settings.ws_max_malformed_frames, 60)
 
 
+async def emit_notification(
+    *, user_id: UUID, notif_type: str, group_id: UUID | None = None, actor_id: UUID | None = None
+) -> None:
+    """Persist an in-app notification and deliver it live to the recipient's user channel.
+
+    Best-effort and self-contained (own session): the group action is the source of truth, this
+    is a side effect. An offline recipient still gets it — the row persists and their badge seeds
+    from `GET /notifications/unread-count` on next open.
+    """
+    from app.features.notifications import service as notifications_service
+
+    async with AsyncSessionLocal() as db:
+        notification = await notifications_service.create_notification(
+            db, user_id=user_id, type=notif_type, group_id=group_id, actor_id=actor_id
+        )
+        await db.commit()
+        await db.refresh(notification)
+        dto = await notifications_service.read_one(db, notification)
+    await event_bus.publish_to_user(user_id, protocol.notification_event(dto.model_dump(mode='json')))
+
+
 async def revoke_pair_access(user_a: UUID, user_b: UUID) -> None:
     """A block happened — drop any live conversation the two users share."""
     frame = protocol.error(protocol.ErrorCode.FORBIDDEN, 'Conversation access revoked')

@@ -17,6 +17,7 @@ import '../../features/messages/screens/messages_screen.dart';
 import '../../features/messages/providers/messages_provider.dart';
 import '../../features/groups/data/group_models.dart';
 import '../../features/groups/screens/group_detail_screen.dart';
+import '../../features/notifications/screens/notifications_screen.dart';
 import '../../features/profile/screens/profile_screen.dart';
 import '../../features/profile/screens/public_profile_screen.dart';
 import '../../features/profile/screens/edit_profile_screen.dart';
@@ -124,6 +125,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/groups/:groupId',
         builder: (context, state) =>
             GroupDetailScreen(groupId: state.pathParameters['groupId']!),
+      ),
+      GoRoute(
+        path: '/notifications',
+        builder: (context, state) => const NotificationsScreen(),
       ),
       ShellRoute(
         builder: (context, state, child) => NavShell(child: child),

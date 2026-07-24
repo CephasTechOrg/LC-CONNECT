@@ -25,6 +25,8 @@ GET /api/v1/messages/threads
 GET /api/v1/messages/threads/{match_id}
 GET /api/v1/messages/threads/{match_id}/sync
 GET /api/v1/messages/unread-summary
+GET /api/v1/notifications
+GET /api/v1/notifications/unread-count
 GET /api/v1/profiles/me
 GET /api/v1/profiles/{profile_id}
 GET /health
@@ -58,5 +60,6 @@ POST /api/v1/groups/{group_id}/requests/{user_id}/approve
 POST /api/v1/groups/{group_id}/requests/{user_id}/reject
 POST /api/v1/groups/{group_id}/transfer
 POST /api/v1/messages/threads/{match_id}
+POST /api/v1/notifications/read
 POST /api/v1/profiles/me/avatar
 POST /api/v1/reports

@@ -8,6 +8,7 @@ import '../../../core/widgets/avatar_widget.dart';
 import '../../../shared/widgets/app_shell_header.dart';
 import '../../../shared/widgets/app_states.dart';
 import '../../../shared/widgets/connections_bell_button.dart';
+import '../../notifications/widgets/notifications_bell_button.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../discovery/providers/discovery_provider.dart';
 import '../../activities/providers/activities_provider.dart';

@@ -50,6 +50,14 @@ def _require(member, action: GroupAction) -> None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='Not allowed')
 
 
+async def _notify(user_id: UUID, notif_type: str, group: Group, actor_id: UUID) -> None:
+    """Fire an in-app notification for a group membership event. Lazy import avoids a module-load
+    cycle with the realtime package (same reason as `remove_member`'s revocation import)."""
+    from app.features.realtime.runtime import emit_notification
+
+    await emit_notification(user_id=user_id, notif_type=notif_type, group_id=group.id, actor_id=actor_id)
+
+
 # ── lifecycle ─────────────────────────────────────────────────────────────────────
 
 @router.post('', response_model=GroupRead, status_code=status.HTTP_201_CREATED)
@@ -138,6 +146,9 @@ async def join(group_id: UUID, current_user: User = Depends(require_verified_stu
     group, _ = await _visible_group(group_id, current_user, db)
     result = await service.join_group(db, group, current_user)
     await db.commit()
+    if result.status == 'requested':  # approval group → tell the admins someone's waiting
+        for admin_id in await service.admin_ids(db, group.conversation_id):
+            await _notify(admin_id, 'group_join_request', group, current_user.id)
     return result
 
 
@@ -162,6 +173,7 @@ async def approve(group_id: UUID, user_id: UUID, current_user: User = Depends(re
     _require(member, GroupAction.APPROVE_REQUEST)
     await service.approve_request(db, group, user_id)
     await db.commit()
+    await _notify(user_id, 'group_request_approved', group, current_user.id)
 
 
 @router.post('/{group_id}/requests/{user_id}/reject', status_code=status.HTTP_204_NO_CONTENT)
@@ -170,6 +182,7 @@ async def reject(group_id: UUID, user_id: UUID, current_user: User = Depends(req
     _require(member, GroupAction.APPROVE_REQUEST)
     await service.reject_request(db, group, user_id)
     await db.commit()
+    await _notify(user_id, 'group_request_rejected', group, current_user.id)
 
 
 @router.post('/{group_id}/invites', status_code=status.HTTP_204_NO_CONTENT)
@@ -178,6 +191,7 @@ async def invite(group_id: UUID, user_id: UUID = Body(..., embed=True), current_
     _require(member, GroupAction.INVITE)
     await service.invite_user(db, group, user_id, invited_by=current_user.id)
     await db.commit()
+    await _notify(user_id, 'group_invite', group, current_user.id)
 
 
 @router.post('/{group_id}/invites/accept', response_model=JoinResult)
@@ -231,6 +245,7 @@ async def change_member_role(
     _require(member, GroupAction.EDIT_GROUP)
     await service.change_role(db, group, member, user_id, role)
     await db.commit()
+    await _notify(user_id, 'group_made_admin' if role == 'admin' else 'group_removed_admin', group, current_user.id)
 
 
 @router.post('/{group_id}/transfer', status_code=status.HTTP_204_NO_CONTENT)
@@ -266,3 +281,4 @@ async def remove_member(
     await ws_manager.revoke_member(
         group.conversation_id, user_id, error(ErrorCode.FORBIDDEN, 'Removed from group')
     )
+    await _notify(user_id, 'group_removed', group, current_user.id)

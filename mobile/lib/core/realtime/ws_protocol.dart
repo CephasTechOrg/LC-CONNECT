@@ -96,6 +96,12 @@ class ReadReceipt extends InboundEvent {
   const ReadReceipt(this.conversationId, this.userId, this.throughMessageId, this.readAt);
 }
 
+class NotificationEvent extends InboundEvent {
+  /// The serialized notification (id, type, group, actor, ...) — same shape as `GET /notifications`.
+  final Map<String, dynamic> notification;
+  const NotificationEvent(this.notification);
+}
+
 class WsError extends InboundEvent {
   final String code;
   final String message;
@@ -135,6 +141,8 @@ InboundEvent parseInbound(Map<String, dynamic> raw) {
         raw['through_message_id'] as String,
         raw['read_at'] as String,
       );
+    case 'notification':
+      return NotificationEvent(Map<String, dynamic>.from(raw['notification'] as Map));
     case 'error':
       return WsError(raw['code'] as String? ?? 'error', raw['message'] as String? ?? '');
     default:
