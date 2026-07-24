@@ -122,6 +122,7 @@ class GroupRead extends GroupSummary {
 /// and `/groups/{id}/requests`. The profile fields are flattened from the nested `profile`.
 class GroupMember {
   final String userId;
+  final String? profileId; // for opening their public profile
   final String? displayName;
   final String? avatarUrl;
   final String? major;
@@ -131,6 +132,7 @@ class GroupMember {
 
   const GroupMember({
     required this.userId,
+    this.profileId,
     this.displayName,
     this.avatarUrl,
     this.major,
@@ -143,6 +145,7 @@ class GroupMember {
     final p = j['profile'] as Map<String, dynamic>?;
     return GroupMember(
       userId: j['user_id'] as String,
+      profileId: p?['id'] as String?,
       displayName: p?['display_name'] as String?,
       avatarUrl: p?['avatar_url'] as String?,
       major: p?['major'] as String?,
@@ -167,10 +170,11 @@ bool canModerate(String? actorRole, String targetRole) {
   return roleRank(actorRole) > roleRank(targetRole);
 }
 
-/// Payload passed to the group chat route: the display name for the header plus the group id
-/// (so the chat header can open the group detail/admin screen).
+/// Payload passed to the group chat route: the display name + avatar for the header, plus the
+/// group id (so the chat header can open the group detail/admin screen).
 class GroupChatArgs {
   final String name;
   final String? groupId;
-  const GroupChatArgs({required this.name, this.groupId});
+  final String? avatarUrl;
+  const GroupChatArgs({required this.name, this.groupId, this.avatarUrl});
 }

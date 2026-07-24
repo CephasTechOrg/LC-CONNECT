@@ -20,8 +20,7 @@ class _ActivitiesList extends StatelessWidget {
       return AppEmptyStateCard(
         icon: Icons.calendar_today_rounded,
         title: 'No upcoming activities',
-        subtitle:
-            'Looking for something to do? Check out the activities board.',
+        subtitle: 'Nothing scheduled right now.',
         actionLabel: 'Browse Activities',
         onAction: () => context.go('/activities'),
       );

@@ -51,7 +51,8 @@ class MessagePartner {
 class MessageSender {
   final String name;
   final String? avatarUrl;
-  const MessageSender({required this.name, this.avatarUrl});
+  final String? profileId; // for opening their profile from a group bubble
+  const MessageSender({required this.name, this.avatarUrl, this.profileId});
 }
 
 // ── Chat message ──────────────────────────────────────────────────

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -5,17 +7,51 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/avatar_widget.dart';
+import '../../../shared/widgets/app_search_field.dart';
 import '../../../shared/widgets/app_shell_header.dart';
 import '../../../shared/widgets/app_states.dart';
 import '../providers/messages_provider.dart';
 import '../providers/unread_provider.dart';
 import '../../groups/data/group_models.dart';
 
-class MessagesScreen extends ConsumerWidget {
+class MessagesScreen extends ConsumerStatefulWidget {
   const MessagesScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<MessagesScreen> createState() => _MessagesScreenState();
+}
+
+class _MessagesScreenState extends ConsumerState<MessagesScreen> {
+  final _searchController = TextEditingController();
+  Timer? _debounce;
+  String _query = '';
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _onSearch(String value) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 200), () {
+      if (mounted) setState(() => _query = value.trim().toLowerCase());
+    });
+  }
+
+  void _clearSearch() {
+    _debounce?.cancel();
+    _searchController.clear();
+    setState(() => _query = '');
+  }
+
+  List<MessageThread> _filter(List<MessageThread> threads) => _query.isEmpty
+      ? threads
+      : threads.where((t) => t.title.toLowerCase().contains(_query)).toList();
+
+  @override
+  Widget build(BuildContext context) {
     final async = ref.watch(threadsNotifierProvider);
 
     return Scaffold(
@@ -23,7 +59,16 @@ class MessagesScreen extends ConsumerWidget {
       body: SafeArea(
         child: Column(
           children: [
-            const _Header(),
+            const AppShellHeader(title: 'Messages'),
+            // Search only appears once there are conversations to search.
+            if ((async.asData?.value ?? const []).isNotEmpty)
+              AppSearchField(
+                controller: _searchController,
+                hasText: _query.isNotEmpty,
+                hint: 'Search messages',
+                onChanged: _onSearch,
+                onClear: _clearSearch,
+              ),
             Expanded(
               child: async.when(
                 loading: () =>
@@ -31,34 +76,22 @@ class MessagesScreen extends ConsumerWidget {
                 error: (e, _) => _ErrorState(
                   onRetry: () => ref.invalidate(threadsNotifierProvider),
                 ),
-                data: (threads) => RefreshIndicator(
-                  onRefresh: () async =>
-                      ref.invalidate(threadsNotifierProvider),
-                  child: threads.isEmpty
-                      ? const _EmptyState()
-                      : _ThreadList(threads: threads),
-                ),
+                data: (threads) {
+                  final visible = _filter(threads);
+                  return RefreshIndicator(
+                    onRefresh: () async =>
+                        ref.invalidate(threadsNotifierProvider),
+                    child: threads.isEmpty
+                        ? const _EmptyState()
+                        : visible.isEmpty
+                            ? _NoMatches(query: _query)
+                            : _ThreadList(threads: visible),
+                  );
+                },
               ),
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-// ── Header ────────────────────────────────────────────────────────
-class _Header extends StatelessWidget {
-  const _Header();
-
-  @override
-  Widget build(BuildContext context) {
-    return AppShellHeader(
-      title: 'Messages',
-      trailing: IconButton(
-        icon: const Icon(Icons.edit_outlined,
-            size: 21, color: AppColors.primary),
-        onPressed: () {},
       ),
     );
   }
@@ -97,7 +130,8 @@ class _ThreadCard extends ConsumerWidget {
     return InkWell(
       onTap: () => thread.isGroup
           ? context.push('/messages/group/${thread.conversationId}',
-              extra: GroupChatArgs(name: thread.groupName ?? 'Group', groupId: thread.groupId))
+              extra: GroupChatArgs(
+                  name: thread.groupName ?? 'Group', groupId: thread.groupId, avatarUrl: thread.avatarUrl))
           : context.push('/messages/${thread.matchId}', extra: thread),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
@@ -235,6 +269,28 @@ class _EmptyState extends StatelessWidget {
           icon: Icons.chat_bubble_outline_rounded,
           title: 'No messages yet',
           subtitle: 'Accept a connection request to start chatting.',
+        ),
+      ],
+    );
+  }
+}
+
+// ── No search matches ─────────────────────────────────────────────
+class _NoMatches extends StatelessWidget {
+  final String query;
+  const _NoMatches({required this.query});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      children: [
+        SizedBox(height: MediaQuery.of(context).size.height * 0.14),
+        Center(
+          child: Text(
+            'No conversations match "$query"',
+            style: GoogleFonts.dmSans(color: AppColors.textMuted),
+          ),
         ),
       ],
     );

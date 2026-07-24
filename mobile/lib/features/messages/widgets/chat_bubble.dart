@@ -35,7 +35,13 @@ class _BubbleTile extends StatelessWidget {
         ? null
         : isGroup
             ? (showSenderIdentity
-                ? AvatarWidget(imageUrl: sender?.avatarUrl, size: 28, cacheScope: message.senderId)
+                ? GestureDetector(
+                    // Tap a sender's avatar → their profile.
+                    onTap: sender?.profileId != null
+                        ? () => context.push('/users/${sender!.profileId}', extra: sender!.name)
+                        : null,
+                    child: AvatarWidget(imageUrl: sender?.avatarUrl, size: 28, cacheScope: message.senderId),
+                  )
                 : const SizedBox(width: 28))
             : AvatarWidget(imageUrl: partnerAvatarUrl, size: 28);
 

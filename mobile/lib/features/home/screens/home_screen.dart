@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -14,9 +16,11 @@ import '../../activities/providers/activities_provider.dart';
 import '../../groups/data/placeholder_groups.dart';
 import '../../messages/providers/messages_provider.dart';
 import '../../profile/providers/profile_provider.dart';
+import '../data/featured_slides.dart';
 
 part '../widgets/home_header.dart';
 part '../widgets/home_feed_sections.dart';
+part '../widgets/home_hero_banner.dart';
 part '../widgets/home_student_card.dart';
 part '../widgets/home_activity_list.dart';
 part '../widgets/home_match_cards.dart';
@@ -134,8 +138,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               const _SearchBar(),
               const SizedBox(height: 16),
               const _HeroBanner(),
-              const SizedBox(height: 16),
-              const _QuickActions(),
               _SectionHeader(
                 title: 'Recommended for you',
                 action: 'View all',

@@ -64,7 +64,12 @@ class _MemberTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final actions = _actions;
-    return Padding(
+    // Tapping the row opens the member's profile (the ⋯ button absorbs its own taps).
+    return InkWell(
+      onTap: member.profileId != null
+          ? () => context.push('/users/${member.profileId}', extra: member.displayName)
+          : null,
+      child: Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 7),
       child: Row(
         children: [
@@ -108,6 +113,7 @@ class _MemberTile extends StatelessWidget {
               ],
             ),
         ],
+      ),
       ),
     );
   }

@@ -1,161 +1,106 @@
 part of '../screens/chat_screen.dart';
 
 // ── Chat header ───────────────────────────────────────────────────
+// Compact, identity-first: back • avatar • name • action. Tapping the avatar/name opens the
+// partner's profile (DM) or the group's info screen (group); no separate identity card below.
 class _ChatHeader extends StatelessWidget {
   final String title;
+  final String? avatarUrl;
+  final bool isGroup;
 
-  /// Group mode only: tap the name/info icon to open the group detail/admin screen.
-  final VoidCallback? onOpenInfo;
-  const _ChatHeader({this.title = 'Messages', this.onOpenInfo});
+  /// Tap the avatar/name → the partner's profile (DM) or the group detail screen (group).
+  final VoidCallback? onIdentityTap;
+
+  /// DM only: the ⋯ menu (report / block the partner).
+  final VoidCallback? onMenu;
+
+  const _ChatHeader({
+    this.title = 'Messages',
+    this.avatarUrl,
+    this.isGroup = false,
+    this.onIdentityTap,
+    this.onMenu,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: AppColors.surface,
-      padding: const EdgeInsets.fromLTRB(4, 8, 12, 10),
+      padding: const EdgeInsets.fromLTRB(4, 6, 6, 6),
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        border: Border(bottom: BorderSide(color: AppColors.border)),
+      ),
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                size: 18, color: AppColors.textDark),
+            icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: AppColors.textDark),
             onPressed: () => Navigator.of(context).pop(),
           ),
           Expanded(
             child: InkWell(
-              onTap: onOpenInfo,
-              borderRadius: BorderRadius.circular(8),
-              child: Row(
-                children: [
-                  Container(
-                    width: 34,
-                    height: 34,
-                    decoration: BoxDecoration(
-                      color: AppColors.primary,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      'LC',
-                      style: GoogleFonts.dmSans(
-                        color: Colors.white,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.dmSans(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textDark,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          Icon(
-            onOpenInfo != null ? Icons.info_outline_rounded : Icons.edit_outlined,
-            size: 20,
-            color: AppColors.textMuted,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Partner info row ──────────────────────────────────────────────
-class _PartnerInfoRow extends StatelessWidget {
-  final MessagePartner partner;
-  const _PartnerInfoRow({required this.partner});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: AppColors.surface,
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, 14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              AvatarWidget(imageUrl: partner.avatarUrl, size: 56),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              onTap: onIdentityTap,
+              borderRadius: BorderRadius.circular(10),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
                   children: [
-                    Text(
-                      partner.displayName ?? 'LC Student',
-                      style: GoogleFonts.dmSans(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textDark,
-                      ),
-                    ),
-                    Text(
-                      'Livingstone College',
-                      style: GoogleFonts.dmSans(
-                        fontSize: 12,
-                        color: AppColors.textMuted,
-                        fontWeight: FontWeight.w400,
+                    _HeaderAvatar(url: avatarUrl, isGroup: isGroup),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.dmSans(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textDark,
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
-              const Icon(Icons.more_horiz_rounded,
-                  color: AppColors.textMuted, size: 22),
-            ],
-          ),
-          // Interest/looking-for tags
-          if (partner.lookingFor.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 6,
-              runSpacing: 4,
-              children: partner.lookingFor
-                  .take(3)
-                  .map((label) => _Tag(label: label))
-                  .toList(),
             ),
-          ],
+          ),
+          if (isGroup)
+            IconButton(
+              icon: const Icon(Icons.info_outline_rounded, size: 21, color: AppColors.textMuted),
+              onPressed: onIdentityTap,
+            )
+          else if (onMenu != null)
+            IconButton(
+              icon: const Icon(Icons.more_horiz_rounded, size: 22, color: AppColors.textMuted),
+              onPressed: onMenu,
+            )
+          else
+            const SizedBox(width: 8),
         ],
       ),
     );
   }
 }
 
-class _Tag extends StatelessWidget {
-  final String label;
-  const _Tag({required this.label});
+/// The header avatar — the partner's photo (DM) or the group's photo, each with the right
+/// fallback icon (person vs group) instead of a generic placeholder.
+class _HeaderAvatar extends StatelessWidget {
+  final String? url;
+  final bool isGroup;
+  const _HeaderAvatar({this.url, this.isGroup = false});
 
   @override
   Widget build(BuildContext context) {
+    if (!isGroup) return AvatarWidget(imageUrl: url, size: 38);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: AppColors.primarySoft,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.primary.withAlpha(50)),
-      ),
-      child: Text(
-        label,
-        style: GoogleFonts.dmSans(
-          fontSize: 12,
-          color: AppColors.primary,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
+      width: 38,
+      height: 38,
+      clipBehavior: Clip.antiAlias,
+      alignment: Alignment.center,
+      decoration: const BoxDecoration(color: AppColors.primarySoft, shape: BoxShape.circle),
+      child: url != null
+          ? Image.network(url!, width: 38, height: 38, fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => const Icon(Icons.groups_outlined, size: 20, color: AppColors.primary))
+          : const Icon(Icons.groups_outlined, size: 20, color: AppColors.primary),
     );
   }
 }
-
-// ── Message list ──────────────────────────────────────────────────

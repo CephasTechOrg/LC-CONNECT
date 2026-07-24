@@ -28,7 +28,7 @@ class _YourGroupsSectionState extends ConsumerState<YourGroupsSection> {
       if (!mounted) return;
       context.push(
         '/messages/group/${full.conversationId}',
-        extra: GroupChatArgs(name: full.name, groupId: full.id),
+        extra: GroupChatArgs(name: full.name, groupId: full.id, avatarUrl: full.avatarUrl),
       );
     } catch (_) {
       if (mounted) {

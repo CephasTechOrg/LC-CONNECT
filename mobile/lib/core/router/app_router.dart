@@ -171,6 +171,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                     matchId: state.pathParameters['conversationId']!,
                     groupTitle: args?.name ?? 'Group',
                     groupId: args?.groupId,
+                    groupAvatarUrl: args?.avatarUrl,
                   );
                 },
               ),

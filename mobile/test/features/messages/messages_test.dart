@@ -183,7 +183,7 @@ void main() {
             'body': '',
             'created_at': '2025-05-01T10:00:00.000Z',
             'read_at': null,
-            if (deleted != null) 'deleted': deleted,
+            'deleted': ?deleted,
           });
       expect(parse(deleted: null).deleted, isFalse); // absent → not deleted
       expect(parse(deleted: true).deleted, isTrue);
@@ -392,20 +392,14 @@ void main() {
       );
     }
 
-    testWidgets('shows partner name in info row', (tester) async {
+    testWidgets('shows the partner name in the compact header', (tester) async {
       await tester.pumpWidget(chatScope());
       // Stub adapter resolves the initial fetch with an empty list, so the
       // screen settles into its loaded (empty) state.
       await tester.pumpAndSettle();
 
+      // Identity lives in the header now (no separate info card); interest tags moved to the profile.
       expect(find.text('Maya Chen'), findsOneWidget);
-    });
-
-    testWidgets('shows looking-for tag chips', (tester) async {
-      await tester.pumpWidget(chatScope());
-      await tester.pumpAndSettle();
-
-      expect(find.text('Study Partner'), findsOneWidget);
     });
 
     testWidgets('shows empty chat state on load with no messages',

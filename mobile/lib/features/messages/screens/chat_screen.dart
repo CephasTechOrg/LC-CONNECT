@@ -31,8 +31,16 @@ class ChatScreen extends ConsumerStatefulWidget {
   final MessageThread? thread;
   final String? groupTitle;
   final String? groupId;
+  final String? groupAvatarUrl;
 
-  const ChatScreen({super.key, required this.matchId, this.thread, this.groupTitle, this.groupId});
+  const ChatScreen({
+    super.key,
+    required this.matchId,
+    this.thread,
+    this.groupTitle,
+    this.groupId,
+    this.groupAvatarUrl,
+  });
 
   @override
   ConsumerState<ChatScreen> createState() => _ChatScreenState();
@@ -430,6 +438,19 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   /// Long-press a member's message → report it (group mode only). Scoped to the group so
   /// moderators know where it came from.
+  /// DM ⋯ menu — report or block the partner (blocking revokes the chat, so return to the inbox).
+  void _openDmMenu(MessagePartner partner) {
+    showSafetySheet(
+      context: context,
+      targetUserId: partner.userId,
+      targetName: partner.displayName ?? 'this student',
+      safetyService: ref.read(safetyServiceProvider),
+      onBlocked: () {
+        if (mounted) context.go('/messages');
+      },
+    );
+  }
+
   void _reportMessage(ChatMessage message) {
     showReportMessageSheet(
       context: context,
@@ -446,7 +467,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final members = ref.watch(groupMembersProvider(widget.groupId!)).asData?.value;
     if (members == null) return const {};
     return {
-      for (final m in members) m.userId: MessageSender(name: m.nameOrFallback, avatarUrl: m.avatarUrl),
+      for (final m in members)
+        m.userId: MessageSender(name: m.nameOrFallback, avatarUrl: m.avatarUrl, profileId: m.profileId),
     };
   }
 
@@ -460,12 +482,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         child: Column(
           children: [
             _ChatHeader(
-              title: widget.groupTitle ?? 'Messages',
-              onOpenInfo: widget.groupId != null
+              title: _isGroup ? (widget.groupTitle ?? 'Group') : (partner?.displayName ?? 'Chat'),
+              avatarUrl: _isGroup ? widget.groupAvatarUrl : partner?.avatarUrl,
+              isGroup: _isGroup,
+              onIdentityTap: _isGroup
                   ? () => context.push('/groups/${widget.groupId}')
-                  : null,
+                  : (partner != null
+                      ? () => context.push('/users/${partner.profileId}', extra: partner.displayName)
+                      : null),
+              onMenu: (!_isGroup && partner != null) ? () => _openDmMenu(partner) : null,
             ),
-            if (partner != null) _PartnerInfoRow(partner: partner),
             _ConnectionBanner(status: _rt.status),
             Expanded(
               child: _loading
