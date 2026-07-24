@@ -142,6 +142,27 @@ async def test_invitee_lists_and_accepts_a_private_invite(db, factory):
     assert await service.active_member_count(db, group.conversation_id) == 2
 
 
+async def test_member_can_mute_and_unmute(db, factory):
+    owner = await factory.user()
+    member = await factory.user()
+    group = await _make_group(db, owner, join_policy='open')
+    await service.join_group(db, group, member)
+    await db.commit()
+
+    m = await service.membership(db, group.conversation_id, member.id)
+    assert m.muted is False
+
+    await service.set_mute(db, m, True)
+    await db.commit()
+    m = await service.membership(db, group.conversation_id, member.id)
+    assert m.muted is True
+    assert (await service.to_read(db, group, m)).my_muted is True  # reflected for that viewer
+
+    await service.set_mute(db, m, False)
+    await db.commit()
+    assert (await service.membership(db, group.conversation_id, member.id)).muted is False
+
+
 async def test_invitee_can_decline_a_pending_invite(db, factory):
     owner = await factory.user()
     friend = await factory.user()

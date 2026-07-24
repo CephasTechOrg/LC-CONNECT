@@ -204,6 +204,21 @@ async def leave(group_id: UUID, current_user: User = Depends(require_verified_st
     await db.commit()
 
 
+# Declared before `/members/{user_id}` so the literal `me` wins over the UUID path param.
+@router.patch('/{group_id}/members/me', status_code=status.HTTP_204_NO_CONTENT)
+async def set_my_mute(
+    group_id: UUID,
+    muted: bool = Body(..., embed=True),
+    current_user: User = Depends(require_verified_student),
+    db: AsyncSession = Depends(get_db),
+):
+    group, member = await _visible_group(group_id, current_user, db)
+    if _active_role(member) is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Not a member')
+    await service.set_mute(db, member, muted)
+    await db.commit()
+
+
 @router.patch('/{group_id}/members/{user_id}', status_code=status.HTTP_204_NO_CONTENT)
 async def change_member_role(
     group_id: UUID,

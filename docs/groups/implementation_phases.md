@@ -334,8 +334,20 @@ pass · snapshot updated.
 by name via the existing `q` param (`GroupSearchField` widget + `DiscoverArgs` record key on
 `discoverGroupsProvider`, combinable with the category filter). Backend unchanged. Mobile-only.
 
-**Still open (deferred, backend mostly ready):** mute toggle (`muted` column), report-whole-group
-action, avatar-at-creation, a "Your Groups" list, and membership-event notifications.
+**F4 ✅ — mute a group.** `PATCH /groups/{id}/members/me {muted}` sets the member's `muted` flag
+(already honoured by push fan-out — muted members still get messages live, just no push);
+`GroupRead.my_muted` exposes current state. Mobile: a "Mute notifications" switch on the detail
+screen. Snapshot regenerated (new route + field). Tests: `test_member_can_mute_and_unmute`.
+
+**F5 ✅ — report a whole group.** `SafetyService.reportGroup` + `showReportGroupSheet` (reuses the
+shared reason picker); a "Report group" action in the detail-screen footer (hidden for the owner).
+Backend `/reports` already accepted `group_id`. Test: `Report group flow` in `safety_test`.
+
+**Gate: ✅ green** — 147 backend tests · 135 mobile tests · ruff + analyze clean · line limits pass ·
+snapshot updated.
+
+**Still open (deferred, backend not yet built for these):** avatar-at-creation, a "Your Groups"
+list, and membership-event notifications.
 
 ---
 

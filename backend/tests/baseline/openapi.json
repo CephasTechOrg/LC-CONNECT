@@ -249,6 +249,19 @@
         "title": "Body_invite_api_v1_groups__group_id__invites_post",
         "type": "object"
       },
+      "Body_set_my_mute_api_v1_groups__group_id__members_me_patch": {
+        "properties": {
+          "muted": {
+            "title": "Muted",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "muted"
+        ],
+        "title": "Body_set_my_mute_api_v1_groups__group_id__members_me_patch",
+        "type": "object"
+      },
       "Body_transfer_ownership_api_v1_groups__group_id__transfer_post": {
         "properties": {
           "user_id": {
@@ -904,6 +917,11 @@
           "member_count": {
             "title": "Member Count",
             "type": "integer"
+          },
+          "my_muted": {
+            "default": false,
+            "title": "My Muted",
+            "type": "boolean"
           },
           "my_role": {
             "anyOf": [
@@ -4183,6 +4201,55 @@
           }
         ],
         "summary": "Leave",
+        "tags": [
+          "groups"
+        ]
+      },
+      "patch": {
+        "operationId": "set_my_mute_api_v1_groups__group_id__members_me_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "group_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Group Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_set_my_mute_api_v1_groups__group_id__members_me_patch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Set My Mute",
         "tags": [
           "groups"
         ]

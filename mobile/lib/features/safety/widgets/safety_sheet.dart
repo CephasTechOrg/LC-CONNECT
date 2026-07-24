@@ -73,6 +73,23 @@ Future<void> showReportMessageSheet({
   );
 }
 
+/// Report an entire group. Reuses the reason picker.
+Future<void> showReportGroupSheet({
+  required BuildContext context,
+  required String groupId,
+  required SafetyService safetyService,
+}) {
+  return showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    shape: _sheetShape,
+    builder: (_) => _ReportSheet(
+      title: 'Why are you reporting this group?',
+      onSubmit: (reason) => safetyService.reportGroup(groupId: groupId, reason: reason),
+    ),
+  );
+}
+
 // ── Options sheet (Report / Block) ────────────────────────────────
 class _OptionsSheet extends StatelessWidget {
   final String targetName;

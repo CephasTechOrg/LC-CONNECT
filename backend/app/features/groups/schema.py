@@ -46,6 +46,7 @@ class GroupRead(GroupSummary):
     owner_id: UUID
     conversation_id: UUID
     my_role: str | None  # None | member | admin | owner
+    my_muted: bool = False  # whether the viewer has muted this group's notifications
     created_at: datetime
 
 

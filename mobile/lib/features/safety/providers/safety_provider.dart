@@ -16,6 +16,13 @@ abstract class SafetyService {
     required String reason,
     String? details,
   });
+
+  /// Report an entire group (e.g. its purpose or ongoing content).
+  Future<void> reportGroup({
+    required String groupId,
+    required String reason,
+    String? details,
+  });
 }
 
 class _ApiSafetyService extends SafetyService {
@@ -50,6 +57,19 @@ class _ApiSafetyService extends SafetyService {
     await _client.dio.post('/reports', data: {
       'message_id': messageId,
       'group_id': ?groupId,
+      'reason': reason,
+      if (details != null && details.isNotEmpty) 'details': details,
+    });
+  }
+
+  @override
+  Future<void> reportGroup({
+    required String groupId,
+    required String reason,
+    String? details,
+  }) async {
+    await _client.dio.post('/reports', data: {
+      'group_id': groupId,
       'reason': reason,
       if (details != null && details.isNotEmpty) 'details': details,
     });

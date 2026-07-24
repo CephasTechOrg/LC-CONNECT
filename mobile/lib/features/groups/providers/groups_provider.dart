@@ -136,6 +136,12 @@ class GroupsRepository {
   Future<void> leave(String groupId) =>
       _ref.read(apiClientProvider).dio.delete('/groups/$groupId/members/me');
 
+  /// Mute/unmute my notifications for this group (personal; others are unaffected).
+  Future<void> setMute(String groupId, bool muted) => _ref
+      .read(apiClientProvider)
+      .dio
+      .patch('/groups/$groupId/members/me', data: {'muted': muted});
+
   Future<void> delete(String groupId) =>
       _ref.read(apiClientProvider).dio.delete('/groups/$groupId');
 

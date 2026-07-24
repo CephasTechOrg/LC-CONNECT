@@ -40,6 +40,20 @@ class _MockSafetyService extends SafetyService {
     lastReportedMessageId = messageId;
     lastReportReason = reason;
   }
+
+  bool reportGroupCalled = false;
+  String? lastReportedGroupId;
+
+  @override
+  Future<void> reportGroup({
+    required String groupId,
+    required String reason,
+    String? details,
+  }) async {
+    reportGroupCalled = true;
+    lastReportedGroupId = groupId;
+    lastReportReason = reason;
+  }
 }
 
 // ── Helper: page with a button that opens the safety sheet ────────
@@ -283,6 +297,41 @@ void main() {
       expect(mock.reportMessageCalled, isTrue);
       expect(mock.lastReportedMessageId, 'msg-77');
       expect(mock.lastReportReason, 'Inappropriate content');
+    });
+  });
+
+  group('Report group flow', () {
+    Widget groupReportPage(_MockSafetyService mock) => MaterialApp(
+          home: Builder(
+            builder: (ctx) => Scaffold(
+              body: Center(
+                child: ElevatedButton(
+                  key: const Key('open'),
+                  onPressed: () => showReportGroupSheet(
+                    context: ctx,
+                    groupId: 'grp-42',
+                    safetyService: mock,
+                  ),
+                  child: const Text('Open'),
+                ),
+              ),
+            ),
+          ),
+        );
+
+    testWidgets('selecting a reason + submit calls reportGroup', (tester) async {
+      final mock = _MockSafetyService();
+      await tester.pumpWidget(groupReportPage(mock));
+      await tester.tap(find.byKey(const Key('open')));
+      await tester.pumpAndSettle();
+      expect(find.text('Why are you reporting this group?'), findsOneWidget);
+      await tester.tap(find.text('Spam or fake profile'));
+      await tester.pump();
+      await tester.tap(find.text('Submit Report'));
+      await tester.pumpAndSettle();
+      expect(mock.reportGroupCalled, isTrue);
+      expect(mock.lastReportedGroupId, 'grp-42');
+      expect(mock.lastReportReason, 'Spam or fake profile');
     });
   });
 }

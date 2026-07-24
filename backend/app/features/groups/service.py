@@ -83,6 +83,7 @@ async def to_read(db: AsyncSession, group: Group, viewer_member: ConversationMem
         owner_id=group.owner_id,
         conversation_id=group.conversation_id,
         my_role=viewer_member.role if (viewer_member and viewer_member.status == ACTIVE) else None,
+        my_muted=bool(viewer_member.muted) if (viewer_member and viewer_member.status == ACTIVE) else False,
         created_at=group.created_at,
     )
 
@@ -217,6 +218,12 @@ async def leave_group(db: AsyncSession, group: Group, member: ConversationMember
             detail='Transfer ownership before leaving the group',
         )
     member.status = 'removed'
+
+
+async def set_mute(db: AsyncSession, member: ConversationMember, muted: bool) -> None:
+    """Mute/unmute the group for this member — suppresses their push notifications (they still
+    receive messages live). Personal to the member; never affects anyone else."""
+    member.muted = muted
 
 
 async def update_group(db: AsyncSession, group: Group, changes: dict) -> None:

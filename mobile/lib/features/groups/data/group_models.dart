@@ -73,6 +73,7 @@ class GroupRead extends GroupSummary {
   final String ownerId;
   final String conversationId;
   final String? myRole; // null | member | admin | owner
+  final bool myMuted; // whether I've muted this group's notifications
 
   const GroupRead({
     required super.id,
@@ -88,6 +89,7 @@ class GroupRead extends GroupSummary {
     required this.ownerId,
     required this.conversationId,
     this.myRole,
+    this.myMuted = false,
   });
 
   factory GroupRead.fromJson(Map<String, dynamic> j) => GroupRead(
@@ -104,6 +106,7 @@ class GroupRead extends GroupSummary {
         ownerId: j['owner_id'] as String,
         conversationId: j['conversation_id'] as String,
         myRole: j['my_role'] as String?,
+        myMuted: j['my_muted'] as bool? ?? false,
       );
 
   bool get iAmOwner => myRole == 'owner';

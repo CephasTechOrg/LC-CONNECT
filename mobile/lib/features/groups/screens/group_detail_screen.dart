@@ -7,6 +7,8 @@ import 'package:image_picker/image_picker.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/avatar_widget.dart';
 import '../../messages/providers/messages_provider.dart';
+import '../../safety/providers/safety_provider.dart';
+import '../../safety/widgets/safety_sheet.dart';
 import '../data/group_models.dart';
 import '../providers/groups_provider.dart';
 
@@ -117,6 +119,26 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
     } finally {
       if (mounted) setState(() => _uploadingAvatar = false);
     }
+  }
+
+  Future<void> _toggleMute(GroupRead group) async {
+    final next = !group.myMuted;
+    try {
+      await _repo.setMute(_gid, next);
+      if (!mounted) return;
+      ref.invalidate(groupDetailProvider(_gid));
+      _snack(next ? 'Notifications muted' : 'Notifications unmuted');
+    } catch (_) {
+      _snack('Could not update notifications — try again', error: true);
+    }
+  }
+
+  void _report() {
+    showReportGroupSheet(
+      context: context,
+      groupId: _gid,
+      safetyService: ref.read(safetyServiceProvider),
+    );
   }
 
   Future<void> _edit(GroupRead group) async {
@@ -240,6 +262,11 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
               ],
             ),
           ),
+        if (group.isMember)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
+            child: _MuteRow(muted: group.myMuted, onChanged: (_) => _toggleMute(group)),
+          ),
         if (group.iCanManage)
           _RequestsSection(groupId: _gid, busy: _busy, onApprove: _approve, onReject: _reject),
         _MembersList(
@@ -255,6 +282,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
         const SizedBox(height: 16),
         _FooterActions(
           group: group,
+          onReport: _report,
           onLeave: () => _leave(group),
           onDelete: () => _delete(group),
         ),

@@ -29,6 +29,7 @@ GET /api/v1/profiles/me
 GET /api/v1/profiles/{profile_id}
 GET /health
 PATCH /api/v1/groups/{group_id}
+PATCH /api/v1/groups/{group_id}/members/me
 PATCH /api/v1/groups/{group_id}/members/{user_id}
 PATCH /api/v1/profiles/me
 POST /api/v1/activities

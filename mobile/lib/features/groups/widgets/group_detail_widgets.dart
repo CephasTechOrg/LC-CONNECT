@@ -128,9 +128,15 @@ class _MembersList extends ConsumerWidget {
 
 class _FooterActions extends StatelessWidget {
   final GroupRead group;
+  final VoidCallback onReport;
   final VoidCallback onLeave;
   final VoidCallback onDelete;
-  const _FooterActions({required this.group, required this.onLeave, required this.onDelete});
+  const _FooterActions({
+    required this.group,
+    required this.onReport,
+    required this.onLeave,
+    required this.onDelete,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -138,10 +144,44 @@ class _FooterActions extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Column(
         children: [
+          // The owner manages the group rather than reporting it.
+          if (!group.iAmOwner)
+            _DangerRow(icon: Icons.flag_outlined, label: 'Report group', onTap: onReport),
           if (!group.iAmOwner && group.isMember)
             _DangerRow(icon: Icons.logout_rounded, label: 'Leave group', onTap: onLeave),
           if (group.iAmOwner)
             _DangerRow(icon: Icons.delete_outline_rounded, label: 'Delete group', onTap: onDelete),
+        ],
+      ),
+    );
+  }
+}
+
+/// Personal "mute notifications" toggle for a member — suppresses push, messages still arrive live.
+class _MuteRow extends StatelessWidget {
+  final bool muted;
+  final ValueChanged<bool> onChanged;
+  const _MuteRow({required this.muted, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.border)),
+      child: Row(
+        children: [
+          Icon(muted ? Icons.notifications_off_outlined : Icons.notifications_outlined,
+              size: 20, color: AppColors.textMid),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text('Mute notifications',
+                style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textDark)),
+          ),
+          Switch(
+            value: muted,
+            onChanged: onChanged,
+            activeThumbColor: AppColors.primary,
+          ),
         ],
       ),
     );
