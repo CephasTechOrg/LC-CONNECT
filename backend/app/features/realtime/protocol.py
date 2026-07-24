@@ -192,3 +192,8 @@ def read_receipt(conversation_id: UUID, user_id: UUID, through_message_id: UUID,
 def notification_event(notification: dict[str, Any]) -> dict[str, Any]:
     """User-channel event: a new in-app notification (already serialized to a plain dict)."""
     return {'type': 'notification', 'notification': notification}
+
+
+def message_deleted(conversation_id: UUID, message_id: UUID) -> dict[str, Any]:
+    """A message was deleted for everyone — clients tombstone it in the open chat."""
+    return {'type': 'message.deleted', 'conversation_id': str(conversation_id), 'message_id': str(message_id)}

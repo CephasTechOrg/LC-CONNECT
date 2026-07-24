@@ -8,6 +8,7 @@ class _BubbleTile extends StatelessWidget {
   final MessageSender? sender; // group mode: the message's sender identity
   final bool showSenderIdentity; // first message of a sender's run → show name + avatar
   final void Function(ChatMessage)? onReport;
+  final void Function(ChatMessage)? onDelete; // delete-for-everyone (own message, or I moderate)
   final void Function(ChatMessage)? onRetry;
   const _BubbleTile({
     required this.message,
@@ -17,8 +18,13 @@ class _BubbleTile extends StatelessWidget {
     this.sender,
     this.showSenderIdentity = false,
     this.onReport,
+    this.onDelete,
     this.onRetry,
   });
+
+  bool get _canReport => !isMine && onReport != null;
+  bool get _canDelete => onDelete != null;
+  bool get _hasMenu => !message.deleted && (_canReport || _canDelete);
 
   @override
   Widget build(BuildContext context) {
@@ -63,42 +69,60 @@ class _BubbleTile extends StatelessWidget {
                     ),
                   ),
                 GestureDetector(
-                  onLongPress: (!isMine && onReport != null)
-                      ? () => _showReportOption(context)
-                      : null,
+                  onLongPress: _hasMenu ? () => _showOptions(context) : null,
                   child: Container(
                     padding: const EdgeInsets.symmetric(
                         horizontal: 14, vertical: 10),
                     decoration: BoxDecoration(
-                      color: isMine ? AppColors.primary : AppColors.surface,
+                      color: message.deleted
+                          ? AppColors.background
+                          : (isMine ? AppColors.primary : AppColors.surface),
                       borderRadius: BorderRadius.only(
                         topLeft: const Radius.circular(18),
                         topRight: const Radius.circular(18),
                         bottomLeft: Radius.circular(isMine ? 18 : 4),
                         bottomRight: Radius.circular(isMine ? 4 : 18),
                       ),
-                      border: isMine
+                      border: isMine && !message.deleted
                           ? null
                           : Border.all(color: AppColors.border),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withAlpha(10),
-                          blurRadius: 4,
-                          offset: const Offset(0, 1),
-                        ),
-                      ],
+                      boxShadow: message.deleted
+                          ? null
+                          : [
+                              BoxShadow(
+                                color: Colors.black.withAlpha(10),
+                                blurRadius: 4,
+                                offset: const Offset(0, 1),
+                              ),
+                            ],
                     ),
                     constraints: BoxConstraints(
                       maxWidth: MediaQuery.of(context).size.width * 0.68,
                     ),
-                    child: Text(
-                      message.body,
-                      style: GoogleFonts.dmSans(
-                        fontSize: 14,
-                        color: isMine ? Colors.white : AppColors.textDark,
-                        height: 1.4,
-                      ),
-                    ),
+                    child: message.deleted
+                        ? Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.block_rounded, size: 13, color: AppColors.textMuted),
+                              const SizedBox(width: 6),
+                              Text(
+                                'This message was deleted',
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 13,
+                                  fontStyle: FontStyle.italic,
+                                  color: AppColors.textMuted,
+                                ),
+                              ),
+                            ],
+                          )
+                        : Text(
+                            message.body,
+                            style: GoogleFonts.dmSans(
+                              fontSize: 14,
+                              color: isMine ? Colors.white : AppColors.textDark,
+                              height: 1.4,
+                            ),
+                          ),
                   ),
                 ),
                 const SizedBox(height: 3),
@@ -109,7 +133,7 @@ class _BubbleTile extends StatelessWidget {
                       DateFormat('h:mm a').format(message.createdAt.toLocal()),
                       style: GoogleFonts.dmSans(fontSize: 10, color: AppColors.textMuted),
                     ),
-                    if (isMine) ...[const SizedBox(width: 5), _status(context)],
+                    if (isMine && !message.deleted) ...[const SizedBox(width: 5), _status(context)],
                   ],
                 ),
               ],
@@ -121,7 +145,7 @@ class _BubbleTile extends StatelessWidget {
     );
   }
 
-  void _showReportOption(BuildContext context) {
+  void _showOptions(BuildContext context) {
     showModalBottomSheet<void>(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -135,27 +159,33 @@ class _BubbleTile extends StatelessWidget {
             Container(
               width: 36,
               height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.border,
-                borderRadius: BorderRadius.circular(2),
-              ),
+              decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2)),
             ),
             const SizedBox(height: 8),
-            ListTile(
-              leading: const Icon(Icons.flag_outlined, color: AppColors.textMid),
-              title: Text(
-                'Report message',
-                style: GoogleFonts.dmSans(fontWeight: FontWeight.w500, color: AppColors.textDark),
+            if (_canDelete)
+              ListTile(
+                leading: const Icon(Icons.delete_outline_rounded, color: AppColors.error),
+                title: Text('Delete for everyone',
+                    style: GoogleFonts.dmSans(fontWeight: FontWeight.w500, color: AppColors.error)),
+                subtitle: Text('Removes it for all participants',
+                    style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textMuted)),
+                onTap: () {
+                  Navigator.of(sheetCtx).pop();
+                  onDelete?.call(message);
+                },
               ),
-              subtitle: Text(
-                'Flag this message for review',
-                style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textMuted),
+            if (_canReport)
+              ListTile(
+                leading: const Icon(Icons.flag_outlined, color: AppColors.textMid),
+                title: Text('Report message',
+                    style: GoogleFonts.dmSans(fontWeight: FontWeight.w500, color: AppColors.textDark)),
+                subtitle: Text('Flag this message for review',
+                    style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textMuted)),
+                onTap: () {
+                  Navigator.of(sheetCtx).pop();
+                  onReport?.call(message);
+                },
               ),
-              onTap: () {
-                Navigator.of(sheetCtx).pop();
-                onReport?.call(message);
-              },
-            ),
           ],
         ),
       ),

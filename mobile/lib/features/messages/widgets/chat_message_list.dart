@@ -7,6 +7,8 @@ class _MessageList extends StatelessWidget {
   final bool isGroup;
   final Map<String, MessageSender> senders;
   final void Function(ChatMessage)? onReport;
+  final void Function(ChatMessage)? onDelete;
+  final bool iAmGroupAdmin;
   final ScrollController scrollController;
   final void Function(ChatMessage) onRetry;
   const _MessageList({
@@ -16,6 +18,8 @@ class _MessageList extends StatelessWidget {
     this.isGroup = false,
     this.senders = const {},
     this.onReport,
+    this.onDelete,
+    this.iAmGroupAdmin = false,
     required this.scrollController,
     required this.onRetry,
   });
@@ -63,6 +67,8 @@ class _MessageList extends StatelessWidget {
           sender: isGroup ? senders[msg.senderId] : null,
           showSenderIdentity: showSenderIdentity,
           onReport: onReport,
+          // Delete for everyone: my own messages anywhere, or anyone's when I moderate the group.
+          onDelete: (isMine || iAmGroupAdmin) ? onDelete : null,
           onRetry: onRetry,
         );
       },

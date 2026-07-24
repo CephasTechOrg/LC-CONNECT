@@ -102,6 +102,12 @@ class NotificationEvent extends InboundEvent {
   const NotificationEvent(this.notification);
 }
 
+class MessageDeleted extends InboundEvent {
+  final String conversationId;
+  final String messageId;
+  const MessageDeleted(this.conversationId, this.messageId);
+}
+
 class WsError extends InboundEvent {
   final String code;
   final String message;
@@ -143,6 +149,8 @@ InboundEvent parseInbound(Map<String, dynamic> raw) {
       );
     case 'notification':
       return NotificationEvent(Map<String, dynamic>.from(raw['notification'] as Map));
+    case 'message.deleted':
+      return MessageDeleted(raw['conversation_id'] as String, raw['message_id'] as String);
     case 'error':
       return WsError(raw['code'] as String? ?? 'error', raw['message'] as String? ?? '');
     default:

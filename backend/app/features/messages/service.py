@@ -156,16 +156,38 @@ async def list_threads_for_user(db: AsyncSession, user_id: UUID) -> list[Message
 
 
 def message_read(message: Message) -> MessageRead:
+    deleted = message.deleted_at is not None
     return MessageRead(
         id=message.id,
         match_id=message.match_id,  # None for group messages
         conversation_id=message.conversation_id,
         sender_id=message.sender_id,
         client_message_id=message.client_message_id,
-        body=message.body,
+        body='' if deleted else message.body,  # never leak the original body of a deleted message
         created_at=message.created_at,
         read_at=message.read_at,
+        deleted=deleted,
     )
+
+
+async def delete_message(db: AsyncSession, message_id: UUID, actor_id: UUID) -> Message:
+    """Soft-delete a message for everyone. The sender may delete their own message anywhere; a
+    group admin/owner may delete any message in their group (moderation). Idempotent."""
+    from app.shared.conversations import is_active_member, member_role
+
+    message = await db.get(Message, message_id)
+    if message is None or message.conversation_id is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Message not found')
+    if not await is_active_member(db, message.conversation_id, actor_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Message not found')
+    if message.sender_id != actor_id:
+        if await member_role(db, message.conversation_id, actor_id) not in ('admin', 'owner'):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='You can only delete your own messages')
+    if message.deleted_at is None:
+        message.deleted_at = datetime.now(UTC)
+        await db.commit()
+        await db.refresh(message)
+    return message
 
 
 async def persist_message_idempotent(

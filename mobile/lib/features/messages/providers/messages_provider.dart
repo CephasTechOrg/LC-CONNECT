@@ -66,6 +66,7 @@ class ChatMessage {
   final DateTime createdAt;
   final DateTime? readAt;
   final MessageStatus status;
+  final bool deleted;
 
   const ChatMessage({
     required this.id,
@@ -76,6 +77,7 @@ class ChatMessage {
     required this.createdAt,
     this.readAt,
     this.status = MessageStatus.sent,
+    this.deleted = false,
   });
 
   factory ChatMessage.fromJson(Map<String, dynamic> j) => ChatMessage(
@@ -87,9 +89,10 @@ class ChatMessage {
         createdAt: DateTime.parse(j['created_at'] as String),
         readAt: j['read_at'] != null ? DateTime.parse(j['read_at'] as String) : null,
         status: MessageStatus.sent,
+        deleted: j['deleted'] as bool? ?? false,
       );
 
-  ChatMessage copyWith({String? id, DateTime? readAt, MessageStatus? status}) => ChatMessage(
+  ChatMessage copyWith({String? id, DateTime? readAt, MessageStatus? status, bool? deleted}) => ChatMessage(
         id: id ?? this.id,
         matchId: matchId,
         senderId: senderId,
@@ -98,6 +101,7 @@ class ChatMessage {
         createdAt: createdAt,
         readAt: readAt ?? this.readAt,
         status: status ?? this.status,
+        deleted: deleted ?? this.deleted,
       );
 }
 

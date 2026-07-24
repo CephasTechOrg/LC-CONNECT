@@ -233,9 +233,48 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         _setPartnerTyping(active);
       case ReadReceipt(:final conversationId) when conversationId == widget.matchId:
         _markMineRead();
+      case MessageDeleted(:final conversationId, :final messageId) when conversationId == widget.matchId:
+        _markDeleted(messageId);
       default:
         break;
     }
+  }
+
+  void _markDeleted(String messageId) {
+    final idx = _messages.indexWhere((m) => m.id == messageId);
+    if (idx == -1 || _messages[idx].deleted) return;
+    setState(() => _messages[idx] = _messages[idx].copyWith(deleted: true));
+  }
+
+  /// Delete a message for everyone (optimistic; reverts + warns on failure).
+  Future<void> _deleteMessage(ChatMessage msg) async {
+    _markDeleted(msg.id);
+    try {
+      await ref.read(apiClientProvider).dio.delete('/messages/${msg.id}');
+    } catch (_) {
+      if (!mounted) return;
+      final idx = _messages.indexWhere((m) => m.id == msg.id);
+      if (idx != -1) setState(() => _messages[idx] = _messages[idx].copyWith(deleted: false));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not delete the message', style: GoogleFonts.dmSans(color: Colors.white)),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+    }
+  }
+
+  /// True if I'm an admin/owner of this group (may moderate — delete others' messages).
+  bool get _iAmGroupAdmin {
+    if (!_isGroup) return false;
+    final members = ref.watch(groupMembersProvider(widget.groupId!)).asData?.value;
+    if (members == null) return false;
+    for (final m in members) {
+      if (m.userId == _currentUserId) return m.role == 'admin' || m.role == 'owner';
+    }
+    return false;
   }
 
   void _mergeIncoming(ChatMessage msg) {
@@ -429,6 +468,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                           isGroup: _isGroup,
                           senders: _senders(),
                           onReport: _isGroup ? _reportMessage : null,
+                          onDelete: _deleteMessage,
+                          iAmGroupAdmin: _iAmGroupAdmin,
                           scrollController: _scrollController,
                           onRetry: _retry,
                         ),

@@ -127,6 +127,20 @@ async def addressing_ids_for_conversations(
     return {conversation_id: (match_id or conversation_id) for conversation_id, match_id in rows}
 
 
+async def member_role(db: AsyncSession, conversation_id: UUID, user_id: UUID) -> str | None:
+    """The user's role in a conversation if they're an active member, else None. DM members are
+    always 'member', so an `admin`/`owner` result only ever comes from a group."""
+    return (
+        await db.execute(
+            select(ConversationMember.role).where(
+                ConversationMember.conversation_id == conversation_id,
+                ConversationMember.user_id == user_id,
+                ConversationMember.status == ACTIVE,
+            )
+        )
+    ).scalar_one_or_none()
+
+
 async def is_active_member(db: AsyncSession, conversation_id: UUID, user_id: UUID) -> bool:
     return (
         await db.execute(

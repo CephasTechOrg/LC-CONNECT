@@ -20,9 +20,10 @@ class MessageRead(BaseModel):
     conversation_id: UUID | None = None
     sender_id: UUID
     client_message_id: UUID | None = None
-    body: str
+    body: str  # empty when deleted — the original is never sent to clients
     created_at: datetime
     read_at: datetime | None
+    deleted: bool = False
 
 
 class GroupThreadInfo(BaseModel):

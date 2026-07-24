@@ -229,6 +229,9 @@ class Message(Base):
     body: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True, nullable=False)
     read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Soft-delete ("delete for everyone"): set when unsent. The original body is retained for
+    # moderation/audit but never serialized to clients once this is set (they get a tombstone).
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class Group(Base):
@@ -303,6 +306,10 @@ class Report(Base):
     # P5: report a group or a specific message (in a DM or group).
     group_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey('groups.id', ondelete='SET NULL'), index=True, nullable=True)
     message_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey('messages.id', ondelete='SET NULL'), index=True, nullable=True)
+    # Evidence snapshot taken at report time: the reported message's text is copied here so it
+    # survives the message (or its whole group) being deleted later. Moderation must not be
+    # defeatable by deleting the content.
+    message_body: Mapped[str | None] = mapped_column(Text, nullable=True)
     reason: Mapped[str] = mapped_column(String(80), nullable=False)
     details: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(String(30), default='open', index=True, nullable=False)

@@ -409,6 +409,37 @@ them on next open); the `PushSender` seam is there if you later want them to buz
 
 **Gate: ✅ green** — 152 backend tests · 152 mobile tests · ruff + analyze clean · line limits pass.
 
+### Message deletion ✅ (delete for everyone)
+
+Long-press a message → **Delete for everyone** (soft delete → tombstone). Works in DMs and groups.
+- **Backend:** `messages.deleted_at` (soft delete, migration `f2a3b4c5d6e7`); the original body is
+  retained for moderation but **never serialized** (deleted messages return `body=''`, `deleted=true`).
+  `DELETE /messages/{message_id}` — the **sender** may delete anywhere; a **group admin/owner** may
+  delete any message in their group (via `member_role`, no groups-service coupling); everyone else
+  gets 403/404. Fans out a `message.deleted` WS frame to all members so open chats tombstone live.
+  Idempotent. Snapshot regenerated. Tests: `test_message_delete.py` (6).
+- **Mobile:** `ChatMessage.deleted`; optimistic delete (reverts + warns on failure); the bubble
+  renders a muted "This message was deleted" tombstone; live `message.deleted` updates other
+  members' open chats. The delete option appears for your own messages and (for group
+  admins/owners) any message.
+- *Known minor limitation:* the Messages inbox **preview** doesn't update live when the latest
+  message is deleted — it corrects on next load (no `conversation.updated` is emitted on delete).
+
+### Report evidence snapshot ✅ (moderation can't be defeated by deleting content)
+
+Reporting a message now **snapshots its text (and attributes its author) into the report at report
+time** (`reports.message_body`, migration `a3b4c5d6e7f8`), so the evidence survives the message —
+or its whole group being hard-deleted — afterwards. `create_report` copies `message.body` and fills
+`reported_user_id` from the sender; `ReportRead` (admin `/admin/reports`) now exposes `group_id`,
+`message_id`, and `message_body`. Tests (`test_report_evidence.py`, 3) prove the snapshot survives
+both a message soft-delete and a group hard-delete. Backend-only; snapshot regenerated.
+
+**Audit posture (current):** messages = soft-delete (body retained) · membership = soft (status
+flags) · **reports = evidence snapshotted** · group deletion = still a hard cascade (deferred:
+soft-archive), and message deletes still lack `deleted_by` (deferred: attribution) and a retention
+window (deferred). The report snapshot closes the critical safety hole — a report's evidence can no
+longer be erased by deleting the content.
+
 ---
 
 ## Later (explicitly out of scope for now)

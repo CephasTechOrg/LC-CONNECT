@@ -57,6 +57,14 @@ async def emit_notification(
         logger.warning('emit_notification failed (type=%s user=%s): %s', notif_type, user_id, exc)
 
 
+async def broadcast_message_deleted(conversation_id: UUID, message_id: UUID, member_ids: list[UUID]) -> None:
+    """Tell every conversation member (via their user channel) that a message was deleted, so an
+    open chat tombstones it live. Best-effort."""
+    frame = protocol.message_deleted(conversation_id, message_id)
+    for user_id in member_ids:
+        await event_bus.publish_to_user(user_id, frame)
+
+
 async def revoke_pair_access(user_a: UUID, user_b: UUID) -> None:
     """A block happened — drop any live conversation the two users share."""
     frame = protocol.error(protocol.ErrorCode.FORBIDDEN, 'Conversation access revoked')

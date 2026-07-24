@@ -39,6 +39,9 @@ class ReportRead(BaseModel):
     reporter_id: UUID
     reported_user_id: UUID | None
     activity_id: UUID | None
+    group_id: UUID | None = None
+    message_id: UUID | None = None
+    message_body: str | None = None  # evidence snapshot — survives deletion of the message/group
     reason: str
     details: str | None
     status: str

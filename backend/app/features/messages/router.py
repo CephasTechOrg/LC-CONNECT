@@ -8,6 +8,7 @@ from app.database import get_db
 from app.dependencies import require_verified_student
 from app.features.messages.schema import MessageCreate, MessageRead, MessageThreadRead, UnreadSummary
 from app.features.messages.service import (
+    delete_message,
     list_threads_for_user,
     message_read,
     page_thread,
@@ -16,7 +17,11 @@ from app.features.messages.service import (
     unread_summary,
 )
 from app.models import User
-from app.shared.conversations import accessible_conversation, addressing_ids_for_conversations
+from app.shared.conversations import (
+    accessible_conversation,
+    active_member_ids,
+    addressing_ids_for_conversations,
+)
 
 router = APIRouter(prefix='/messages', tags=['messages'])
 
@@ -83,4 +88,19 @@ async def send_message(match_id: UUID, payload: MessageCreate, current_user: Use
         body=payload.body.strip(),
         client_message_id=payload.client_message_id,
     )
+    return message_read(message)
+
+
+@router.delete('/{message_id}', response_model=MessageRead)
+async def delete_message_endpoint(
+    message_id: UUID, current_user: User = Depends(require_verified_student), db: AsyncSession = Depends(get_db)
+):
+    """Delete a message for everyone (soft delete → tombstone). Sender anywhere; group admins in
+    their group. Fans out a `message.deleted` event so open chats update live."""
+    message = await delete_message(db, message_id, current_user.id)
+    # Lazy import avoids a module-load cycle with the realtime package.
+    from app.features.realtime.runtime import broadcast_message_deleted
+
+    members = await active_member_ids(db, message.conversation_id)
+    await broadcast_message_deleted(message.conversation_id, message.id, members)
     return message_read(message)

@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.realtime.runtime import revoke_pair_access
 from app.features.safety.schema import ReportCreate
-from app.models import Block, Report
+from app.models import Block, Message, Report
 
 
 async def add_block(db: AsyncSession, blocker_id: UUID, blocked_id: UUID) -> None:
@@ -29,12 +29,22 @@ async def remove_block(db: AsyncSession, blocker_id: UUID, blocked_id: UUID) -> 
 
 
 async def create_report(db: AsyncSession, reporter_id: UUID, payload: ReportCreate) -> Report:
+    # Snapshot the reported message's text (and attribute its author) at report time, so the
+    # evidence survives the message — or its whole group — being deleted afterwards.
+    message_body = None
+    reported_user_id = payload.reported_user_id
+    if payload.message_id is not None:
+        message = await db.get(Message, payload.message_id)
+        if message is not None:
+            message_body = message.body
+            reported_user_id = reported_user_id or message.sender_id
     report = Report(
         reporter_id=reporter_id,
-        reported_user_id=payload.reported_user_id,
+        reported_user_id=reported_user_id,
         activity_id=payload.activity_id,
         group_id=payload.group_id,
         message_id=payload.message_id,
+        message_body=message_body,
         reason=payload.reason.strip(),
         details=payload.details,
     )

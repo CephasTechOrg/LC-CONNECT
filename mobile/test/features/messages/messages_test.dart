@@ -174,6 +174,22 @@ void main() {
       expect(msg.readAt, isNotNull);
       expect(msg.readAt!.minute, 5);
     });
+
+    test('deleted defaults to false and parses when set', () {
+      ChatMessage parse({required bool? deleted}) => ChatMessage.fromJson({
+            'id': 'm',
+            'match_id': 'x',
+            'sender_id': 'u',
+            'body': '',
+            'created_at': '2025-05-01T10:00:00.000Z',
+            'read_at': null,
+            if (deleted != null) 'deleted': deleted,
+          });
+      expect(parse(deleted: null).deleted, isFalse); // absent → not deleted
+      expect(parse(deleted: true).deleted, isTrue);
+      // copyWith toggles it (used by the optimistic delete + live tombstone).
+      expect(parse(deleted: false).copyWith(deleted: true).deleted, isTrue);
+    });
   });
 
   group('MessagePartner.fromJson', () {

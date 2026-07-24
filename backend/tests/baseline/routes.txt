@@ -4,6 +4,7 @@ DELETE /api/v1/devices/{token}
 DELETE /api/v1/groups/{group_id}
 DELETE /api/v1/groups/{group_id}/members/me
 DELETE /api/v1/groups/{group_id}/members/{user_id}
+DELETE /api/v1/messages/{message_id}
 GET /
 GET /api/v1/activities
 GET /api/v1/activities/{activity_id}
