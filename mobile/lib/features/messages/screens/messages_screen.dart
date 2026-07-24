@@ -9,6 +9,7 @@ import '../../../shared/widgets/app_shell_header.dart';
 import '../../../shared/widgets/app_states.dart';
 import '../providers/messages_provider.dart';
 import '../providers/unread_provider.dart';
+import '../../groups/data/group_models.dart';
 
 class MessagesScreen extends ConsumerWidget {
   const MessagesScreen({super.key});
@@ -95,7 +96,8 @@ class _ThreadCard extends ConsumerWidget {
 
     return InkWell(
       onTap: () => thread.isGroup
-          ? context.push('/messages/group/${thread.conversationId}', extra: thread.groupName)
+          ? context.push('/messages/group/${thread.conversationId}',
+              extra: GroupChatArgs(name: thread.groupName ?? 'Group', groupId: thread.groupId))
           : context.push('/messages/${thread.matchId}', extra: thread),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),

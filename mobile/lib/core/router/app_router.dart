@@ -15,6 +15,8 @@ import '../../features/activities/providers/activities_provider.dart';
 import '../../features/messages/screens/chat_screen.dart';
 import '../../features/messages/screens/messages_screen.dart';
 import '../../features/messages/providers/messages_provider.dart';
+import '../../features/groups/data/group_models.dart';
+import '../../features/groups/screens/group_detail_screen.dart';
 import '../../features/profile/screens/profile_screen.dart';
 import '../../features/profile/screens/public_profile_screen.dart';
 import '../../features/profile/screens/edit_profile_screen.dart';
@@ -118,6 +120,11 @@ final routerProvider = Provider<GoRouter>((ref) {
           preloadedName: state.extra as String?,
         ),
       ),
+      GoRoute(
+        path: '/groups/:groupId',
+        builder: (context, state) =>
+            GroupDetailScreen(groupId: state.pathParameters['groupId']!),
+      ),
       ShellRoute(
         builder: (context, state, child) => NavShell(child: child),
         routes: [
@@ -147,10 +154,14 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 // Two segments, so it never collides with the single-segment :matchId below.
                 path: 'group/:conversationId',
-                builder: (context, state) => ChatScreen(
-                  matchId: state.pathParameters['conversationId']!,
-                  groupTitle: (state.extra as String?) ?? 'Group',
-                ),
+                builder: (context, state) {
+                  final args = state.extra as GroupChatArgs?;
+                  return ChatScreen(
+                    matchId: state.pathParameters['conversationId']!,
+                    groupTitle: args?.name ?? 'Group',
+                    groupId: args?.groupId,
+                  );
+                },
               ),
               GoRoute(
                 path: ':matchId',

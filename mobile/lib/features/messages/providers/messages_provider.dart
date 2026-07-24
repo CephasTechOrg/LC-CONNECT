@@ -46,6 +46,14 @@ class MessagePartner {
       );
 }
 
+/// Minimal sender identity for a group message bubble (name + avatar), resolved from the
+/// group's members. Kept in the messages feature so bubbles don't depend on the groups models.
+class MessageSender {
+  final String name;
+  final String? avatarUrl;
+  const MessageSender({required this.name, this.avatarUrl});
+}
+
 // ── Chat message ──────────────────────────────────────────────────
 enum MessageStatus { sending, sent, failed }
 
@@ -99,6 +107,7 @@ class MessageThread {
   final String kind; // 'dm' | 'group'
   final String? matchId; // dm only
   final MessagePartner? partner; // dm only
+  final String? groupId; // group only
   final String? groupName; // group only
   final String? groupAvatarUrl; // group only
   final ChatMessage? latestMessage;
@@ -109,6 +118,7 @@ class MessageThread {
     required this.kind,
     this.matchId,
     this.partner,
+    this.groupId,
     this.groupName,
     this.groupAvatarUrl,
     this.latestMessage,
@@ -133,6 +143,7 @@ class MessageThread {
       partner: j['partner'] != null
           ? MessagePartner.fromJson(j['partner'] as Map<String, dynamic>)
           : null,
+      groupId: group?['id'] as String?,
       groupName: group?['name'] as String?,
       groupAvatarUrl: group?['avatar_url'] as String?,
       latestMessage: j['latest_message'] != null
@@ -146,6 +157,7 @@ class MessageThread {
         kind: kind,
         matchId: matchId,
         partner: partner,
+        groupId: groupId,
         groupName: groupName,
         groupAvatarUrl: groupAvatarUrl,
         latestMessage: latestMessage ?? this.latestMessage,

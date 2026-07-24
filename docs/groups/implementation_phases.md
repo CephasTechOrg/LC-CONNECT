@@ -267,10 +267,51 @@ Group chat **verified working on-device** (send/receive between two accounts).
 **Gate: ✅ green** — 143 backend tests · 120 mobile tests · analyze clean · line limits pass ·
 snapshot regenerated for the additive thread/unread payload.
 
-**Still open (P7 Slice 2/3):**
-- [ ] Group detail / admin screen (members list, approve/reject requests, invite, promote/transfer,
-      edit, avatar upload, remove/ban, delete) wired to the endpoints
-- [ ] Per-sender name/avatar on group message bubbles (DM-style bubbles for now) + report actions
+**Slice 2 ✅ — group detail / admin screen** *(mobile only; endpoints already existed)*
+- [x] Route `/groups/:groupId` → `GroupDetailScreen`; opened by tapping the group name/ⓘ in the
+      chat header (group mode threads `groupId` through `GroupChatArgs`). `MessageThread` now
+      carries `groupId`.
+- [x] Repository + providers: `members`/`requests`/`approve`/`reject`/`invite`/`changeRole`/
+      `transferOwnership`/`removeMember`/`leave`/`delete`/`update`/`uploadAvatar`;
+      `groupDetailProvider`/`groupMembersProvider`/`groupRequestsProvider`.
+- [x] Screen: header (avatar upload for admins), Edit + Invite actions, pending-requests section
+      (approve/reject), members list with per-member admin menu (promote/demote, transfer, remove,
+      ban), leave (non-owner) + delete (owner). Edit sheet (name/description/visibility/join
+      policy/capacity) and an invite sheet that picks from people you already message.
+- [x] **Client permission gating mirrors `policies.py`** (`iCanManage`, `canModerate` — strictly
+      outrank the target; owner-only transfer/delete); the backend remains authoritative. Covered
+      by `test/features/groups/group_models_test.dart` (13 tests).
+
+**Slice 2 hardening ✅ — invites are connections-only, enforced on the backend**
+- [x] `invite_user` now 403s unless the inviter shares an accepted `Match` with the target
+      (new `users_are_connected` policy in `app/shared/policies.py`). Previously the rule lived
+      only in the mobile picker (which lists your DM partners = your connections); public
+      discovery remains the path for everyone else. Covered by `test_invite_requires_a_connection`.
+
+**Gate: ✅ green** — 144 backend tests (+1) · 133 mobile tests · ruff clean · analyze clean ·
+line limits pass · OpenAPI snapshot unchanged (same endpoint, added 403 path).
+
+**Slice 3 ✅ — group message identity + report actions** *(mobile only; `/reports` already
+accepted `message_id`/`group_id`)*
+- [x] Per-sender **name + avatar** on group message bubbles, resolved from the group's members
+      (`MessageSender` map built in the chat screen from `groupMembersProvider`; kept out of the
+      bubble widgets so messages don't depend on the groups models). WhatsApp-style: shown once
+      per run of messages from the same sender; the gutter is reserved so bubbles stay aligned.
+      DM bubbles unchanged.
+- [x] **Report a message** — long-press a member's bubble → "Report message" → the shared reason
+      picker → `POST /reports` with `message_id` + `group_id`. `SafetyService.reportMessage`
+      added; the reason sheet was refactored to a reusable `title`+`onSubmit` form (user-report
+      path unchanged). Covered by a new `safety_test` case (16 safety tests).
+
+**Gate: ✅ green** — 134 mobile tests (+1) · analyze clean · line limits pass · backend unchanged.
+
+---
+
+## P7 ✅ **COMPLETE** — groups are fully wired, hardened, and tested
+
+Groups now have parity with DMs across the app: unified Messages inbox, full detail/admin surface,
+connections-only invites (backend-enforced), per-sender identity in group chat, and message
+reporting. **The groups feature is MVP-complete.**
 
 ---
 

@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.features.groups.policies import can_moderate
 from app.features.groups.schema import GroupCreate, GroupMemberRead, GroupRead, GroupSummary, JoinResult
 from app.models import Conversation, ConversationMember, Group, Profile, User
+from app.shared.policies import users_are_connected
 from app.shared.profiles import profile_load_options
 from app.shared.serializers import profile_to_public
 
@@ -171,6 +172,10 @@ async def reject_request(db: AsyncSession, group: Group, target_user_id: UUID) -
 
 
 async def invite_user(db: AsyncSession, group: Group, target_user_id: UUID, invited_by: UUID) -> None:
+    # You may only invite people you're connected with — keeps invites to students you actually
+    # know (public discovery is the path for everyone else). Enforced here, not just in the UI.
+    if not await users_are_connected(db, invited_by, target_user_id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='You can only invite your connections')
     existing = await membership(db, group.conversation_id, target_user_id)
     if existing and existing.status == ACTIVE:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='Already a member')

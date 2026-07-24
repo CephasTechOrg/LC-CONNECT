@@ -3,7 +3,10 @@ part of '../screens/chat_screen.dart';
 // ── Chat header ───────────────────────────────────────────────────
 class _ChatHeader extends StatelessWidget {
   final String title;
-  const _ChatHeader({this.title = 'Messages'});
+
+  /// Group mode only: tap the name/info icon to open the group detail/admin screen.
+  final VoidCallback? onOpenInfo;
+  const _ChatHeader({this.title = 'Messages', this.onOpenInfo});
 
   @override
   Widget build(BuildContext context) {
@@ -17,38 +20,51 @@ class _ChatHeader extends StatelessWidget {
                 size: 18, color: AppColors.textDark),
             onPressed: () => Navigator.of(context).pop(),
           ),
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              color: AppColors.primary,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              'LC',
-              style: GoogleFonts.dmSans(
-                color: Colors.white,
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-          const SizedBox(width: 10),
           Expanded(
-            child: Text(
-              title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.dmSans(
-                fontSize: 17,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textDark,
+            child: InkWell(
+              onTap: onOpenInfo,
+              borderRadius: BorderRadius.circular(8),
+              child: Row(
+                children: [
+                  Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      'LC',
+                      style: GoogleFonts.dmSans(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.dmSans(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textDark,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
-          const Icon(Icons.edit_outlined,
-              size: 20, color: AppColors.textMuted),
+          Icon(
+            onOpenInfo != null ? Icons.info_outline_rounded : Icons.edit_outlined,
+            size: 20,
+            color: AppColors.textMuted,
+          ),
         ],
       ),
     );

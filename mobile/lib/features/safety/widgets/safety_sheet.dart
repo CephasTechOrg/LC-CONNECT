@@ -44,14 +44,33 @@ Future<void> showSafetySheet({
       isScrollControlled: true,
       shape: _sheetShape,
       builder: (_) => _ReportSheet(
-        targetUserId: targetUserId,
-        targetName: targetName,
-        safetyService: safetyService,
+        title: 'Why are you reporting $targetName?',
+        onSubmit: (reason) => safetyService.reportUser(userId: targetUserId, reason: reason),
       ),
     );
   } else if (result == 'block') {
     _confirmBlock(context, targetUserId, targetName, safetyService, onBlocked);
   }
+}
+
+/// Report a single message (from a group or DM). Reuses the reason picker; the report is
+/// scoped to [groupId] when provided so moderators see which group it came from.
+Future<void> showReportMessageSheet({
+  required BuildContext context,
+  required String messageId,
+  String? groupId,
+  required SafetyService safetyService,
+}) {
+  return showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    shape: _sheetShape,
+    builder: (_) => _ReportSheet(
+      title: 'Why are you reporting this message?',
+      onSubmit: (reason) =>
+          safetyService.reportMessage(messageId: messageId, groupId: groupId, reason: reason),
+    ),
+  );
 }
 
 // ── Options sheet (Report / Block) ────────────────────────────────
@@ -181,15 +200,10 @@ Future<void> _confirmBlock(
 
 // ── Report sheet (reason picker) ──────────────────────────────────
 class _ReportSheet extends StatefulWidget {
-  final String targetUserId;
-  final String targetName;
-  final SafetyService safetyService;
+  final String title;
+  final Future<void> Function(String reason) onSubmit;
 
-  const _ReportSheet({
-    required this.targetUserId,
-    required this.targetName,
-    required this.safetyService,
-  });
+  const _ReportSheet({required this.title, required this.onSubmit});
 
   @override
   State<_ReportSheet> createState() => _ReportSheetState();
@@ -203,10 +217,7 @@ class _ReportSheetState extends State<_ReportSheet> {
     if (_selectedReason == null || _submitting) return;
     setState(() => _submitting = true);
     try {
-      await widget.safetyService.reportUser(
-        userId: widget.targetUserId,
-        reason: _selectedReason!,
-      );
+      await widget.onSubmit(_selectedReason!);
       if (!mounted) return;
       Navigator.of(context).pop();
       ScaffoldMessenger.of(context).showSnackBar(
@@ -254,7 +265,7 @@ class _ReportSheetState extends State<_ReportSheet> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Text(
-                  'Why are you reporting ${widget.targetName}?',
+                  widget.title,
                   style: GoogleFonts.dmSans(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,

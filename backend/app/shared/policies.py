@@ -13,7 +13,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Block, Profile, User
+from app.models import Block, Match, Profile, User
 
 
 async def users_are_blocked(db: AsyncSession, user_a: UUID, user_b: UUID) -> bool:
@@ -22,6 +22,21 @@ async def users_are_blocked(db: AsyncSession, user_a: UUID, user_b: UUID) -> boo
             or_(
                 (Block.blocker_id == user_a) & (Block.blocked_id == user_b),
                 (Block.blocker_id == user_b) & (Block.blocked_id == user_a),
+            )
+        )
+    )
+    return result.scalar_one_or_none() is not None
+
+
+async def users_are_connected(db: AsyncSession, user_a: UUID, user_b: UUID) -> bool:
+    """True if the two users share an accepted connection. A `Match` row exists once two
+    students connect, so its presence (in either pair order) is the signal — used to gate
+    actions that should be limited to people you actually know (e.g. group invites)."""
+    result = await db.execute(
+        select(Match.id).where(
+            or_(
+                (Match.user_a_id == user_a) & (Match.user_b_id == user_b),
+                (Match.user_a_id == user_b) & (Match.user_b_id == user_a),
             )
         )
     )

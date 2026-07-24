@@ -25,6 +25,21 @@ class _MockSafetyService extends SafetyService {
     reportCalled = true;
     lastReportReason = reason;
   }
+
+  bool reportMessageCalled = false;
+  String? lastReportedMessageId;
+
+  @override
+  Future<void> reportMessage({
+    required String messageId,
+    String? groupId,
+    required String reason,
+    String? details,
+  }) async {
+    reportMessageCalled = true;
+    lastReportedMessageId = messageId;
+    lastReportReason = reason;
+  }
 }
 
 // ── Helper: page with a button that opens the safety sheet ────────
@@ -232,6 +247,42 @@ void main() {
       await tester.tap(find.text('Block').last);
       await tester.pumpAndSettle();
       expect(find.text('Alex has been blocked.'), findsOneWidget);
+    });
+  });
+
+  group('Report message flow (group bubbles)', () {
+    Widget messageReportPage(_MockSafetyService mock) => MaterialApp(
+          home: Builder(
+            builder: (ctx) => Scaffold(
+              body: Center(
+                child: ElevatedButton(
+                  key: const Key('open'),
+                  onPressed: () => showReportMessageSheet(
+                    context: ctx,
+                    messageId: 'msg-77',
+                    groupId: 'grp-9',
+                    safetyService: mock,
+                  ),
+                  child: const Text('Open'),
+                ),
+              ),
+            ),
+          ),
+        );
+
+    testWidgets('selecting a reason + submit calls reportMessage', (tester) async {
+      final mock = _MockSafetyService();
+      await tester.pumpWidget(messageReportPage(mock));
+      await tester.tap(find.byKey(const Key('open')));
+      await tester.pumpAndSettle();
+      expect(find.text('Why are you reporting this message?'), findsOneWidget);
+      await tester.tap(find.text('Inappropriate content'));
+      await tester.pump();
+      await tester.tap(find.text('Submit Report'));
+      await tester.pumpAndSettle();
+      expect(mock.reportMessageCalled, isTrue);
+      expect(mock.lastReportedMessageId, 'msg-77');
+      expect(mock.lastReportReason, 'Inappropriate content');
     });
   });
 }

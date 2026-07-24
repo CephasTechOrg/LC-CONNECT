@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../../../core/api/api_client.dart';
@@ -11,6 +12,9 @@ import '../../../core/realtime/ws_protocol.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/avatar_widget.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../groups/providers/groups_provider.dart';
+import '../../safety/providers/safety_provider.dart';
+import '../../safety/widgets/safety_sheet.dart';
 import '../providers/messages_provider.dart';
 import '../providers/unread_provider.dart';
 
@@ -21,12 +25,14 @@ part '../widgets/chat_input.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
   /// For a DM this is the match id; for a group it's the group's conversation id — the
-  /// backend resolves either. `groupTitle` set ⇒ group mode (no partner card).
+  /// backend resolves either. `groupTitle` set ⇒ group mode (no partner card). `groupId`,
+  /// when known, lets the header open the group detail/admin screen.
   final String matchId;
   final MessageThread? thread;
   final String? groupTitle;
+  final String? groupId;
 
-  const ChatScreen({super.key, required this.matchId, this.thread, this.groupTitle});
+  const ChatScreen({super.key, required this.matchId, this.thread, this.groupTitle, this.groupId});
 
   @override
   ConsumerState<ChatScreen> createState() => _ChatScreenState();
@@ -370,6 +376,30 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     });
   }
 
+  bool get _isGroup => widget.groupId != null;
+
+  /// Long-press a member's message → report it (group mode only). Scoped to the group so
+  /// moderators know where it came from.
+  void _reportMessage(ChatMessage message) {
+    showReportMessageSheet(
+      context: context,
+      messageId: message.id,
+      groupId: widget.groupId,
+      safetyService: ref.read(safetyServiceProvider),
+    );
+  }
+
+  /// Sender name/avatar by user id, for group bubbles — resolved from the group's members.
+  /// Empty (and identity hidden) until the members load, or for DMs.
+  Map<String, MessageSender> _senders() {
+    if (!_isGroup) return const {};
+    final members = ref.watch(groupMembersProvider(widget.groupId!)).asData?.value;
+    if (members == null) return const {};
+    return {
+      for (final m in members) m.userId: MessageSender(name: m.nameOrFallback, avatarUrl: m.avatarUrl),
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
     final partner = widget.thread?.partner;
@@ -379,7 +409,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            _ChatHeader(title: widget.groupTitle ?? 'Messages'),
+            _ChatHeader(
+              title: widget.groupTitle ?? 'Messages',
+              onOpenInfo: widget.groupId != null
+                  ? () => context.push('/groups/${widget.groupId}')
+                  : null,
+            ),
             if (partner != null) _PartnerInfoRow(partner: partner),
             _ConnectionBanner(status: _rt.status),
             Expanded(
@@ -391,6 +426,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                           messages: _messages,
                           currentUserId: _currentUserId,
                           partnerAvatarUrl: partner?.avatarUrl,
+                          isGroup: _isGroup,
+                          senders: _senders(),
+                          onReport: _isGroup ? _reportMessage : null,
                           scrollController: _scrollController,
                           onRetry: _retry,
                         ),

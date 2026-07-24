@@ -49,7 +49,10 @@ class _GroupsPanelState extends ConsumerState<GroupsPanel> {
       // GroupSummary lacks conversation_id; fetch the full group for it.
       final full = await ref.read(groupsRepositoryProvider).get(group.id);
       if (!mounted) return;
-      context.push('/messages/group/${full.conversationId}', extra: full.name);
+      context.push(
+        '/messages/group/${full.conversationId}',
+        extra: GroupChatArgs(name: full.name, groupId: full.id),
+      );
     } catch (_) {
       if (mounted) _snack('Could not open the group', error: true);
     }

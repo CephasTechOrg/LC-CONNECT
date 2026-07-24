@@ -8,6 +8,14 @@ abstract class SafetyService {
     required String reason,
     String? details,
   });
+
+  /// Report a specific message (in a DM or a group). [groupId] scopes it to the group when set.
+  Future<void> reportMessage({
+    required String messageId,
+    String? groupId,
+    required String reason,
+    String? details,
+  });
 }
 
 class _ApiSafetyService extends SafetyService {
@@ -27,6 +35,21 @@ class _ApiSafetyService extends SafetyService {
   }) async {
     await _client.dio.post('/reports', data: {
       'reported_user_id': userId,
+      'reason': reason,
+      if (details != null && details.isNotEmpty) 'details': details,
+    });
+  }
+
+  @override
+  Future<void> reportMessage({
+    required String messageId,
+    String? groupId,
+    required String reason,
+    String? details,
+  }) async {
+    await _client.dio.post('/reports', data: {
+      'message_id': messageId,
+      'group_id': ?groupId,
       'reason': reason,
       if (details != null && details.isNotEmpty) 'details': details,
     });

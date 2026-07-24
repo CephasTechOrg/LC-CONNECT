@@ -4,21 +4,30 @@ class _MessageList extends StatelessWidget {
   final List<ChatMessage> messages;
   final String currentUserId;
   final String? partnerAvatarUrl;
+  final bool isGroup;
+  final Map<String, MessageSender> senders;
+  final void Function(ChatMessage)? onReport;
   final ScrollController scrollController;
   final void Function(ChatMessage) onRetry;
   const _MessageList({
     required this.messages,
     required this.currentUserId,
     this.partnerAvatarUrl,
+    this.isGroup = false,
+    this.senders = const {},
+    this.onReport,
     required this.scrollController,
     required this.onRetry,
   });
 
   @override
   Widget build(BuildContext context) {
-    // Build list with date separators
+    // Build list with date separators. In a group, mark the first message of each run from a
+    // given sender (a separator, or a change of sender, starts a new run) so we show the
+    // sender's name/avatar once per run — WhatsApp-style — instead of on every bubble.
     final items = <_ListItem>[];
     DateTime? lastDate;
+    String? runSenderId;
 
     for (final msg in messages) {
       final local = msg.createdAt.toLocal();
@@ -26,8 +35,11 @@ class _MessageList extends StatelessWidget {
       if (lastDate == null || msgDate != lastDate) {
         items.add(_DateSeparatorItem(msgDate));
         lastDate = msgDate;
+        runSenderId = null; // a date break restarts the run
       }
-      items.add(_MessageItem(msg));
+      final firstOfRun = msg.senderId != runSenderId;
+      runSenderId = msg.senderId;
+      items.add(_MessageItem(msg, firstOfRun));
     }
 
     return ListView.builder(
@@ -39,12 +51,18 @@ class _MessageList extends StatelessWidget {
         if (item is _DateSeparatorItem) {
           return _DateSeparator(date: item.date);
         }
-        final msg = (item as _MessageItem).message;
+        final messageItem = item as _MessageItem;
+        final msg = messageItem.message;
         final isMine = msg.senderId == currentUserId;
+        final showSenderIdentity = isGroup && !isMine && messageItem.firstOfRun;
         return _BubbleTile(
           message: msg,
           isMine: isMine,
+          isGroup: isGroup,
           partnerAvatarUrl: partnerAvatarUrl,
+          sender: isGroup ? senders[msg.senderId] : null,
+          showSenderIdentity: showSenderIdentity,
+          onReport: onReport,
           onRetry: onRetry,
         );
       },
@@ -62,7 +80,8 @@ class _DateSeparatorItem extends _ListItem {
 
 class _MessageItem extends _ListItem {
   final ChatMessage message;
-  _MessageItem(this.message);
+  final bool firstOfRun; // first message of a run from this sender (group identity anchor)
+  _MessageItem(this.message, this.firstOfRun);
 }
 
 // ── Date separator ────────────────────────────────────────────────

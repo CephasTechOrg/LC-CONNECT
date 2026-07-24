@@ -86,6 +86,7 @@ async def test_rejecting_a_request_leaves_them_out(db, factory):
 async def test_invite_only_group_rejects_open_join_but_accepts_invite(db, factory):
     owner = await factory.user()
     invitee = await factory.user()
+    await factory.match(owner, invitee)  # you can only invite a connection
     group = await _make_group(db, owner, join_policy='invite')
 
     with pytest.raises(HTTPException) as exc:
@@ -98,6 +99,25 @@ async def test_invite_only_group_rejects_open_join_but_accepts_invite(db, factor
     await db.commit()
     assert result.status == 'active'
     assert await service.active_member_count(db, group.conversation_id) == 2
+
+
+async def test_invite_requires_a_connection(db, factory):
+    """You can only invite people you're connected with. A stranger (no shared match) is
+    rejected with 403; once connected, the same invite succeeds."""
+    owner = await factory.user()
+    stranger = await factory.user()
+    group = await _make_group(db, owner, join_policy='invite')
+
+    with pytest.raises(HTTPException) as exc:
+        await service.invite_user(db, group, stranger.id, invited_by=owner.id)
+    assert exc.value.status_code == 403
+    assert await service.membership(db, group.conversation_id, stranger.id) is None
+
+    await factory.match(owner, stranger)  # now they're connected
+    await service.invite_user(db, group, stranger.id, invited_by=owner.id)
+    await db.commit()
+    member = await service.membership(db, group.conversation_id, stranger.id)
+    assert member.status == 'invited'
 
 
 async def test_banned_user_cannot_join(db, factory):

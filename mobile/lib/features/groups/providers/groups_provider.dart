@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_client.dart';
@@ -69,6 +70,82 @@ class GroupsRepository {
     final resp = await dio.get('/groups/$groupId');
     return GroupRead.fromJson(resp.data as Map<String, dynamic>);
   }
+
+  // ── membership + admin ──────────────────────────────────────────────────────
+
+  Future<List<GroupMember>> members(String groupId) async {
+    final dio = _ref.read(apiClientProvider).dio;
+    final resp = await dio.get('/groups/$groupId/members');
+    return (resp.data as List)
+        .map((j) => GroupMember.fromJson(j as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<List<GroupMember>> requests(String groupId) async {
+    final dio = _ref.read(apiClientProvider).dio;
+    final resp = await dio.get('/groups/$groupId/requests');
+    return (resp.data as List)
+        .map((j) => GroupMember.fromJson(j as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<void> approve(String groupId, String userId) =>
+      _ref.read(apiClientProvider).dio.post('/groups/$groupId/requests/$userId/approve');
+
+  Future<void> reject(String groupId, String userId) =>
+      _ref.read(apiClientProvider).dio.post('/groups/$groupId/requests/$userId/reject');
+
+  Future<void> invite(String groupId, String userId) => _ref
+      .read(apiClientProvider)
+      .dio
+      .post('/groups/$groupId/invites', data: {'user_id': userId});
+
+  Future<void> changeRole(String groupId, String userId, String role) => _ref
+      .read(apiClientProvider)
+      .dio
+      .patch('/groups/$groupId/members/$userId', data: {'role': role});
+
+  Future<void> transferOwnership(String groupId, String userId) => _ref
+      .read(apiClientProvider)
+      .dio
+      .post('/groups/$groupId/transfer', data: {'user_id': userId});
+
+  /// Remove (or, with [ban], ban) a member. Banned members cannot rejoin.
+  Future<void> removeMember(String groupId, String userId, {bool ban = false}) =>
+      _ref.read(apiClientProvider).dio.delete(
+        '/groups/$groupId/members/$userId',
+        queryParameters: ban ? {'ban': true} : null,
+      );
+
+  Future<void> leave(String groupId) =>
+      _ref.read(apiClientProvider).dio.delete('/groups/$groupId/members/me');
+
+  Future<void> delete(String groupId) =>
+      _ref.read(apiClientProvider).dio.delete('/groups/$groupId');
+
+  Future<GroupRead> update(String groupId, Map<String, dynamic> changes) async {
+    final dio = _ref.read(apiClientProvider).dio;
+    final resp = await dio.patch('/groups/$groupId', data: changes);
+    return GroupRead.fromJson(resp.data as Map<String, dynamic>);
+  }
+
+  Future<GroupRead> uploadAvatar(
+    String groupId, {
+    required String path,
+    required String mimeType,
+    required String filename,
+  }) async {
+    final dio = _ref.read(apiClientProvider).dio;
+    final formData = FormData.fromMap({
+      'file': await MultipartFile.fromFile(
+        path,
+        filename: filename,
+        contentType: DioMediaType.parse(mimeType),
+      ),
+    });
+    final resp = await dio.post('/groups/$groupId/avatar', data: formData);
+    return GroupRead.fromJson(resp.data as Map<String, dynamic>);
+  }
 }
 
 final groupsRepositoryProvider = Provider<GroupsRepository>(GroupsRepository.new);
@@ -81,4 +158,22 @@ final discoverGroupsProvider =
 
 final myGroupsProvider = FutureProvider.autoDispose<List<GroupSummary>>((ref) {
   return ref.watch(groupsRepositoryProvider).myGroups();
+});
+
+/// Full group detail (name, description, my role, counts) — the header of the detail screen.
+final groupDetailProvider =
+    FutureProvider.autoDispose.family<GroupRead, String>((ref, groupId) {
+  return ref.watch(groupsRepositoryProvider).get(groupId);
+});
+
+/// Active members of a group, for the members list.
+final groupMembersProvider =
+    FutureProvider.autoDispose.family<List<GroupMember>, String>((ref, groupId) {
+  return ref.watch(groupsRepositoryProvider).members(groupId);
+});
+
+/// Pending join requests — admin-only; the endpoint 403s for non-admins.
+final groupRequestsProvider =
+    FutureProvider.autoDispose.family<List<GroupMember>, String>((ref, groupId) {
+  return ref.watch(groupsRepositoryProvider).requests(groupId);
 });
