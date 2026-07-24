@@ -93,39 +93,61 @@ class ChatMessage {
       );
 }
 
-// ── Message thread ────────────────────────────────────────────────
+// ── Message thread (DM or group) ──────────────────────────────────
 class MessageThread {
-  final String matchId;
-  final MessagePartner? partner;
+  final String conversationId; // always present
+  final String kind; // 'dm' | 'group'
+  final String? matchId; // dm only
+  final MessagePartner? partner; // dm only
+  final String? groupName; // group only
+  final String? groupAvatarUrl; // group only
   final ChatMessage? latestMessage;
   final bool partnerTyping; // transient (live), never from JSON
 
   const MessageThread({
-    required this.matchId,
+    required this.conversationId,
+    required this.kind,
+    this.matchId,
     this.partner,
+    this.groupName,
+    this.groupAvatarUrl,
     this.latestMessage,
     this.partnerTyping = false,
   });
 
-  factory MessageThread.fromJson(Map<String, dynamic> j) => MessageThread(
-        matchId: j['match_id'] as String,
-        partner: j['partner'] != null
-            ? MessagePartner.fromJson(j['partner'] as Map<String, dynamic>)
-            : null,
-        latestMessage: j['latest_message'] != null
-            ? ChatMessage.fromJson(
-                j['latest_message'] as Map<String, dynamic>)
-            : null,
-      );
+  bool get isGroup => kind == 'group';
 
-  MessageThread copyWith({
-    MessagePartner? partner,
-    ChatMessage? latestMessage,
-    bool? partnerTyping,
-  }) =>
-      MessageThread(
+  /// The id the client addresses this thread by everywhere (open/subscribe/unread/live-match):
+  /// the match id for a DM, the conversation id for a group. Matches the server's frame ids.
+  String get addressingId => matchId ?? conversationId;
+
+  String get title => isGroup ? (groupName ?? 'Group') : (partner?.displayName ?? 'LC Student');
+  String? get avatarUrl => isGroup ? groupAvatarUrl : partner?.avatarUrl;
+
+  factory MessageThread.fromJson(Map<String, dynamic> j) {
+    final group = j['group'] as Map<String, dynamic>?;
+    return MessageThread(
+      conversationId: j['conversation_id'] as String,
+      kind: (j['kind'] as String?) ?? 'dm',
+      matchId: j['match_id'] as String?,
+      partner: j['partner'] != null
+          ? MessagePartner.fromJson(j['partner'] as Map<String, dynamic>)
+          : null,
+      groupName: group?['name'] as String?,
+      groupAvatarUrl: group?['avatar_url'] as String?,
+      latestMessage: j['latest_message'] != null
+          ? ChatMessage.fromJson(j['latest_message'] as Map<String, dynamic>)
+          : null,
+    );
+  }
+
+  MessageThread copyWith({ChatMessage? latestMessage, bool? partnerTyping}) => MessageThread(
+        conversationId: conversationId,
+        kind: kind,
         matchId: matchId,
-        partner: partner ?? this.partner,
+        partner: partner,
+        groupName: groupName,
+        groupAvatarUrl: groupAvatarUrl,
         latestMessage: latestMessage ?? this.latestMessage,
         partnerTyping: partnerTyping ?? this.partnerTyping,
       );
@@ -164,7 +186,7 @@ class ThreadsNotifier extends AsyncNotifier<List<MessageThread>> {
     final response = await client.dio.get('/messages/threads');
     return (response.data as List)
         .map((j) => MessageThread.fromJson(j as Map<String, dynamic>))
-        .where((t) => t.partner != null)
+        .where((t) => t.isGroup || t.partner != null) // keep group + valid DM threads
         .toList();
   }
 
@@ -172,7 +194,7 @@ class ThreadsNotifier extends AsyncNotifier<List<MessageThread>> {
     final current = state.asData?.value;
     if (current == null) return;
 
-    final idx = current.indexWhere((t) => t.matchId == event.conversationId);
+    final idx = current.indexWhere((t) => t.addressingId == event.conversationId);
     if (idx == -1) return; // thread not loaded (e.g. brand-new match) — refreshed on return
 
     _typingTimers.remove(event.conversationId)?.cancel(); // a new message clears typing
@@ -204,7 +226,7 @@ class ThreadsNotifier extends AsyncNotifier<List<MessageThread>> {
   void _setThreadTyping(String conversationId, bool typing) {
     final current = state.asData?.value;
     if (current == null) return;
-    final idx = current.indexWhere((t) => t.matchId == conversationId);
+    final idx = current.indexWhere((t) => t.addressingId == conversationId);
     if (idx == -1 || current[idx].partnerTyping == typing) return;
     final updated = List<MessageThread>.from(current);
     updated[idx] = updated[idx].copyWith(partnerTyping: typing);

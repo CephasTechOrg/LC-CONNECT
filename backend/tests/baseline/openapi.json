@@ -1035,6 +1035,37 @@
         "title": "GroupSummary",
         "type": "object"
       },
+      "GroupThreadInfo": {
+        "properties": {
+          "avatar_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Url"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "avatar_url"
+        ],
+        "title": "GroupThreadInfo",
+        "type": "object"
+      },
       "GroupUpdate": {
         "properties": {
           "category": {
@@ -1350,6 +1381,25 @@
       },
       "MessageThreadRead": {
         "properties": {
+          "conversation_id": {
+            "format": "uuid",
+            "title": "Conversation Id",
+            "type": "string"
+          },
+          "group": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GroupThreadInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
           "latest_message": {
             "anyOf": [
               {
@@ -1361,9 +1411,16 @@
             ]
           },
           "match_id": {
-            "format": "uuid",
-            "title": "Match Id",
-            "type": "string"
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Match Id"
           },
           "partner": {
             "anyOf": [
@@ -1377,8 +1434,8 @@
           }
         },
         "required": [
-          "match_id",
-          "partner",
+          "conversation_id",
+          "kind",
           "latest_message"
         ],
         "title": "MessageThreadRead",
@@ -4415,6 +4472,7 @@
     },
     "/api/v1/messages/threads": {
       "get": {
+        "description": "The unified inbox \u2014 DM and group threads, newest activity first.",
         "operationId": "list_threads_api_v1_messages_threads_get",
         "responses": {
           "200": {
@@ -4685,7 +4743,7 @@
     },
     "/api/v1/messages/unread-summary": {
       "get": {
-        "description": "Total + per-conversation unread counts \u2014 seeds the tab + per-row badges.",
+        "description": "Total + per-conversation unread counts \u2014 seeds the tab + per-row badges. Keyed by the\nclient-facing addressing id (match id for DMs, conversation id for groups).",
         "operationId": "get_unread_summary_api_v1_messages_unread_summary_get",
         "responses": {
           "200": {

@@ -217,7 +217,7 @@ surfaced as a fake "circular import". Restored + made the groups package import-
 
 ---
 
-## P6 — Mobile wiring 🟡 **IN PROGRESS**
+## P6 — Mobile wiring ✅ **COMPLETE** *(remaining polish moved to P7)*
 
 **Stage A ✅ — groups discovery / join / create**
 - [x] Mobile data layer: `groups/data/group_models.dart` (`GroupSummary`/`GroupRead`),
@@ -247,11 +247,30 @@ Group chat **verified working on-device** (send/receive between two accounts).
    history endpoint 500'd. Made it nullable + added `conversation_id` to the DTO. *(This is why
    groups showed a notification banner but no messages when opened.)*
 
-**Still open (polish, not blocking a test):**
-- [ ] Group thread appears in the **Messages list** (thread-list group variant + surfacing group
-      unread through `/messages/unread-summary`, which still drops group conversations)
-- [ ] Per-sender name/avatar on group message bubbles (DM-style bubbles for now)
-- [ ] Group detail screen (members, admin actions, avatar upload) wired to the endpoints
+---
+
+## P7 — Groups in the Messages inbox + polish 🟡 **IN PROGRESS**
+
+**Slice 1 ✅ — unified Messages inbox (DM + group threads)**
+- [x] **Backend:** `list_threads_for_user` returns DM *and* group threads, newest-activity-first;
+      `MessageThreadRead` carries `conversation_id` + `kind` + nullable `match_id`, a `partner`
+      (DM) or a `group` (`GroupThreadInfo{id,name,avatar_url}`). `/messages/unread-summary` now
+      keys by the client addressing id via `addressing_ids_for_conversations` (groups included,
+      no longer dropped).
+- [x] **Mobile:** `MessageThread` gains `conversationId`/`kind`/nullable `matchId`/group fields
+      with `isGroup`, `addressingId` (= `matchId ?? conversationId`), `title`, `avatarUrl`;
+      `_ThreadCard` renders group rows (group name/avatar) and taps route to
+      `/messages/group/{conversationId}` for groups vs `/messages/{matchId}` for DMs; live
+      `conversation.updated` + typing match by `addressingId`, so group previews/unread update
+      in the list.
+
+**Gate: ✅ green** — 143 backend tests · 120 mobile tests · analyze clean · line limits pass ·
+snapshot regenerated for the additive thread/unread payload.
+
+**Still open (P7 Slice 2/3):**
+- [ ] Group detail / admin screen (members list, approve/reject requests, invite, promote/transfer,
+      edit, avatar upload, remove/ban, delete) wired to the endpoints
+- [ ] Per-sender name/avatar on group message bubbles (DM-style bubbles for now) + report actions
 
 ---
 

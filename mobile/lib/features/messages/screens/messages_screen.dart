@@ -90,19 +90,20 @@ class _ThreadCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final p = thread.partner!; // provider filters out null-partner threads
     final latest = thread.latestMessage;
-    final unread = ref.watch(unreadProvider.select((s) => s.countFor(thread.matchId)));
+    final unread = ref.watch(unreadProvider.select((s) => s.countFor(thread.addressingId)));
 
     return InkWell(
-      onTap: () => context.push('/messages/${thread.matchId}', extra: thread),
+      onTap: () => thread.isGroup
+          ? context.push('/messages/group/${thread.conversationId}', extra: thread.groupName)
+          : context.push('/messages/${thread.matchId}', extra: thread),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Avatar
-            AvatarWidget(imageUrl: p.avatarUrl, size: 52),
+            AvatarWidget(imageUrl: thread.avatarUrl, size: 52),
             const SizedBox(width: 12),
             // Content
             Expanded(
@@ -113,7 +114,7 @@ class _ThreadCard extends ConsumerWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          p.displayName ?? 'LC Student',
+                          thread.title,
                           style: GoogleFonts.dmSans(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,
@@ -131,10 +132,10 @@ class _ThreadCard extends ConsumerWidget {
                         ),
                     ],
                   ),
-                  if (p.major != null) ...[
+                  if (!thread.isGroup && thread.partner?.major != null) ...[
                     const SizedBox(height: 1),
                     Text(
-                      p.major!,
+                      thread.partner!.major!,
                       style: GoogleFonts.dmSans(
                         fontSize: 12,
                         color: AppColors.textMuted,

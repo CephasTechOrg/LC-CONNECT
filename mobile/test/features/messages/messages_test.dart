@@ -104,12 +104,16 @@ final _sampleMessage = ChatMessage(
 );
 
 final _sampleThread = MessageThread(
+  conversationId: 'conv-001',
+  kind: 'dm',
   matchId: 'match-001',
   partner: _samplePartner,
   latestMessage: _sampleMessage,
 );
 
 final _threadNoMessage = MessageThread(
+  conversationId: 'conv-002',
+  kind: 'dm',
   matchId: 'match-002',
   partner: MessagePartner(
     profileId: 'prof-002',
@@ -206,6 +210,8 @@ void main() {
   group('MessageThread.fromJson', () {
     test('parses thread with latest message', () {
       final json = {
+        'conversation_id': 'conv-abc',
+        'kind': 'dm',
         'match_id': 'match-abc',
         'partner': {
           'id': 'prof-id',
@@ -245,6 +251,8 @@ void main() {
 
     test('parses thread without latest message', () {
       final json = {
+        'conversation_id': 'conv-new',
+        'kind': 'dm',
         'match_id': 'match-new',
         'partner': {
           'id': 'prof-id',
@@ -274,6 +282,8 @@ void main() {
 
     test('does not crash when partner is null', () {
       final json = {
+        'conversation_id': 'conv-orphan',
+        'kind': 'dm',
         'match_id': 'match-orphan',
         'partner': null,
         'latest_message': null,

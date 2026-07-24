@@ -135,6 +135,36 @@ async def test_rest_access_resolves_group_by_conversation_id(db, factory):
     assert dm_conv.kind == 'dm'
 
 
+async def test_unified_inbox_lists_both_dm_and_group_threads(db, factory):
+    from datetime import UTC, datetime, timedelta
+
+    from app.features.messages.service import list_threads_for_user
+
+    me = await factory.user(display_name='Me')
+    friend = await factory.user(display_name='Friend')
+    dm = await factory.match(me, friend)
+    await factory.message(dm, friend, 'dm hello', created_at=datetime(2026, 1, 1, tzinfo=UTC))
+
+    group = await group_service.create_group(
+        db, me, GroupCreate(name='My Club', category='club', join_policy='open')
+    )
+    db.add(Message(conversation_id=group.conversation_id, sender_id=me.id, body='group hello',
+                   created_at=datetime(2026, 1, 1, tzinfo=UTC) + timedelta(hours=1)))
+    await db.commit()
+
+    threads = await list_threads_for_user(db, me.id)
+    by_kind = {t.kind: t for t in threads}
+
+    assert set(by_kind) == {'dm', 'group'}
+    assert by_kind['dm'].partner.display_name == 'Friend'
+    assert by_kind['dm'].match_id == dm.id
+    assert by_kind['group'].group.name == 'My Club'
+    assert by_kind['group'].match_id is None
+    assert by_kind['group'].conversation_id == group.conversation_id
+    # Sorted newest-activity-first → the group message (later) leads.
+    assert threads[0].kind == 'group'
+
+
 async def test_removed_member_loses_access(db, factory):
     group, members = await _group_with_members(db, factory, n_members=3)
     owner_member = await group_service.membership(db, group.conversation_id, members[0].id)

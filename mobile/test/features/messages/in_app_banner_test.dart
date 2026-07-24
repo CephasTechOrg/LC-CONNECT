@@ -75,7 +75,7 @@ final _partner = MessagePartner(
   languagesLearning: const [],
 );
 
-final _thread = MessageThread(matchId: 'conv-1', partner: _partner);
+final _thread = MessageThread(conversationId: 'conv-1', kind: 'dm', matchId: 'conv-1', partner: _partner);
 
 ConversationUpdated _incoming(String conv, String sender, {String body = 'hey there'}) =>
     ConversationUpdated(conv, {
