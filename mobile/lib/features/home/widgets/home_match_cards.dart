@@ -7,11 +7,13 @@ class _RecentMatchCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final partner = thread.partner!;
+    // Kind-agnostic: works for a DM (partner) or a group (title/avatar) — the unified inbox
+    // feeds either kind here, so never force-unwrap the partner.
     final latest = thread.latestMessage;
-    final previewText = latest?.body ?? 'New match — say hello!';
+    final previewText =
+        latest?.body ?? (thread.isGroup ? 'No messages yet' : 'New match — say hello!');
     final timeText = latest != null ? _timeAgo(latest.createdAt) : '';
-    final unread = latest != null && latest.readAt == null;
+    final unread = !thread.isGroup && latest != null && latest.readAt == null;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
@@ -35,7 +37,7 @@ class _RecentMatchCard extends StatelessWidget {
             children: [
               Stack(
                 children: [
-                  AvatarWidget(imageUrl: partner.avatarUrl, size: 44),
+                  AvatarWidget(imageUrl: thread.avatarUrl, size: 44),
                   if (unread)
                     Positioned(
                       top: 0,
@@ -58,7 +60,9 @@ class _RecentMatchCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      partner.displayName ?? 'LC Student',
+                      thread.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.dmSans(
                         fontSize: 13.5,
                         fontWeight: FontWeight.w600,

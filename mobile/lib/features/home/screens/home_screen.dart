@@ -13,6 +13,7 @@ import '../../notifications/widgets/notifications_bell_button.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../discovery/providers/discovery_provider.dart';
 import '../../activities/providers/activities_provider.dart';
+import '../../groups/data/group_models.dart';
 import '../../groups/data/placeholder_groups.dart';
 import '../../messages/providers/messages_provider.dart';
 import '../../profile/providers/profile_provider.dart';
@@ -177,10 +178,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               if (recentThread != null)
                 _RecentMatchCard(
                   thread: recentThread,
-                  onTap: () => context.go(
-                    '/messages/${recentThread.matchId}',
-                    extra: recentThread,
-                  ),
+                  onTap: () => recentThread.isGroup
+                      ? context.go(
+                          '/messages/group/${recentThread.conversationId}',
+                          extra: GroupChatArgs(
+                            name: recentThread.groupName ?? 'Group',
+                            groupId: recentThread.groupId,
+                            avatarUrl: recentThread.avatarUrl,
+                          ),
+                        )
+                      : context.go(
+                          '/messages/${recentThread.matchId}',
+                          extra: recentThread,
+                        ),
                 )
               else if (threadsAsync.isLoading)
                 const Padding(
