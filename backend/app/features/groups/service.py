@@ -202,6 +202,14 @@ async def accept_invite(db: AsyncSession, group: Group, user: User) -> JoinResul
     return JoinResult(status='active', group_id=group.id)
 
 
+async def decline_invite(db: AsyncSession, group: Group, user: User) -> None:
+    """The invitee declines their own pending invite (clears it from their pending list)."""
+    member = await membership(db, group.conversation_id, user.id)
+    if member is None or member.status != 'invited':
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='No pending invite')
+    member.status = 'removed'
+
+
 async def leave_group(db: AsyncSession, group: Group, member: ConversationMember) -> None:
     if member.role == 'owner':
         raise HTTPException(
@@ -269,6 +277,20 @@ async def my_groups(db: AsyncSession, user_id: UUID) -> list[tuple[Group, Conver
             select(Group, ConversationMember)
             .join(ConversationMember, ConversationMember.conversation_id == Group.conversation_id)
             .where(ConversationMember.user_id == user_id, ConversationMember.status == ACTIVE)
+            .order_by(Group.created_at.desc())
+        )
+    ).all()
+    return [(group, member) for group, member in rows]
+
+
+async def my_invites(db: AsyncSession, user_id: UUID) -> list[tuple[Group, ConversationMember]]:
+    """Groups this user has a pending invite to — the invitee's side of the invite flow.
+    Private/unlisted invites live here since they never appear in discovery."""
+    rows = (
+        await db.execute(
+            select(Group, ConversationMember)
+            .join(ConversationMember, ConversationMember.conversation_id == Group.conversation_id)
+            .where(ConversationMember.user_id == user_id, ConversationMember.status == 'invited')
             .order_by(Group.created_at.desc())
         )
     ).all()

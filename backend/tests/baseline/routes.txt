@@ -15,6 +15,7 @@ GET /api/v1/connections/matches
 GET /api/v1/connections/outgoing
 GET /api/v1/discovery/cards
 GET /api/v1/groups/discover
+GET /api/v1/groups/invites
 GET /api/v1/groups/me
 GET /api/v1/groups/{group_id}
 GET /api/v1/groups/{group_id}/members
@@ -50,6 +51,7 @@ POST /api/v1/groups
 POST /api/v1/groups/{group_id}/avatar
 POST /api/v1/groups/{group_id}/invites
 POST /api/v1/groups/{group_id}/invites/accept
+POST /api/v1/groups/{group_id}/invites/decline
 POST /api/v1/groups/{group_id}/join
 POST /api/v1/groups/{group_id}/requests/{user_id}/approve
 POST /api/v1/groups/{group_id}/requests/{user_id}/reject

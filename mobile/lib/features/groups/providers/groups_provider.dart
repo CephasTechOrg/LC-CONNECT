@@ -37,6 +37,22 @@ class GroupsRepository {
         .toList();
   }
 
+  /// Groups the current user has a pending invite to (includes private/unlisted ones that
+  /// never appear in discovery).
+  Future<List<GroupSummary>> myInvites() async {
+    final dio = _ref.read(apiClientProvider).dio;
+    final resp = await dio.get('/groups/invites');
+    return (resp.data as List)
+        .map((j) => GroupSummary.fromJson(j as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<void> acceptInvite(String groupId) =>
+      _ref.read(apiClientProvider).dio.post('/groups/$groupId/invites/accept');
+
+  Future<void> declineInvite(String groupId) =>
+      _ref.read(apiClientProvider).dio.post('/groups/$groupId/invites/decline');
+
   /// Returns the resulting status: `active` (joined) or `requested` (awaiting approval).
   Future<String> join(String groupId) async {
     final dio = _ref.read(apiClientProvider).dio;
@@ -150,14 +166,23 @@ class GroupsRepository {
 
 final groupsRepositoryProvider = Provider<GroupsRepository>(GroupsRepository.new);
 
-/// Discover public groups, optionally filtered by backend category. `null` = all.
+/// Args for discovery: an optional backend category and an optional name search. Records have
+/// value equality, so identical (category, query) pairs share one cached request.
+typedef DiscoverArgs = ({String? category, String? query});
+
+/// Discover public groups, optionally filtered by category and/or a name search. `null` = all.
 final discoverGroupsProvider =
-    FutureProvider.autoDispose.family<List<GroupSummary>, String?>((ref, category) {
-  return ref.watch(groupsRepositoryProvider).discover(category: category);
+    FutureProvider.autoDispose.family<List<GroupSummary>, DiscoverArgs>((ref, args) {
+  return ref.watch(groupsRepositoryProvider).discover(category: args.category, query: args.query);
 });
 
 final myGroupsProvider = FutureProvider.autoDispose<List<GroupSummary>>((ref) {
   return ref.watch(groupsRepositoryProvider).myGroups();
+});
+
+/// Groups the current user has been invited to — drives the Pending invites section.
+final myInvitesProvider = FutureProvider.autoDispose<List<GroupSummary>>((ref) {
+  return ref.watch(groupsRepositoryProvider).myInvites();
 });
 
 /// Full group detail (name, description, my role, counts) — the header of the detail screen.

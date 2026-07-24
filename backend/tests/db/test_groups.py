@@ -120,6 +120,44 @@ async def test_invite_requires_a_connection(db, factory):
     assert member.status == 'invited'
 
 
+async def test_invitee_lists_and_accepts_a_private_invite(db, factory):
+    """A private-group invite is invisible in discovery but shows in the invitee's pending
+    invites, and accepting it makes them an active member."""
+    owner = await factory.user()
+    friend = await factory.user()
+    await factory.match(owner, friend)
+    group = await _make_group(db, owner, visibility='private', join_policy='invite')
+
+    await service.invite_user(db, group, friend.id, invited_by=owner.id)
+    await db.commit()
+
+    invites = await service.my_invites(db, friend.id)
+    assert [g.id for g, _ in invites] == [group.id]
+    assert await service.discover_groups(db, query=None, category=None, limit=30) == []  # not discoverable
+
+    result = await service.accept_invite(db, group, friend)
+    await db.commit()
+    assert result.status == 'active'
+    assert await service.my_invites(db, friend.id) == []  # cleared once accepted
+    assert await service.active_member_count(db, group.conversation_id) == 2
+
+
+async def test_invitee_can_decline_a_pending_invite(db, factory):
+    owner = await factory.user()
+    friend = await factory.user()
+    await factory.match(owner, friend)
+    group = await _make_group(db, owner, visibility='private', join_policy='invite')
+    await service.invite_user(db, group, friend.id, invited_by=owner.id)
+    await db.commit()
+
+    await service.decline_invite(db, group, friend)
+    await db.commit()
+    assert await service.my_invites(db, friend.id) == []
+    member = await service.membership(db, group.conversation_id, friend.id)
+    assert member.status == 'removed'
+    assert await service.active_member_count(db, group.conversation_id) == 1
+
+
 async def test_banned_user_cannot_join(db, factory):
     owner = await factory.user()
     outcast = await factory.user()

@@ -65,6 +65,12 @@ async def list_my_groups(current_user: User = Depends(require_verified_student),
     return [await service.to_summary(db, group, member) for group, member in await service.my_groups(db, current_user.id)]
 
 
+@router.get('/invites', response_model=list[GroupSummary])
+async def list_my_invites(current_user: User = Depends(require_verified_student), db: AsyncSession = Depends(get_db)):
+    """Groups the user has been invited to (including private/unlisted ones not in discovery)."""
+    return [await service.to_summary(db, group, member) for group, member in await service.my_invites(db, current_user.id)]
+
+
 @router.get('/discover', response_model=list[GroupSummary])
 async def discover(
     q: str | None = Query(default=None),
@@ -180,6 +186,13 @@ async def accept_invite(group_id: UUID, current_user: User = Depends(require_ver
     result = await service.accept_invite(db, group, current_user)
     await db.commit()
     return result
+
+
+@router.post('/{group_id}/invites/decline', status_code=status.HTTP_204_NO_CONTENT)
+async def decline_invite(group_id: UUID, current_user: User = Depends(require_verified_student), db: AsyncSession = Depends(get_db)):
+    group = await _load_group(db, group_id)  # invited users may not "see" a private group yet
+    await service.decline_invite(db, group, current_user)
+    await db.commit()
 
 
 @router.delete('/{group_id}/members/me', status_code=status.HTTP_204_NO_CONTENT)

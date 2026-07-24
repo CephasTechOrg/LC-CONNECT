@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -8,6 +10,8 @@ import '../data/group_models.dart';
 import '../data/placeholder_groups.dart' show groupCategories;
 import '../providers/groups_provider.dart';
 import 'create_group_sheet.dart';
+import 'group_search_field.dart';
+import 'pending_invites.dart';
 
 /// Campus Groups panel — now wired to the live `/groups` API.
 class GroupsPanel extends ConsumerStatefulWidget {
@@ -19,10 +23,37 @@ class GroupsPanel extends ConsumerStatefulWidget {
 
 class _GroupsPanelState extends ConsumerState<GroupsPanel> {
   String _category = 'All';
+  String _query = ''; // debounced group-name search
+  Timer? _debounce;
+  final _searchController = TextEditingController();
   final _busy = <String>{}; // group ids with a join in flight
 
   String? get _apiCategory =>
       _category == 'All' ? null : groupApiCategories[_category];
+
+  DiscoverArgs get _discoverArgs =>
+      (category: _apiCategory, query: _query.isEmpty ? null : _query);
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _onSearchChanged(String value) {
+    // Debounce so we hit /groups/discover once the user pauses, not on every keystroke.
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 300), () {
+      if (mounted) setState(() => _query = value.trim());
+    });
+  }
+
+  void _clearSearch() {
+    _debounce?.cancel();
+    _searchController.clear();
+    setState(() => _query = '');
+  }
 
   Future<void> _join(GroupSummary group) async {
     if (_busy.contains(group.id)) return;
@@ -30,7 +61,7 @@ class _GroupsPanelState extends ConsumerState<GroupsPanel> {
     try {
       final status = await ref.read(groupsRepositoryProvider).join(group.id);
       if (!mounted) return;
-      ref.invalidate(discoverGroupsProvider(_apiCategory));
+      ref.invalidate(discoverGroupsProvider);
       _snack(
         status == 'active'
             ? 'Joined ${group.name}'
@@ -61,7 +92,7 @@ class _GroupsPanelState extends ConsumerState<GroupsPanel> {
   Future<void> _createGroup() async {
     final created = await showCreateGroupSheet(context, ref);
     if (created != null && mounted) {
-      ref.invalidate(discoverGroupsProvider(_apiCategory));
+      ref.invalidate(discoverGroupsProvider);
       _snack('Created ${created.name}');
     }
   }
@@ -79,11 +110,18 @@ class _GroupsPanelState extends ConsumerState<GroupsPanel> {
 
   @override
   Widget build(BuildContext context) {
-    final async = ref.watch(discoverGroupsProvider(_apiCategory));
+    final async = ref.watch(discoverGroupsProvider(_discoverArgs));
 
     return ListView(
       padding: EdgeInsets.zero,
       children: [
+        const PendingInvitesSection(),
+        GroupSearchField(
+          controller: _searchController,
+          hasText: _query.isNotEmpty,
+          onChanged: _onSearchChanged,
+          onClear: _clearSearch,
+        ),
         AppFilterChipRow(
           labels: groupCategories,
           selected: _category,
@@ -130,11 +168,13 @@ class _GroupsPanelState extends ConsumerState<GroupsPanel> {
           ),
           error: (e, _) => _PanelMessage(
             text: 'Couldn\'t load groups',
-            onRetry: () => ref.invalidate(discoverGroupsProvider(_apiCategory)),
+            onRetry: () => ref.invalidate(discoverGroupsProvider(_discoverArgs)),
           ),
           data: (groups) => groups.isEmpty
-              ? const _PanelMessage(
-                  text: 'No groups yet — create the first one!',
+              ? _PanelMessage(
+                  text: _query.isNotEmpty
+                      ? 'No groups match "$_query"'
+                      : 'No groups yet — create the first one!',
                 )
               : Padding(
                   padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),

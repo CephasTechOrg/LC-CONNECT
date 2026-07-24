@@ -313,6 +313,30 @@ Groups now have parity with DMs across the app: unified Messages inbox, full det
 connections-only invites (backend-enforced), per-sender identity in group chat, and message
 reporting. **The groups feature is MVP-complete.**
 
+### Post-P7 follow-ups (completing half-wired flows)
+
+**F1 ✅ — the invite *receiving* side.** Previously invites only worked sender-side; the invitee
+had no way to see or accept one (and private/unlisted invites were invisible). Now:
+- Backend: `GET /groups/invites` (pending invites, incl. private), `POST /{id}/invites/decline`,
+  service `my_invites` + `decline_invite`. Snapshot regenerated (2 additive routes). Tests:
+  `test_invitee_lists_and_accepts_a_private_invite`, `test_invitee_can_decline_a_pending_invite`.
+- Mobile: `myInvitesProvider` + a **Pending invites** section atop the Groups panel (Accept /
+  Decline); discovery tiles now show a non-actionable "Invited" state so accept/decline lives in
+  one place. Accepting refreshes discovery, My Groups, and the Messages inbox.
+
+**F2 ✅ — choose visibility at creation.** The create sheet now offers Public / Unlisted / Private
+(with a one-line hint), instead of hard-defaulting every new group to public.
+
+**Gate: ✅ green** — 146 backend tests (+2) · 134 mobile tests · ruff + analyze clean · line limits
+pass · snapshot updated.
+
+**F3 ✅ — group search.** A debounced search box at the top of the Groups panel filters discovery
+by name via the existing `q` param (`GroupSearchField` widget + `DiscoverArgs` record key on
+`discoverGroupsProvider`, combinable with the category filter). Backend unchanged. Mobile-only.
+
+**Still open (deferred, backend mostly ready):** mute toggle (`muted` column), report-whole-group
+action, avatar-at-creation, a "Your Groups" list, and membership-event notifications.
+
 ---
 
 ## Later (explicitly out of scope for now)

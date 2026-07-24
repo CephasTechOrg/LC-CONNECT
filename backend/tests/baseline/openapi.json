@@ -3645,6 +3645,37 @@
         ]
       }
     },
+    "/api/v1/groups/invites": {
+      "get": {
+        "description": "Groups the user has been invited to (including private/unlisted ones not in discovery).",
+        "operationId": "list_my_invites_api_v1_groups_invites_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/GroupSummary"
+                  },
+                  "title": "Response List My Invites Api V1 Groups Invites Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List My Invites",
+        "tags": [
+          "groups"
+        ]
+      }
+    },
     "/api/v1/groups/me": {
       "get": {
         "operationId": "list_my_groups_api_v1_groups_me_get",
@@ -3970,6 +4001,47 @@
           }
         ],
         "summary": "Accept Invite",
+        "tags": [
+          "groups"
+        ]
+      }
+    },
+    "/api/v1/groups/{group_id}/invites/decline": {
+      "post": {
+        "operationId": "decline_invite_api_v1_groups__group_id__invites_decline_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "group_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Group Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Decline Invite",
         "tags": [
           "groups"
         ]

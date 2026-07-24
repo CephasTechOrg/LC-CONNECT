@@ -31,11 +31,19 @@ class _CreateGroupFormState extends ConsumerState<_CreateGroupForm> {
   final _description = TextEditingController();
   String _category = 'club';
   String _joinPolicy = 'open';
+  String _visibility = 'public';
   bool _submitting = false;
   String? _error;
 
   static const _categories = {'club': 'Club', 'housing': 'Housing', 'class': 'Class', 'interest': 'Interest'};
   static const _policies = {'open': 'Anyone can join', 'approval': 'Approve requests', 'invite': 'Invite only'};
+  static const _visibilities = {'public': 'Public', 'unlisted': 'Unlisted', 'private': 'Private'};
+
+  String get _visibilityHint => switch (_visibility) {
+        'unlisted' => 'Not shown in discovery — shareable by invite only.',
+        'private' => 'Hidden from everyone; members join by invite only.',
+        _ => 'Anyone can find this group in discovery.',
+      };
 
   @override
   void dispose() {
@@ -57,6 +65,7 @@ class _CreateGroupFormState extends ConsumerState<_CreateGroupForm> {
       final group = await ref.read(groupsRepositoryProvider).create(
             name: _name.text.trim(),
             category: _category,
+            visibility: _visibility,
             joinPolicy: _joinPolicy,
             description: _description.text.trim(),
           );
@@ -94,6 +103,16 @@ class _CreateGroupFormState extends ConsumerState<_CreateGroupForm> {
           const SizedBox(height: 16),
           _label('Who can join'),
           _chips(_policies, _joinPolicy, (v) => setState(() => _joinPolicy = v)),
+          const SizedBox(height: 16),
+          _label('Visibility'),
+          _chips(_visibilities, _visibility, (v) => setState(() => _visibility = v)),
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(
+              _visibilityHint,
+              style: GoogleFonts.dmSans(fontSize: 11.5, color: AppColors.textMuted),
+            ),
+          ),
           if (_error != null) ...[
             const SizedBox(height: 12),
             Text(_error!, style: GoogleFonts.dmSans(fontSize: 12, color: Colors.red.shade600)),

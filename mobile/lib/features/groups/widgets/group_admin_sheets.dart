@@ -224,6 +224,11 @@ class _InviteSheetState extends ConsumerState<_InviteSheet> {
   @override
   Widget build(BuildContext context) {
     final async = ref.watch(threadsNotifierProvider);
+    // Exclude people already in the group so we never offer an invite the backend would 409.
+    final memberIds = ref.watch(groupMembersProvider(widget.groupId)).asData?.value
+            .map((m) => m.userId)
+            .toSet() ??
+        const <String>{};
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
       child: Column(
@@ -249,12 +254,17 @@ class _InviteSheetState extends ConsumerState<_InviteSheet> {
               child: Text('Could not load your contacts', style: GoogleFonts.dmSans(color: AppColors.textMuted)),
             ),
             data: (threads) {
-              final people = threads.where((t) => !t.isGroup && t.partner != null).toList();
+              final connections = threads.where((t) => !t.isGroup && t.partner != null).toList();
+              final people =
+                  connections.where((t) => !memberIds.contains(t.partner!.userId)).toList();
               if (people.isEmpty) {
+                // Distinguish "no connections at all" from "all your connections are already in".
+                final message = connections.isEmpty
+                    ? 'No one to invite yet — connect with people first.'
+                    : 'Everyone you know is already in this group.';
                 return Padding(
                   padding: const EdgeInsets.all(24),
-                  child: Text('No one to invite yet — connect with people first.',
-                      style: GoogleFonts.dmSans(color: AppColors.textMuted)),
+                  child: Text(message, style: GoogleFonts.dmSans(color: AppColors.textMuted)),
                 );
               }
               return Flexible(
