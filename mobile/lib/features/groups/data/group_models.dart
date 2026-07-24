@@ -38,14 +38,15 @@ class GroupSummary {
 
   bool get isMember => myStatus == 'active';
   bool get isPending => myStatus == 'requested';
-
   bool get isInvited => myStatus == 'invited';
+  bool get isBanned => myStatus == 'banned';
 
   /// The join button label given the group's policy + my membership state.
   String get actionLabel {
     if (isMember) return 'Joined';
     if (isPending) return 'Pending';
     if (isInvited) return 'Invited'; // accept/decline lives in the Pending invites section
+    if (isBanned) return 'Unavailable'; // banned users can't rejoin; don't offer a Join that 403s
     return switch (joinPolicy) {
       'approval' => 'Request',
       'invite' => 'Invite only',
@@ -53,7 +54,8 @@ class GroupSummary {
     };
   }
 
-  bool get actionEnabled => !isMember && !isPending && !isInvited && joinPolicy != 'invite';
+  bool get actionEnabled =>
+      !isMember && !isPending && !isInvited && !isBanned && joinPolicy != 'invite';
 
   GroupSummary copyWith({String? myStatus, int? memberCount}) => GroupSummary(
         id: id,

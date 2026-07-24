@@ -8,7 +8,7 @@ class _Header extends StatelessWidget {
     return const AppShellHeader(
       title: 'Activities',
       subtitle: 'Find something happening on campus',
-      trailing: ConnectionsBellButton(),
+      trailing: NotificationsBellButton(),
     );
   }
 }

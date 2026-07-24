@@ -86,15 +86,25 @@ class AppBellIcon extends StatelessWidget {
             color: AppColors.textMuted, size: 22),
         if (badgeCount > 0)
           Positioned(
-            top: 0,
-            right: 0,
+            top: -5,
+            right: -6,
             child: Container(
-              width: 8,
-              height: 8,
+              padding: EdgeInsets.symmetric(horizontal: badgeCount > 9 ? 4 : 0),
+              constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+              alignment: Alignment.center,
               decoration: BoxDecoration(
                 color: AppColors.error,
-                shape: BoxShape.circle,
+                borderRadius: BorderRadius.circular(9),
                 border: Border.all(color: Colors.white, width: 1.5),
+              ),
+              child: Text(
+                badgeCount > 99 ? '99+' : '$badgeCount',
+                style: GoogleFonts.dmSans(
+                  color: Colors.white,
+                  fontSize: 9.5,
+                  fontWeight: FontWeight.w700,
+                  height: 1,
+                ),
               ),
             ),
           ),

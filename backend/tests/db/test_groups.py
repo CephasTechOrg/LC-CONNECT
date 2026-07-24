@@ -142,6 +142,30 @@ async def test_invitee_lists_and_accepts_a_private_invite(db, factory):
     assert await service.active_member_count(db, group.conversation_id) == 2
 
 
+async def test_batched_counts_and_memberships_match_per_group(db, factory):
+    """The batched list helpers must return exactly what the per-group calls would — this is the
+    correctness guard for the N+1 optimization on /discover, /me, /invites."""
+    owner = await factory.user()
+    joiner = await factory.user()
+    g1 = await _make_group(db, owner, name='One', join_policy='open')
+    g2 = await _make_group(db, owner, name='Two', join_policy='open')
+    await service.join_group(db, g1, joiner)
+    await db.commit()
+
+    conv_ids = [g1.conversation_id, g2.conversation_id]
+    counts = await service.active_member_counts(db, conv_ids)
+    assert counts[g1.conversation_id] == 2  # owner + joiner
+    assert counts[g2.conversation_id] == 1  # owner only
+    # Matches the single-group query exactly.
+    assert counts[g1.conversation_id] == await service.active_member_count(db, g1.conversation_id)
+
+    mine = await service.memberships_for_user(db, joiner.id, conv_ids)
+    assert mine[g1.conversation_id].status == 'active'
+    assert g2.conversation_id not in mine  # not a member of g2 → absent
+
+    assert await service.active_member_counts(db, []) == {}  # empty input is safe
+
+
 async def test_member_can_mute_and_unmute(db, factory):
     owner = await factory.user()
     member = await factory.user()

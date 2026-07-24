@@ -7,7 +7,7 @@ import '../../../core/widgets/avatar_widget.dart';
 import '../../../shared/widgets/app_filter_chip.dart';
 import '../../../shared/widgets/app_shell_header.dart';
 import '../../../shared/widgets/app_states.dart';
-import '../../../shared/widgets/connections_bell_button.dart';
+import '../../notifications/widgets/notifications_bell_button.dart';
 import '../../groups/widgets/groups_panel.dart';
 import '../providers/discovery_provider.dart';
 import '../../safety/providers/safety_provider.dart';
@@ -139,7 +139,7 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
     return const AppShellHeader(
       title: 'Connect',
       subtitle: 'Students, study partners & groups at Livingstone',
-      trailing: ConnectionsBellButton(),
+      trailing: NotificationsBellButton(),
     );
   }
 

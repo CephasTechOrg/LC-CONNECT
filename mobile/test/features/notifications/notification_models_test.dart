@@ -49,6 +49,18 @@ void main() {
     test('join request names the requester', () {
       expect(make('group_join_request').message, 'Alex requested to join CS Club');
     });
+    test('connection request', () {
+      expect(make('connection_request').message, 'Alex sent you a connection request');
+    });
+    test('connection accepted', () {
+      expect(make('connection_accepted').message, 'Alex accepted your connection request');
+    });
+
+    test('route: group events → group, connection events → /connections', () {
+      expect(make('group_invite').route, '/groups/g1');
+      final conn = AppNotification.fromJson(_json('connection_request', actor: {'id': 'u1', 'display_name': 'Alex'}));
+      expect(conn.route, '/connections');
+    });
 
     test('falls back gracefully on unknown type / missing names', () {
       final n = AppNotification.fromJson(_json('something_new'));

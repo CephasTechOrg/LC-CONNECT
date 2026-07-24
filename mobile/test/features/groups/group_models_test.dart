@@ -68,6 +68,40 @@ void main() {
     });
   });
 
+  group('GroupSummary action state', () {
+    GroupSummary summary({required String joinPolicy, String? myStatus}) => GroupSummary(
+          id: 'g1',
+          name: 'G',
+          category: 'club',
+          visibility: 'public',
+          joinPolicy: joinPolicy,
+          memberCount: 3,
+          myStatus: myStatus,
+        );
+
+    test('open group → joinable', () {
+      final g = summary(joinPolicy: 'open');
+      expect(g.actionLabel, 'Join');
+      expect(g.actionEnabled, isTrue);
+    });
+    test('approval group → request', () {
+      expect(summary(joinPolicy: 'approval').actionLabel, 'Request');
+    });
+    test('invite-only → not directly joinable', () {
+      expect(summary(joinPolicy: 'invite').actionEnabled, isFalse);
+    });
+    test('active member → Joined, not actionable', () {
+      final g = summary(joinPolicy: 'open', myStatus: 'active');
+      expect(g.actionLabel, 'Joined');
+      expect(g.actionEnabled, isFalse);
+    });
+    test('banned → Unavailable, never offers a Join that would 403', () {
+      final g = summary(joinPolicy: 'open', myStatus: 'banned');
+      expect(g.actionLabel, 'Unavailable');
+      expect(g.actionEnabled, isFalse);
+    });
+  });
+
   group('roleRank', () {
     test('orders owner > admin > member', () {
       expect(roleRank('owner') > roleRank('admin'), isTrue);

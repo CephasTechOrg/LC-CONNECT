@@ -68,15 +68,24 @@ async def create_group(payload: GroupCreate, current_user: User = Depends(requir
     return await service.to_read(db, group, member)
 
 
+async def _summaries(db: AsyncSession, rows: list[tuple[Group, object]]) -> list[GroupSummary]:
+    """Serialize (group, member) rows with member counts fetched in a single grouped query."""
+    counts = await service.active_member_counts(db, [g.conversation_id for g, _ in rows])
+    return [
+        await service.to_summary(db, group, member, member_count=counts.get(group.conversation_id, 0))
+        for group, member in rows
+    ]
+
+
 @router.get('/me', response_model=list[GroupSummary])
 async def list_my_groups(current_user: User = Depends(require_verified_student), db: AsyncSession = Depends(get_db)):
-    return [await service.to_summary(db, group, member) for group, member in await service.my_groups(db, current_user.id)]
+    return await _summaries(db, await service.my_groups(db, current_user.id))
 
 
 @router.get('/invites', response_model=list[GroupSummary])
 async def list_my_invites(current_user: User = Depends(require_verified_student), db: AsyncSession = Depends(get_db)):
     """Groups the user has been invited to (including private/unlisted ones not in discovery)."""
-    return [await service.to_summary(db, group, member) for group, member in await service.my_invites(db, current_user.id)]
+    return await _summaries(db, await service.my_invites(db, current_user.id))
 
 
 @router.get('/discover', response_model=list[GroupSummary])
@@ -88,11 +97,16 @@ async def discover(
     db: AsyncSession = Depends(get_db),
 ):
     groups = await service.discover_groups(db, query=q, category=category, limit=limit)
-    result: list[GroupSummary] = []
-    for group in groups:
-        member = await service.membership(db, group.conversation_id, current_user.id)
-        result.append(await service.to_summary(db, group, member))
-    return result
+    conv_ids = [g.conversation_id for g in groups]
+    # Two batched queries instead of two per group (my membership + member counts).
+    mine = await service.memberships_for_user(db, current_user.id, conv_ids)
+    counts = await service.active_member_counts(db, conv_ids)
+    return [
+        await service.to_summary(
+            db, group, mine.get(group.conversation_id), member_count=counts.get(group.conversation_id, 0)
+        )
+        for group in groups
+    ]
 
 
 @router.get('/{group_id}', response_model=GroupRead)

@@ -49,6 +49,38 @@ async def active_member_count(db: AsyncSession, conversation_id: UUID) -> int:
     )
 
 
+async def active_member_counts(db: AsyncSession, conversation_ids: list[UUID]) -> dict[UUID, int]:
+    """Active member counts for many conversations in one grouped query — avoids the N+1 that a
+    per-group `active_member_count` would cause when serializing a list of groups."""
+    if not conversation_ids:
+        return {}
+    rows = await db.execute(
+        select(ConversationMember.conversation_id, func.count())
+        .where(
+            ConversationMember.conversation_id.in_(conversation_ids),
+            ConversationMember.status == ACTIVE,
+        )
+        .group_by(ConversationMember.conversation_id)
+    )
+    return {conversation_id: int(count) for conversation_id, count in rows.all()}
+
+
+async def memberships_for_user(
+    db: AsyncSession, user_id: UUID, conversation_ids: list[UUID]
+) -> dict[UUID, ConversationMember]:
+    """The user's membership row for each of many conversations, in one query (for discovery's
+    per-group `my_status`) — replaces a `membership` call per group."""
+    if not conversation_ids:
+        return {}
+    rows = await db.execute(
+        select(ConversationMember).where(
+            ConversationMember.conversation_id.in_(conversation_ids),
+            ConversationMember.user_id == user_id,
+        )
+    )
+    return {m.conversation_id: m for m in rows.scalars().all()}
+
+
 # ── visibility ───────────────────────────────────────────────────────────────────
 
 def assert_group_visible(group: Group, member: ConversationMember | None) -> None:
@@ -61,7 +93,17 @@ def assert_group_visible(group: Group, member: ConversationMember | None) -> Non
 
 # ── serialization ────────────────────────────────────────────────────────────────
 
-async def to_summary(db: AsyncSession, group: Group, viewer_member: ConversationMember | None) -> GroupSummary:
+async def to_summary(
+    db: AsyncSession,
+    group: Group,
+    viewer_member: ConversationMember | None,
+    *,
+    member_count: int | None = None,
+) -> GroupSummary:
+    """Serialize a group. Pass `member_count` (from `active_member_counts`) when serializing a
+    list, so no per-group count query runs; omit it for a single group and it self-fetches."""
+    if member_count is None:
+        member_count = await active_member_count(db, group.conversation_id)
     return GroupSummary(
         id=group.id,
         name=group.name,
@@ -69,7 +111,7 @@ async def to_summary(db: AsyncSession, group: Group, viewer_member: Conversation
         category=group.category,
         visibility=group.visibility,
         join_policy=group.join_policy,
-        member_count=await active_member_count(db, group.conversation_id),
+        member_count=member_count,
         max_members=group.max_members,
         my_status=viewer_member.status if viewer_member else None,
     )

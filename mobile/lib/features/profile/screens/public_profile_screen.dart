@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/avatar_widget.dart';
+import '../../auth/providers/auth_provider.dart';
+import '../../discovery/providers/discovery_provider.dart';
 import '../providers/profile_provider.dart';
 
 class PublicProfileScreen extends ConsumerWidget {
@@ -18,12 +20,12 @@ class PublicProfileScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(publicProfileProvider(profileId));
+    final myUserId = ref.watch(authNotifierProvider).asData?.value?.id;
 
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: AppColors.surface,
-        
         foregroundColor: AppColors.textDark,
         elevation: 0,
         title: Text(
@@ -40,7 +42,10 @@ class PublicProfileScreen extends ConsumerWidget {
         error: (e, _) => _ErrorBody(
           onRetry: () => ref.invalidate(publicProfileProvider(profileId)),
         ),
-        data: (profile) => _PublicBody(profile: profile),
+        data: (profile) => _PublicBody(
+          profile: profile,
+          isSelf: myUserId != null && myUserId == profile.userId,
+        ),
       ),
     );
   }
@@ -48,28 +53,156 @@ class PublicProfileScreen extends ConsumerWidget {
 
 // ── Full scrollable body ──────────────────────────────────────────
 
-class _PublicBody extends StatelessWidget {
+class _PublicBody extends ConsumerStatefulWidget {
   final PublicProfile profile;
-  const _PublicBody({required this.profile});
+  final bool isSelf;
+  const _PublicBody({required this.profile, required this.isSelf});
+
+  @override
+  ConsumerState<_PublicBody> createState() => _PublicBodyState();
+}
+
+class _PublicBodyState extends ConsumerState<_PublicBody> {
+  bool _connecting = false;
+  bool _requestSent = false;
+
+  Future<void> _connect() async {
+    if (_connecting || _requestSent) return;
+    setState(() => _connecting = true);
+    try {
+      await ref.read(discoveryNotifierProvider.notifier).connect(
+            widget.profile.userId,
+            widget.profile.profileId,
+            'connect',
+          );
+      if (!mounted) return;
+      setState(() {
+        _connecting = false;
+        _requestSent = true;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Connection request sent',
+            style: GoogleFonts.dmSans(),
+          ),
+          behavior: SnackBarBehavior.floating,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _connecting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Could not send request — please try again',
+            style: GoogleFonts.dmSans(),
+          ),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
+    final profile = widget.profile;
+    return Column(
       children: [
-        _HeroCard(profile: profile),
-        const SizedBox(height: 8),
-        if (profile.languagesSpoken.isNotEmpty ||
-            profile.languagesLearning.isNotEmpty ||
-            profile.interests.isNotEmpty) ...[
-          _InfoRows(profile: profile),
-          const SizedBox(height: 8),
-        ],
-        if (profile.lookingFor.isNotEmpty) ...[
-          _LookingForSection(lookingFor: profile.lookingFor),
-          const SizedBox(height: 8),
-        ],
-        const SizedBox(height: 16),
+        Expanded(
+          child: ListView(
+            children: [
+              _HeroCard(profile: profile),
+              const SizedBox(height: 8),
+              if (profile.languagesSpoken.isNotEmpty ||
+                  profile.languagesLearning.isNotEmpty ||
+                  profile.interests.isNotEmpty) ...[
+                _InfoRows(profile: profile),
+                const SizedBox(height: 8),
+              ],
+              if (profile.lookingFor.isNotEmpty) ...[
+                _LookingForSection(lookingFor: profile.lookingFor),
+                const SizedBox(height: 8),
+              ],
+              const SizedBox(height: 16),
+            ],
+          ),
+        ),
+        if (!widget.isSelf) _ConnectBar(
+          loading: _connecting,
+          sent: _requestSent,
+          onConnect: _connect,
+        ),
       ],
+    );
+  }
+}
+
+class _ConnectBar extends StatelessWidget {
+  final bool loading;
+  final bool sent;
+  final VoidCallback onConnect;
+  const _ConnectBar({
+    required this.loading,
+    required this.sent,
+    required this.onConnect,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.fromLTRB(
+        20,
+        12,
+        20,
+        12 + MediaQuery.paddingOf(context).bottom,
+      ),
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        border: Border(top: BorderSide(color: AppColors.border)),
+      ),
+      child: SizedBox(
+        width: double.infinity,
+        height: 52,
+        child: FilledButton.icon(
+          onPressed: sent || loading ? null : onConnect,
+          icon: loading
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : Icon(
+                  sent ? Icons.check_rounded : Icons.person_add_alt_1,
+                  size: 18,
+                ),
+          label: Text(
+            sent ? 'Request sent' : 'Connect',
+            style: GoogleFonts.dmSans(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          style: FilledButton.styleFrom(
+            backgroundColor: sent ? AppColors.green : AppColors.primary,
+            disabledBackgroundColor:
+                sent ? AppColors.green : AppColors.primary.withValues(alpha: 0.6),
+            disabledForegroundColor: Colors.white,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(13),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

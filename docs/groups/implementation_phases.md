@@ -376,10 +376,38 @@ viewed.
 **Gate: ✅ green** — 151 backend tests · 144 mobile tests · ruff + analyze clean · line limits pass ·
 snapshot updated (migration single-head at `e1f2a3b4c5d6`).
 
+**F8b ✅ — connection events in the notification center.** The connections flow now also emits
+`connection_request` (someone sent you a request) and `connection_accepted` (your request was
+accepted) into the same center — the notification renders the sentence and taps through to
+`/connections`. `emit_notification` is now wrapped so a notification failure can never break the
+triggering action.
+
+**F8c ✅ — one bell.** Consolidated to a single notification bell across Home / Connect / Activities
+(the old `ConnectionsBellButton` is deleted). The notification center now: (1) shows the **actor's
+avatar** on person-driven rows (invites, join requests, connection events) instead of a generic
+icon, and (2) has a **pinned "Connection requests" row** (live pending count) so `/connections`
+stays reachable for sent/received requests. `notificationCountProvider` degrades to 0 when realtime
+isn't available (keeps widget tests green).
+
 **Note:** offline *push* for these events is not wired (the in-app store + badge already deliver
 them on next open); the `PushSender` seam is there if you later want them to buzz a closed phone.
 
 **Groups feature: complete — all deferred items now shipped.**
+
+### Hardening pass ✅
+
+- **Killed the N+1 in group listings.** `/discover` ran a membership + a member-count query *per
+  group* (up to ~200 queries for 100 groups); `/me` and `/invites` ran a count per group. Added
+  `active_member_counts` (one grouped query) + `memberships_for_user` (one query) and a batched
+  `_summaries` helper → discovery is now **~2 queries total** regardless of result size. Responses
+  byte-identical (snapshot unchanged); guarded by `test_batched_counts_and_memberships_match_per_group`.
+- **Closed the banned-user gap.** A banned user saw public groups with an enabled "Join" that
+  403'd; `GroupSummary` now renders a disabled "Unavailable" for `banned`. Test added.
+- Verified the other list paths were already batched (unified inbox, `members_read`,
+  `list_notifications` — no N+1), and `emit_notification` is failure-isolated so a notification
+  can never break the action that triggered it.
+
+**Gate: ✅ green** — 152 backend tests · 152 mobile tests · ruff + analyze clean · line limits pass.
 
 ---
 

@@ -130,11 +130,17 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/notifications',
         builder: (context, state) => const NotificationsScreen(),
       ),
+      // Top-level (not in the shell): a pushed detail screen with its own back button, reachable
+      // from anywhere — including the top-level notification center. Keeping it inside the shell
+      // made cross-navigator pushes lock the navigator (the '!_debugLocked' crash).
+      GoRoute(
+        path: '/connections',
+        builder: (context, state) => const ConnectionsScreen(),
+      ),
       ShellRoute(
         builder: (context, state, child) => NavShell(child: child),
         routes: [
           GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
-          GoRoute(path: '/connections', builder: (context, state) => const ConnectionsScreen()),
           GoRoute(path: '/discover', builder: (context, state) => const DiscoveryScreen()),
           GoRoute(
             path: '/activities',

@@ -24,7 +24,12 @@ class NotificationCountNotifier extends Notifier<int> {
   @override
   int build() {
     final userId = ref.watch(authNotifierProvider.select((a) => a.asData?.value?.id));
-    final client = ref.watch(realtimeClientProvider);
+    final RealtimeClient client;
+    try {
+      client = ref.watch(realtimeClientProvider);
+    } catch (_) {
+      return 0; // realtime/env unavailable (e.g. widget tests) — degrade to no badge
+    }
 
     _eventsSub = client.events.listen(_onEvent);
     _reconnectSub = client.reconnected.listen((_) => _seed());

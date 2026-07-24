@@ -48,6 +48,22 @@ class AppNotification {
         'group_removed_admin' => "You're no longer an admin of $_group",
         'group_removed' => 'You were removed from $_group',
         'group_join_request' => '$_actor requested to join $_group',
+        'connection_request' => '$_actor sent you a connection request',
+        'connection_accepted' => '$_actor accepted your connection request',
         _ => 'You have a new notification',
       };
+
+  /// Where tapping the notification navigates: the group for group events, the connections
+  /// screen for connection events, or nowhere.
+  String? get route {
+    if (type.startsWith('connection_')) return '/connections';
+    if (groupId != null) return '/groups/$groupId';
+    return null;
+  }
+
+  /// True when the sentence is about what a *person* did ("Alex invited you…") — show their
+  /// face. False for outcome-style events about you ("You're now a member…") — show a type icon.
+  bool get isActorCentric =>
+      actorName != null &&
+      (type == 'group_invite' || type == 'group_join_request' || type.startsWith('connection_'));
 }

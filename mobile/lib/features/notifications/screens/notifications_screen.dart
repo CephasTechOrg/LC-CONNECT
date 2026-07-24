@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/avatar_widget.dart';
+import '../../connections/providers/connections_provider.dart';
 import '../data/notification_models.dart';
 import '../providers/notifications_provider.dart';
 
@@ -38,23 +40,58 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
             style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, color: AppColors.textDark)),
         iconTheme: const IconThemeData(color: AppColors.textDark),
       ),
-      body: async.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (_, _) => _Message(
-          text: "Couldn't load notifications",
-          onRetry: () => ref.invalidate(notificationsListProvider),
+      body: RefreshIndicator(
+        onRefresh: () async {
+          ref.invalidate(notificationsListProvider);
+          ref.invalidate(connectionsNotifierProvider);
+        },
+        child: ListView(
+          children: [
+            const _ConnectionRequestsRow(), // pinned: always the way into Connections
+            const Divider(height: 1, color: AppColors.border),
+            ...async.when(
+              loading: () => [const Padding(padding: EdgeInsets.only(top: 60), child: Center(child: CircularProgressIndicator()))],
+              error: (_, _) => [
+                _Message(text: "Couldn't load notifications", onRetry: () => ref.invalidate(notificationsListProvider)),
+              ],
+              data: (items) => items.isEmpty
+                  ? [const _Message(text: "You're all caught up.")]
+                  : [
+                      for (final n in items) ...[
+                        _NotificationTile(notification: n),
+                        const Divider(height: 1, color: AppColors.border),
+                      ],
+                    ],
+            ),
+          ],
         ),
-        data: (items) => items.isEmpty
-            ? const _Message(text: "You're all caught up.")
-            : RefreshIndicator(
-                onRefresh: () async => ref.invalidate(notificationsListProvider),
-                child: ListView.separated(
-                  itemCount: items.length,
-                  separatorBuilder: (_, _) => const Divider(height: 1, color: AppColors.border),
-                  itemBuilder: (_, i) => _NotificationTile(notification: items[i]),
-                ),
-              ),
       ),
+    );
+  }
+}
+
+/// Pinned entry to the Connections screen, with a live count of pending incoming requests.
+class _ConnectionRequestsRow extends ConsumerWidget {
+  const _ConnectionRequestsRow();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final count = ref.watch(connectionsNotifierProvider).asData?.value.incoming.length ?? 0;
+    return ListTile(
+      onTap: () => context.push('/connections'),
+      leading: const CircleAvatar(
+        backgroundColor: AppColors.primarySoft,
+        child: Icon(Icons.people_alt_outlined, size: 20, color: AppColors.primary),
+      ),
+      title: Text(
+        'Connection requests',
+        style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textDark),
+      ),
+      subtitle: Text(
+        count > 0 ? '$count pending' : 'View sent & received',
+        style: GoogleFonts.dmSans(fontSize: 12, color: count > 0 ? AppColors.primary : AppColors.textMuted),
+      ),
+      trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
     );
   }
 }
@@ -65,13 +102,15 @@ class _NotificationTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final gid = notification.groupId;
+    final route = notification.route;
     return ListTile(
-      onTap: gid != null ? () => context.push('/groups/$gid') : null,
-      leading: CircleAvatar(
-        backgroundColor: AppColors.primarySoft,
-        child: Icon(_iconFor(notification.type), size: 20, color: AppColors.primary),
-      ),
+      onTap: route != null ? () => context.push(route) : null,
+      leading: notification.isActorCentric
+          ? AvatarWidget(imageUrl: notification.actorAvatarUrl, size: 40, cacheScope: notification.actorName)
+          : CircleAvatar(
+              backgroundColor: AppColors.primarySoft,
+              child: Icon(_iconFor(notification.type), size: 20, color: AppColors.primary),
+            ),
       title: Text(
         notification.message,
         style: GoogleFonts.dmSans(fontSize: 14, color: AppColors.textDark, height: 1.3),
@@ -80,7 +119,7 @@ class _NotificationTile extends StatelessWidget {
         _timeAgo(notification.createdAt),
         style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textMuted),
       ),
-      trailing: gid != null
+      trailing: route != null
           ? const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted)
           : null,
     );
@@ -118,6 +157,8 @@ IconData _iconFor(String type) => switch (type) {
       'group_removed_admin' => Icons.remove_moderator_outlined,
       'group_removed' => Icons.person_remove_outlined,
       'group_join_request' => Icons.group_add_outlined,
+      'connection_request' => Icons.person_add_alt_1_outlined,
+      'connection_accepted' => Icons.how_to_reg_outlined,
       _ => Icons.notifications_outlined,
     };
 

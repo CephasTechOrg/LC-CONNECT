@@ -10,10 +10,7 @@ class _Header extends StatelessWidget {
       title: greeting,
       subtitle: 'Livingstone College',
       showBottomBorder: false,
-      trailing: const Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [NotificationsBellButton(), ConnectionsBellButton()],
-      ),
+      trailing: const NotificationsBellButton(),
     );
   }
 }

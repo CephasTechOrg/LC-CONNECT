@@ -7,7 +7,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/app_filter_chip.dart';
 import '../../../shared/widgets/app_shell_header.dart';
 import '../../../shared/widgets/app_states.dart';
-import '../../../shared/widgets/connections_bell_button.dart';
+import '../../notifications/widgets/notifications_bell_button.dart';
 import '../providers/activities_provider.dart';
 
 // ── Filter definitions ───────────────────────────────────────────

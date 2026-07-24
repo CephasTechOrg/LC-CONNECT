@@ -7,13 +7,13 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/avatar_widget.dart';
 import '../../../shared/widgets/app_shell_header.dart';
 import '../../../shared/widgets/app_states.dart';
-import '../../../shared/widgets/connections_bell_button.dart';
 import '../../notifications/widgets/notifications_bell_button.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../discovery/providers/discovery_provider.dart';
 import '../../activities/providers/activities_provider.dart';
 import '../../groups/data/placeholder_groups.dart';
 import '../../messages/providers/messages_provider.dart';
+import '../../profile/providers/profile_provider.dart';
 
 part '../widgets/home_header.dart';
 part '../widgets/home_feed_sections.dart';
@@ -57,7 +57,12 @@ String _greeting() {
   return 'Good evening';
 }
 
-String _displayFirstName(String? email) {
+/// Prefer profile display name; fall back to email local-part only if needed.
+String _greetingName({String? displayName, String? email}) {
+  final fromProfile = displayName?.trim();
+  if (fromProfile != null && fromProfile.isNotEmpty) {
+    return fromProfile.split(RegExp(r'\s+')).first;
+  }
   if (email == null || email.isEmpty) return 'there';
   final raw = email.split('@').first;
   if (raw.isEmpty) return 'there';
@@ -90,7 +95,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(authNotifierProvider).asData?.value;
-    final firstName = _displayFirstName(user?.email);
+    final profile = ref.watch(myProfileNotifierProvider).asData?.value;
+    final firstName = _greetingName(
+      displayName: profile?.displayName,
+      email: user?.email,
+    );
 
     final discoveryAsync = ref.watch(discoveryNotifierProvider);
     final activitiesAsync = ref.watch(activitiesNotifierProvider);

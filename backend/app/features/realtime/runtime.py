@@ -44,14 +44,17 @@ async def emit_notification(
     """
     from app.features.notifications import service as notifications_service
 
-    async with AsyncSessionLocal() as db:
-        notification = await notifications_service.create_notification(
-            db, user_id=user_id, type=notif_type, group_id=group_id, actor_id=actor_id
-        )
-        await db.commit()
-        await db.refresh(notification)
-        dto = await notifications_service.read_one(db, notification)
-    await event_bus.publish_to_user(user_id, protocol.notification_event(dto.model_dump(mode='json')))
+    try:
+        async with AsyncSessionLocal() as db:
+            notification = await notifications_service.create_notification(
+                db, user_id=user_id, type=notif_type, group_id=group_id, actor_id=actor_id
+            )
+            await db.commit()
+            await db.refresh(notification)
+            dto = await notifications_service.read_one(db, notification)
+        await event_bus.publish_to_user(user_id, protocol.notification_event(dto.model_dump(mode='json')))
+    except Exception as exc:  # noqa: BLE001 - a notification must never break the triggering action
+        logger.warning('emit_notification failed (type=%s user=%s): %s', notif_type, user_id, exc)
 
 
 async def revoke_pair_access(user_a: UUID, user_b: UUID) -> None:

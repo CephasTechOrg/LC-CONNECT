@@ -23,6 +23,14 @@ from app.shared.serializers import profile_to_public
 router = APIRouter(prefix='/connections', tags=['connections'])
 
 
+async def _notify(user_id: UUID, notif_type: str, actor_id: UUID) -> None:
+    """Fire an in-app notification for a connection event. Lazy import avoids a module-load
+    cycle with the realtime package."""
+    from app.features.realtime.runtime import emit_notification
+
+    await emit_notification(user_id=user_id, notif_type=notif_type, actor_id=actor_id)
+
+
 @router.post('/request', response_model=ConnectionRequestRead, status_code=status.HTTP_201_CREATED)
 async def send_connection_request(payload: ConnectionRequestCreate, current_user: User = Depends(require_verified_student), db: AsyncSession = Depends(get_db)) -> ConnectionRequestRead:
     if payload.receiver_id == current_user.id:
@@ -46,6 +54,8 @@ async def send_connection_request(payload: ConnectionRequestCreate, current_user
         await ensure_dm_conversation(db, new_match)  # every match gets its conversation
         await db.commit()
         await db.refresh(reverse_request)
+        # Connecting back accepts their pending request → tell them it's a match.
+        await _notify(payload.receiver_id, 'connection_accepted', current_user.id)
         return reverse_request
 
     existing = (await db.execute(select(ConnectionRequest).where(ConnectionRequest.sender_id == current_user.id, ConnectionRequest.receiver_id == payload.receiver_id))).scalar_one_or_none()
@@ -56,6 +66,7 @@ async def send_connection_request(payload: ConnectionRequestCreate, current_user
     db.add(request)
     await db.commit()
     await db.refresh(request)
+    await _notify(payload.receiver_id, 'connection_request', current_user.id)  # "X sent you a request"
     return request
 
 
@@ -111,6 +122,7 @@ async def accept_request(request_id: UUID, current_user: User = Depends(require_
     await ensure_dm_conversation(db, match)  # every match gets its conversation
     await db.commit()
     await db.refresh(match)
+    await _notify(request.sender_id, 'connection_accepted', current_user.id)  # tell the sender
     partner_id = match.user_b_id if match.user_a_id == current_user.id else match.user_a_id
     partner_profile = await get_profile_by_user_id(db, partner_id)
     return MatchRead(id=match.id, user_a_id=match.user_a_id, user_b_id=match.user_b_id, created_at=match.created_at, partner=profile_to_public(partner_profile))
