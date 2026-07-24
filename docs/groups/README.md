@@ -5,9 +5,11 @@ interest groups) and the messaging generalization they require.
 
 | Doc | What it's for |
 |-----|---------------|
-| [`architecture.md`](./architecture.md) | **Start here.** The final architecture, every design decision and *why*, what we deliberately deferred, and the impact map on existing systems. |
-| [`api_contract.md`](./api_contract.md) | The **endpoints + payloads** the mobile group UI is built against (draft until reconciled with the real screens). |
-| [`implementation_phases.md`](./implementation_phases.md) | The **living plan**: phases P0–P6 with deliverables, test gates, and checkboxes. Update as we go. |
+| [`groups_reference.md`](./groups_reference.md) | **The behavior & policy reference.** How groups work *today* — roles, permissions, join flows, messaging, notifications, moderation, limits, every endpoint. Start here if you want to know what the system *does*. |
+| [`architecture.md`](./architecture.md) | The final architecture, every design decision and *why*, what we deliberately deferred, and the impact map on existing systems. |
+| [`api_contract.md`](./api_contract.md) | The **endpoints + payloads** the mobile group UI is built against. |
+| [`implementation_phases.md`](./implementation_phases.md) | The **living build log**: phases + follow-ups with deliverables, test gates, and checkboxes. |
+| [`../audit_and_data_retention.md`](../audit_and_data_retention.md) | App-wide **audit & data-retention policy**: what's soft-deleted vs hard-deleted, evidence snapshots, and the moderator playbook. |
 
 ---
 

@@ -8,6 +8,7 @@ import pytest
 from fastapi import HTTPException
 from sqlalchemy import func, select
 
+from app.config import settings
 from app.features.groups import service
 from app.features.groups.schema import GroupCreate
 from app.models import Conversation, ConversationMember, Group, User
@@ -164,6 +165,36 @@ async def test_batched_counts_and_memberships_match_per_group(db, factory):
     assert g2.conversation_id not in mine  # not a member of g2 → absent
 
     assert await service.active_member_counts(db, []) == {}  # empty input is safe
+
+
+def test_effective_member_cap_never_exceeds_the_global_limit():
+    cap = settings.group_max_members
+    assert service.effective_member_cap(None) == cap  # unset → global cap
+    assert service.effective_member_cap(50) == 50  # a smaller own cap wins
+    assert service.effective_member_cap(cap + 1000) == cap  # own cap can't exceed global
+
+
+async def test_global_cap_applies_even_when_group_sets_no_max(db, factory, monkeypatch):
+    monkeypatch.setattr(settings, 'group_max_members', 2)
+    owner = await factory.user()
+    group = await _make_group(db, owner, join_policy='open')  # no max_members of its own
+    await service.join_group(db, group, await factory.user())  # 2nd member → at the global cap
+    await db.commit()
+    with pytest.raises(HTTPException) as exc:
+        await service.join_group(db, group, await factory.user())  # 3rd → rejected
+    assert exc.value.status_code == 409
+
+
+async def test_create_rejects_max_members_above_global_cap(db, factory):
+    owner = await factory.user()
+    with pytest.raises(HTTPException) as exc:
+        await service.create_group(
+            db,
+            owner,
+            GroupCreate(name='Huge', category='club', join_policy='open',
+                        max_members=settings.group_max_members + 1),
+        )
+    assert exc.value.status_code == 400
 
 
 async def test_member_can_mute_and_unmute(db, factory):

@@ -52,6 +52,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   bool _loadingOlder = false;
   bool _hasMore = true;
   bool _partnerTyping = false;
+  String? _typingUserId; // who is typing (group mode → resolve to their name)
   String _currentUserId = '';
   DateTime _lastTypingSent = DateTime.fromMillisecondsSinceEpoch(0);
 
@@ -229,8 +230,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         _sendRead();
       case MessageAck(:final message) when message['conversation_id'] == widget.matchId:
         _reconcileAck(ChatMessage.fromJson(message));
-      case TypingEvent(:final conversationId, :final active) when conversationId == widget.matchId:
-        _setPartnerTyping(active);
+      case TypingEvent(:final conversationId, :final userId, :final active) when conversationId == widget.matchId:
+        _setPartnerTyping(active, userId);
       case ReadReceipt(:final conversationId) when conversationId == widget.matchId:
         _markMineRead();
       case MessageDeleted(:final conversationId, :final messageId) when conversationId == widget.matchId:
@@ -310,14 +311,24 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     });
   }
 
-  void _setPartnerTyping(bool active) {
+  void _setPartnerTyping(bool active, [String? userId]) {
     _typingResetTimer?.cancel();
-    setState(() => _partnerTyping = active);
+    setState(() {
+      _partnerTyping = active;
+      _typingUserId = active ? userId : null;
+    });
     if (active) {
       _typingResetTimer = Timer(const Duration(seconds: 4), () {
         if (mounted) setState(() => _partnerTyping = false);
       });
     }
+  }
+
+  /// The name to show in the typing indicator: the group member's name (falling back to
+  /// "Someone" until members load), or the DM partner's name.
+  String _typingName(MessagePartner? partner) {
+    if (_isGroup) return _senders()[_typingUserId]?.name ?? 'Someone';
+    return partner?.displayName ?? 'Your match';
   }
 
   void _markMineRead() {
@@ -474,8 +485,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                           onRetry: _retry,
                         ),
             ),
-            if (_partnerTyping)
-              _TypingIndicator(name: widget.groupTitle != null ? 'Someone' : (partner?.displayName ?? 'Your match')),
+            if (_partnerTyping) _TypingIndicator(name: _typingName(partner)),
             _InputBar(
               controller: _inputController,
               sending: false,

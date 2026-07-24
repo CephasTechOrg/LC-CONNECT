@@ -36,7 +36,8 @@ The app should **not** feel like a dating app. It should feel like a safe campus
 | `realtime-messaging.md` | **Real-time messaging** — how it works end-to-end, Flutter code, Supabase config, deduplication |
 | `deployment.md` | **Render deployment** — render.yaml, env vars, every failure we hit and how we fixed it |
 | `notifications/` | **Notifications** — how push + unread counts work end-to-end, and the Firebase setup runbook |
-| `groups/` | **Groups (campus communities)** — architecture, decision log, and the phased implementation plan |
+| `groups/` | **Groups (campus communities)** — start with [`groups/groups_reference.md`](./groups/groups_reference.md) (behavior & policy), plus architecture, API contract, and build log |
+| `audit_and_data_retention.md` | **Audit & data-retention policy** — what's soft-deleted vs permanently deleted, report evidence snapshots, and the moderator investigation playbook |
 | `todo.md` | Feature development progress and remaining tasks |
 
 ## Quick Links for Common Tasks

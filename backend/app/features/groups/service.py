@@ -13,6 +13,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.features.groups.policies import can_moderate
 from app.features.groups.schema import GroupCreate, GroupMemberRead, GroupRead, GroupSummary, JoinResult
 from app.models import Conversation, ConversationMember, Group, Profile, User
@@ -132,7 +133,16 @@ async def to_read(db: AsyncSession, group: Group, viewer_member: ConversationMem
 
 # ── create ───────────────────────────────────────────────────────────────────────
 
+def _validate_max_members(max_members: int | None) -> None:
+    if max_members is not None and max_members > settings.group_max_members:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f'A group can have at most {settings.group_max_members} members',
+        )
+
+
 async def create_group(db: AsyncSession, owner: User, payload: GroupCreate) -> Group:
+    _validate_max_members(payload.max_members)
     conversation = Conversation(kind='group')
     db.add(conversation)
     await db.flush()
@@ -159,14 +169,23 @@ async def create_group(db: AsyncSession, owner: User, payload: GroupCreate) -> G
 
 # ── join ─────────────────────────────────────────────────────────────────────────
 
+def effective_member_cap(max_members: int | None) -> int:
+    """The real ceiling for a group: its own `max_members` if set, but never above the global
+    hard cap (which also applies to groups that left `max_members` unset)."""
+    if max_members is None:
+        return settings.group_max_members
+    return min(max_members, settings.group_max_members)
+
+
 async def _reserve_capacity(db: AsyncSession, group: Group) -> None:
-    """Lock the group row and reject if full. Serializes concurrent joins for this group."""
+    """Lock the group row and reject if full. Serializes concurrent joins for this group, and
+    enforces the global cap even when the group set no `max_members` of its own."""
     locked = (
         await db.execute(select(Group).where(Group.id == group.id).with_for_update())
     ).scalar_one()
-    if locked.max_members is not None:
-        if await active_member_count(db, locked.conversation_id) >= locked.max_members:
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='Group is full')
+    cap = effective_member_cap(locked.max_members)
+    if await active_member_count(db, locked.conversation_id) >= cap:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='Group is full')
 
 
 async def join_group(db: AsyncSession, group: Group, user: User) -> JoinResult:
@@ -269,6 +288,8 @@ async def set_mute(db: AsyncSession, member: ConversationMember, muted: bool) ->
 
 
 async def update_group(db: AsyncSession, group: Group, changes: dict) -> None:
+    if 'max_members' in changes:
+        _validate_max_members(changes['max_members'])
     for field in ('name', 'description', 'category', 'visibility', 'join_policy', 'max_members'):
         if field in changes:
             setattr(group, field, changes[field].strip() if field == 'name' else changes[field])

@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     supabase_jwt_audience: str = Field(default='authenticated', alias='SUPABASE_JWT_AUDIENCE')
     supabase_profile_bucket: str = Field(default='profile-images', alias='SUPABASE_PROFILE_BUCKET')
     max_profile_image_mb: int = Field(default=5, alias='MAX_PROFILE_IMAGE_MB')
+    # Global hard cap on group members — no group may exceed this regardless of its own
+    # `max_members`. Bounds per-message fan-out cost and abuse.
+    group_max_members: int = Field(default=500, alias='GROUP_MAX_MEMBERS')
 
     allowed_email_domains: str = Field(
         default='students.livingstone.edu,livingstone.edu',

@@ -394,6 +394,21 @@ them on next open); the `PushSender` seam is there if you later want them to buz
 
 **Groups feature: complete — all deferred items now shipped.**
 
+### Global member cap ✅
+
+Every group is now capped at a **global hard limit** (`settings.group_max_members`, default **500**),
+enforced regardless of the group's own `max_members` — so a group that set no limit is still bounded.
+`effective_member_cap = min(own, global)`; `_reserve_capacity` enforces it under the row lock;
+create/edit reject a `max_members` above the global cap with a clear 400. This bounds per-message
+fan-out cost (O(members) per send) and abuse. Tests added (3). No API-shape change (snapshot stable).
+
+### Group avatars — reviewed, already correct ✅
+
+`_upload_avatar` writes a **deterministic** path (`groups/{id}/avatar.jpg`) and removes any prior
+avatar first → exactly one object per group, **no bucket duplicates/leak**. URLs are **public**
+(correct for display avatars) with a `?v=<ts>` cache-buster. No change needed. (Nuance: a private
+group's avatar is fetchable by anyone holding the exact URL — same as profile pics; acceptable.)
+
 ### Hardening pass ✅
 
 - **Killed the N+1 in group listings.** `/discover` ran a membership + a member-count query *per
