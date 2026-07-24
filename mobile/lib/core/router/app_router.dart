@@ -145,6 +145,14 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const MessagesScreen(),
             routes: [
               GoRoute(
+                // Two segments, so it never collides with the single-segment :matchId below.
+                path: 'group/:conversationId',
+                builder: (context, state) => ChatScreen(
+                  matchId: state.pathParameters['conversationId']!,
+                  groupTitle: (state.extra as String?) ?? 'Group',
+                ),
+              ),
+              GoRoute(
                 path: ':matchId',
                 builder: (context, state) => ChatScreen(
                   matchId: state.pathParameters['matchId']!,

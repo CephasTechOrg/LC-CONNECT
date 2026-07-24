@@ -1,74 +1,39 @@
 from datetime import datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import or_, select
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.dependencies import require_verified_student
 from app.features.messages.schema import MessageCreate, MessageRead, MessageThreadRead, UnreadSummary
 from app.features.messages.service import (
-    get_match_for_user,
+    list_threads_for_user,
     message_read,
     page_thread,
-    partner_id,
     persist_message_idempotent,
     sync_thread,
     unread_summary,
 )
-from app.models import Match, Message, Profile, User
-from app.shared.conversations import ensure_dm_conversation, match_ids_for_conversations
-from app.shared.policies import users_are_blocked
-from app.shared.profiles import profile_load_options
-from app.shared.serializers import profile_to_public
+from app.models import User
+from app.shared.conversations import accessible_conversation, addressing_ids_for_conversations
 
 router = APIRouter(prefix='/messages', tags=['messages'])
 
 
 @router.get('/threads', response_model=list[MessageThreadRead])
 async def list_threads(current_user: User = Depends(require_verified_student), db: AsyncSession = Depends(get_db)):
-    matches = (await db.execute(select(Match).where(or_(Match.user_a_id == current_user.id, Match.user_b_id == current_user.id)).order_by(Match.created_at.desc()))).scalars().all()
-
-    if not matches:
-        return []
-
-    match_ids = [m.id for m in matches]
-    latest_messages = (
-        await db.execute(
-            select(Message)
-            .where(Message.match_id.in_(match_ids))
-            .distinct(Message.match_id)
-            .order_by(Message.match_id, Message.created_at.desc())
-        )
-    ).scalars().all()
-    message_map = {m.match_id: m for m in latest_messages}
-
-    partner_ids = [partner_id(match, current_user) for match in matches]
-    profiles = (await db.execute(select(Profile).options(*profile_load_options()).where(Profile.user_id.in_(partner_ids)))).scalars().all()
-    profile_map = {p.user_id: p for p in profiles}
-
-    threads: list[MessageThreadRead] = []
-    for match in matches:
-        latest = message_map.get(match.id)
-        partner_profile = profile_map.get(partner_id(match, current_user))
-        if partner_profile:
-            threads.append(MessageThreadRead(match_id=match.id, partner=profile_to_public(partner_profile), latest_message=message_read(latest) if latest else None))
-    return threads
+    """The unified inbox — DM and group threads, newest activity first."""
+    return await list_threads_for_user(db, current_user.id)
 
 
 @router.get('/unread-summary', response_model=UnreadSummary)
 async def get_unread_summary(current_user: User = Depends(require_verified_student), db: AsyncSession = Depends(get_db)):
-    """Total + per-conversation unread counts — seeds the tab + per-row badges."""
+    """Total + per-conversation unread counts — seeds the tab + per-row badges. Keyed by the
+    client-facing addressing id (match id for DMs, conversation id for groups)."""
     total, per_conversation = await unread_summary(db, current_user.id)
-    # Internal counts are conversation-keyed; clients still address DMs by match id, so
-    # translate at the edge (keeps the API contract byte-identical during the transition).
-    match_ids = await match_ids_for_conversations(db, list(per_conversation))
-    external = {
-        match_ids[conversation_id]: count
-        for conversation_id, count in per_conversation.items()
-        if conversation_id in match_ids
-    }
+    addressing = await addressing_ids_for_conversations(db, list(per_conversation))
+    external = {addressing[conversation_id]: count for conversation_id, count in per_conversation.items()}
     return UnreadSummary(total=sum(external.values()), per_conversation=external)
 
 
@@ -83,8 +48,7 @@ async def get_thread(
 ):
     """Newest-first page of a conversation. Pass the oldest row's (created_at, id) as
     `before_*` to fetch the next older page (keyset pagination)."""
-    match = await get_match_for_user(db, match_id, current_user)
-    conversation = await ensure_dm_conversation(db, match)
+    conversation = await accessible_conversation(db, match_id, current_user.id)
     messages = await page_thread(
         db, conversation.id, before_created_at=before_created_at, before_id=before_id, limit=limit
     )
@@ -101,8 +65,7 @@ async def sync_thread_endpoint(
     limit: int = Query(default=100, ge=1, le=200),
 ):
     """Oldest-first messages after a cursor — reconnect catch-up."""
-    match = await get_match_for_user(db, match_id, current_user)
-    conversation = await ensure_dm_conversation(db, match)
+    conversation = await accessible_conversation(db, match_id, current_user.id)
     messages = await sync_thread(
         db, conversation.id, after_created_at=after_created_at, after_id=after_id, limit=limit
     )
@@ -111,14 +74,11 @@ async def sync_thread_endpoint(
 
 @router.post('/threads/{match_id}', response_model=MessageRead, status_code=status.HTTP_201_CREATED)
 async def send_message(match_id: UUID, payload: MessageCreate, current_user: User = Depends(require_verified_student), db: AsyncSession = Depends(get_db)):
-    match = await get_match_for_user(db, match_id, current_user)
-    if await users_are_blocked(db, current_user.id, partner_id(match, current_user)):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='Messaging is blocked')
-    conversation = await ensure_dm_conversation(db, match)
+    conversation = await accessible_conversation(db, match_id, current_user.id)
     message, _ = await persist_message_idempotent(
         db,
         sender_id=current_user.id,
-        match_id=match.id,
+        match_id=conversation.match_id,
         conversation_id=conversation.id,
         body=payload.body.strip(),
         client_message_id=payload.client_message_id,

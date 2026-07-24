@@ -1273,6 +1273,18 @@
             ],
             "title": "Client Message Id"
           },
+          "conversation_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conversation Id"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -1284,9 +1296,16 @@
             "type": "string"
           },
           "match_id": {
-            "format": "uuid",
-            "title": "Match Id",
-            "type": "string"
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Match Id"
           },
           "read_at": {
             "anyOf": [
@@ -1308,7 +1327,6 @@
         },
         "required": [
           "id",
-          "match_id",
           "sender_id",
           "body",
           "created_at",

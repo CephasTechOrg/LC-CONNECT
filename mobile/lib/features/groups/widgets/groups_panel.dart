@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/app_filter_chip.dart';
@@ -20,7 +21,8 @@ class _GroupsPanelState extends ConsumerState<GroupsPanel> {
   String _category = 'All';
   final _busy = <String>{}; // group ids with a join in flight
 
-  String? get _apiCategory => _category == 'All' ? null : groupApiCategories[_category];
+  String? get _apiCategory =>
+      _category == 'All' ? null : groupApiCategories[_category];
 
   Future<void> _join(GroupSummary group) async {
     if (_busy.contains(group.id)) return;
@@ -29,11 +31,27 @@ class _GroupsPanelState extends ConsumerState<GroupsPanel> {
       final status = await ref.read(groupsRepositoryProvider).join(group.id);
       if (!mounted) return;
       ref.invalidate(discoverGroupsProvider(_apiCategory));
-      _snack(status == 'active' ? 'Joined ${group.name}' : 'Request sent to ${group.name}');
+      _snack(
+        status == 'active'
+            ? 'Joined ${group.name}'
+            : 'Request sent to ${group.name}',
+      );
     } catch (_) {
       if (mounted) _snack('Could not join — try again', error: true);
     } finally {
       if (mounted) setState(() => _busy.remove(group.id));
+    }
+  }
+
+  Future<void> _open(GroupSummary group) async {
+    if (!group.isMember) return; // must be a member to open the chat
+    try {
+      // GroupSummary lacks conversation_id; fetch the full group for it.
+      final full = await ref.read(groupsRepositoryProvider).get(group.id);
+      if (!mounted) return;
+      context.push('/messages/group/${full.conversationId}', extra: full.name);
+    } catch (_) {
+      if (mounted) _snack('Could not open the group', error: true);
     }
   }
 
@@ -75,7 +93,11 @@ class _GroupsPanelState extends ConsumerState<GroupsPanel> {
             children: [
               Text(
                 'All Groups',
-                style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textDark),
+                style: GoogleFonts.dmSans(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textDark,
+                ),
               ),
               const Spacer(),
               TextButton.icon(
@@ -83,7 +105,11 @@ class _GroupsPanelState extends ConsumerState<GroupsPanel> {
                 icon: const Icon(Icons.add, size: 14, color: AppColors.primary),
                 label: Text(
                   'Create Group',
-                  style: GoogleFonts.dmSans(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primary),
+                  style: GoogleFonts.dmSans(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.primary,
+                  ),
                 ),
                 style: TextButton.styleFrom(
                   padding: EdgeInsets.zero,
@@ -104,7 +130,9 @@ class _GroupsPanelState extends ConsumerState<GroupsPanel> {
             onRetry: () => ref.invalidate(discoverGroupsProvider(_apiCategory)),
           ),
           data: (groups) => groups.isEmpty
-              ? const _PanelMessage(text: 'No groups yet — create the first one!')
+              ? const _PanelMessage(
+                  text: 'No groups yet — create the first one!',
+                )
               : Padding(
                   padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
                   child: Column(
@@ -116,6 +144,7 @@ class _GroupsPanelState extends ConsumerState<GroupsPanel> {
                             group: g,
                             busy: _busy.contains(g.id),
                             onAction: () => _join(g),
+                            onOpen: () => _open(g),
                           ),
                         ),
                     ],
@@ -138,11 +167,20 @@ class _PanelMessage extends StatelessWidget {
       padding: const EdgeInsets.only(top: 60),
       child: Column(
         children: [
-          Text(text, style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.textMuted)),
+          Text(
+            text,
+            style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.textMuted),
+          ),
           if (onRetry != null)
             TextButton(
               onPressed: onRetry,
-              child: Text('Retry', style: GoogleFonts.dmSans(color: AppColors.primary, fontWeight: FontWeight.w600)),
+              child: Text(
+                'Retry',
+                style: GoogleFonts.dmSans(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
         ],
       ),
@@ -151,67 +189,110 @@ class _PanelMessage extends StatelessWidget {
 }
 
 IconData _iconFor(String category) => switch (category) {
-      'housing' => Icons.home_outlined,
-      'class' => Icons.school_outlined,
-      'club' => Icons.groups_outlined,
-      _ => Icons.favorite_border_rounded,
-    };
+  'housing' => Icons.home_outlined,
+  'class' => Icons.school_outlined,
+  'club' => Icons.groups_outlined,
+  _ => Icons.favorite_border_rounded,
+};
 
 String _categoryLabel(String category) => switch (category) {
-      'club' => 'Clubs & Sports',
-      'class' => 'Academic',
-      'housing' => 'Housing',
-      _ => 'Interest',
-    };
+  'club' => 'Clubs & Sports',
+  'class' => 'Academic',
+  'housing' => 'Housing',
+  _ => 'Interest',
+};
 
 class _GroupListTile extends StatelessWidget {
   final GroupSummary group;
   final bool busy;
   final VoidCallback onAction;
-  const _GroupListTile({required this.group, required this.busy, required this.onAction});
+  final VoidCallback onOpen;
+  const _GroupListTile({
+    required this.group,
+    required this.busy,
+    required this.onAction,
+    required this.onOpen,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
+    return Material(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        onTap: group.isMember
+            ? onOpen
+            : null, // members tap to open the group chat
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(color: AppColors.primarySoft, borderRadius: BorderRadius.circular(12)),
-            alignment: Alignment.center,
-            clipBehavior: Clip.antiAlias,
-            child: group.avatarUrl != null
-                ? Image.network(group.avatarUrl!, fit: BoxFit.cover, width: 42, height: 42,
-                    errorBuilder: (_, _, _) => Icon(_iconFor(group.category), size: 18, color: AppColors.primary))
-                : Icon(_iconFor(group.category), size: 18, color: AppColors.primary),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.border),
           ),
-          const SizedBox(width: 11),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  group.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textDark),
+          child: Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: AppColors.primarySoft,
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                Text(
-                  '${_categoryLabel(group.category)} · ${group.memberCount} members',
-                  style: GoogleFonts.dmSans(fontSize: 11, color: AppColors.textMuted),
+                alignment: Alignment.center,
+                clipBehavior: Clip.antiAlias,
+                child: group.avatarUrl != null
+                    ? Image.network(
+                        group.avatarUrl!,
+                        fit: BoxFit.cover,
+                        width: 42,
+                        height: 42,
+                        errorBuilder: (_, _, _) => Icon(
+                          _iconFor(group.category),
+                          size: 18,
+                          color: AppColors.primary,
+                        ),
+                      )
+                    : Icon(
+                        _iconFor(group.category),
+                        size: 18,
+                        color: AppColors.primary,
+                      ),
+              ),
+              const SizedBox(width: 11),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      group.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.dmSans(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textDark,
+                      ),
+                    ),
+                    Text(
+                      '${_categoryLabel(group.category)} · ${group.memberCount} members',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 11,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+              _GroupActionBtn(
+                label: group.actionLabel,
+                enabled: group.actionEnabled,
+                busy: busy,
+                onTap: onAction,
+              ),
+            ],
           ),
-          _GroupActionBtn(label: group.actionLabel, enabled: group.actionEnabled, busy: busy, onTap: onAction),
-        ],
+        ),
       ),
     );
   }
@@ -222,12 +303,18 @@ class _GroupActionBtn extends StatelessWidget {
   final bool enabled;
   final bool busy;
   final VoidCallback onTap;
-  const _GroupActionBtn({required this.label, required this.enabled, required this.busy, required this.onTap});
+  const _GroupActionBtn({
+    required this.label,
+    required this.enabled,
+    required this.busy,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     final (bg, border, color) = switch (label) {
-      'Join' || 'Accept' => (AppColors.primary, AppColors.primary, Colors.white),
+      'Join' ||
+      'Accept' => (AppColors.primary, AppColors.primary, Colors.white),
       'Joined' => (AppColors.surface, AppColors.border, AppColors.textMid),
       'Request' => (AppColors.surface, AppColors.primary, AppColors.primary),
       _ => (AppColors.surface, AppColors.border, AppColors.textMuted),
@@ -241,10 +328,24 @@ class _GroupActionBtn extends StatelessWidget {
         borderRadius: BorderRadius.circular(9),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 6),
-          decoration: BoxDecoration(borderRadius: BorderRadius.circular(9), border: Border.all(color: border, width: 1.5)),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(9),
+            border: Border.all(color: border, width: 1.5),
+          ),
           child: busy
-              ? const SizedBox(width: 13, height: 13, child: CircularProgressIndicator(strokeWidth: 2))
-              : Text(label, style: GoogleFonts.dmSans(fontSize: 11.5, fontWeight: FontWeight.w600, color: color)),
+              ? const SizedBox(
+                  width: 13,
+                  height: 13,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : Text(
+                  label,
+                  style: GoogleFonts.dmSans(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w600,
+                    color: color,
+                  ),
+                ),
         ),
       ),
     );

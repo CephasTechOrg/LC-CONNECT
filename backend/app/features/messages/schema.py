@@ -14,7 +14,10 @@ class MessageCreate(BaseModel):
 
 class MessageRead(BaseModel):
     id: UUID
-    match_id: UUID
+    # match_id is null for group messages (a group has no match); conversation_id is the
+    # universal container. Clients address a thread by match_id (DM) or conversation_id (group).
+    match_id: UUID | None = None
+    conversation_id: UUID | None = None
     sender_id: UUID
     client_message_id: UUID | None = None
     body: str
@@ -22,9 +25,20 @@ class MessageRead(BaseModel):
     read_at: datetime | None
 
 
+class GroupThreadInfo(BaseModel):
+    id: UUID
+    name: str
+    avatar_url: str | None
+
+
 class MessageThreadRead(BaseModel):
-    match_id: UUID
-    partner: ProfilePublic | None
+    # `conversation_id` is the universal addressing id (what the client opens/subscribes to).
+    # `match_id` is kept for DM back-compat (null for groups). Clients branch on `kind`.
+    conversation_id: UUID
+    kind: str  # 'dm' | 'group'
+    match_id: UUID | None = None
+    partner: ProfilePublic | None = None  # dm only
+    group: GroupThreadInfo | None = None  # group only
     latest_message: MessageRead | None
 
 

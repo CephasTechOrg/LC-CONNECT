@@ -53,6 +53,12 @@ async def test_group_member_can_send_and_it_is_addressed_by_conversation_id(db, 
     page = await page_thread(db, group.conversation_id, before_created_at=None, before_id=None, limit=10)
     assert [m.body for m in page] == ['hello group']
 
+    # Serialize like the REST endpoint does — this is where the 500 (null match_id) happened.
+    from app.features.messages.service import message_read
+    dto = message_read(page[0])
+    assert dto.match_id is None                              # group message → no match
+    assert dto.conversation_id == group.conversation_id     # addressed by the conversation
+
 
 async def test_non_member_cannot_access_group_conversation(db, factory):
     group, _ = await _group_with_members(db, factory, n_members=2)
@@ -103,6 +109,30 @@ async def test_group_unread_uses_the_per_member_boundary(db, factory):
     await mark_read(db, reader_id=reader.id, match_id=group.conversation_id, through_message_id=msgs[1].id)
     total_after, per_after = await unread_summary(db, reader.id)
     assert per_after.get(group.conversation_id) == 1  # only g2 remains
+
+
+async def test_rest_access_resolves_group_by_conversation_id(db, factory):
+    """The REST message endpoints (via `accessible_conversation`) accept a group conversation
+    id for members and 404 for outsiders — the same helper still resolves DM match ids."""
+    from fastapi import HTTPException
+
+    from app.shared.conversations import accessible_conversation
+
+    group, members = await _group_with_members(db, factory, n_members=2)
+    member, owner = members[1], members[0]
+
+    conv = await accessible_conversation(db, group.conversation_id, member.id)
+    assert conv.id == group.conversation_id and conv.kind == 'group'
+
+    outsider = await factory.user()
+    with pytest.raises(HTTPException) as exc:
+        await accessible_conversation(db, group.conversation_id, outsider.id)
+    assert exc.value.status_code == 404
+
+    # DM parity: a match id still resolves to its DM conversation for a member.
+    dm_match = await factory.match(owner, member)
+    dm_conv = await accessible_conversation(db, dm_match.id, owner.id)
+    assert dm_conv.kind == 'dm'
 
 
 async def test_removed_member_loses_access(db, factory):

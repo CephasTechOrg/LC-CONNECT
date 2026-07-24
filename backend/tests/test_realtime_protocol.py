@@ -14,6 +14,32 @@ def test_parses_auth_frame():
     assert frame.access_token == 'tok'
 
 
+def test_frames_address_dm_by_match_id_and_group_by_conversation_id():
+    """A DM message's frames carry its match id; a group message (match_id=None) must carry the
+    conversation id — never the string 'None' — so the client can route it to the open chat."""
+    from types import SimpleNamespace
+    from uuid import uuid4
+
+    from app.features.realtime.protocol import conversation_updated, message_created, serialize_message
+
+    now = __import__('datetime').datetime(2026, 1, 1, tzinfo=__import__('datetime').UTC)
+    match_id, conv_id = uuid4(), uuid4()
+
+    def _msg(match, conversation):
+        return SimpleNamespace(
+            id=uuid4(), match_id=match, conversation_id=conversation, sender_id=uuid4(),
+            client_message_id=None, body='hi', created_at=now, read_at=None,
+        )
+
+    dm = _msg(match_id, conv_id)
+    group = _msg(None, conv_id)
+
+    assert serialize_message(dm)['conversation_id'] == str(match_id)          # DM → match id
+    assert message_created(group)['conversation_id'] == str(conv_id)          # group → conv id
+    assert conversation_updated(group)['conversation_id'] == str(conv_id)
+    assert 'None' not in message_created(group)['conversation_id']            # never str(None)
+
+
 def test_parses_send_frame_and_strips_body():
     raw = {
         'type': 'message.send',

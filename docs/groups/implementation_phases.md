@@ -217,13 +217,41 @@ surfaced as a fake "circular import". Restored + made the groups package import-
 
 ---
 
-## P6 — Mobile wiring *(converge with the parallel UI work)*
+## P6 — Mobile wiring 🟡 **IN PROGRESS**
 
-- [ ] Wire the existing group UI to the API
-- [ ] Group variant in the thread list + group unread badges
-- [ ] Group chat screen reuses the existing realtime client
+**Stage A ✅ — groups discovery / join / create**
+- [x] Mobile data layer: `groups/data/group_models.dart` (`GroupSummary`/`GroupRead`),
+      `groups/providers/groups_provider.dart` (repository + `discoverGroupsProvider`/`myGroupsProvider`)
+- [x] `groups_panel.dart` rewired to `GET /groups/discover` (was static placeholder), preserving
+      the tile/button visuals; category chips map to backend categories
+- [x] Join/Request → `POST /groups/{id}/join`; **Create Group** sheet → `POST /groups`
 
-**Gate:** `flutter analyze` · dart tests · on-device check.
+**Stage B ✅ — group chat**
+- [x] **Backend (non-breaking):** message endpoints (`GET/POST /messages/threads/{id}` + `/sync`)
+      now resolve the path id as a match id *or* a group conversation id via
+      `accessible_conversation` — DMs byte-identical (parity tests + **snapshot unchanged**),
+      groups now message through the same endpoints + the same WebSocket
+- [x] `Message.match_id` nullable (P4) lets group messages persist
+- [x] Mobile: tapping a group you're a member of fetches its `conversation_id` and opens
+      `ChatScreen` in **group mode** (`groupTitle` → group-name header, no partner card);
+      reuses the whole realtime/send/unread engine. Route `'/messages/group/:conversationId'`.
+
+**Gate: ✅ green** — 142 backend tests · 120 mobile tests · analyze clean · line limits pass.
+Group chat **verified working on-device** (send/receive between two accounts).
+
+**Two bugs found + fixed during on-device testing** (both now covered by tests):
+1. Realtime frames tagged `conversation_id` with `str(message.match_id)` → `"None"` for group
+   messages, so the client couldn't route them. Fixed with `protocol.addressing_id` (match id
+   for DMs, conversation id for groups). DM frames byte-identical.
+2. `MessageRead.match_id` was a required `UUID`, but group messages have `match_id=None` → the
+   history endpoint 500'd. Made it nullable + added `conversation_id` to the DTO. *(This is why
+   groups showed a notification banner but no messages when opened.)*
+
+**Still open (polish, not blocking a test):**
+- [ ] Group thread appears in the **Messages list** (thread-list group variant + surfacing group
+      unread through `/messages/unread-summary`, which still drops group conversations)
+- [ ] Per-sender name/avatar on group message bubbles (DM-style bubbles for now)
+- [ ] Group detail screen (members, admin actions, avatar upload) wired to the endpoints
 
 ---
 

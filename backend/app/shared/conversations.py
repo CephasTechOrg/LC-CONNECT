@@ -13,11 +13,13 @@ from __future__ import annotations
 
 from uuid import UUID
 
+from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Conversation, ConversationMember, Match
+from app.shared.policies import users_are_blocked
 
 ACTIVE = 'active'
 
@@ -82,6 +84,20 @@ async def resolve_conversation(db: AsyncSession, ref: UUID) -> Conversation | No
     return await conversation_for_match_id(db, ref)
 
 
+async def accessible_conversation(db: AsyncSession, ref: UUID, user_id: UUID) -> Conversation:
+    """Resolve `ref` (match id or conversation id) and confirm the user may use it, for the
+    REST message endpoints. 404 if it doesn't exist or they're not an active member; 403 if a
+    DM is blocked. Mirrors the WebSocket `authorize_conversation`, but with HTTP errors."""
+    conversation = await resolve_conversation(db, ref)
+    if conversation is None or not await is_active_member(db, conversation.id, user_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Conversation not found')
+    if conversation.kind == 'dm':
+        for other_id in await active_member_ids(db, conversation.id, exclude=user_id):
+            if await users_are_blocked(db, user_id, other_id):
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='Messaging is blocked')
+    return conversation
+
+
 async def active_members_with_mute(
     db: AsyncSession, conversation_id: UUID, *, exclude: UUID | None = None
 ) -> list[tuple[UUID, bool]]:
@@ -96,21 +112,19 @@ async def active_members_with_mute(
     return [(user_id, muted) for user_id, muted in (await db.execute(stmt)).all()]
 
 
-async def match_ids_for_conversations(
+async def addressing_ids_for_conversations(
     db: AsyncSession, conversation_ids: list[UUID]
 ) -> dict[UUID, UUID]:
-    """conversation_id → match_id, for translating internal ids back to the ids clients
-    currently use. Transitional: group conversations have no match and are simply absent."""
+    """conversation_id → the id clients address it by: the DM's match id, or (for a group) the
+    conversation id itself. Used to key unread counts consistently across DMs and groups."""
     if not conversation_ids:
         return {}
     rows = (
         await db.execute(
-            select(Conversation.id, Conversation.match_id).where(
-                Conversation.id.in_(conversation_ids), Conversation.match_id.is_not(None)
-            )
+            select(Conversation.id, Conversation.match_id).where(Conversation.id.in_(conversation_ids))
         )
     ).all()
-    return {conversation_id: match_id for conversation_id, match_id in rows}
+    return {conversation_id: (match_id or conversation_id) for conversation_id, match_id in rows}
 
 
 async def is_active_member(db: AsyncSession, conversation_id: UUID, user_id: UUID) -> bool:

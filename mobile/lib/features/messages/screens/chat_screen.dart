@@ -20,10 +20,13 @@ part '../widgets/chat_bubble.dart';
 part '../widgets/chat_input.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
+  /// For a DM this is the match id; for a group it's the group's conversation id — the
+  /// backend resolves either. `groupTitle` set ⇒ group mode (no partner card).
   final String matchId;
   final MessageThread? thread;
+  final String? groupTitle;
 
-  const ChatScreen({super.key, required this.matchId, this.thread});
+  const ChatScreen({super.key, required this.matchId, this.thread, this.groupTitle});
 
   @override
   ConsumerState<ChatScreen> createState() => _ChatScreenState();
@@ -376,14 +379,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            _ChatHeader(partner: partner),
+            _ChatHeader(title: widget.groupTitle ?? 'Messages'),
             if (partner != null) _PartnerInfoRow(partner: partner),
             _ConnectionBanner(status: _rt.status),
             Expanded(
               child: _loading
                   ? const Center(child: CircularProgressIndicator())
                   : _messages.isEmpty
-                      ? _EmptyChatState(name: partner?.displayName ?? 'your match')
+                      ? _EmptyChatState(name: widget.groupTitle ?? partner?.displayName ?? 'your match')
                       : _MessageList(
                           messages: _messages,
                           currentUserId: _currentUserId,
@@ -393,7 +396,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                         ),
             ),
             if (_partnerTyping)
-              _TypingIndicator(name: partner?.displayName ?? 'Your match'),
+              _TypingIndicator(name: widget.groupTitle != null ? 'Someone' : (partner?.displayName ?? 'Your match')),
             _InputBar(
               controller: _inputController,
               sending: false,

@@ -2,8 +2,8 @@ part of '../screens/chat_screen.dart';
 
 // ── Chat header ───────────────────────────────────────────────────
 class _ChatHeader extends StatelessWidget {
-  final MessagePartner? partner;
-  const _ChatHeader({this.partner});
+  final String title;
+  const _ChatHeader({this.title = 'Messages'});
 
   @override
   Widget build(BuildContext context) {
@@ -37,7 +37,9 @@ class _ChatHeader extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'Messages',
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: GoogleFonts.dmSans(
                 fontSize: 17,
                 fontWeight: FontWeight.w700,

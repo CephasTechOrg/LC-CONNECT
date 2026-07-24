@@ -108,10 +108,17 @@ def parse_inbound(raw: Any) -> InboundFrame:
 
 # ── Outbound builders ─────────────────────────────────────────────────────────
 
+def addressing_id(message: Message) -> str:
+    """The id clients use to address this conversation over the socket: a DM's match id, or —
+    for a group message, where match_id is null — the conversation id. Keeps DM frames
+    byte-identical while making group frames route to the open group chat."""
+    return str(message.match_id or message.conversation_id)
+
+
 def serialize_message(message: Message) -> dict[str, Any]:
     return {
         'id': str(message.id),
-        'conversation_id': str(message.match_id),
+        'conversation_id': addressing_id(message),
         'sender_id': str(message.sender_id),
         'client_message_id': str(message.client_message_id) if message.client_message_id else None,
         'body': message.body,
@@ -155,12 +162,12 @@ def message_ack(request_id: UUID, message: Message, duplicate: bool) -> dict[str
 
 
 def message_created(message: Message) -> dict[str, Any]:
-    return {'type': 'message.created', 'conversation_id': str(message.match_id), 'message': serialize_message(message)}
+    return {'type': 'message.created', 'conversation_id': addressing_id(message), 'message': serialize_message(message)}
 
 
 def conversation_updated(message: Message) -> dict[str, Any]:
     """User-channel event: a conversation has a new latest message (thread-list update)."""
-    return {'type': 'conversation.updated', 'conversation_id': str(message.match_id), 'message': serialize_message(message)}
+    return {'type': 'conversation.updated', 'conversation_id': addressing_id(message), 'message': serialize_message(message)}
 
 
 def typing_event(conversation_id: UUID, user_id: UUID, active: bool) -> dict[str, Any]:
