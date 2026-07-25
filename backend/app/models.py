@@ -267,6 +267,7 @@ class Activity(Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     category: Mapped[str] = mapped_column(String(40), index=True, nullable=False)
     location: Mapped[str] = mapped_column(String(160), nullable=False)
+    banner_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     start_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True, nullable=False)
     end_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     max_participants: Mapped[int | None] = mapped_column(Integer, nullable=True)

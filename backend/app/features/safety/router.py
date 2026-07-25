@@ -9,6 +9,7 @@ from app.features.safety.schema import ReportCreate
 from app.features.safety.service import add_block, remove_block
 from app.features.safety.service import create_report as persist_report
 from app.models import User
+from app.shared.rate_limit import report_limit
 from app.shared.schemas import ReportRead
 
 router = APIRouter(tags=['safety'])
@@ -31,6 +32,7 @@ async def unblock_user(user_id: UUID, current_user: User = Depends(require_verif
     return {'status': 'unblocked'}
 
 
-@router.post('/reports', response_model=ReportRead, status_code=status.HTTP_201_CREATED)
+@router.post('/reports', response_model=ReportRead, status_code=status.HTTP_201_CREATED,
+             dependencies=[Depends(report_limit)])
 async def create_report(payload: ReportCreate, current_user: User = Depends(require_verified_student), db: AsyncSession = Depends(get_db)):
     return await persist_report(db, current_user.id, payload)

@@ -39,6 +39,7 @@ class _FeaturedCardState extends ConsumerState<_FeaturedCard> {
   Widget build(BuildContext context) {
     final a = widget.activity;
     final joined = a.hasJoined;
+    final hasBanner = a.bannerUrl != null;
 
     return GestureDetector(
       onTap: () => context.push('/activities/${a.id}', extra: widget.activity),
@@ -64,26 +65,35 @@ class _FeaturedCardState extends ConsumerState<_FeaturedCard> {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  const ColoredBox(color: AppColors.primaryPale),
-                  Positioned(
-                    right: -20,
-                    top: 0,
-                    bottom: 0,
-                    child: Opacity(
-                      opacity: 0.55,
-                      child: Image.asset(
-                        'assets/images/school.png',
-                        fit: BoxFit.contain,
+                  if (hasBanner)
+                    Image.network(
+                      a.bannerUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => const ColoredBox(color: AppColors.primaryPale),
+                    )
+                  else ...[
+                    const ColoredBox(color: AppColors.primaryPale),
+                    Positioned(
+                      right: -20,
+                      top: 0,
+                      bottom: 0,
+                      child: Opacity(
+                        opacity: 0.55,
+                        child: Image.asset('assets/images/school.png', fit: BoxFit.contain),
                       ),
                     ),
-                  ),
+                  ],
                   DecoratedBox(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        colors: [
-                          AppColors.primaryPale.withValues(alpha: 0.98),
-                          AppColors.primaryPale.withValues(alpha: 0.05),
-                        ],
+                        begin: hasBanner ? Alignment.topCenter : Alignment.centerLeft,
+                        end: hasBanner ? Alignment.bottomCenter : Alignment.centerRight,
+                        colors: hasBanner
+                            ? [Colors.black.withValues(alpha: 0.1), Colors.black.withValues(alpha: 0.6)]
+                            : [
+                                AppColors.primaryPale.withValues(alpha: 0.98),
+                                AppColors.primaryPale.withValues(alpha: 0.05),
+                              ],
                       ),
                     ),
                   ),
@@ -119,7 +129,7 @@ class _FeaturedCardState extends ConsumerState<_FeaturedCard> {
                       style: GoogleFonts.dmSans(
                         fontSize: 19,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.textDark,
+                        color: hasBanner ? Colors.white : AppColors.textDark,
                         height: 1.25,
                       ),
                     ),

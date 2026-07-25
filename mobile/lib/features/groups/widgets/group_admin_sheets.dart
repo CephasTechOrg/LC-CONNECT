@@ -205,12 +205,13 @@ class _InviteSheetState extends ConsumerState<_InviteSheet> {
     try {
       await ref.read(groupsRepositoryProvider).invite(widget.groupId, userId);
       if (mounted) Navigator.pop(context, name);
-    } catch (_) {
+    } catch (e) {
       if (mounted) {
         setState(() => _inviting.remove(userId));
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Could not invite — they may already be in the group',
+            content: Text(
+                apiErrorMessage(e, fallback: 'Could not invite — they may already be in the group'),
                 style: GoogleFonts.dmSans(color: Colors.white)),
             backgroundColor: AppColors.error,
             behavior: SnackBarBehavior.floating,

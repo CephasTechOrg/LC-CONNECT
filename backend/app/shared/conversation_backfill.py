@@ -6,7 +6,7 @@ the identical statements** — the backfill is the part that must be provably co
 Every statement is **idempotent** (re-running changes nothing), so the migration is safe to
 re-apply and tests can call it repeatedly.
 
-See docs/groups/implementation_phases.md → P1.
+See docs/features/groups/implementation_phases.md → P1.
 """
 
 from __future__ import annotations

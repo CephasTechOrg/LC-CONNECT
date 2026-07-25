@@ -1,14 +1,15 @@
 # LC Connect — Documentation
 
-This folder contains all technical and product documentation for the LC Connect MVP.
+All technical, product, and security documentation for LC Connect, grouped into folders by concern.
 
 ## What is LC Connect
 
-LC Connect is a student-only mobile platform for Livingstone College students to safely find friends, study partners, language exchange partners, campus activities, and open connections through profiles, matching cards, mutual connections, real-time messaging, and an activity board.
+A student-only mobile platform for Livingstone College students to safely find friends, study
+partners, language-exchange partners, campus activities, groups, and open connections — through
+profiles, matching cards, mutual connections, real-time messaging, campus groups, and an activity
+board. It should feel like a **safe campus connection platform**, not a dating app.
 
-The app should **not** feel like a dating app. It should feel like a safe campus connection platform that helps students break social barriers.
-
-## Actual Technology Stack (as built)
+## Technology stack (as built)
 
 | Layer | Technology |
 |---|---|
@@ -16,72 +17,49 @@ The app should **not** feel like a dating app. It should feel like a safe campus
 | Backend API | FastAPI (Python) |
 | Database | PostgreSQL on Supabase |
 | Image storage | Supabase Storage |
-| Real-time messaging | Supabase Realtime |
-| Deployment | Render (backend), physical APK (Android) |
-| Auth | Custom FastAPI JWT (not Supabase Auth) |
+| Real-time | Custom FastAPI WebSocket gateway (+ Supabase Realtime for RLS-guarded direct reads) |
+| Auth | **Supabase Auth** (JWT verified by FastAPI); legacy custom JWT retained behind a flag, unmounted |
+| Push | Firebase Cloud Messaging / APNs |
+| Deployment | Render (backend), Android APK |
 
-## Documentation Files
+---
 
-| File | Purpose |
+## Documentation map
+
+Everything lives in one of five folders (each has its own README index):
+
+### 📦 [`getting-started/`](./getting-started/) — setup & ops
+First-time Mac setup, daily workflow, Supabase, email, and Render deployment.
+
+### 🏗️ [`architecture/`](./architecture/) — how the system is built
+System architecture, database schema, real-time messaging, image storage, folder layout.
+
+### ✨ [`features/`](./features/) — feature deep-dives
+- [`groups/`](./features/groups/) — campus communities (behavior & policy reference, decision log, API, build log)
+- [`notifications/`](./features/notifications/) — push, the in-app notification center, unread counts
+
+### 🔒 [`security/`](./security/) — security, safety & compliance
+- [`overview.md`](./security/overview.md) — auth, authorization (no IDOR), encryption posture (why not E2EE)
+- [`rate_limiting.md`](./security/rate_limiting.md) — login vs abuse limits, env vars, 429 UX
+- [`rls_messages.md`](./security/rls_messages.md) — Supabase RLS on messages
+- [`audit_and_data_retention.md`](./security/audit_and_data_retention.md) — deletion, evidence snapshots, moderator playbook
+
+### 🎯 [`product/`](./product/) — vision, scope, progress
+Product overview, full project description, the to-do log, and an archived external review.
+
+---
+
+## Quick links
+
+| I want to… | Go to |
 |---|---|
-| `local_dev_setup.md` | **First-time Mac setup** — Xcode, iOS Simulator, Flutter, CocoaPods, Postgres, env, migrations |
-| `daily_dev_start.md` | **Daily start guide** — start Postgres, backend, Simulator, Flutter |
-| `overview.md` | High-level product vision, users, goals, and MVP scope |
-| `project_description.md` | Full project description, problem, solution, features, and user flows |
-| `architecture.md` | Technical architecture, system components, API areas, and data flows |
-| `folder_structure.md` | Frontend and backend folder structure |
-| `database.md` | PostgreSQL database design, tables, relationships, and schema |
-| `setup.md` | Older local setup notes (prefer `local_dev_setup.md`) |
-| `supabase.md` | **Supabase setup** — storage, connection strings, Realtime, RLS policies |
-| `realtime-messaging.md` | **Real-time messaging** — how it works end-to-end, Flutter code, Supabase config, deduplication |
-| `deployment.md` | **Render deployment** — render.yaml, env vars, every failure we hit and how we fixed it |
-| `notifications/` | **Notifications** — how push + unread counts work end-to-end, and the Firebase setup runbook |
-| `groups/` | **Groups (campus communities)** — start with [`groups/groups_reference.md`](./groups/groups_reference.md) (behavior & policy), plus architecture, API contract, and build log |
-| `audit_and_data_retention.md` | **Audit & data-retention policy** — what's soft-deleted vs permanently deleted, report evidence snapshots, and the moderator investigation playbook |
-| `todo.md` | Feature development progress and remaining tasks |
-
-## Quick Links for Common Tasks
-
-### New contributor on a Mac
-1. Follow [`local_dev_setup.md`](./local_dev_setup.md) once
-2. Every workday use [`daily_dev_start.md`](./daily_dev_start.md)
-
-### Setting up Supabase for the first time
-→ Read `supabase.md`
-
-### Enabling real-time messages (Supabase Replication + RLS)
-→ Read `supabase.md` sections 6 and 7, then `realtime-messaging.md`
-
-### Deploying the backend to Render
-→ Read `deployment.md`
-
-### Setting up local development from scratch
-→ Read `setup.md`
-
-### Understanding the database schema
-→ Read `database.md`
-
-## Feature Status
-
-| Feature | Status |
-|---|---|
-| Auth — login, register, logout | Done |
-| Onboarding — 3-step profile setup | Done |
-| Discovery — match cards with real data | Done |
-| Connections — incoming/outgoing, accept/decline | Done |
-| Messages + Chat — threads and chat screen | Done |
-| Real-time messaging — Supabase Realtime | Done |
-| Activities — list, detail, create, join/leave | Done |
-| Profile screen — my profile with stats | Done |
-| Public profile — view other users | Done |
-| Edit profile | Done |
-| Safety — report and block | Done |
-| Avatar upload — Supabase Storage | Done |
-| Home screen — real data (discovery, activities, matches) | Done |
-| Backend deployed to Render | Done |
-| Android APK built and tested | Done |
-| Forgot password — reset flow | Pending |
-| Email verification — .edu check | Pending |
-| Push notifications | Pending |
-| iOS build + TestFlight | Pending |
-| Google Play Store submission | Pending |
+| Set up my Mac for the first time | [`getting-started/local_dev_setup.md`](./getting-started/local_dev_setup.md) |
+| Start work today | [`getting-started/daily_dev_start.md`](./getting-started/daily_dev_start.md) |
+| Deploy the backend to Render | [`getting-started/deployment.md`](./getting-started/deployment.md) |
+| Understand the database schema | [`architecture/database.md`](./architecture/database.md) |
+| Understand real-time messaging | [`architecture/realtime-messaging.md`](./architecture/realtime-messaging.md) |
+| Know how groups work (policies, roles, limits) | [`features/groups/groups_reference.md`](./features/groups/groups_reference.md) |
+| Understand notifications (push + in-app) | [`features/notifications/`](./features/notifications/) |
+| Review the security & access-control model | [`security/overview.md`](./security/overview.md) |
+| Change a rate limit or the group size cap | [`security/rate_limiting.md`](./security/rate_limiting.md) |
+| Answer a data-deletion / audit question | [`security/audit_and_data_retention.md`](./security/audit_and_data_retention.md) |

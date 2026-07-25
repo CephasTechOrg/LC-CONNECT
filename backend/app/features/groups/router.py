@@ -21,6 +21,7 @@ from app.features.groups.schema import (
 )
 from app.models import Conversation, Group, User
 from app.shared.image_processing import sanitize_avatar
+from app.shared.rate_limit import avatar_upload_limit, group_create_limit, group_invite_limit
 from app.shared.storage import storage_service
 
 router = APIRouter(prefix='/groups', tags=['groups'])
@@ -60,7 +61,8 @@ async def _notify(user_id: UUID, notif_type: str, group: Group, actor_id: UUID) 
 
 # ── lifecycle ─────────────────────────────────────────────────────────────────────
 
-@router.post('', response_model=GroupRead, status_code=status.HTTP_201_CREATED)
+@router.post('', response_model=GroupRead, status_code=status.HTTP_201_CREATED,
+             dependencies=[Depends(group_create_limit)])
 async def create_group(payload: GroupCreate, current_user: User = Depends(require_verified_student), db: AsyncSession = Depends(get_db)):
     group = await service.create_group(db, current_user, payload)
     await db.commit()
@@ -124,7 +126,7 @@ async def edit_group(group_id: UUID, payload: GroupUpdate, current_user: User = 
     return await service.to_read(db, group, member)
 
 
-@router.post('/{group_id}/avatar', response_model=GroupRead)
+@router.post('/{group_id}/avatar', response_model=GroupRead, dependencies=[Depends(avatar_upload_limit)])
 async def upload_group_avatar(
     group_id: UUID,
     file: UploadFile = File(...),
@@ -199,7 +201,8 @@ async def reject(group_id: UUID, user_id: UUID, current_user: User = Depends(req
     await _notify(user_id, 'group_request_rejected', group, current_user.id)
 
 
-@router.post('/{group_id}/invites', status_code=status.HTTP_204_NO_CONTENT)
+@router.post('/{group_id}/invites', status_code=status.HTTP_204_NO_CONTENT,
+             dependencies=[Depends(group_invite_limit)])
 async def invite(group_id: UUID, user_id: UUID = Body(..., embed=True), current_user: User = Depends(require_verified_student), db: AsyncSession = Depends(get_db)):
     group, member = await _visible_group(group_id, current_user, db)
     _require(member, GroupAction.INVITE)

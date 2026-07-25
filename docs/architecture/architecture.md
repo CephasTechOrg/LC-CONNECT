@@ -214,7 +214,7 @@ Student opens message thread
 → receiver's Flutter app receives event → appends message to visible list
 ```
 
-All writes go through FastAPI (JWT-enforced). Realtime delivery goes through Supabase directly (RLS-protected). See `docs/realtime-messaging.md` for the full implementation details.
+All writes go through FastAPI (JWT-enforced). Realtime delivery goes through Supabase directly (RLS-protected). See `docs/architecture/realtime-messaging.md` for the full implementation details.
 
 ## 4.6 Activity Flow
 
@@ -438,7 +438,7 @@ MVP security requirements:
 - User input must be validated
 - Admin endpoints must require admin role
 - Sensitive information should not be exposed in discovery cards
-- Supabase RLS enforces row-level access on the messages table — only match participants can read their messages, and no direct client-side inserts are allowed (see `docs/security_rls_messages.md`)
+- Supabase RLS enforces row-level access on the messages table — only match participants can read their messages, and no direct client-side inserts are allowed (see `docs/security/rls_messages.md`)
 
 ## 9. Future Improvements
 

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/api/api_error.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/app_filter_chip.dart';
 import '../data/group_models.dart';
@@ -69,8 +70,8 @@ class _GroupsPanelState extends ConsumerState<GroupsPanel> {
             ? 'Joined ${group.name}'
             : 'Request sent to ${group.name}',
       );
-    } catch (_) {
-      if (mounted) _snack('Could not join — try again', error: true);
+    } catch (e) {
+      if (mounted) _snack(apiErrorMessage(e, fallback: 'Could not join — try again'), error: true);
     } finally {
       if (mounted) setState(() => _busy.remove(group.id));
     }

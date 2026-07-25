@@ -18,8 +18,8 @@ from app.features.notifications.push import push_sender
 from app.features.realtime import protocol
 from app.features.realtime.event_bus import InMemoryEventBus
 from app.features.realtime.manager import ConnectionManager
-from app.features.realtime.rate_limit import RateLimiter
 from app.models import Profile
+from app.shared.rate_limit import RateLimiter
 
 logger = logging.getLogger('lc_connect.realtime')
 

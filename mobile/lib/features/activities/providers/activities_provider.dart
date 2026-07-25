@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/api/api_client.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -9,6 +10,7 @@ class Activity {
   final String? description;
   final String category;
   final String location;
+  final String? bannerUrl;
   final DateTime startTime;
   final DateTime? endTime;
   final int? maxParticipants;
@@ -22,6 +24,7 @@ class Activity {
     this.description,
     required this.category,
     required this.location,
+    this.bannerUrl,
     required this.startTime,
     this.endTime,
     this.maxParticipants,
@@ -36,6 +39,7 @@ class Activity {
         description: j['description'] as String?,
         category: j['category'] as String,
         location: j['location'] as String,
+        bannerUrl: j['banner_url'] as String?,
         startTime: DateTime.parse(j['start_time'] as String),
         endTime:
             j['end_time'] != null ? DateTime.parse(j['end_time'] as String) : null,
@@ -51,6 +55,7 @@ class Activity {
         description: description,
         category: category,
         location: location,
+        bannerUrl: bannerUrl,
         startTime: startTime,
         endTime: endTime,
         maxParticipants: maxParticipants,
@@ -98,7 +103,7 @@ class ActivitiesNotifier extends AsyncNotifier<List<Activity>> {
     _updateOne(Activity.fromJson(response.data as Map<String, dynamic>));
   }
 
-  Future<void> create({
+  Future<Activity> create({
     required String title,
     required String category,
     required String location,
@@ -116,12 +121,47 @@ class ActivitiesNotifier extends AsyncNotifier<List<Activity>> {
       if (endTime != null) 'end_time': endTime.toUtc().toIso8601String(),
       if (description != null && description.trim().isNotEmpty)
         'description': description.trim(),
-      // ignore: use_null_aware_elements
-      if (maxParticipants != null) 'max_participants': maxParticipants,
+      'max_participants': ?maxParticipants,
     });
     final created = Activity.fromJson(response.data as Map<String, dynamic>);
     final current = state.asData?.value ?? [];
     state = AsyncData([created, ...current]);
+    return created;
+  }
+
+  /// Edit (creator-only) — sends only the changed fields (PATCH). Returns the updated activity.
+  Future<Activity> edit(String activityId, Map<String, dynamic> changes) async {
+    final client = ref.read(apiClientProvider);
+    final response = await client.dio.patch('/activities/$activityId', data: changes);
+    final updated = Activity.fromJson(response.data as Map<String, dynamic>);
+    _updateOne(updated);
+    return updated;
+  }
+
+  /// Cancel (creator-only). The activity drops out of the list on next refresh.
+  Future<void> cancel(String activityId) async {
+    await ref.read(apiClientProvider).dio.post('/activities/$activityId/cancel');
+    final current = state.asData?.value;
+    if (current != null) {
+      state = AsyncData(current.where((a) => a.id != activityId).toList());
+    }
+  }
+
+  /// Upload/replace the banner (creator-only). Returns the updated activity.
+  Future<Activity> uploadBanner(
+    String activityId, {
+    required String path,
+    required String mimeType,
+    required String filename,
+  }) async {
+    final client = ref.read(apiClientProvider);
+    final formData = FormData.fromMap({
+      'file': await MultipartFile.fromFile(path, filename: filename, contentType: DioMediaType.parse(mimeType)),
+    });
+    final response = await client.dio.post('/activities/$activityId/banner', data: formData);
+    final updated = Activity.fromJson(response.data as Map<String, dynamic>);
+    _updateOne(updated);
+    return updated;
   }
 
   void _updateOne(Activity updated) {

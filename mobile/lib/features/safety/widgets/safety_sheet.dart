@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/api/api_error.dart';
 import '../../../core/theme/app_theme.dart';
 import '../providers/safety_provider.dart';
 
@@ -248,12 +249,12 @@ class _ReportSheetState extends State<_ReportSheet> {
               borderRadius: BorderRadius.circular(10)),
         ),
       );
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
       setState(() => _submitting = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Could not submit report. Please try again.',
+          content: Text(apiErrorMessage(e, fallback: 'Could not submit report. Please try again.'),
               style: GoogleFonts.dmSans()),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,

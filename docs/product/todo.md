@@ -27,7 +27,11 @@ This roadmap is designed to build the LC Connect MVP in the correct order withou
 - [x] Confirm Supabase PostgreSQL for production
 - [x] Confirm Supabase Storage bucket for profile images
 - [ ] Decide whether first launch is private beta or open campus pilot
-- [ ] Decide student verification method for MVP
+- [x] Decide student verification method for MVP — **done & enforced:** signup is restricted to
+  `@students.livingstone.edu` / `@livingstone.edu` (client-validated + authoritatively rejected in
+  `bootstrap_user` with a 400), and every gated endpoint requires `is_verified`, which comes from
+  Supabase's email confirmation. (Remaining dependency: keep Supabase Dashboard → Auth → "Confirm
+  email" **ON** so `email_verified` reflects a real confirmation.)
 - [ ] Create GitHub repository
 - [x] Add documentation folder
 - [x] Add core documentation to the repository

@@ -6,8 +6,8 @@
 - [x] Local DB created (`lc_connect_db`) + tables seeded
 - [x] Alembic baseline / head stamped (`a1b2c3d4e5f6`)
 - [x] Secret scan and `.gitignore` (`.env` ignored)
-- [x] Contributor setup docs (`docs/local_dev_setup.md`)
-- [x] Daily start docs (`docs/daily_dev_start.md`)
+- [x] Contributor setup docs (`docs/getting-started/local_dev_setup.md`)
+- [x] Daily start docs (`docs/getting-started/daily_dev_start.md`)
 - [x] Cursor rules (architecture + file structure)
 - [x] Dependency lock — direct deps pinned to exact versions in `requirements.txt` + `requirements-dev.txt` (reproducible across CI, Render, local; Render/CI install these directly)
 - [x] CI pipeline (`.github/workflows/ci.yml` — line limits + backend snapshot tests + `flutter analyze`)

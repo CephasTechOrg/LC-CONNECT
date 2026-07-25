@@ -93,7 +93,7 @@ WHERE pubname = 'supabase_realtime';
 
 LC Connect uses custom FastAPI JWT auth (not Supabase Auth). The JWT is wired into the Supabase Realtime client so that `auth.uid()` resolves to the logged-in user's UUID inside RLS policies. This means Supabase can enforce per-user read access at the database level.
 
-**Full setup details and rationale:** see `docs/security_rls_messages.md`
+**Full setup details and rationale:** see `docs/security/rls_messages.md`
 
 **Summary of what is in place:**
 

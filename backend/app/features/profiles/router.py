@@ -18,6 +18,7 @@ from app.models import ActivityParticipant, Match, Message, Profile, User, UserL
 from app.shared.image_processing import sanitize_avatar
 from app.shared.policies import assert_profile_visible
 from app.shared.profiles import get_profile_by_user_id, profile_load_options
+from app.shared.rate_limit import avatar_upload_limit
 from app.shared.schemas import ProfilePublic
 from app.shared.serializers import profile_to_public
 from app.shared.storage import storage_service
@@ -92,7 +93,7 @@ async def update_my_profile(payload: ProfileUpdate, current_user: User = Depends
     return profile_to_public(await get_profile_by_user_id(db, current_user.id))
 
 
-@router.post('/me/avatar', response_model=ProfilePublic)
+@router.post('/me/avatar', response_model=ProfilePublic, dependencies=[Depends(avatar_upload_limit)])
 async def upload_my_avatar(file: UploadFile = File(...), current_user: User = Depends(require_verified_student), db: AsyncSession = Depends(get_db)) -> ProfilePublic:
     # Byte cap first (cheap, before we decode), then sanitize: sanitize_avatar validates
     # the real image bytes (not the spoofable content-type header), strips EXIF/GPS, and

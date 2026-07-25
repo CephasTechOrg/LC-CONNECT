@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
@@ -23,6 +24,8 @@ from app.features.realtime.protocol import CloseCode
 from app.features.realtime.runtime import manager as ws_manager
 from app.features.safety import router as safety_router
 from app.routers import auth
+from app.shared.rate_limit import prune_idle_buckets
+from app.shared.request_limits import MaxBodySizeMiddleware
 
 # Surface our own loggers (push, realtime) in the uvicorn console. Without this,
 # `lc_connect.*` INFO logs are swallowed (uvicorn only configures its own loggers).
@@ -35,9 +38,24 @@ if not _app_logger.handlers:
     _app_logger.propagate = False
 
 
+async def _prune_rate_limiters() -> None:
+    """Hourly: drop rate-limiter buckets idle > 1 day so the in-memory dicts never grow without
+    bound over a long-running process."""
+    while True:
+        await asyncio.sleep(3600)
+        try:
+            removed = prune_idle_buckets(86_400)
+            if removed:
+                logging.getLogger('lc_connect').info('rate-limit prune: dropped %d idle buckets', removed)
+        except Exception:  # noqa: BLE001 - a housekeeping failure must never crash the app
+            logging.getLogger('lc_connect').warning('rate-limit prune failed', exc_info=True)
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
+    pruner = asyncio.create_task(_prune_rate_limiters())
     yield
+    pruner.cancel()
     # Close live WebSockets cleanly on shutdown/restart (clients reconnect + REST-sync).
     await ws_manager.shutdown(CloseCode.GOING_AWAY)
 
@@ -62,6 +80,11 @@ app.add_middleware(
     allow_headers=['*'],
 )
 
+# Reject oversized request bodies at the edge (before buffering). Floored at the image cap + 2 MB
+# of multipart headroom so it can never be misconfigured to reject a legitimate avatar upload.
+_max_body_mb = max(settings.max_request_body_mb, settings.max_profile_image_mb + 2)
+app.add_middleware(MaxBodySizeMiddleware, max_bytes=_max_body_mb * 1024 * 1024)
+
 
 @app.get('/')
 async def root() -> dict[str, str]:
@@ -73,9 +96,13 @@ async def health_check() -> dict[str, str]:
     return {'status': 'ok', 'service': 'lc-connect-api'}
 
 
-# Supabase Auth path (bootstrap + /me). Legacy register/login remain during rollback.
+# Supabase Auth path (bootstrap + /me) — the live login flow for the mobile app.
 app.include_router(auth_v2_router, prefix=settings.api_v1_prefix)
-app.include_router(auth.router, prefix=settings.api_v1_prefix)
+# Legacy custom-password auth (login/register/reset). The app no longer uses it (it signs in via
+# Supabase Auth), so this is a rollback-only surface — mount it ONLY while the flag is on, so
+# setting AUTH_LEGACY_ENABLED=false removes these unauthenticated password endpoints entirely.
+if settings.auth_legacy_enabled:
+    app.include_router(auth.router, prefix=settings.api_v1_prefix)
 app.include_router(lookups_router, prefix=settings.api_v1_prefix)
 app.include_router(profiles_router, prefix=settings.api_v1_prefix)
 app.include_router(discovery_router, prefix=settings.api_v1_prefix)

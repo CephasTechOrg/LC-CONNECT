@@ -9,7 +9,7 @@ interest groups) and the messaging generalization they require.
 | [`architecture.md`](./architecture.md) | The final architecture, every design decision and *why*, what we deliberately deferred, and the impact map on existing systems. |
 | [`api_contract.md`](./api_contract.md) | The **endpoints + payloads** the mobile group UI is built against. |
 | [`implementation_phases.md`](./implementation_phases.md) | The **living build log**: phases + follow-ups with deliverables, test gates, and checkboxes. |
-| [`../audit_and_data_retention.md`](../audit_and_data_retention.md) | App-wide **audit & data-retention policy**: what's soft-deleted vs hard-deleted, evidence snapshots, and the moderator playbook. |
+| [`../audit_and_data_retention.md`](../../security/audit_and_data_retention.md) | App-wide **audit & data-retention policy**: what's soft-deleted vs hard-deleted, evidence snapshots, and the moderator playbook. |
 
 ---
 

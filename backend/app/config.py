@@ -15,8 +15,10 @@ class Settings(BaseSettings):
     jwt_secret_key: str = Field(alias='JWT_SECRET_KEY')
     jwt_algorithm: str = Field(default='HS256', alias='JWT_ALGORITHM')
     access_token_expire_minutes: int = Field(default=60 * 24 * 7, alias='ACCESS_TOKEN_EXPIRE_MINUTES')
-    # Keep legacy custom JWTs valid during the Phase 1 rollback window.
-    auth_legacy_enabled: bool = Field(default=True, alias='AUTH_LEGACY_ENABLED')
+    # Legacy custom-password auth (/auth/login, /register, /reset). OFF by default: the app signs in
+    # via Supabase Auth, so these unauthenticated password endpoints are a rollback-only surface.
+    # Set AUTH_LEGACY_ENABLED=true ONLY to temporarily re-open them during an emergency rollback.
+    auth_legacy_enabled: bool = Field(default=False, alias='AUTH_LEGACY_ENABLED')
 
     cors_origins: str = Field(default='', alias='CORS_ORIGINS')
 
@@ -27,9 +29,20 @@ class Settings(BaseSettings):
     supabase_jwt_audience: str = Field(default='authenticated', alias='SUPABASE_JWT_AUDIENCE')
     supabase_profile_bucket: str = Field(default='profile-images', alias='SUPABASE_PROFILE_BUCKET')
     max_profile_image_mb: int = Field(default=5, alias='MAX_PROFILE_IMAGE_MB')
+    # Hard cap on any request body, enforced at the edge (before buffering) via Content-Length —
+    # stops oversized uploads from being received at all. Never below the image cap + headroom.
+    max_request_body_mb: int = Field(default=12, alias='MAX_REQUEST_BODY_MB')
     # Global hard cap on group members — no group may exceed this regardless of its own
     # `max_members`. Bounds per-message fan-out cost and abuse.
     group_max_members: int = Field(default=500, alias='GROUP_MAX_MEMBERS')
+
+    # Per-user, per-day abuse limits on authenticated actions (login limits live in Supabase).
+    # Tune via env without a code change.
+    rate_limit_connection_requests_per_day: int = Field(default=50, alias='RATE_LIMIT_CONNECTION_REQUESTS_PER_DAY')
+    rate_limit_group_creates_per_day: int = Field(default=5, alias='RATE_LIMIT_GROUP_CREATES_PER_DAY')
+    rate_limit_avatar_uploads_per_day: int = Field(default=10, alias='RATE_LIMIT_AVATAR_UPLOADS_PER_DAY')
+    rate_limit_reports_per_day: int = Field(default=20, alias='RATE_LIMIT_REPORTS_PER_DAY')
+    rate_limit_group_invites_per_day: int = Field(default=200, alias='RATE_LIMIT_GROUP_INVITES_PER_DAY')
 
     allowed_email_domains: str = Field(
         default='students.livingstone.edu,livingstone.edu',

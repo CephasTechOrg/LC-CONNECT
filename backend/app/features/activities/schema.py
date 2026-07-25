@@ -20,6 +20,18 @@ class ActivityCreate(BaseModel):
         return self
 
 
+class ActivityUpdate(BaseModel):
+    """Partial edit — only supplied fields change (creator-only)."""
+
+    title: str | None = Field(default=None, min_length=3, max_length=120)
+    description: str | None = Field(default=None, max_length=1000)
+    category: str | None = Field(default=None, max_length=40)
+    location: str | None = Field(default=None, min_length=2, max_length=160)
+    start_time: datetime | None = None
+    end_time: datetime | None = None
+    max_participants: int | None = Field(default=None, ge=2, le=500)
+
+
 class ActivityRead(BaseModel):
     id: UUID
     creator_id: UUID
@@ -27,6 +39,7 @@ class ActivityRead(BaseModel):
     description: str | None
     category: str
     location: str
+    banner_url: str | None
     start_time: datetime
     end_time: datetime | None
     max_participants: int | None

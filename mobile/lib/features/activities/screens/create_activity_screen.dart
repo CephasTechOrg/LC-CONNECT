@@ -1,10 +1,16 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import '../../../core/api/api_error.dart';
 import '../../../core/theme/app_theme.dart';
 import '../providers/activities_provider.dart';
+
+part '../widgets/activity_form_fields.dart';
 
 const _categories = [
   ('study', 'Study', Icons.menu_book_outlined),
@@ -14,7 +20,9 @@ const _categories = [
 ];
 
 class CreateActivityScreen extends ConsumerStatefulWidget {
-  const CreateActivityScreen({super.key});
+  /// When set, the screen edits this activity instead of creating a new one.
+  final Activity? existing;
+  const CreateActivityScreen({super.key, this.existing});
 
   @override
   ConsumerState<CreateActivityScreen> createState() =>
@@ -32,7 +40,31 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
   TimeOfDay? _startTime;
   DateTime? _endDate;
   TimeOfDay? _endTime;
+  XFile? _banner; // newly picked banner (not yet uploaded)
   bool _submitting = false;
+
+  bool get _isEdit => widget.existing != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final a = widget.existing;
+    if (a != null) {
+      _titleCtrl.text = a.title;
+      _locationCtrl.text = a.location;
+      _descCtrl.text = a.description ?? '';
+      _maxCtrl.text = a.maxParticipants?.toString() ?? '';
+      _category = a.category;
+      final start = a.startTime.toLocal();
+      _startDate = start;
+      _startTime = TimeOfDay.fromDateTime(start);
+      final end = a.endTime?.toLocal();
+      if (end != null) {
+        _endDate = end;
+        _endTime = TimeOfDay.fromDateTime(end);
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -88,54 +120,71 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
     });
   }
 
+  Future<void> _pickBanner() async {
+    final image = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1600,
+      maxHeight: 900,
+      imageQuality: 85,
+    );
+    if (image != null && mounted) setState(() => _banner = image);
+  }
+
   Future<void> _submit() async {
     if (!_canSubmit) return;
     setState(() => _submitting = true);
+    final notifier = ref.read(activitiesNotifierProvider.notifier);
     try {
       final startDt = _combine(_startDate!, _startTime!);
-      DateTime? endDt;
-      if (_endDate != null && _endTime != null) {
-        endDt = _combine(_endDate!, _endTime!);
-      }
-      final maxP = _maxCtrl.text.trim().isNotEmpty
-          ? int.tryParse(_maxCtrl.text.trim())
-          : null;
+      final endDt = (_endDate != null && _endTime != null) ? _combine(_endDate!, _endTime!) : null;
+      final maxP = _maxCtrl.text.trim().isNotEmpty ? int.tryParse(_maxCtrl.text.trim()) : null;
+      final title = _titleCtrl.text.trim();
+      final location = _locationCtrl.text.trim();
+      final description = _descCtrl.text.trim().isNotEmpty ? _descCtrl.text.trim() : null;
 
-      await ref.read(activitiesNotifierProvider.notifier).create(
-            title: _titleCtrl.text.trim(),
-            category: _category!,
-            location: _locationCtrl.text.trim(),
-            startTime: startDt,
-            endTime: endDt,
-            description: _descCtrl.text.trim().isNotEmpty
-                ? _descCtrl.text.trim()
-                : null,
-            maxParticipants: maxP,
-          );
+      final String activityId;
+      if (_isEdit) {
+        final updated = await notifier.edit(widget.existing!.id, {
+          'title': title,
+          'category': _category,
+          'location': location,
+          'start_time': startDt.toUtc().toIso8601String(),
+          'end_time': endDt?.toUtc().toIso8601String(),
+          'description': description,
+          'max_participants': maxP,
+        });
+        activityId = updated.id;
+      } else {
+        final created = await notifier.create(
+          title: title, category: _category!, location: location,
+          startTime: startDt, endTime: endDt, description: description, maxParticipants: maxP,
+        );
+        activityId = created.id;
+      }
+      // Banner is a separate multipart upload; a failure keeps the activity (add it later).
+      if (_banner != null) {
+        try {
+          await notifier.uploadBanner(activityId,
+              path: _banner!.path, mimeType: _banner!.mimeType ?? 'image/jpeg', filename: _banner!.name);
+        } catch (_) {/* keep the activity without the banner */}
+      }
       if (!mounted) return;
       Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Activity created!', style: GoogleFonts.dmSans()),
-          behavior: SnackBarBehavior.floating,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
-      );
-    } catch (_) {
+      _snack(_isEdit ? 'Activity updated' : 'Activity created!');
+    } catch (e) {
       if (!mounted) return;
       setState(() => _submitting = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Could not create activity. Please try again.',
-              style: GoogleFonts.dmSans()),
-          backgroundColor: AppColors.error,
-          behavior: SnackBarBehavior.floating,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
-      );
+      _snack(apiErrorMessage(e, fallback: 'Could not save the activity. Please try again.'), error: true);
     }
+  }
+
+  void _snack(String message, {bool error = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(message, style: GoogleFonts.dmSans()),
+      backgroundColor: error ? AppColors.error : null,
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+    ));
   }
 
   @override
@@ -143,7 +192,7 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Create Activity'),
+        title: Text(_isEdit ? 'Edit Activity' : 'Create Activity'),
         leading: IconButton(
           icon: const Icon(Icons.close_rounded),
           onPressed: () => Navigator.of(context).pop(),
@@ -168,7 +217,7 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
                         strokeWidth: 2, color: Colors.white),
                   )
                 : Text(
-                    'Create Activity',
+                    _isEdit ? 'Save changes' : 'Create Activity',
                     style: GoogleFonts.dmSans(fontWeight: FontWeight.w700),
                   ),
           ),
@@ -179,6 +228,14 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // ── Banner (optional) ─────────────────────────────
+            _BannerPicker(
+              picked: _banner,
+              existingUrl: widget.existing?.bannerUrl,
+              onTap: _submitting ? null : _pickBanner,
+            ),
+            const SizedBox(height: 20),
+
             // ── Title ─────────────────────────────────────────
             _Label('Title'),
             const SizedBox(height: 8),
@@ -295,177 +352,6 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
               hint: 'e.g. 20',
               keyboardType: TextInputType.number,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ── Shared form widgets ───────────────────────────────────────────
-
-class _Label extends StatelessWidget {
-  final String text;
-  const _Label(this.text);
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: GoogleFonts.dmSans(
-        fontSize: 13,
-        fontWeight: FontWeight.w600,
-        color: AppColors.textDark,
-      ),
-    );
-  }
-}
-
-class _Field extends StatelessWidget {
-  final TextEditingController controller;
-  final String hint;
-  final int maxLines;
-  final int? maxLength;
-  final IconData? prefixIcon;
-  final TextInputType? keyboardType;
-  final List<TextInputFormatter>? inputFormatters;
-
-  const _Field({
-    required this.controller,
-    required this.hint,
-    this.maxLines = 1,
-    this.maxLength,
-    this.prefixIcon,
-    this.keyboardType,
-    this.inputFormatters,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return TextField(
-      controller: controller,
-      maxLines: maxLines,
-      maxLength: maxLength,
-      keyboardType: keyboardType,
-      inputFormatters: inputFormatters,
-      style: GoogleFonts.dmSans(fontSize: 14, color: AppColors.textDark),
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle:
-            GoogleFonts.dmSans(fontSize: 14, color: AppColors.textMuted),
-        prefixIcon: prefixIcon != null
-            ? Icon(prefixIcon, size: 18, color: AppColors.textMuted)
-            : null,
-        filled: true,
-        fillColor: AppColors.surface,
-        counterText: '',
-        contentPadding: const EdgeInsets.symmetric(
-            horizontal: 14, vertical: 12),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.border, width: 1.5),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.border, width: 1.5),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.primary, width: 2),
-        ),
-      ),
-    );
-  }
-}
-
-class _DateTimeRow extends StatelessWidget {
-  final DateTime? date;
-  final TimeOfDay? time;
-  final VoidCallback onTapDate;
-  final VoidCallback onTapTime;
-
-  const _DateTimeRow({
-    required this.date,
-    required this.time,
-    required this.onTapDate,
-    required this.onTapTime,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: _PickerTile(
-            icon: Icons.calendar_today_outlined,
-            label: date != null
-                ? DateFormat('EEE, MMM d').format(date!)
-                : 'Pick date',
-            hasValue: date != null,
-            onTap: onTapDate,
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: _PickerTile(
-            icon: Icons.access_time_outlined,
-            label: time != null ? time!.format(context) : 'Pick time',
-            hasValue: time != null,
-            onTap: onTapTime,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _PickerTile extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool hasValue;
-  final VoidCallback onTap;
-
-  const _PickerTile({
-    required this.icon,
-    required this.label,
-    required this.hasValue,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: hasValue ? AppColors.primary : AppColors.border,
-            width: 1.5,
-          ),
-        ),
-        child: Row(
-          children: [
-            Icon(icon,
-                size: 16,
-                color: hasValue ? AppColors.primary : AppColors.textMuted),
-            const SizedBox(width: 7),
-            Expanded(
-              child: Text(
-                label,
-                style: GoogleFonts.dmSans(
-                  fontSize: 13,
-                  color:
-                      hasValue ? AppColors.textDark : AppColors.textMuted,
-                  fontWeight:
-                      hasValue ? FontWeight.w500 : FontWeight.w400,
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
             ),
           ],
         ),

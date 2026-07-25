@@ -9,7 +9,7 @@ Campus social/matching app for Livingstone College. Two apps:
 - `backend/` — FastAPI + async SQLAlchemy + PostgreSQL (Supabase), migrating auth to Supabase Auth.
 - `mobile/` — Flutter + Riverpod + supabase_flutter.
 
-Layout: [`docs/folder_structure.md`](docs/folder_structure.md).
+Layout: [`docs/architecture/folder_structure.md`](docs/architecture/folder_structure.md).
 Architecture direction: `architecture_review/`.
 
 ## File-length rules (enforced in CI)

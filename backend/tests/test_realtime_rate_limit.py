@@ -1,6 +1,6 @@
 """Token-bucket rate limiter — deterministic via an injected clock."""
 
-from app.features.realtime.rate_limit import RateLimiter
+from app.shared.rate_limit import RateLimiter
 
 
 class FakeClock:

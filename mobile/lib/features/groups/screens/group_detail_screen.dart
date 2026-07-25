@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../core/api/api_error.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/avatar_widget.dart';
 import '../../messages/providers/messages_provider.dart';
@@ -61,8 +62,8 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
       await action();
       if (!mounted) return;
       _refreshMembers();
-    } catch (_) {
-      _snack(failure ?? 'Something went wrong — try again', error: true);
+    } catch (e) {
+      _snack(apiErrorMessage(e, fallback: failure ?? 'Something went wrong — try again'), error: true);
     } finally {
       if (mounted) setState(() => _busy.remove(key));
     }
@@ -114,8 +115,8 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
         filename: image.name,
       );
       if (mounted) ref.invalidate(groupDetailProvider(_gid));
-    } catch (_) {
-      _snack('Could not update the photo — try again', error: true);
+    } catch (e) {
+      _snack(apiErrorMessage(e, fallback: 'Could not update the photo — try again'), error: true);
     } finally {
       if (mounted) setState(() => _uploadingAvatar = false);
     }

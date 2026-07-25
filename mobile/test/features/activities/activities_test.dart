@@ -42,7 +42,7 @@ class _MockActivitiesNotifier extends ActivitiesNotifier {
   }
 
   @override
-  Future<void> create({
+  Future<Activity> create({
     required String title,
     required String category,
     required String location,
@@ -62,6 +62,7 @@ class _MockActivitiesNotifier extends ActivitiesNotifier {
       hasJoined: true,
     );
     state = AsyncData([created, ...state.asData!.value]);
+    return created;
   }
 }
 

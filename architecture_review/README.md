@@ -42,7 +42,7 @@ Before implementing any phase, follow [`CONVENTIONS.md`](../CONVENTIONS.md) — 
 structure and file-length rules the codebase now enforces. The backend has been sliced into
 `app/features/<domain>/{router,service,schema}` with a `shared/` kernel, and mobile screens are
 decomposed into `features/<feature>/widgets/`. See
-[`docs/folder_structure.md`](../docs/folder_structure.md) for the full layout.
+[`docs/architecture/folder_structure.md`](../docs/architecture/folder_structure.md) for the full layout.
 
 ## Immediate implementation order
 

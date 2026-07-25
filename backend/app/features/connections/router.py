@@ -3,6 +3,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -18,6 +19,7 @@ from app.models import ConnectionRequest, Match, Profile, User
 from app.shared.conversations import ensure_dm_conversation
 from app.shared.policies import users_are_blocked
 from app.shared.profiles import get_profile_by_user_id, profile_load_options
+from app.shared.rate_limit import connection_request_limit
 from app.shared.serializers import profile_to_public
 
 router = APIRouter(prefix='/connections', tags=['connections'])
@@ -31,7 +33,12 @@ async def _notify(user_id: UUID, notif_type: str, actor_id: UUID) -> None:
     await emit_notification(user_id=user_id, notif_type=notif_type, actor_id=actor_id)
 
 
-@router.post('/request', response_model=ConnectionRequestRead, status_code=status.HTTP_201_CREATED)
+@router.post(
+    '/request',
+    response_model=ConnectionRequestRead,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(connection_request_limit)],
+)
 async def send_connection_request(payload: ConnectionRequestCreate, current_user: User = Depends(require_verified_student), db: AsyncSession = Depends(get_db)) -> ConnectionRequestRead:
     if payload.receiver_id == current_user.id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='You cannot connect with yourself')
@@ -50,7 +57,13 @@ async def send_connection_request(payload: ConnectionRequestCreate, current_user
         left, right = ordered_pair(current_user.id, payload.receiver_id)
         new_match = Match(user_a_id=left, user_b_id=right)
         db.add(new_match)
-        await db.flush()
+        try:
+            await db.flush()
+        except IntegrityError:
+            # Both sides connected back at the same instant — the other transaction created
+            # the match. That's success, not an error.
+            await db.rollback()
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='You are already matched') from None
         await ensure_dm_conversation(db, new_match)  # every match gets its conversation
         await db.commit()
         await db.refresh(reverse_request)
@@ -64,7 +77,16 @@ async def send_connection_request(payload: ConnectionRequestCreate, current_user
 
     request = ConnectionRequest(sender_id=current_user.id, receiver_id=payload.receiver_id, intent=payload.intent, note=payload.note)
     db.add(request)
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError:
+        # Race: a concurrent identical request (e.g. a double-tap) won the unique constraint.
+        # Return that one instead of surfacing a 500 — the action is idempotent.
+        await db.rollback()
+        return (await db.execute(select(ConnectionRequest).where(
+            ConnectionRequest.sender_id == current_user.id,
+            ConnectionRequest.receiver_id == payload.receiver_id,
+        ))).scalar_one()
     await db.refresh(request)
     await _notify(payload.receiver_id, 'connection_request', current_user.id)  # "X sent you a request"
     return request

@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import '../../../core/api/api_error.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../providers/activities_provider.dart';
+import 'create_activity_screen.dart';
 
 class ActivityDetailScreen extends ConsumerStatefulWidget {
   final Activity activity;
@@ -16,6 +19,43 @@ class ActivityDetailScreen extends ConsumerStatefulWidget {
 
 class _ActivityDetailScreenState extends ConsumerState<ActivityDetailScreen> {
   bool _loading = false;
+
+  void _edit(Activity activity) {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => CreateActivityScreen(existing: activity)),
+    );
+  }
+
+  Future<void> _cancel(Activity activity) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Cancel activity?', style: GoogleFonts.dmSans(fontWeight: FontWeight.w700)),
+        content: Text('This removes "${activity.title}" for everyone. This cannot be undone.',
+            style: GoogleFonts.dmSans(color: AppColors.textMid)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false),
+              child: Text('Keep', style: GoogleFonts.dmSans(color: AppColors.textMuted))),
+          TextButton(onPressed: () => Navigator.pop(ctx, true),
+              child: Text('Cancel activity',
+                  style: GoogleFonts.dmSans(color: AppColors.error, fontWeight: FontWeight.w700))),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    try {
+      await ref.read(activitiesNotifierProvider.notifier).cancel(activity.id);
+      if (mounted) Navigator.of(context).pop(); // back to the list
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(apiErrorMessage(e, fallback: 'Could not cancel — try again'), style: GoogleFonts.dmSans()),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ));
+    }
+  }
 
   Future<void> _toggle(Activity activity) async {
     if (_loading) return;
@@ -57,6 +97,9 @@ class _ActivityDetailScreenState extends ConsumerState<ActivityDetailScreen> {
         activity.participantCount >= activity.maxParticipants! &&
         !activity.hasJoined;
 
+    final myId = ref.watch(authNotifierProvider).asData?.value?.id;
+    final isCreator = myId != null && myId == activity.creatorId;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       bottomNavigationBar: _JoinBar(
@@ -83,14 +126,29 @@ class _ActivityDetailScreenState extends ConsumerState<ActivityDetailScreen> {
                 color: AppColors.textDark,
               ),
             ),
+            actions: [
+              if (isCreator)
+                PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_vert_rounded),
+                  onSelected: (v) => v == 'edit' ? _edit(activity) : _cancel(activity),
+                  itemBuilder: (_) => [
+                    const PopupMenuItem(value: 'edit', child: Text('Edit activity')),
+                    const PopupMenuItem(value: 'cancel', child: Text('Cancel activity')),
+                  ],
+                ),
+            ],
             flexibleSpace: FlexibleSpaceBar(
               background: Stack(
                 fit: StackFit.expand,
                 children: [
-                  Image.asset(
-                    'assets/images/school.png',
-                    fit: BoxFit.cover,
-                  ),
+                  if (activity.bannerUrl != null)
+                    Image.network(
+                      activity.bannerUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => Image.asset('assets/images/school.png', fit: BoxFit.cover),
+                    )
+                  else
+                    Image.asset('assets/images/school.png', fit: BoxFit.cover),
                   DecoratedBox(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(

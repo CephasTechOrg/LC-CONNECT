@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../core/api/api_error.dart';
 import '../../../core/theme/app_theme.dart';
 import '../data/group_models.dart';
 import '../providers/groups_provider.dart';
@@ -97,11 +98,11 @@ class _CreateGroupFormState extends ConsumerState<_CreateGroupForm> {
         } catch (_) {/* keep the created group without the avatar */}
       }
       if (mounted) Navigator.of(context).pop(group);
-    } catch (_) {
+    } catch (e) {
       if (mounted) {
         setState(() {
           _submitting = false;
-          _error = 'Could not create the group. Try again.';
+          _error = apiErrorMessage(e, fallback: 'Could not create the group. Try again.');
         });
       }
     }

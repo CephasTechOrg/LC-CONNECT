@@ -12,7 +12,7 @@ import '../router/app_router.dart';
 
 /// Guarded FCM wrapper. If Firebase isn't configured yet (no google-services files),
 /// `initialize()` no-ops and push stays disabled — the app runs normally. Once the
-/// Firebase setup (see docs/push_notifications_setup.md) is in place, push activates.
+/// Firebase setup (see docs/features/notifications/firebase_setup.md) is in place, push activates.
 class NotificationService {
   NotificationService._();
   static final NotificationService instance = NotificationService._();

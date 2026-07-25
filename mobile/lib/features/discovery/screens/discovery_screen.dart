@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/api/api_error.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/avatar_widget.dart';
 import '../../../shared/widgets/app_filter_chip.dart';
@@ -270,15 +271,25 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
       itemCount: cards.length,
       itemBuilder: (ctx, i) {
         final card = cards[i];
+        Future<void> connect(String intent) async {
+          try {
+            await ref
+                .read(discoveryNotifierProvider.notifier)
+                .connect(card.userId, card.profileId, intent);
+          } catch (e) {
+            if (ctx.mounted) {
+              ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+                content: Text(apiErrorMessage(e, fallback: 'Could not send request — try again')),
+              ));
+            }
+          }
+        }
+
         return _StudentCard(
           key: ValueKey(card.profileId),
           card: card,
-          onConnect: () => ref
-              .read(discoveryNotifierProvider.notifier)
-              .connect(card.userId, card.profileId, 'connect'),
-          onStudyTogether: () => ref
-              .read(discoveryNotifierProvider.notifier)
-              .connect(card.userId, card.profileId, 'study_together'),
+          onConnect: () => connect('connect'),
+          onStudyTogether: () => connect('study_together'),
           onSkip: () => ref
               .read(discoveryNotifierProvider.notifier)
               .skip(card.profileId),

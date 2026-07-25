@@ -3,7 +3,7 @@
 This document describes the actual folder structure. The project follows a **feature-first
 (vertical slice)** architecture on both the backend and mobile. The rules that govern it
 (file-length limits, feature ownership, dependency direction) live in
-[`CONVENTIONS.md`](../CONVENTIONS.md) at the repo root — read that first.
+[`CONVENTIONS.md`](../../CONVENTIONS.md) at the repo root — read that first.
 
 ```text
 lc-connect/
