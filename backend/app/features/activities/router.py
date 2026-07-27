@@ -9,7 +9,12 @@ from app.config import settings
 from app.database import get_db
 from app.dependencies import require_verified_student
 from app.features.activities import service
-from app.features.activities.schema import ActivityCreate, ActivityRead, ActivityUpdate
+from app.features.activities.schema import (
+    ActivityCreate,
+    ActivityParticipantRead,
+    ActivityRead,
+    ActivityUpdate,
+)
 from app.features.activities.service import activity_read
 from app.models import Activity, ActivityParticipant, User
 from app.shared.image_processing import sanitize_avatar
@@ -63,6 +68,15 @@ async def get_activity(activity_id: UUID, current_user: User = Depends(require_v
     if activity is None or activity.is_cancelled:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Activity not found')
     return await activity_read(db, activity, current_user.id)
+
+
+@router.get('/{activity_id}/participants', response_model=list[ActivityParticipantRead])
+async def list_participants(activity_id: UUID, current_user: User = Depends(require_verified_student), db: AsyncSession = Depends(get_db)):
+    """The activity's roster (public — any verified student can view)."""
+    activity = await db.get(Activity, activity_id)
+    if activity is None or activity.is_cancelled:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Activity not found')
+    return await service.participants_read(db, activity)
 
 
 @router.patch('/{activity_id}', response_model=ActivityRead)

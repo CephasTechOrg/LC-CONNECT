@@ -9,6 +9,7 @@ import '../../../shared/widgets/app_filter_chip.dart';
 import '../../../shared/widgets/app_shell_header.dart';
 import '../../../shared/widgets/app_states.dart';
 import '../../notifications/widgets/notifications_bell_button.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../../groups/widgets/groups_panel.dart';
 import '../providers/discovery_provider.dart';
 import '../../safety/providers/safety_provider.dart';
@@ -99,6 +100,30 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
   @override
   Widget build(BuildContext context) {
     _syncTabFromRoute(context);
+    final role = ref.watch(authNotifierProvider).asData?.value?.role ?? 'student';
+    if (role != 'student') {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        body: SafeArea(
+          child: Column(
+            children: [
+              _buildHeader(),
+              Expanded(
+                child: AppEmptyState(
+                  icon: Icons.people_outline,
+                  title: 'Connect is for students',
+                  subtitle:
+                      'Student matching and groups are not available on staff accounts. Browse the campus directory instead.',
+                  actionLabel: 'Open directory',
+                  onAction: () => context.push('/home/directory'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     final discoveryState = ref.watch(discoveryNotifierProvider);
 
     return Scaffold(

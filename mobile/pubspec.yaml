@@ -48,6 +48,7 @@ dependencies:
   web_socket_channel: ^3.0.3
   firebase_core: ^4.12.1
   firebase_messaging: ^16.4.3
+  url_launcher: ^6.3.2
   audioplayers: ^6.1.0
 
 dev_dependencies:

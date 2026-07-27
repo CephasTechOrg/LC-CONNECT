@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.database import get_db
-from app.dependencies import require_verified_student
+from app.dependencies import require_verified_connect_student
 from app.features.discovery.schema import DiscoveryCard
 from app.features.discovery.service import calculate_match
 from app.models import Block, ConnectionRequest, Match, Profile, User, UserLanguage
@@ -15,7 +15,7 @@ router = APIRouter(prefix='/discovery', tags=['discovery'])
 
 
 @router.get('/cards', response_model=list[DiscoveryCard])
-async def get_discovery_cards(current_user: User = Depends(require_verified_student), db: AsyncSession = Depends(get_db), limit: int = Query(default=20, ge=1, le=50)) -> list[DiscoveryCard]:
+async def get_discovery_cards(current_user: User = Depends(require_verified_connect_student), db: AsyncSession = Depends(get_db), limit: int = Query(default=20, ge=1, le=50)) -> list[DiscoveryCard]:
     current_profile = await get_profile_by_user_id(db, current_user.id)
 
     blocks = (await db.execute(select(Block).where(or_(Block.blocker_id == current_user.id, Block.blocked_id == current_user.id)))).scalars().all()
@@ -32,7 +32,15 @@ async def get_discovery_cards(current_user: User = Depends(require_verified_stud
         select(Profile)
         .join(User, User.id == Profile.user_id)
         .options(selectinload(Profile.user), selectinload(Profile.interests), selectinload(Profile.looking_for_options), selectinload(Profile.languages).selectinload(UserLanguage.language))
-        .where(Profile.user_id.not_in(excluded), Profile.is_hidden.is_(False), Profile.profile_completed.is_(True), User.is_active.is_(True), User.status == 'active')
+        .where(
+            Profile.user_id.not_in(excluded),
+            Profile.is_hidden.is_(False),
+            Profile.profile_completed.is_(True),
+            User.is_active.is_(True),
+            User.status == 'active',
+            User.role == 'student',
+            User.deleted_at.is_(None),
+        )
     )
     # Respect owners who restrict visibility to email-verified users (no-op for verified viewers).
     if not current_user.is_verified:

@@ -92,6 +92,9 @@ class MyProfile {
   final int connectionCount;
   final int activityCount;
   final int messageCount;
+  final String? campusPositionStatus;
+  final String? campusPositionTitle;
+  final bool campusPositionVerified;
 
   const MyProfile({
     required this.profileId,
@@ -117,6 +120,9 @@ class MyProfile {
     required this.connectionCount,
     required this.activityCount,
     required this.messageCount,
+    this.campusPositionStatus,
+    this.campusPositionTitle,
+    this.campusPositionVerified = false,
   });
 
   factory MyProfile.fromJson(Map<String, dynamic> j) => MyProfile(
@@ -145,6 +151,9 @@ class MyProfile {
         connectionCount: (j['connection_count'] as num?)?.toInt() ?? 0,
         activityCount: (j['activity_count'] as num?)?.toInt() ?? 0,
         messageCount: (j['message_count'] as num?)?.toInt() ?? 0,
+        campusPositionStatus: j['campus_position_status'] as String?,
+        campusPositionTitle: j['campus_position_title'] as String?,
+        campusPositionVerified: j['campus_position_verified'] as bool? ?? false,
       );
 
   MyProfile copyWith({

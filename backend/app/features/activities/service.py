@@ -8,12 +8,40 @@ from fastapi import HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.features.activities.schema import ActivityRead
-from app.models import Activity, ActivityParticipant
+from app.features.activities.schema import ActivityParticipantRead, ActivityRead
+from app.models import Activity, ActivityParticipant, Profile
 
 
 async def activity_count(db: AsyncSession, activity_id: UUID) -> int:
     return int((await db.execute(select(func.count()).select_from(ActivityParticipant).where(ActivityParticipant.activity_id == activity_id))).scalar_one())
+
+
+async def participants_read(db: AsyncSession, activity: Activity) -> list[ActivityParticipantRead]:
+    """The roster (names + avatars), organizer first, in one query. Activities are public, so
+    this is visible to any verified student — it's a list, not a management surface."""
+    rows = (
+        await db.execute(
+            select(
+                ActivityParticipant.user_id,
+                Profile.id,
+                Profile.display_name,
+                Profile.avatar_url,
+            )
+            .outerjoin(Profile, Profile.user_id == ActivityParticipant.user_id)
+            .where(ActivityParticipant.activity_id == activity.id)
+            .order_by(ActivityParticipant.created_at.asc())
+        )
+    ).all()
+    return [
+        ActivityParticipantRead(
+            user_id=user_id,
+            profile_id=profile_id,
+            display_name=display_name,
+            avatar_url=avatar_url,
+            is_creator=(user_id == activity.creator_id),
+        )
+        for user_id, profile_id, display_name, avatar_url in rows
+    ]
 
 
 async def has_joined(db: AsyncSession, activity_id: UUID, user_id: UUID) -> bool:

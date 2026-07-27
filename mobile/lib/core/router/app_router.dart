@@ -6,7 +6,11 @@ import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
 import '../../features/auth/screens/verify_email_screen.dart';
 import '../../features/auth/providers/auth_provider.dart';
-import '../../features/home/screens/home_screen.dart';
+import '../../features/campus_hub/screens/campus_hub_screen.dart';
+import '../../features/campus_hub/screens/campus_directory_screen.dart';
+import '../../features/campus_hub/screens/campus_position_detail_screen.dart';
+import '../../features/campus_hub/screens/campus_updates_screen.dart';
+import '../../features/campus_hub/screens/campus_resources_screen.dart';
 import '../../features/discovery/screens/discovery_screen.dart';
 import '../../features/activities/screens/activities_screen.dart';
 import '../../features/activities/screens/activity_detail_screen.dart';
@@ -18,6 +22,7 @@ import '../../features/messages/providers/messages_provider.dart';
 import '../../features/groups/data/group_models.dart';
 import '../../features/groups/screens/group_detail_screen.dart';
 import '../../features/notifications/screens/notifications_screen.dart';
+import '../../features/campus_positions/screens/edit_campus_position_screen.dart';
 import '../../features/profile/screens/profile_screen.dart';
 import '../../features/profile/screens/public_profile_screen.dart';
 import '../../features/profile/screens/edit_profile_screen.dart';
@@ -140,7 +145,42 @@ final routerProvider = Provider<GoRouter>((ref) {
       ShellRoute(
         builder: (context, state, child) => NavShell(child: child),
         routes: [
-          GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
+          GoRoute(
+            path: '/home',
+            builder: (context, state) => const CampusHubScreen(),
+            routes: [
+              GoRoute(
+                path: 'updates',
+                builder: (context, state) => const CampusUpdatesScreen(),
+              ),
+              GoRoute(
+                path: 'opportunities',
+                builder: (context, state) => const CampusOpportunitiesScreen(),
+              ),
+              GoRoute(
+                path: 'resources',
+                builder: (context, state) => const CampusResourcesScreen(),
+              ),
+              GoRoute(
+                path: 'posts/:postId',
+                builder: (context, state) => CampusPostDetailScreen(
+                  postId: state.pathParameters['postId']!,
+                ),
+              ),
+              GoRoute(
+                path: 'directory',
+                builder: (context, state) => const CampusDirectoryScreen(),
+                routes: [
+                  GoRoute(
+                    path: ':positionId',
+                    builder: (context, state) => CampusPositionDetailScreen(
+                      positionId: state.pathParameters['positionId']!,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
           GoRoute(path: '/discover', builder: (context, state) => const DiscoveryScreen()),
           GoRoute(
             path: '/activities',
@@ -191,6 +231,10 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: 'edit',
                 builder: (context, state) => const EditProfileScreen(),
+              ),
+              GoRoute(
+                path: 'campus-position',
+                builder: (context, state) => const EditCampusPositionScreen(),
               ),
             ],
           ),

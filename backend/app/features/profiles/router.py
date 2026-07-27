@@ -7,15 +7,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.database import get_db
 from app.dependencies import require_verified_student
+from app.features.campus_positions.service import get_primary_position
 from app.features.profiles.schema import MyProfileRead, ProfileUpdate
 from app.features.profiles.service import (
-    compute_profile_completed,
     get_looking_for_options,
     get_or_create_interests,
     get_or_create_languages,
 )
 from app.models import ActivityParticipant, Match, Message, Profile, User, UserLanguage
 from app.shared.image_processing import sanitize_avatar
+from app.shared.onboarding import compute_onboarding_completed
 from app.shared.policies import assert_profile_visible
 from app.shared.profiles import get_profile_by_user_id, profile_load_options
 from app.shared.rate_limit import avatar_upload_limit
@@ -48,6 +49,8 @@ async def get_my_profile(current_user: User = Depends(require_verified_student),
         )
     )).scalar_one())
 
+    position = await get_primary_position(db, current_user.id)
+
     return MyProfileRead(
         **profile_to_public(profile).model_dump(),
         allow_messages_from_matches_only=profile.allow_messages_from_matches_only,
@@ -55,6 +58,9 @@ async def get_my_profile(current_user: User = Depends(require_verified_student),
         connection_count=connection_count,
         activity_count=activity_count,
         message_count=message_count,
+        campus_position_status=position.status if position else None,
+        campus_position_title=position.official_title if position else None,
+        campus_position_verified=position.status == 'verified' if position else False,
     )
 
 
@@ -88,7 +94,8 @@ async def update_my_profile(payload: ProfileUpdate, current_user: User = Depends
         for language in learning:
             profile.languages.append(UserLanguage(profile_id=profile.id, language_id=language.id, kind='learning'))
 
-    profile.profile_completed = compute_profile_completed(profile)
+    position = await get_primary_position(db, current_user.id)
+    profile.profile_completed = compute_onboarding_completed(current_user, profile, position)
     await db.commit()
     return profile_to_public(await get_profile_by_user_id(db, current_user.id))
 

@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LC Connect Admin — Campus Posts</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">LC Connect</p>
+        <h1>Campus Posts</h1>
+      </div>
+      <div class="topbar-actions">
+        <a class="link-btn" href="./index.html">Positions</a>
+        <button id="refreshBtn" type="button">Refresh</button>
+      </div>
+    </header>
+
+    <section class="panel config">
+      <label>
+        API base URL
+        <input id="apiBase" type="url" placeholder="http://localhost:8000/api/v1" />
+      </label>
+      <label>
+        Admin bearer token
+        <input id="token" type="password" placeholder="Supabase access token (admin + MFA)" />
+      </label>
+    </section>
+
+    <section class="panel compose">
+      <h2>Create draft</h2>
+      <div class="grid-2">
+        <label>
+          Kind
+          <select id="kind">
+            <option value="update">Update</option>
+            <option value="deadline">Deadline</option>
+            <option value="opportunity">Opportunity</option>
+            <option value="alert">Alert</option>
+          </select>
+        </label>
+        <label>
+          Priority
+          <select id="priority">
+            <option value="normal">Normal</option>
+            <option value="important">Important</option>
+            <option value="urgent">Urgent</option>
+          </select>
+        </label>
+        <label>
+          Audience
+          <select id="audience">
+            <option value="all">All</option>
+            <option value="students">Students</option>
+            <option value="staff">Staff</option>
+          </select>
+        </label>
+        <label>
+          Title
+          <input id="title" type="text" maxlength="200" />
+        </label>
+      </div>
+      <label>
+        Summary
+        <input id="summary" type="text" maxlength="400" />
+      </label>
+      <label>
+        Body
+        <textarea id="body" rows="4"></textarea>
+      </label>
+      <button id="createBtn" type="button">Save draft</button>
+    </section>
+
+    <main>
+      <p id="status" class="status">Load posts to begin.</p>
+      <div id="list" class="list"></div>
+    </main>
+
+    <template id="cardTemplate">
+      <article class="card">
+        <div class="card-head">
+          <div>
+            <h2 class="title"></h2>
+            <p class="meta"></p>
+          </div>
+          <span class="badge"></span>
+        </div>
+        <p class="summary"></p>
+        <div class="actions">
+          <button type="button" class="publish">Publish</button>
+          <button type="button" class="archive danger">Archive</button>
+        </div>
+      </article>
+    </template>
+
+    <script src="./posts.js" type="module"></script>
+  </body>
+</html>

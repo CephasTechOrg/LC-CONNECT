@@ -32,6 +32,17 @@ class ActivityUpdate(BaseModel):
     max_participants: int | None = Field(default=None, ge=2, le=500)
 
 
+class ActivityParticipantRead(BaseModel):
+    """A row in an activity's roster. Activities are public, so this is just names/avatars —
+    no moderation. `is_creator` marks the organizer."""
+
+    user_id: UUID
+    profile_id: UUID | None
+    display_name: str | None
+    avatar_url: str | None
+    is_creator: bool
+
+
 class ActivityRead(BaseModel):
     id: UUID
     creator_id: UUID

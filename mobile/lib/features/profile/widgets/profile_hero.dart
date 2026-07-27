@@ -76,8 +76,19 @@ class _HeroSection extends StatelessWidget {
                         ),
                         if (profile.isVerified) ...[
                           const SizedBox(width: 6),
-                          const Icon(Icons.verified_rounded,
-                              color: AppColors.primary, size: 18),
+                          Tooltip(
+                            message: 'Email verified',
+                            child: const Icon(Icons.mark_email_read_outlined,
+                                color: AppColors.primary, size: 18),
+                          ),
+                        ],
+                        if (profile.campusPositionVerified) ...[
+                          const SizedBox(width: 6),
+                          Tooltip(
+                            message: 'Campus position verified',
+                            child: const Icon(Icons.verified_rounded,
+                                color: AppColors.primary, size: 18),
+                          ),
                         ],
                       ],
                     ),
@@ -101,6 +112,14 @@ class _HeroSection extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           // Meta rows
+          if (profile.campusPositionTitle != null &&
+              profile.campusPositionTitle!.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            _MetaRow(
+              icon: Icons.badge_outlined,
+              text: profile.campusPositionTitle!,
+            ),
+          ],
           if (profile.major != null)
             _MetaRow(
                 icon: Icons.school_outlined, text: profile.major!),

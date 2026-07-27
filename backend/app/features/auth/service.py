@@ -10,31 +10,10 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.config import settings
+from app.features.campus_positions.service import refresh_profile_completed
 from app.models import Profile, User
 from app.security import SupabaseClaims
-
-# Staging/dev allow-list only — never enable in production.
-_DEV_TEST_EMAILS = frozenset({
-    'cephas.bonsuosei@gmail.com',
-    'asiedudev.hub@gmail.com',
-    'asieduminta27@gmail.com',
-    'auralenx.team@gmail.com',
-    'bdoreen889@gmail.com',
-})
-
-
-def normalize_campus_email(email: str) -> str:
-    normalized = email.lower().strip()
-    domain = normalized.rsplit('@', 1)[-1]
-    if domain in settings.allowed_email_domain_set:
-        return normalized
-    if settings.is_development and normalized in _DEV_TEST_EMAILS:
-        return normalized
-    raise ValueError(
-        'Only Livingstone College email addresses are allowed '
-        '(@students.livingstone.edu or @livingstone.edu)'
-    )
+from app.shared.email_roles import infer_role_from_email, normalize_campus_email, sync_user_role_from_email
 
 
 def assert_allowed_email(email: str) -> str:
@@ -80,7 +59,7 @@ async def bootstrap_user(db: AsyncSession, claims: SupabaseClaims) -> User:
 
     user = await get_user_by_auth_id(db, claims.sub)
     if user is not None:
-        return await _sync_and_return(db, user, claims)
+        return await _sync_and_return(db, user, claims, email)
 
     by_email = await db.execute(
         select(User).options(selectinload(User.profile)).where(User.email == email)
@@ -93,14 +72,14 @@ async def bootstrap_user(db: AsyncSession, claims: SupabaseClaims) -> User:
                 detail='Email is linked to a different auth identity',
             )
         user.auth_user_id = claims.sub
-        return await _sync_and_return(db, user, claims)
+        return await _sync_and_return(db, user, claims, email)
 
     user = User(
         auth_user_id=claims.sub,
         email=email,
         password_hash=None,
         is_verified=claims.email_verified,
-        role='student',
+        role=infer_role_from_email(email),
         status='active',
         is_active=True,
     )
@@ -118,13 +97,19 @@ async def bootstrap_user(db: AsyncSession, claims: SupabaseClaims) -> User:
             ).scalar_one_or_none()
         if existing is None:
             raise
-        return await _sync_and_return(db, existing, claims)
+        return await _sync_and_return(db, existing, claims, email)
 
-    return await _sync_and_return(db, user, claims)
+    return await _sync_and_return(db, user, claims, email)
 
 
-async def _sync_and_return(db: AsyncSession, user: User, claims: SupabaseClaims) -> User:
+async def _sync_and_return(
+    db: AsyncSession,
+    user: User,
+    claims: SupabaseClaims,
+    email: str,
+) -> User:
     _active_or_raise(user)
+    sync_user_role_from_email(user, email)
     if claims.email_verified and not user.is_verified:
         user.is_verified = True
 
@@ -136,6 +121,11 @@ async def _sync_and_return(db: AsyncSession, user: User, claims: SupabaseClaims)
     if profile is None:
         db.add(Profile(user_id=user.id, display_name=user.email.split('@', 1)[0]))
         await db.flush()
+        profile = (
+            await db.execute(select(Profile).where(Profile.user_id == user.id))
+        ).scalar_one()
+
+    await refresh_profile_completed(db, user, profile)
 
     await db.commit()
     return await _reload_user(db, user.id)

@@ -1,11 +1,15 @@
-part of '../screens/onboarding_screen.dart';
+import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import '../../../core/theme/app_theme.dart';
 
-// ── Step progress indicator ────────────────────────────────────────
-class _StepIndicator extends StatelessWidget {
+class OnboardingStepIndicator extends StatelessWidget {
   final int currentStep;
   final int totalSteps;
-  const _StepIndicator(
-      {required this.currentStep, required this.totalSteps});
+  const OnboardingStepIndicator({
+    super.key,
+    required this.currentStep,
+    required this.totalSteps,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -32,16 +36,13 @@ class _StepIndicator extends StatelessWidget {
             shape: BoxShape.circle,
             color: isComplete || isActive ? AppColors.primary : Colors.white,
             border: Border.all(
-              color: isComplete || isActive
-                  ? AppColors.primary
-                  : AppColors.border,
+              color: isComplete || isActive ? AppColors.primary : AppColors.border,
               width: 2,
             ),
           ),
           alignment: Alignment.center,
           child: isComplete
-              ? const Icon(Icons.check_rounded,
-                  size: 14, color: Colors.white)
+              ? const Icon(Icons.check_rounded, size: 14, color: Colors.white)
               : Text(
                   '${idx + 1}',
                   style: GoogleFonts.dmSans(
@@ -56,11 +57,10 @@ class _StepIndicator extends StatelessWidget {
   }
 }
 
-// ── Field label ────────────────────────────────────────────────────
-class _Label extends StatelessWidget {
+class OnboardingLabel extends StatelessWidget {
   final String text;
   final bool optional;
-  const _Label(this.text, {this.optional = false});
+  const OnboardingLabel(this.text, {super.key, this.optional = false});
 
   @override
   Widget build(BuildContext context) {
@@ -80,8 +80,7 @@ class _Label extends StatelessWidget {
             const SizedBox(width: 6),
             Text(
               'optional',
-              style: GoogleFonts.dmSans(
-                  fontSize: 12, color: AppColors.textMuted),
+              style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textMuted),
             ),
           ],
         ],
@@ -90,15 +89,15 @@ class _Label extends StatelessWidget {
   }
 }
 
-// ── Animated chip grid ─────────────────────────────────────────────
-class _ChipGrid extends StatelessWidget {
+class OnboardingChipGrid extends StatelessWidget {
   final List<String> options;
   final List<String>? optionKeys;
   final Set<String> selected;
   final ValueChanged<String> onToggle;
   final bool highlight;
 
-  const _ChipGrid({
+  const OnboardingChipGrid({
+    super.key,
     required this.options,
     this.optionKeys,
     required this.selected,
@@ -119,13 +118,10 @@ class _ChipGrid extends StatelessWidget {
           onTap: () => onToggle(key),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 150),
-            padding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             decoration: BoxDecoration(
               color: isOn
-                  ? (highlight
-                      ? AppColors.primary
-                      : AppColors.primarySoft)
+                  ? (highlight ? AppColors.primary : AppColors.primarySoft)
                   : Colors.white,
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
@@ -137,8 +133,7 @@ class _ChipGrid extends StatelessWidget {
               label,
               style: GoogleFonts.dmSans(
                 fontSize: 13,
-                fontWeight:
-                    isOn ? FontWeight.w600 : FontWeight.w400,
+                fontWeight: isOn ? FontWeight.w600 : FontWeight.w400,
                 color: isOn
                     ? (highlight ? Colors.white : AppColors.primary)
                     : AppColors.textMid,
@@ -147,6 +142,66 @@ class _ChipGrid extends StatelessWidget {
           ),
         );
       }),
+    );
+  }
+}
+
+class OnboardingBottomBar extends StatelessWidget {
+  final int step;
+  final int totalSteps;
+  final bool isLoading;
+  final bool canProceed;
+  final VoidCallback onBack;
+  final VoidCallback onNext;
+
+  const OnboardingBottomBar({
+    super.key,
+    required this.step,
+    required this.totalSteps,
+    required this.isLoading,
+    required this.canProceed,
+    required this.onBack,
+    required this.onNext,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isLast = step == totalSteps - 1;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(22, 12, 22, 20),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: AppColors.border)),
+      ),
+      child: Row(
+        children: [
+          if (step > 0) ...[
+            Expanded(
+              child: OutlinedButton(
+                onPressed: isLoading ? null : onBack,
+                child: const Text('Back'),
+              ),
+            ),
+            const SizedBox(width: 12),
+          ],
+          Expanded(
+            flex: 2,
+            child: FilledButton(
+              onPressed: (canProceed && !isLoading) ? onNext : null,
+              child: isLoading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : Text(isLast ? 'Finish Setup' : 'Continue'),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

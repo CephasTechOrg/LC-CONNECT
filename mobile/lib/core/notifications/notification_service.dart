@@ -32,8 +32,11 @@ class NotificationService {
     }
   }
 
-  /// Called when a user signs in: permission → token → register with backend + handlers.
-  Future<void> registerForUser(Dio dio, void Function(String conversationId) onOpenConversation) async {
+    Future<void> registerForUser(
+    Dio dio, {
+    required void Function(String conversationId) onOpenConversation,
+    required void Function(String postId) onOpenCampusPost,
+  }) async {
     if (!_available) return;
     final messaging = FirebaseMessaging.instance;
     try {
@@ -47,17 +50,33 @@ class NotificationService {
         _token = refreshed;
         _register(dio, refreshed);
       });
-      FirebaseMessaging.onMessageOpenedApp.listen((m) => _open(m, onOpenConversation));
+      void open(RemoteMessage m) => _open(m, onOpenConversation, onOpenCampusPost);
+      FirebaseMessaging.onMessageOpenedApp.listen(open);
       final initial = await messaging.getInitialMessage();
-      if (initial != null) _open(initial, onOpenConversation);
+      if (initial != null) open(initial);
     } catch (e) {
       if (kDebugMode) debugPrint('Push registration failed: $e');
     }
   }
 
-  void _open(RemoteMessage message, void Function(String) onOpen) {
-    final conversationId = message.data['conversation_id'];
-    if (conversationId is String && conversationId.isNotEmpty) onOpen(conversationId);
+  void _open(
+    RemoteMessage message,
+    void Function(String) onOpenConversation,
+    void Function(String) onOpenCampusPost,
+  ) {
+    final data = message.data;
+    final type = data['type'];
+    if (type == 'campus_post') {
+      final postId = data['post_id'];
+      if (postId is String && postId.isNotEmpty) {
+        onOpenCampusPost(postId);
+        return;
+      }
+    }
+    final conversationId = data['conversation_id'];
+    if (conversationId is String && conversationId.isNotEmpty) {
+      onOpenConversation(conversationId);
+    }
   }
 
   Future<void> _register(Dio dio, String token) async {
@@ -95,9 +114,15 @@ final notificationRegistrarProvider = Provider<void>((ref) {
   final dio = ref.watch(apiClientProvider).dio;
   ref.listen<AsyncValue<AuthUser?>>(authNotifierProvider, (_, next) {
     if (next.asData?.value != null) {
-      NotificationService.instance.registerForUser(dio, (conversationId) {
-        ref.read(routerProvider).push('/messages/$conversationId');
-      });
+      NotificationService.instance.registerForUser(
+        dio,
+        onOpenConversation: (conversationId) {
+          ref.read(routerProvider).push('/messages/$conversationId');
+        },
+        onOpenCampusPost: (postId) {
+          ref.read(routerProvider).push('/home/posts/$postId');
+        },
+      );
     } else {
       NotificationService.instance.clear(dio);
     }

@@ -9,7 +9,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
-from app.features.auth.service import normalize_campus_email
+from app.shared.email_roles import normalize_campus_email
 
 
 class RegisterRequest(BaseModel):

@@ -11,6 +11,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Interest, Language, LookingForOption, Profile
+from app.shared.onboarding import compute_student_profile_completed
+
+
+def compute_profile_completed(profile: Profile) -> bool:
+    """Student social-profile completion (legacy name — prefer `compute_onboarding_completed`)."""
+    return compute_student_profile_completed(profile)
 
 
 async def get_or_create_interests(db: AsyncSession, names: list[str]) -> list[Interest]:
@@ -40,7 +46,3 @@ async def get_or_create_languages(db: AsyncSession, names: list[str]) -> list[La
 async def get_looking_for_options(db: AsyncSession, codes: list[str]) -> list[LookingForOption]:
     clean_codes = sorted({code.strip().lower() for code in codes if code.strip()})
     return list((await db.execute(select(LookingForOption).where(LookingForOption.code.in_(clean_codes)))).scalars().all())
-
-
-def compute_profile_completed(profile: Profile) -> bool:
-    return bool(profile.display_name and profile.major and profile.class_year and profile.looking_for_options)

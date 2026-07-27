@@ -64,6 +64,42 @@ class Activity {
       );
 }
 
+/// A row in an activity's roster (public — names + avatars, no moderation).
+class ActivityParticipant {
+  final String userId;
+  final String? profileId;
+  final String? displayName;
+  final String? avatarUrl;
+  final bool isCreator;
+
+  const ActivityParticipant({
+    required this.userId,
+    this.profileId,
+    this.displayName,
+    this.avatarUrl,
+    required this.isCreator,
+  });
+
+  factory ActivityParticipant.fromJson(Map<String, dynamic> j) => ActivityParticipant(
+        userId: j['user_id'] as String,
+        profileId: j['profile_id'] as String?,
+        displayName: j['display_name'] as String?,
+        avatarUrl: j['avatar_url'] as String?,
+        isCreator: j['is_creator'] as bool? ?? false,
+      );
+
+  String get name => displayName ?? 'LC Student';
+}
+
+/// The roster for one activity.
+final activityParticipantsProvider =
+    FutureProvider.autoDispose.family<List<ActivityParticipant>, String>((ref, activityId) async {
+  final resp = await ref.read(apiClientProvider).dio.get('/activities/$activityId/participants');
+  return (resp.data as List)
+      .map((j) => ActivityParticipant.fromJson(j as Map<String, dynamic>))
+      .toList();
+});
+
 class ActivitiesFilterNotifier extends Notifier<String> {
   @override
   String build() => 'all';

@@ -70,6 +70,54 @@ class PushSender:
         if invalid:
             await prune_tokens(db, invalid)
 
+    async def notify_campus_post(
+        self,
+        db: AsyncSession,
+        *,
+        tokens: list[str],
+        title: str,
+        post_id: UUID,
+        priority: str,
+    ) -> None:
+        if not self._ready or not tokens:
+            return
+        body = 'Important campus update' if priority == 'important' else 'Urgent campus alert'
+        try:
+            invalid = await asyncio.to_thread(self._send_campus_post, tokens, title, body, post_id, priority)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning('Campus post push failed for %s: %s', post_id, exc)
+            return
+        if invalid:
+            await prune_tokens(db, invalid)
+
+    def _send_campus_post(
+        self,
+        tokens: list[str],
+        title: str,
+        body: str,
+        post_id: UUID,
+        priority: str,
+    ) -> list[str]:
+        from firebase_admin import messaging
+
+        invalid: list[str] = []
+        for start in range(0, len(tokens), 500):
+            chunk = tokens[start : start + 500]
+            message = messaging.MulticastMessage(
+                tokens=chunk,
+                notification=messaging.Notification(title=title, body=body),
+                data={'type': 'campus_post', 'post_id': str(post_id), 'priority': priority},
+                apns=messaging.APNSConfig(payload=messaging.APNSPayload(aps=messaging.Aps(sound='default'))),
+            )
+            response = messaging.send_each_for_multicast(message, app=self._app)
+            invalid.extend(
+                token
+                for token, result in zip(chunk, response.responses, strict=False)
+                if not result.success and isinstance(result.exception, messaging.UnregisteredError)
+            )
+        logger.info('Campus post push: tokens=%d pruned=%d', len(tokens), len(invalid))
+        return invalid
+
     def _send(self, tokens: list[str], sender_name: str, conversation_id: UUID, sender_id: UUID) -> list[str]:
         from firebase_admin import messaging
 

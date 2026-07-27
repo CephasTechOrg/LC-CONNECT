@@ -8,6 +8,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import ORJSONResponse
 
 from app.config import settings
+from app.features.account import router as account_router
+from app.features.campus_hub import router as campus_hub_router
+from app.features.campus_positions import router as campus_positions_router
 from app.features.activities import router as activities_router
 from app.features.admin import router as admin_router
 from app.features.auth import router as auth_v2_router
@@ -105,6 +108,8 @@ if settings.auth_legacy_enabled:
     app.include_router(auth.router, prefix=settings.api_v1_prefix)
 app.include_router(lookups_router, prefix=settings.api_v1_prefix)
 app.include_router(profiles_router, prefix=settings.api_v1_prefix)
+app.include_router(campus_positions_router, prefix=settings.api_v1_prefix)
+app.include_router(campus_hub_router, prefix=settings.api_v1_prefix)
 app.include_router(discovery_router, prefix=settings.api_v1_prefix)
 app.include_router(connections_router, prefix=settings.api_v1_prefix)
 app.include_router(messages_router, prefix=settings.api_v1_prefix)
@@ -112,6 +117,7 @@ app.include_router(activities_router, prefix=settings.api_v1_prefix)
 app.include_router(groups_router, prefix=settings.api_v1_prefix)
 app.include_router(safety_router, prefix=settings.api_v1_prefix)
 app.include_router(admin_router, prefix=settings.api_v1_prefix)
+app.include_router(account_router, prefix=settings.api_v1_prefix)
 app.include_router(notifications_router, prefix=settings.api_v1_prefix)
 app.include_router(notifications_inbox_router, prefix=settings.api_v1_prefix)
 app.include_router(realtime_router, prefix=settings.api_v1_prefix)

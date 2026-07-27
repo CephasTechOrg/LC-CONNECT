@@ -1,6 +1,7 @@
 from functools import lru_cache
+from typing import Self
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -48,6 +49,16 @@ class Settings(BaseSettings):
         default='students.livingstone.edu,livingstone.edu',
         alias='ALLOWED_EMAIL_DOMAINS',
     )
+    # Development/testing only — non-Livingstone emails that may sign in locally.
+    # Must be empty in production (validated at startup).
+    dev_test_emails: str = Field(
+        default=(
+            'cephas.bonsuosei@gmail.com,asiedudev.hub@gmail.com,asieduminta27@gmail.com,'
+            'auralenx.team@gmail.com,bdoreen889@gmail.com'
+        ),
+        alias='DEV_TEST_EMAILS',
+    )
+    dev_test_email_default_role: str = Field(default='student', alias='DEV_TEST_EMAIL_DEFAULT_ROLE')
 
     # WebSocket real-time gateway (Phase 2). redis_url is the seam for multi-instance
     # fan-out later; unused while the gateway runs single-instance (in-memory).
@@ -109,8 +120,33 @@ class Settings(BaseSettings):
         return self.environment.lower() in {'dev', 'development', 'local'}
 
     @property
+    def is_testing(self) -> bool:
+        return self.environment.lower() == 'testing'
+
+    @property
+    def is_production(self) -> bool:
+        return self.environment.lower() in {'prod', 'production'}
+
+    @property
+    def dev_test_emails_permitted(self) -> bool:
+        return self.is_development or self.is_testing
+
+    @property
+    def dev_test_email_set(self) -> frozenset[str]:
+        return frozenset(item.strip().lower() for item in self.dev_test_emails.split(',') if item.strip())
+
+    @property
     def allowed_email_domain_set(self) -> set[str]:
         return {item.strip().lower() for item in self.allowed_email_domains.split(',') if item.strip()}
+
+    @model_validator(mode='after')
+    def _guard_dev_test_emails(self) -> Self:
+        if self.dev_test_email_set and self.is_production:
+            raise ValueError('DEV_TEST_EMAILS must be empty in production')
+        role = self.dev_test_email_default_role.strip().lower()
+        if role not in {'student', 'staff'}:
+            raise ValueError('DEV_TEST_EMAIL_DEFAULT_ROLE must be student or staff')
+        return self
 
     @property
     def supabase_jwks_url(self) -> str | None:

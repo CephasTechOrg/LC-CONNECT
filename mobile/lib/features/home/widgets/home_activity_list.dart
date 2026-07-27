@@ -53,7 +53,7 @@ class _ActivityItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final timeLabel = DateFormat('h:mm a').format(activity.startTime.toLocal());
-    final emoji = _categoryEmoji(activity.category);
+    final banner = activity.bannerUrl;
 
     return GestureDetector(
       onTap: onTap,
@@ -73,15 +73,19 @@ class _ActivityItem extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: AppColors.primarySoft,
-                borderRadius: BorderRadius.circular(11),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(11),
+              child: SizedBox(
+                width: 40,
+                height: 40,
+                child: banner != null
+                    ? Image.network(
+                        banner,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => _CategoryIconBox(category: activity.category),
+                      )
+                    : _CategoryIconBox(category: activity.category),
               ),
-              alignment: Alignment.center,
-              child: Text(emoji, style: const TextStyle(fontSize: 19)),
             ),
             const SizedBox(width: 11),
             Expanded(
@@ -140,6 +144,21 @@ class _ActivityItem extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Soft-tinted box with a category glyph — the fallback when an activity has no banner.
+class _CategoryIconBox extends StatelessWidget {
+  final String category;
+  const _CategoryIconBox({required this.category});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: AppColors.primarySoft,
+      alignment: Alignment.center,
+      child: Icon(_categoryIcon(category), size: 20, color: AppColors.primary),
     );
   }
 }

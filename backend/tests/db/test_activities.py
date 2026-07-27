@@ -14,6 +14,7 @@ from app.features.activities.service import (
     creator_activity,
     join_activity,
     leave_activity,
+    participants_read,
     update_activity,
 )
 from app.models import Activity, ActivityParticipant
@@ -110,6 +111,20 @@ async def test_cancelled_activity_is_hidden(db, factory):
     with pytest.raises(HTTPException) as exc:
         await creator_activity(db, activity.id, creator.id)
     assert exc.value.status_code == 404
+
+
+async def test_participants_roster_lists_creator_first(db, factory):
+    creator = await factory.user(display_name='Organizer')
+    joiner = await factory.user(display_name='Joiner')
+    activity = await _activity(db, creator)
+    await join_activity(db, activity.id, joiner.id)
+    await db.commit()
+
+    roster = await participants_read(db, activity)
+    assert [p.display_name for p in roster] == ['Organizer', 'Joiner']  # organizer joined first
+    assert roster[0].is_creator is True
+    assert roster[1].is_creator is False
+    assert roster[0].profile_id is not None  # for tap-through to the profile
 
 
 async def test_join_capacity_is_race_safe(db, sessions, factory):

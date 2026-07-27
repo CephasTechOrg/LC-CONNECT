@@ -26,3 +26,6 @@ class MyProfileRead(ProfilePublic):
     connection_count: int
     activity_count: int
     message_count: int
+    campus_position_status: str | None = None
+    campus_position_title: str | None = None
+    campus_position_verified: bool = False

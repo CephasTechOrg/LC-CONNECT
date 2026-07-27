@@ -8,10 +8,13 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/avatar_widget.dart';
 import '../../../shared/widgets/app_shell_header.dart';
 import '../../../shared/widgets/app_states.dart';
+import '../../account/providers/account_provider.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../providers/profile_provider.dart';
 
 part '../widgets/profile_header.dart';
+part '../widgets/profile_position_banner.dart';
+part '../widgets/profile_delete_account.dart';
 part '../widgets/profile_hero.dart';
 part '../widgets/profile_info_rows.dart';
 part '../widgets/profile_looking_for.dart';
@@ -97,6 +100,13 @@ class _ProfileBodyState extends ConsumerState<_ProfileBody> {
     return ListView(
       children: [
         _Header(ref: ref),
+        if (profile.campusPositionStatus == 'pending' ||
+            profile.campusPositionStatus == 'rejected' ||
+            profile.campusPositionStatus == 'revoked')
+          _PendingPositionBanner(
+            title: profile.campusPositionTitle,
+            status: profile.campusPositionStatus!,
+          ),
         _HeroSection(
           profile: profile,
           uploading: _uploading,

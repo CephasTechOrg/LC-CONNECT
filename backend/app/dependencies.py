@@ -96,6 +96,28 @@ async def require_verified_student(current_user: User = Depends(get_current_user
     return current_user
 
 
+async def require_verified_connect_student(
+    current_user: User = Depends(require_verified_student),
+) -> User:
+    """Gate social discovery, connections, and match messaging to students only.
+
+    Staff and admins keep email-verified access to Campus Hub, activities, and
+    profile — but must not participate in student social matching.
+    """
+    if current_user.role != 'student':
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail='Social matching is only available to student accounts',
+        )
+    return current_user
+
+
+async def require_verified_user(current_user: User = Depends(get_current_user)) -> User:
+    if not current_user.is_verified:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='Verified account required')
+    return current_user
+
+
 async def require_admin(current_user: User = Depends(get_current_user)) -> User:
     if current_user.role != 'admin':
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='Admin access required')

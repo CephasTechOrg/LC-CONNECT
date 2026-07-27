@@ -94,6 +94,20 @@ class _Header extends StatelessWidget {
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Terms of service coming soon')));
                 },
               ),
+              ListTile(
+                leading: const Icon(Icons.delete_forever_outlined, color: AppColors.error),
+                title: Text(
+                  'Delete account',
+                  style: GoogleFonts.dmSans(
+                    color: AppColors.error,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                onTap: () async {
+                  Navigator.of(context).pop();
+                  await _showDeleteAccountFlow(context, ref);
+                },
+              ),
               const Divider(color: AppColors.border, indent: 20, endIndent: 20),
               ListTile(
                 leading: const Icon(Icons.logout_rounded, color: AppColors.error),

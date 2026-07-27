@@ -6,6 +6,7 @@ import '../../../core/api/api_error.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../providers/activities_provider.dart';
+import '../widgets/activity_participants_sheet.dart';
 import 'create_activity_screen.dart';
 
 class ActivityDetailScreen extends ConsumerStatefulWidget {
@@ -188,20 +189,32 @@ class _ActivityDetailScreenState extends ConsumerState<ActivityDetailScreen> {
                 ),
                 const SizedBox(height: 6),
 
-                // Participant count
-                Row(
-                  children: [
-                    const Icon(Icons.people_outline_rounded,
-                        size: 15, color: AppColors.textMuted),
-                    const SizedBox(width: 5),
-                    Text(
-                      activity.maxParticipants != null
-                          ? '${activity.participantCount} / ${activity.maxParticipants} going'
-                          : '${activity.participantCount} going',
-                      style: GoogleFonts.dmSans(
-                          fontSize: 13, color: AppColors.textMuted),
+                // Participant count — tap to see who's going (public roster)
+                InkWell(
+                  onTap: () => showActivityParticipantsSheet(context, activity.id),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.people_outline_rounded,
+                            size: 15, color: AppColors.textMuted),
+                        const SizedBox(width: 5),
+                        Text(
+                          activity.maxParticipants != null
+                              ? '${activity.participantCount} / ${activity.maxParticipants} going'
+                              : '${activity.participantCount} going',
+                          style: GoogleFonts.dmSans(
+                              fontSize: 13,
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.w600),
+                        ),
+                        const SizedBox(width: 2),
+                        const Icon(Icons.chevron_right_rounded,
+                            size: 16, color: AppColors.primary),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
 
                 // Description

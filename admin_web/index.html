@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LC Connect Admin — Campus Positions</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">LC Connect</p>
+        <h1>People &amp; Positions</h1>
+      </div>
+      <div class="topbar-actions">
+        <a class="link-btn" href="./campus_posts.html">Campus posts</a>
+        <button id="refreshBtn" type="button">Refresh</button>
+      </div>
+    </header>
+
+    <section class="panel config">
+      <label>
+        API base URL
+        <input id="apiBase" type="url" placeholder="http://localhost:8000/api/v1" />
+      </label>
+      <label>
+        Admin bearer token
+        <input id="token" type="password" placeholder="Supabase access token (admin + MFA)" />
+      </label>
+      <p class="hint">
+        Sign in as an admin in the mobile app or Supabase, then paste a current access token here.
+        Admin endpoints require <code>aal2</code> MFA.
+      </p>
+    </section>
+
+    <main>
+      <p id="status" class="status">Load pending positions to begin.</p>
+      <div id="list" class="list"></div>
+    </main>
+
+    <template id="cardTemplate">
+      <article class="card">
+        <div class="card-head">
+          <div>
+            <h2 class="name"></h2>
+            <p class="email"></p>
+          </div>
+          <span class="badge"></span>
+        </div>
+        <dl class="meta">
+          <div><dt>Title</dt><dd class="title"></dd></div>
+          <div><dt>Department</dt><dd class="department"></dd></div>
+          <div><dt>Category</dt><dd class="category"></dd></div>
+          <div><dt>Contact</dt><dd class="contact"></dd></div>
+        </dl>
+        <label class="note">
+          Review note (reject/revoke)
+          <textarea rows="2" class="review-note" placeholder="Optional note to the staff member"></textarea>
+        </label>
+        <div class="actions">
+          <button type="button" class="approve">Approve</button>
+          <button type="button" class="reject danger">Reject</button>
+        </div>
+      </article>
+    </template>
+
+    <script src="./app.js" type="module"></script>
+  </body>
+</html>

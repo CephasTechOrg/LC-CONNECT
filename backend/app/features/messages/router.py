@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.dependencies import require_verified_student
+from app.dependencies import require_verified_connect_student
 from app.features.messages.schema import MessageCreate, MessageRead, MessageThreadRead, UnreadSummary
 from app.features.messages.service import (
     delete_message,
@@ -27,13 +27,13 @@ router = APIRouter(prefix='/messages', tags=['messages'])
 
 
 @router.get('/threads', response_model=list[MessageThreadRead])
-async def list_threads(current_user: User = Depends(require_verified_student), db: AsyncSession = Depends(get_db)):
+async def list_threads(current_user: User = Depends(require_verified_connect_student), db: AsyncSession = Depends(get_db)):
     """The unified inbox — DM and group threads, newest activity first."""
     return await list_threads_for_user(db, current_user.id)
 
 
 @router.get('/unread-summary', response_model=UnreadSummary)
-async def get_unread_summary(current_user: User = Depends(require_verified_student), db: AsyncSession = Depends(get_db)):
+async def get_unread_summary(current_user: User = Depends(require_verified_connect_student), db: AsyncSession = Depends(get_db)):
     """Total + per-conversation unread counts — seeds the tab + per-row badges. Keyed by the
     client-facing addressing id (match id for DMs, conversation id for groups)."""
     total, per_conversation = await unread_summary(db, current_user.id)
@@ -45,7 +45,7 @@ async def get_unread_summary(current_user: User = Depends(require_verified_stude
 @router.get('/threads/{match_id}', response_model=list[MessageRead])
 async def get_thread(
     match_id: UUID,
-    current_user: User = Depends(require_verified_student),
+    current_user: User = Depends(require_verified_connect_student),
     db: AsyncSession = Depends(get_db),
     before_created_at: datetime | None = Query(default=None),
     before_id: UUID | None = Query(default=None),
@@ -65,7 +65,7 @@ async def sync_thread_endpoint(
     match_id: UUID,
     after_created_at: datetime = Query(...),
     after_id: UUID = Query(...),
-    current_user: User = Depends(require_verified_student),
+    current_user: User = Depends(require_verified_connect_student),
     db: AsyncSession = Depends(get_db),
     limit: int = Query(default=100, ge=1, le=200),
 ):
@@ -78,7 +78,7 @@ async def sync_thread_endpoint(
 
 
 @router.post('/threads/{match_id}', response_model=MessageRead, status_code=status.HTTP_201_CREATED)
-async def send_message(match_id: UUID, payload: MessageCreate, current_user: User = Depends(require_verified_student), db: AsyncSession = Depends(get_db)):
+async def send_message(match_id: UUID, payload: MessageCreate, current_user: User = Depends(require_verified_connect_student), db: AsyncSession = Depends(get_db)):
     conversation = await accessible_conversation(db, match_id, current_user.id)
     message, _ = await persist_message_idempotent(
         db,
@@ -93,7 +93,7 @@ async def send_message(match_id: UUID, payload: MessageCreate, current_user: Use
 
 @router.delete('/{message_id}', response_model=MessageRead)
 async def delete_message_endpoint(
-    message_id: UUID, current_user: User = Depends(require_verified_student), db: AsyncSession = Depends(get_db)
+    message_id: UUID, current_user: User = Depends(require_verified_connect_student), db: AsyncSession = Depends(get_db)
 ):
     """Delete a message for everyone (soft delete → tombstone). Sender anywhere; group admins in
     their group. Fans out a `message.deleted` event so open chats update live."""

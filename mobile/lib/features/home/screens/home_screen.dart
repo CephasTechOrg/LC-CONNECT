@@ -28,15 +28,16 @@ part '../widgets/home_activity_list.dart';
 part '../widgets/home_match_cards.dart';
 part '../widgets/home_groups.dart';
 
-String _categoryEmoji(String category) => switch (category.toLowerCase()) {
-      'study' => '📖',
-      'sports' => '🏀',
-      'social' => '☕',
-      'arts' => '🎨',
-      'food' => '🍕',
-      'music' => '🎵',
-      'tech' => '💻',
-      _ => '📅',
+// Category → a clean Material glyph (matches the activity detail badge — no emoji).
+IconData _categoryIcon(String category) => switch (category.toLowerCase()) {
+      'study' => Icons.menu_book_outlined,
+      'sports' => Icons.sports_basketball_outlined,
+      'social' => Icons.local_cafe_outlined,
+      'arts' || 'culture' => Icons.palette_outlined,
+      'food' => Icons.restaurant_outlined,
+      'music' => Icons.music_note_outlined,
+      'tech' => Icons.laptop_mac_outlined,
+      _ => Icons.event_outlined,
     };
 
 String _timeAgo(DateTime dt) {
@@ -140,6 +141,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               const _SearchBar(),
               const SizedBox(height: 16),
               const _HeroBanner(),
+              const _CampusDirectoryCta(),
               _SectionHeader(
                 title: 'Recommended for you',
                 action: 'View all',

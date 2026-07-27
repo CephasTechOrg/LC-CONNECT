@@ -51,5 +51,17 @@ class SupabaseStorageService:
     def upload_activity_banner(self, activity_id: UUID, content_type: str, data: bytes) -> str:
         return self._upload_image(f'activities/{activity_id}', 'banner', content_type, data)
 
+    def delete_profile_image(self, user_id: UUID) -> None:
+        """Best-effort removal of a user's avatar (all extensions) — used on account deletion.
+        Never raises: a storage miss must not block the deletion."""
+        if self.client is None:
+            return
+        bucket = self.client.storage.from_(settings.supabase_profile_bucket)
+        for ext in ('jpg', 'jpeg', 'png', 'webp'):
+            try:
+                bucket.remove([f'profiles/{user_id}/avatar.{ext}'])
+            except Exception:
+                pass
+
 
 storage_service = SupabaseStorageService()
