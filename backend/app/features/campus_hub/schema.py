@@ -22,6 +22,18 @@ class DirectoryEntryRead(BaseModel):
     verified_at: datetime | None
 
 
+class StudentDirectoryEntry(BaseModel):
+    """A student as seen by a staff member browsing the student directory — enough to recognise
+    and reach out, no matching signals. Staff-only surface (mirrors the staff directory)."""
+
+    profile_id: UUID
+    user_id: UUID
+    display_name: str | None
+    avatar_url: str | None
+    major: str | None
+    class_year: int | None
+
+
 class CampusPostSummaryRead(BaseModel):
     id: UUID
     kind: str

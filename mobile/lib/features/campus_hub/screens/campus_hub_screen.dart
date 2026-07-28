@@ -104,13 +104,9 @@ class CampusHubScreen extends ConsumerWidget {
                   onAction: () => context.push('/home/updates'),
                 ),
                 if (overview.latestUpdates.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 20),
-                    child: AppEmptyState(
-                      icon: Icons.campaign_outlined,
-                      title: 'No updates yet',
-                      subtitle: 'Official campus announcements will appear here.',
-                    ),
+                  const _SectionEmpty(
+                    icon: Icons.campaign_outlined,
+                    text: 'No campus announcements yet.',
                   )
                 else
                   ...overview.latestUpdates.take(3).map(
@@ -127,12 +123,9 @@ class CampusHubScreen extends ConsumerWidget {
                       : null,
                 ),
                 if (overview.upcomingDeadlines.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Text(
-                      'No upcoming deadlines right now.',
-                      style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.textMuted),
-                    ),
+                  const _SectionEmpty(
+                    icon: Icons.event_available_outlined,
+                    text: 'No upcoming deadlines right now.',
                   )
                 else
                   ...overview.upcomingDeadlines.take(3).map(

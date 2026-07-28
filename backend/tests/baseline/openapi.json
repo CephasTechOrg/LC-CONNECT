@@ -900,18 +900,6 @@
             "title": "Category",
             "type": "string"
           },
-          "contact_email": {
-            "anyOf": [
-              {
-                "format": "email",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Contact Email"
-          },
           "department": {
             "maxLength": 160,
             "minLength": 1,
@@ -1137,18 +1125,6 @@
               }
             ],
             "title": "Category"
-          },
-          "contact_email": {
-            "anyOf": [
-              {
-                "format": "email",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Contact Email"
           },
           "department": {
             "anyOf": [
@@ -3503,6 +3479,17 @@
             "title": "Connection Count",
             "type": "integer"
           },
+          "contact_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact Email"
+          },
           "country_state": {
             "anyOf": [
               {
@@ -3588,6 +3575,50 @@
             "title": "Message Count",
             "type": "integer"
           },
+          "position_availability": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Position Availability"
+          },
+          "position_department": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Position Department"
+          },
+          "position_office": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Position Office"
+          },
+          "position_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Position Title"
+          },
           "profile_completed": {
             "title": "Profile Completed",
             "type": "boolean"
@@ -3602,6 +3633,11 @@
               }
             ],
             "title": "Pronouns"
+          },
+          "role": {
+            "default": "student",
+            "title": "Role",
+            "type": "string"
           },
           "show_profile_to_verified_only": {
             "title": "Show Profile To Verified Only",
@@ -3834,6 +3870,17 @@
             ],
             "title": "Class Year"
           },
+          "contact_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact Email"
+          },
           "country_state": {
             "anyOf": [
               {
@@ -3915,6 +3962,50 @@
             ],
             "title": "Major"
           },
+          "position_availability": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Position Availability"
+          },
+          "position_department": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Position Department"
+          },
+          "position_office": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Position Office"
+          },
+          "position_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Position Title"
+          },
           "profile_completed": {
             "title": "Profile Completed",
             "type": "boolean"
@@ -3929,6 +4020,11 @@
               }
             ],
             "title": "Pronouns"
+          },
+          "role": {
+            "default": "student",
+            "title": "Role",
+            "type": "string"
           },
           "user_id": {
             "format": "uuid",
@@ -4431,6 +4527,75 @@
           "target_user_id"
         ],
         "title": "StaffThreadCreate",
+        "type": "object"
+      },
+      "StudentDirectoryEntry": {
+        "description": "A student as seen by a staff member browsing the student directory \u2014 enough to recognise\nand reach out, no matching signals. Staff-only surface (mirrors the staff directory).",
+        "properties": {
+          "avatar_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Url"
+          },
+          "class_year": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Class Year"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "major": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Major"
+          },
+          "profile_id": {
+            "format": "uuid",
+            "title": "Profile Id",
+            "type": "string"
+          },
+          "user_id": {
+            "format": "uuid",
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "profile_id",
+          "user_id",
+          "display_name",
+          "avatar_url",
+          "major",
+          "class_year"
+        ],
+        "title": "StudentDirectoryEntry",
         "type": "object"
       },
       "SuspendUserRequest": {
@@ -6692,6 +6857,78 @@
           }
         ],
         "summary": "Get Resource",
+        "tags": [
+          "campus-hub"
+        ]
+      }
+    },
+    "/api/v1/campus-hub/students": {
+      "get": {
+        "description": "Staff-only student directory \u2014 the counterpart to the (student-facing) staff directory.\nGated on the same bar as staff messaging: a verified campus position.",
+        "operationId": "list_students_api_v1_campus_hub_students_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 120,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Query"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/StudentDirectoryEntry"
+                  },
+                  "title": "Response List Students Api V1 Campus Hub Students Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Students",
         "tags": [
           "campus-hub"
         ]

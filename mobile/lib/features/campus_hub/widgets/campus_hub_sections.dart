@@ -32,6 +32,33 @@ class _QuickActionsRow extends StatelessWidget {
   }
 }
 
+/// A one-line empty state for a dashboard section — a muted icon + line, never the full-screen
+/// AppEmptyState (which would swallow the whole dashboard when a section is quiet).
+class _SectionEmpty extends StatelessWidget {
+  final IconData icon;
+  final String text;
+  const _SectionEmpty({required this.icon, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: AppColors.textMuted),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.textMuted),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _SectionHeader extends StatelessWidget {
   final String title;
   final String? action;

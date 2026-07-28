@@ -141,7 +141,7 @@ class _ThreadCard extends ConsumerWidget {
           ? context.push('/messages/group/${thread.conversationId}',
               extra: GroupChatArgs(
                   name: thread.groupName ?? 'Group', groupId: thread.groupId, avatarUrl: thread.avatarUrl))
-          : context.push('/messages/${thread.matchId}', extra: thread),
+          : context.push('/messages/${thread.addressingId}', extra: thread),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         child: Row(

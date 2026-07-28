@@ -150,6 +150,19 @@ async def test_staff_messaging_flag_off_disables_the_capability(db, factory, mon
     assert exc.value.status_code == 403
 
 
+async def test_student_can_message_admin_with_verified_position(db, factory):
+    """Promoting a directory contact to admin must not make them unmessageable."""
+    _, holder, _ = await _staff_with_position(db, factory, verified=True, name='Dean Admin')
+    holder.role = 'admin'
+    await db.commit()
+
+    student = await _student(factory, db)
+    assert await can_message_as_staff(db, holder) is True
+    thread = await create_staff_thread(db, actor=student, target_user_id=holder.id)
+    assert thread.kind == 'staff_dm'
+    assert thread.partner_position_title == 'Campus Safety Officer'
+
+
 async def test_search_finds_students_and_excludes_self(db, factory):
     _, staff, _ = await _staff_with_position(db, factory, verified=True)
     await _student(factory, db, 'Searchable Student')

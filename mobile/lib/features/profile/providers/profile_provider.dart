@@ -21,6 +21,14 @@ class PublicProfile {
   final List<String> languagesLearning;
   final List<String> lookingFor;
   final bool isVerified;
+  // Staff identity (null/empty for students). `role` drives the staff vs student layout;
+  // `contactEmail` is a staff member's public email; position fields describe their role.
+  final String role;
+  final String? contactEmail;
+  final String? positionTitle;
+  final String? positionDepartment;
+  final String? positionOffice;
+  final String? positionAvailability;
 
   const PublicProfile({
     required this.profileId,
@@ -38,7 +46,15 @@ class PublicProfile {
     required this.languagesLearning,
     required this.lookingFor,
     required this.isVerified,
+    this.role = 'student',
+    this.contactEmail,
+    this.positionTitle,
+    this.positionDepartment,
+    this.positionOffice,
+    this.positionAvailability,
   });
+
+  bool get isStaff => role == 'staff' || role == 'admin';
 
   factory PublicProfile.fromJson(Map<String, dynamic> j) => PublicProfile(
         profileId: j['id'] as String,
@@ -56,6 +72,12 @@ class PublicProfile {
         languagesLearning: List<String>.from(j['languages_learning'] ?? []),
         lookingFor: List<String>.from(j['looking_for'] ?? []),
         isVerified: j['is_verified'] as bool? ?? false,
+        role: j['role'] as String? ?? 'student',
+        contactEmail: j['contact_email'] as String?,
+        positionTitle: j['position_title'] as String?,
+        positionDepartment: j['position_department'] as String?,
+        positionOffice: j['position_office'] as String?,
+        positionAvailability: j['position_availability'] as String?,
       );
 }
 
@@ -229,7 +251,7 @@ class MyProfileNotifier extends AsyncNotifier<MyProfile> {
 
   Future<void> updateProfile({
     required String displayName,
-    required String major,
+    String? major, // students only — omitted for staff
     String? pronouns,
     int? classYear,
     String? countryState,
@@ -243,7 +265,7 @@ class MyProfileNotifier extends AsyncNotifier<MyProfile> {
     final client = ref.read(apiClientProvider);
     final body = <String, dynamic>{
       'display_name': displayName,
-      'major': major,
+      if (major != null && major.isNotEmpty) 'major': major,
       'interests': interests,
       'languages_spoken': languagesSpoken,
       'languages_learning': languagesLearning,

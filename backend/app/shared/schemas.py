@@ -31,6 +31,15 @@ class ProfilePublic(BaseModel):
     languages_learning: list[str]
     looking_for: list[str]
     looking_for_codes: list[str]
+    # Staff identity. `role` lets the client pick the staff vs student layout. A staff member's
+    # email is public contact info (a professor expects to be reached) — students' stays null.
+    # Position context is filled only on the single-profile view (kept off list serializations).
+    role: str = 'student'
+    contact_email: str | None = None
+    position_title: str | None = None
+    position_department: str | None = None
+    position_office: str | None = None
+    position_availability: str | None = None
 
 
 # Safety report DTO. Shared because both safety and admin (moderation) return it.

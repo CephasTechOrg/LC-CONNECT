@@ -34,4 +34,7 @@ def profile_to_public(profile: Profile) -> ProfilePublic:
         languages_learning=learning,
         looking_for=[item.name for item in looking_options],
         looking_for_codes=[item.code for item in looking_options],
+        role=profile.user.role,
+        # A staff member's email is public contact info; a student's is never exposed.
+        contact_email=profile.user.email if profile.user.role in ('staff', 'admin') else None,
     )

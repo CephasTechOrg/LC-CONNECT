@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -15,8 +15,10 @@ from app.features.campus_hub.schema import (
     CampusPostSummaryRead,
     CampusResourceRead,
     DirectoryEntryRead,
+    StudentDirectoryEntry,
 )
 from app.models import User
+from app.shared.policies import can_message_as_staff
 
 router = APIRouter(prefix='/campus-hub', tags=['campus-hub'])
 router.include_router(author_router)
@@ -67,7 +69,7 @@ async def list_directory(
     department: str | None = Query(default=None),
     query: str | None = Query(default=None, max_length=120),
     limit: int = Query(default=100, ge=1, le=200),
-    _: User = Depends(require_verified_user),
+    current_user: User = Depends(require_verified_user),
     db: AsyncSession = Depends(get_db),
 ) -> list[DirectoryEntryRead]:
     rows = await directory_service.list_directory(
@@ -75,9 +77,30 @@ async def list_directory(
         category=category,
         department=department,
         query=query,
+        exclude_user_id=current_user.id,
         limit=limit,
     )
     return [DirectoryEntryRead.model_validate(row) for row in rows]
+
+
+@router.get('/students', response_model=list[StudentDirectoryEntry])
+async def list_students(
+    query: str | None = Query(default=None, max_length=120),
+    limit: int = Query(default=50, ge=1, le=100),
+    current_user: User = Depends(require_verified_user),
+    db: AsyncSession = Depends(get_db),
+) -> list[StudentDirectoryEntry]:
+    """Staff-only student directory — the counterpart to the (student-facing) staff directory.
+    Gated on the same bar as staff messaging: a verified campus position."""
+    if not await can_message_as_staff(db, current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail='Only verified staff can browse the student directory',
+        )
+    rows = await directory_service.list_students(
+        db, query=query, exclude_user_id=current_user.id, limit=limit
+    )
+    return [StudentDirectoryEntry.model_validate(row) for row in rows]
 
 
 @router.get('/directory/{position_id}', response_model=DirectoryEntryRead)

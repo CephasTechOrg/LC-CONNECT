@@ -34,9 +34,11 @@ def _assert_editable(position: CampusPosition) -> None:
         )
 
 
-def _resolve_contact_email(raw: str | None, fallback: str) -> str:
+def _account_contact_email(email: str) -> str:
+    """A staff member's public contact email is always their account email — never a separate,
+    fill-in field. Normalized once here so it can't drift from the login identity."""
     try:
-        return normalize_campus_contact_email(raw or fallback)
+        return normalize_campus_contact_email(email)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
@@ -65,10 +67,7 @@ async def upsert_primary_position(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Invalid campus category')
 
     existing = await get_primary_position(db, user.id)
-    contact_email = _resolve_contact_email(
-        str(payload.contact_email) if payload.contact_email else None,
-        user.email,
-    )
+    contact_email = _account_contact_email(user.email)
 
     if existing is None:
         position = CampusPosition(
@@ -122,12 +121,11 @@ async def update_primary_position(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Invalid campus category')
 
     for field, value in data.items():
-        if field == 'contact_email' and value is not None:
-            setattr(position, field, _resolve_contact_email(str(value), user.email))
-        elif isinstance(value, str):
+        if isinstance(value, str):
             setattr(position, field, value.strip())
         else:
             setattr(position, field, value)
+    position.contact_email = _account_contact_email(user.email)  # keep synced to the account
 
     _mark_resubmitted(position)
 

@@ -46,17 +46,23 @@ async def users_are_connected(db: AsyncSession, user_a: UUID, user_b: UUID) -> b
     return result.scalar_one_or_none() is not None
 
 
+# Campus official roles that may hold a verified position and participate in staff DMs.
+# Admins who appear in the directory (after promote) still need to be reachable by students.
+_STAFF_MESSAGING_ROLES = frozenset({'staff', 'admin'})
+
+
 async def can_message_as_staff(db: AsyncSession, user: User) -> bool:
     """True if `user` may message any active user directly (no connection required).
 
-    Requires `STAFF_MESSAGING_ENABLED`, a `staff` role, and a verified primary campus
+    Requires `STAFF_MESSAGING_ENABLED`, a staff/admin role, and a verified primary campus
     position — the same "official identity" bar as staff publishing
     (`campus_hub.publishing.staff_can_publish`), so a bare `@livingstone.edu` signup
     can't message students until an admin has verified who they actually are.
+    Admins are included so a promoted directory contact remains messageable.
     """
     if not settings.staff_messaging_enabled:
         return False
-    if user.role != 'staff':
+    if user.role not in _STAFF_MESSAGING_ROLES:
         return False
     position = await get_primary_position(db, user.id)
     return position is not None and position.status == 'verified'
@@ -82,7 +88,7 @@ async def open_staff_thread_ids(db: AsyncSession, conversation_ids: Sequence[UUI
         .where(
             ConversationMember.conversation_id.in_(conversation_ids),
             ConversationMember.status == 'active',
-            User.role == 'staff',
+            User.role.in_(_STAFF_MESSAGING_ROLES),
             CampusPosition.is_primary.is_(True),
             CampusPosition.is_active.is_(True),
             CampusPosition.status == 'verified',

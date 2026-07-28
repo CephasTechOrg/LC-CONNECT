@@ -1,11 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/avatar_widget.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../discovery/providers/discovery_provider.dart';
+import '../../messages/providers/messages_provider.dart';
+import '../../messages/providers/staff_messaging_provider.dart';
 import '../providers/profile_provider.dart';
+
+part '../widgets/public_profile_staff.dart';
 
 class PublicProfileScreen extends ConsumerWidget {
   final String profileId;
@@ -65,6 +71,33 @@ class _PublicBody extends ConsumerStatefulWidget {
 class _PublicBodyState extends ConsumerState<_PublicBody> {
   bool _connecting = false;
   bool _requestSent = false;
+  bool _messaging = false;
+
+  /// Start (or open) a direct thread with this staff member. A student may message staff because
+  /// the staff side is a verified campus position — the backend allows it either way.
+  Future<void> _message() async {
+    if (_messaging) return;
+    setState(() => _messaging = true);
+    try {
+      final thread =
+          await ref.read(staffMessagingServiceProvider).startThread(widget.profile.userId);
+      ref.read(threadsNotifierProvider.notifier).upsertThread(thread);
+      if (!mounted) return;
+      context.push('/messages/${thread.addressingId}', extra: thread);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Couldn't start that conversation", style: GoogleFonts.dmSans()),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _messaging = false);
+    }
+  }
 
   Future<void> _connect() async {
     if (_connecting || _requestSent) return;
@@ -112,6 +145,7 @@ class _PublicBodyState extends ConsumerState<_PublicBody> {
   @override
   Widget build(BuildContext context) {
     final profile = widget.profile;
+    final isStaff = profile.isStaff;
     return Column(
       children: [
         Expanded(
@@ -119,13 +153,19 @@ class _PublicBodyState extends ConsumerState<_PublicBody> {
             children: [
               _HeroCard(profile: profile),
               const SizedBox(height: 8),
+              // Staff: a clean contact block (email / office / availability).
+              if (isStaff) ...[
+                _StaffContactSection(profile: profile),
+                const SizedBox(height: 8),
+              ],
               if (profile.languagesSpoken.isNotEmpty ||
                   profile.languagesLearning.isNotEmpty ||
                   profile.interests.isNotEmpty) ...[
                 _InfoRows(profile: profile),
                 const SizedBox(height: 8),
               ],
-              if (profile.lookingFor.isNotEmpty) ...[
+              // "Looking for" is student matching intent — never shown for staff.
+              if (!isStaff && profile.lookingFor.isNotEmpty) ...[
                 _LookingForSection(lookingFor: profile.lookingFor),
                 const SizedBox(height: 8),
               ],
@@ -133,11 +173,14 @@ class _PublicBodyState extends ConsumerState<_PublicBody> {
             ],
           ),
         ),
-        if (!widget.isSelf) _ConnectBar(
-          loading: _connecting,
-          sent: _requestSent,
-          onConnect: _connect,
-        ),
+        if (!widget.isSelf)
+          isStaff
+              ? _StaffMessageBar(loading: _messaging, onMessage: _message)
+              : _ConnectBar(
+                  loading: _connecting,
+                  sent: _requestSent,
+                  onConnect: _connect,
+                ),
       ],
     );
   }
@@ -276,14 +319,24 @@ class _HeroCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          if (profile.major != null)
-            _MetaRow(icon: Icons.school_outlined, text: profile.major!),
-          if (profile.classYear != null) ...[
-            const SizedBox(height: 6),
-            _MetaRow(
-              icon: Icons.calendar_today_outlined,
-              text: 'Class of ${profile.classYear}',
-            ),
+          // Staff show their role; students show major + class year.
+          if (profile.isStaff) ...[
+            if (profile.positionTitle != null)
+              _MetaRow(icon: Icons.badge_outlined, text: profile.positionTitle!),
+            if (profile.positionDepartment != null) ...[
+              const SizedBox(height: 6),
+              _MetaRow(icon: Icons.apartment_outlined, text: profile.positionDepartment!),
+            ],
+          ] else ...[
+            if (profile.major != null)
+              _MetaRow(icon: Icons.school_outlined, text: profile.major!),
+            if (profile.classYear != null) ...[
+              const SizedBox(height: 6),
+              _MetaRow(
+                icon: Icons.calendar_today_outlined,
+                text: 'Class of ${profile.classYear}',
+              ),
+            ],
           ],
           if (profile.campus != null) ...[
             const SizedBox(height: 6),

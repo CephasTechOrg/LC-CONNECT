@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../../onboarding/providers/onboarding_provider.dart';
 import '../providers/profile_provider.dart';
 
@@ -27,6 +28,12 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   final Set<String> _lookingFor = {};
   bool _initialized = false;
   bool _saving = false;
+
+  /// Staff/admin see a slimmed form — no Major, Class Year, or "Looking For" (student-only fields).
+  bool get _isStaff {
+    final role = ref.read(authNotifierProvider).asData?.value?.role ?? 'student';
+    return role != 'student';
+  }
 
   @override
   void dispose() {
@@ -66,10 +73,14 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   Future<void> _save() async {
     final name = _nameCtrl.text.trim();
     final major = _majorCtrl.text.trim();
-    if (name.isEmpty || major.isEmpty || _lookingFor.isEmpty) {
+    final staff = _isStaff;
+    // Students must set name, major, and a "Looking For"; staff only need a name.
+    final invalid = staff ? name.isEmpty : (name.isEmpty || major.isEmpty || _lookingFor.isEmpty);
+    if (invalid) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Name, major, and at least one "Looking For" are required.',
+          content: Text(
+              staff ? 'Please enter your name.' : 'Name, major, and at least one "Looking For" are required.',
               style: GoogleFonts.dmSans()),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
@@ -83,15 +94,15 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       await ref.read(myProfileNotifierProvider.notifier).updateProfile(
             displayName: name,
             pronouns: _pronounsCtrl.text.trim(),
-            major: major,
-            classYear: _classYear,
+            major: staff ? null : major,
+            classYear: staff ? null : _classYear,
             countryState: _locationCtrl.text.trim(),
             campus: _campusCtrl.text.trim(),
             bio: _bioCtrl.text.trim(),
             interests: _interests.toList(),
             languagesSpoken: _langSpoken.toList(),
             languagesLearning: _langLearning.toList(),
-            lookingForCodes: _lookingFor.toList(),
+            lookingForCodes: staff ? const [] : _lookingFor.toList(),
           );
       if (mounted) context.pop();
     } catch (e) {
@@ -219,32 +230,35 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             icon: Icons.tag_rounded,
             optional: true,
           ),
-          const SizedBox(height: 14),
-          _textField(
-            controller: _majorCtrl,
-            label: 'Major',
-            hint: 'e.g., Business Administration',
-            icon: Icons.school_outlined,
-            capitalization: TextCapitalization.words,
-            onChanged: (_) => setState(() {}),
-          ),
-          const SizedBox(height: 14),
-          _FieldLabel('Class Year', optional: true),
-          DropdownButtonFormField<int>(
-            initialValue: _classYear,
-            onChanged: (v) => setState(() => _classYear = v),
-            style: GoogleFonts.dmSans(
-                fontSize: 14, color: AppColors.textDark),
-            decoration: const InputDecoration(
-              hintText: 'Select graduation year',
-              prefixIcon: Icon(Icons.calendar_today_outlined,
-                  size: 18, color: AppColors.textMuted),
+          // Major + Class Year are student fields — staff don't see them.
+          if (!_isStaff) ...[
+            const SizedBox(height: 14),
+            _textField(
+              controller: _majorCtrl,
+              label: 'Major',
+              hint: 'e.g., Business Administration',
+              icon: Icons.school_outlined,
+              capitalization: TextCapitalization.words,
+              onChanged: (_) => setState(() {}),
             ),
-            items: List.generate(10, (i) => 2022 + i)
-                .map((y) =>
-                    DropdownMenuItem(value: y, child: Text('$y')))
-                .toList(),
-          ),
+            const SizedBox(height: 14),
+            _FieldLabel('Class Year', optional: true),
+            DropdownButtonFormField<int>(
+              initialValue: _classYear,
+              onChanged: (v) => setState(() => _classYear = v),
+              style: GoogleFonts.dmSans(
+                  fontSize: 14, color: AppColors.textDark),
+              decoration: const InputDecoration(
+                hintText: 'Select graduation year',
+                prefixIcon: Icon(Icons.calendar_today_outlined,
+                    size: 18, color: AppColors.textMuted),
+              ),
+              items: List.generate(10, (i) => 2022 + i)
+                  .map((y) =>
+                      DropdownMenuItem(value: y, child: Text('$y')))
+                  .toList(),
+            ),
+          ],
           const SizedBox(height: 28),
           _section('Location'),
           const SizedBox(height: 16),
@@ -314,37 +328,40 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   : _langLearning.add(v);
             }),
           ),
-          const SizedBox(height: 28),
-          Row(
-            children: [
-              Text(
-                'Looking For',
-                style: GoogleFonts.dmSans(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textDark,
+          // "Looking For" is student matching intent — hidden for staff.
+          if (!_isStaff) ...[
+            const SizedBox(height: 28),
+            Row(
+              children: [
+                Text(
+                  'Looking For',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textDark,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                '— pick at least one',
-                style: GoogleFonts.dmSans(
-                    fontSize: 12, color: AppColors.primary),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          _ChipGrid(
-            options: data.lookingFor.map((l) => l['name']!).toList(),
-            optionKeys: data.lookingFor.map((l) => l['code']!).toList(),
-            selected: _lookingFor,
-            onToggle: (v) => setState(() {
-              _lookingFor.contains(v)
-                  ? _lookingFor.remove(v)
-                  : _lookingFor.add(v);
-            }),
-            highlight: true,
-          ),
+                const SizedBox(width: 8),
+                Text(
+                  '— pick at least one',
+                  style: GoogleFonts.dmSans(
+                      fontSize: 12, color: AppColors.primary),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            _ChipGrid(
+              options: data.lookingFor.map((l) => l['name']!).toList(),
+              optionKeys: data.lookingFor.map((l) => l['code']!).toList(),
+              selected: _lookingFor,
+              onToggle: (v) => setState(() {
+                _lookingFor.contains(v)
+                    ? _lookingFor.remove(v)
+                    : _lookingFor.add(v);
+              }),
+              highlight: true,
+            ),
+          ],
           const SizedBox(height: 36),
           SizedBox(
             width: double.infinity,

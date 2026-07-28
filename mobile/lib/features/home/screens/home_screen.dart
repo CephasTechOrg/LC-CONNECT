@@ -191,7 +191,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           ),
                         )
                       : context.go(
-                          '/messages/${recentThread.matchId}',
+                          '/messages/${recentThread.addressingId}',
                           extra: recentThread,
                         ),
                 )

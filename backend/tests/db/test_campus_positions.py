@@ -41,6 +41,25 @@ async def test_staff_can_create_pending_position(db, factory):
     assert refreshed_profile.profile_completed is True
 
 
+async def test_staff_email_is_public_but_student_email_is_private(db, factory):
+    """A professor's email is public contact info in the profile; a student's is never exposed."""
+    from app.shared.profiles import get_profile_by_user_id
+    from app.shared.serializers import profile_to_public
+
+    staff = await factory.user(display_name='Prof')
+    staff.email = 'prof@livingstone.edu'
+    staff.role = 'staff'
+    await db.commit()
+    staff_public = profile_to_public(await get_profile_by_user_id(db, staff.id))
+    assert staff_public.role == 'staff'
+    assert staff_public.contact_email == 'prof@livingstone.edu'
+
+    student = await factory.user(display_name='Student')
+    student_public = profile_to_public(await get_profile_by_user_id(db, student.id))
+    assert student_public.role == 'student'
+    assert student_public.contact_email is None  # never leaked
+
+
 async def test_verified_position_cannot_be_edited(db, factory):
     user = await factory.user(display_name='Verified Prof')
     user.role = 'staff'

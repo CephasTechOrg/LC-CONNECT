@@ -5,7 +5,7 @@ from __future__ import annotations
 from sqlalchemy import select
 
 from app.features.admin.campus_positions import approve_position
-from app.features.campus_hub.service import get_directory_entry, list_directory
+from app.features.campus_hub.service import get_directory_entry, list_directory, list_students
 from app.features.campus_positions.schema import CampusPositionCreate
 from app.features.campus_positions.service import upsert_primary_position
 from app.models import Profile
@@ -50,6 +50,32 @@ async def test_verified_position_appears_in_directory(db, factory):
     assert match is not None
     assert match['official_title'] == 'Professor'
     assert match['user_id'] == user.id
+
+
+async def test_student_directory_lists_students_not_self_or_hidden(db, factory):
+    staff, _, _ = await _verified_staff(db, factory)
+    visible = await factory.user(display_name='Visible Student')  # role defaults to student
+    hidden = await factory.user(display_name='Hidden Student')
+    hidden_profile = (await db.execute(select(Profile).where(Profile.user_id == hidden.id))).scalar_one()
+    hidden_profile.is_hidden = True
+    await db.commit()
+
+    rows = await list_students(db, exclude_user_id=staff.id)
+    ids = {row['user_id'] for row in rows}
+    assert visible.id in ids  # students show up for staff
+    assert hidden.id not in ids  # hidden profiles are respected
+    assert staff.id not in ids  # never list the caller
+
+
+async def test_student_directory_search_matches_name(db, factory):
+    staff, _, _ = await _verified_staff(db, factory)
+    await factory.user(display_name='Zaraah Okoye')
+    await factory.user(display_name='Ben Carter')
+
+    rows = await list_students(db, exclude_user_id=staff.id, query='zaraah')
+    names = {row['display_name'] for row in rows}
+    assert 'Zaraah Okoye' in names
+    assert 'Ben Carter' not in names
 
 
 async def test_directory_filters_by_category(db, factory):

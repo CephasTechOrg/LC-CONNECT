@@ -26,6 +26,7 @@ GET /api/v1/campus-hub/posts/{post_id}
 GET /api/v1/campus-hub/publishing/capabilities
 GET /api/v1/campus-hub/resources
 GET /api/v1/campus-hub/resources/{resource_id}
+GET /api/v1/campus-hub/students
 GET /api/v1/campus-positions/me
 GET /api/v1/connections/incoming
 GET /api/v1/connections/matches

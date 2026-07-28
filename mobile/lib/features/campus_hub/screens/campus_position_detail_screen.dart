@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/avatar_widget.dart';
 import '../../../shared/widgets/app_states.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../../messages/providers/messages_provider.dart';
 import '../../messages/providers/staff_messaging_provider.dart';
 import '../providers/campus_directory_provider.dart';
@@ -55,6 +56,7 @@ class _CampusPositionDetailScreenState extends ConsumerState<CampusPositionDetai
   @override
   Widget build(BuildContext context) {
     final entryAsync = ref.watch(campusDirectoryEntryProvider(widget.positionId));
+    final myId = ref.watch(authNotifierProvider).asData?.value?.id;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -120,28 +122,29 @@ class _CampusPositionDetailScreenState extends ConsumerState<CampusPositionDetai
                       ],
                     ),
                     const SizedBox(height: 16),
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton.icon(
-                        onPressed: _messaging ? null : () => _message(entry),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                        icon: _messaging
-                            ? const SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                              )
-                            : const Icon(Icons.chat_bubble_outline_rounded, size: 18, color: Colors.white),
-                        label: Text(
-                          'Message',
-                          style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, color: Colors.white),
+                    if (myId != entry.userId)
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton.icon(
+                          onPressed: _messaging ? null : () => _message(entry),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          icon: _messaging
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                )
+                              : const Icon(Icons.chat_bubble_outline_rounded, size: 18, color: Colors.white),
+                          label: Text(
+                            'Message',
+                            style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, color: Colors.white),
+                          ),
                         ),
                       ),
-                    ),
                     if (entry.bio != null && entry.bio!.isNotEmpty) ...[
                       const SizedBox(height: 20),
                       Text(

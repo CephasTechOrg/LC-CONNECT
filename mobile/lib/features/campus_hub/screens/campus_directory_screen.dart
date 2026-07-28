@@ -7,6 +7,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/avatar_widget.dart';
 import '../../../shared/widgets/app_filter_chip.dart';
 import '../../../shared/widgets/app_states.dart';
+import '../../messages/providers/staff_messaging_provider.dart';
 import '../providers/campus_directory_provider.dart';
 
 class CampusDirectoryScreen extends ConsumerStatefulWidget {
@@ -35,6 +36,7 @@ class _CampusDirectoryScreenState extends ConsumerState<CampusDirectoryScreen> {
   @override
   Widget build(BuildContext context) {
     final directoryAsync = ref.watch(campusDirectoryProvider(_directoryQuery));
+    final canMessageAnyone = ref.watch(canMessageAnyoneProvider).asData?.value ?? false;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -76,6 +78,47 @@ class _CampusDirectoryScreenState extends ConsumerState<CampusDirectoryScreen> {
                 ],
               ),
             ),
+            if (canMessageAnyone)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
+                child: Material(
+                  color: AppColors.primarySoft,
+                  borderRadius: BorderRadius.circular(12),
+                  child: InkWell(
+                    onTap: () => context.push('/messages/new'),
+                    borderRadius: BorderRadius.circular(12),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.person_search_rounded, color: AppColors.primary, size: 22),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Looking for a student?',
+                                  style: GoogleFonts.dmSans(
+                                    fontSize: 13.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.textDark,
+                                  ),
+                                ),
+                                Text(
+                                  'Search and message students from Messages — Directory is staff only.',
+                                  style: GoogleFonts.dmSans(fontSize: 11.5, color: AppColors.textMuted),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Icon(Icons.chevron_right_rounded, color: AppColors.primary),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
               child: TextField(
@@ -126,10 +169,14 @@ class _CampusDirectoryScreenState extends ConsumerState<CampusDirectoryScreen> {
                 ),
                 data: (entries) {
                   if (entries.isEmpty) {
-                    return const AppEmptyState(
+                    return AppEmptyState(
                       icon: Icons.badge_outlined,
                       title: 'No contacts found',
-                      subtitle: 'Try another category or search term.',
+                      subtitle: canMessageAnyone
+                          ? 'Directory lists other staff. To reach a student, start a new message.'
+                          : 'Try another category or search term.',
+                      actionLabel: canMessageAnyone ? 'Message a student' : null,
+                      onAction: canMessageAnyone ? () => context.push('/messages/new') : null,
                     );
                   }
                   return ListView.separated(

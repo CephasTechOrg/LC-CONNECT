@@ -122,4 +122,16 @@ async def get_profile(profile_id: UUID, current_user: User = Depends(require_ver
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Profile not found')
     # Enforce hidden / verified-only / block visibility (was only checking is_hidden).
     await assert_profile_visible(db, viewer=current_user, profile=profile)
-    return profile_to_public(profile)
+    public = profile_to_public(profile)
+    # For staff, attach their verified campus position so a student sees the full picture —
+    # title, department, office, availability — in one place (email comes from the serializer).
+    if public.role in ('staff', 'admin'):
+        position = await get_primary_position(db, profile.user_id)
+        if position is not None and position.status == 'verified':
+            public = public.model_copy(update={
+                'position_title': position.official_title,
+                'position_department': position.department,
+                'position_office': position.office_location,
+                'position_availability': position.availability,
+            })
+    return public

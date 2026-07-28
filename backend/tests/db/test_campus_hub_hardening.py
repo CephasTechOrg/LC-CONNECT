@@ -40,26 +40,26 @@ def test_contact_email_allows_campus_domains():
     )
 
 
-async def test_upsert_rejects_external_contact_email(db, factory):
+async def test_contact_email_is_always_the_account_email(db, factory):
+    """There is no separate contact-email field anymore — a position's contact email is always
+    the staff member's account email, so an external/personal address can never be set."""
     user = await factory.user(display_name='Staff')
     user.role = 'staff'
     user.email = 'staff.person@livingstone.edu'
     await db.commit()
     profile = (await db.execute(select(Profile).where(Profile.user_id == user.id))).scalar_one()
 
-    with pytest.raises(HTTPException) as exc:
-        await upsert_primary_position(
-            db,
-            user,
-            profile,
-            CampusPositionCreate(
-                category='advising',
-                official_title='Advisor',
-                department='Student Success',
-                contact_email='not-campus@gmail.com',
-            ),
-        )
-    assert exc.value.status_code == 400
+    position = await upsert_primary_position(
+        db,
+        user,
+        profile,
+        CampusPositionCreate(
+            category='advising',
+            official_title='Advisor',
+            department='Student Success',
+        ),
+    )
+    assert position.contact_email == 'staff.person@livingstone.edu'
 
 
 async def test_revoked_position_resubmit_returns_to_pending(db, factory):

@@ -310,6 +310,27 @@ void main() {
     });
   });
 
+  // ── addressingId: the id every nav/subscribe/fetch site must use ──
+  // Regression guard: staff_dm and group threads have a null matchId, so navigating by matchId
+  // produced "/messages/null" (a 422 loop). addressingId must always yield a real id.
+  group('MessageThread.addressingId', () {
+    test('DM addresses by match id', () {
+      const t = MessageThread(conversationId: 'conv-1', kind: 'dm', matchId: 'match-1');
+      expect(t.addressingId, 'match-1');
+    });
+
+    test('staff thread addresses by conversation id (matchId is null)', () {
+      const t = MessageThread(conversationId: 'conv-staff', kind: 'staff_dm');
+      expect(t.matchId, isNull);
+      expect(t.addressingId, 'conv-staff'); // never null → no "/messages/null"
+    });
+
+    test('group addresses by conversation id', () {
+      const t = MessageThread(conversationId: 'conv-grp', kind: 'group', groupId: 'g-1');
+      expect(t.addressingId, 'conv-grp');
+    });
+  });
+
   // ── MessagesScreen widget tests ───────────────────────────────────
   group('MessagesScreen', () {
     testWidgets('shows empty state when no threads', (tester) async {
@@ -431,6 +452,38 @@ void main() {
       // Entering text starts the typing debounce timers (3–4s); let them fire so
       // none remain pending at teardown.
       await tester.pump(const Duration(seconds: 5));
+    });
+
+    // A malformed id (stringified null) must never fetch or crash — it shows a calm dead-end.
+    Widget badIdScope(String badId) => ProviderScope(
+          overrides: [
+            authNotifierProvider.overrideWith(_MockAuthNotifier.new),
+            realtimeClientProvider.overrideWith((ref) {
+              final client = RealtimeClient(
+                url: Uri.parse('ws://localhost/ws'),
+                tokenProvider: () async => null,
+              );
+              ref.onDispose(client.dispose);
+              return client;
+            }),
+            apiClientProvider.overrideWith((ref) => _stubApiClient()),
+          ],
+          child: MaterialApp(home: ChatScreen(matchId: badId)),
+        );
+
+    testWidgets('renders the unavailable state for a "null" id, not a chat', (tester) async {
+      await tester.pumpWidget(badIdScope('null'));
+      await tester.pumpAndSettle();
+
+      expect(find.text("This conversation isn't available"), findsOneWidget);
+      expect(find.byType(TextField), findsNothing); // no input bar → nothing to send
+    });
+
+    testWidgets('renders the unavailable state for an empty id', (tester) async {
+      await tester.pumpWidget(badIdScope(''));
+      await tester.pumpAndSettle();
+
+      expect(find.text("This conversation isn't available"), findsOneWidget);
     });
   });
 }

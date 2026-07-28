@@ -30,13 +30,14 @@ class CampusPositionRead(BaseModel):
     updated_at: datetime
 
 
+# Note: no contact_email input. A staff member's contact email is always their account email —
+# it's never a separate field to fill in (that was a redundant box). The service sets it.
 class CampusPositionCreate(BaseModel):
     category: CampusCategory
     official_title: str = Field(min_length=1, max_length=160)
     department: str = Field(min_length=1, max_length=160)
     office_location: str | None = Field(default=None, max_length=160)
     phone: str | None = Field(default=None, max_length=40)
-    contact_email: EmailStr | None = None
     availability: str | None = Field(default=None, max_length=500)
     bio: str | None = Field(default=None, max_length=500)
 
@@ -47,6 +48,5 @@ class CampusPositionUpdate(BaseModel):
     department: str | None = Field(default=None, min_length=1, max_length=160)
     office_location: str | None = Field(default=None, max_length=160)
     phone: str | None = Field(default=None, max_length=40)
-    contact_email: EmailStr | None = None
     availability: str | None = Field(default=None, max_length=500)
     bio: str | None = Field(default=None, max_length=500)

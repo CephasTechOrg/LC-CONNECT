@@ -22,6 +22,7 @@ part '../widgets/chat_header.dart';
 part '../widgets/chat_message_list.dart';
 part '../widgets/chat_bubble.dart';
 part '../widgets/chat_input.dart';
+part '../widgets/chat_unavailable.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
   /// For a DM this is the match id; for a group it's the group's conversation id — the
@@ -87,6 +88,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     // this conversation, which `clearConversation` immediately zeroes anyway. The real
     // read still goes out via WS (_sendRead).
     _unread = ref.read(unreadProvider.notifier);
+    if (!_validThread) {
+      _loading = false; // nothing to load — build() shows the unavailable state
+      return;
+    }
     Future.microtask(() {
       if (!mounted) return;
       _unread.enterConversation(widget.matchId);
@@ -101,8 +106,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   @override
   void dispose() {
-    _unread.leaveConversation();
-    _rt.unsubscribe(widget.matchId);
+    if (_validThread) {
+      _unread.leaveConversation();
+      _rt.unsubscribe(widget.matchId);
+    }
     _eventsSub?.cancel();
     _reconnectSub?.cancel();
     _typingResetTimer?.cancel();
@@ -118,6 +125,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   // ── history (paginated REST) ──────────────────────────────────────
 
   Future<void> _loadInitial() async {
+    if (!_validThread) return;
     try {
       final resp = await ref
           .read(apiClientProvider)
@@ -165,6 +173,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   Future<void> _syncAfterReconnect() async {
+    if (!_validThread) return;
     _rt.subscribe(widget.matchId);
     final newest = _newestServerMessage();
     if (newest == null) return _loadInitial();
@@ -353,6 +362,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   // ── send / typing / read ──────────────────────────────────────────
 
   void _send() {
+    if (!_validThread) return;
     final text = _inputController.text.trim();
     if (text.isEmpty) return;
     _inputController.clear();
@@ -436,6 +446,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   bool get _isGroup => widget.groupId != null;
 
+  /// Guard against a malformed thread id reaching the network. `matchId` is a required String,
+  /// but a bad deep-link or push payload can still deliver an empty value or the literal
+  /// "null"/"undefined" from a stringified null. When invalid we render an unavailable state and
+  /// touch no network — the id is never valid mid-session, so this is decided once.
+  bool get _validThread => _isValidThreadId(widget.matchId);
+
   /// Long-press a member's message → report it (group mode only). Scoped to the group so
   /// moderators know where it came from.
   /// DM ⋯ menu — report or block the partner (blocking revokes the chat, so return to the inbox).
@@ -474,6 +490,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (!_validThread) return const _UnavailableChat();
     final partner = widget.thread?.partner;
 
     return Scaffold(

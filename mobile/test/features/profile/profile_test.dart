@@ -194,6 +194,39 @@ void main() {
     });
   });
 
+  group('PublicProfile staff fields', () {
+    test('staff profile exposes role, email, and position context', () {
+      final p = PublicProfile.fromJson({
+        'id': 'p1',
+        'user_id': 'u1',
+        'display_name': 'Dr. Smith',
+        'role': 'staff',
+        'contact_email': 'smith@livingstone.edu',
+        'position_title': 'Associate Professor',
+        'position_department': 'Biology',
+        'position_office': 'Science Hall 204',
+        'position_availability': 'Mon/Wed 2-4pm',
+        'is_verified': true,
+      });
+      expect(p.isStaff, isTrue);
+      expect(p.contactEmail, 'smith@livingstone.edu');
+      expect(p.positionTitle, 'Associate Professor');
+      expect(p.positionDepartment, 'Biology');
+    });
+
+    test('student profile defaults to student role with no email', () {
+      final p = PublicProfile.fromJson({
+        'id': 'p2',
+        'user_id': 'u2',
+        'display_name': 'Maya Chen',
+        'is_verified': true,
+      });
+      expect(p.isStaff, isFalse);
+      expect(p.role, 'student');
+      expect(p.contactEmail, isNull); // student email never present
+    });
+  });
+
   // ── Widget tests ──────────────────────────────────────────────────
   group('ProfileScreen', () {
     testWidgets('shows display name in hero', (tester) async {
