@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from app.features.campus_positions.schema import CampusPositionRead
 
@@ -24,6 +24,12 @@ class PositionReviewRequest(BaseModel):
     review_note: str | None = Field(default=None, max_length=500)
 
 
+class PositionRevokeRequest(PositionReviewRequest):
+    # Off by default: a position usually ends because a term ended, and the notices that person
+    # published are still legitimate. Opt in when the position was fraudulent or abused.
+    archive_posts: bool = Field(default=False)
+
+
 class CampusPositionAdminRead(CampusPositionRead):
     user_email: EmailStr
     user_role: str
@@ -31,6 +37,8 @@ class CampusPositionAdminRead(CampusPositionRead):
 
 
 class CampusPostAdminRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: UUID
     author_id: UUID
     kind: str
@@ -49,6 +57,8 @@ class CampusPostAdminRead(BaseModel):
 
 
 class CampusResourceAdminRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: UUID
     category: str
     title: str

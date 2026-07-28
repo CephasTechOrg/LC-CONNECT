@@ -53,6 +53,7 @@ const directoryCategories = <String, String>{
   'advising': 'Advising',
   'residential_life': 'Residential Life',
   'campus_services': 'Campus Services',
+  'campus_safety': 'Campus Safety',
 };
 
 class DirectoryQuery {

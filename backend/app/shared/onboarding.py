@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from app.models import CampusPosition, Profile, User
 
-CAMPUS_CATEGORIES = frozenset({'academic', 'advising', 'residential_life', 'campus_services'})
+CAMPUS_CATEGORIES = frozenset(
+    {'academic', 'advising', 'residential_life', 'campus_services', 'campus_safety'}
+)
 
 
 def compute_student_profile_completed(profile: Profile) -> bool:

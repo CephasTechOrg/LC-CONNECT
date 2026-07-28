@@ -8,6 +8,7 @@ from app.dependencies import require_verified_user
 from app.features.campus_hub import posts as posts_service
 from app.features.campus_hub import resources as resources_service
 from app.features.campus_hub import service as directory_service
+from app.features.campus_hub.author_router import router as author_router
 from app.features.campus_hub.schema import (
     CampusHubOverviewRead,
     CampusPostRead,
@@ -18,6 +19,7 @@ from app.features.campus_hub.schema import (
 from app.models import User
 
 router = APIRouter(prefix='/campus-hub', tags=['campus-hub'])
+router.include_router(author_router)
 
 
 @router.get('/overview', response_model=CampusHubOverviewRead)

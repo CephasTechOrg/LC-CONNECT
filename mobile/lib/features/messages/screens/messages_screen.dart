@@ -11,6 +11,7 @@ import '../../../shared/widgets/app_search_field.dart';
 import '../../../shared/widgets/app_shell_header.dart';
 import '../../../shared/widgets/app_states.dart';
 import '../providers/messages_provider.dart';
+import '../providers/staff_messaging_provider.dart';
 import '../providers/unread_provider.dart';
 import '../../groups/data/group_models.dart';
 
@@ -53,9 +54,17 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
   @override
   Widget build(BuildContext context) {
     final async = ref.watch(threadsNotifierProvider);
+    final canMessageAnyone = ref.watch(canMessageAnyoneProvider).asData?.value ?? false;
 
     return Scaffold(
       backgroundColor: AppColors.background,
+      floatingActionButton: canMessageAnyone
+          ? FloatingActionButton(
+              onPressed: () => context.push('/messages/new'),
+              backgroundColor: AppColors.primary,
+              child: const Icon(Icons.edit_outlined, color: Colors.white),
+            )
+          : null,
       body: SafeArea(
         child: Column(
           children: [
@@ -82,7 +91,7 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
                     onRefresh: () async =>
                         ref.invalidate(threadsNotifierProvider),
                     child: threads.isEmpty
-                        ? const _EmptyState()
+                        ? _EmptyState(canMessageAnyone: canMessageAnyone)
                         : visible.isEmpty
                             ? _NoMatches(query: _query)
                             : _ThreadList(threads: visible),
@@ -168,10 +177,10 @@ class _ThreadCard extends ConsumerWidget {
                         ),
                     ],
                   ),
-                  if (!thread.isGroup && thread.partner?.major != null) ...[
+                  if (!thread.isGroup && (thread.partnerSubtitle ?? thread.partner?.major) != null) ...[
                     const SizedBox(height: 1),
                     Text(
-                      thread.partner!.major!,
+                      thread.partnerSubtitle ?? thread.partner!.major!,
                       style: GoogleFonts.dmSans(
                         fontSize: 12,
                         color: AppColors.textMuted,
@@ -257,7 +266,8 @@ class _UnreadBubble extends StatelessWidget {
 
 // ── Empty state ───────────────────────────────────────────────────
 class _EmptyState extends StatelessWidget {
-  const _EmptyState();
+  final bool canMessageAnyone;
+  const _EmptyState({required this.canMessageAnyone});
 
   @override
   Widget build(BuildContext context) {
@@ -265,10 +275,12 @@ class _EmptyState extends StatelessWidget {
       physics: const AlwaysScrollableScrollPhysics(),
       children: [
         SizedBox(height: MediaQuery.of(context).size.height * 0.18),
-        const AppEmptyState(
+        AppEmptyState(
           icon: Icons.chat_bubble_outline_rounded,
           title: 'No messages yet',
-          subtitle: 'Accept a connection request to start chatting.',
+          subtitle: canMessageAnyone
+              ? 'Tap the compose button to message any student or staff member.'
+              : 'Accept a connection request to start chatting.',
         ),
       ],
     );

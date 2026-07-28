@@ -9,7 +9,8 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import CampusPosition, Profile, User
+from app.features.campus_hub import publishing
+from app.models import CampusPosition, CampusPost, Profile, User
 from app.shared.audit import record_audit
 
 
@@ -118,12 +119,29 @@ async def reject_position(
     return position
 
 
+async def archive_authored_posts(db: AsyncSession, *, actor: User, author_id: UUID) -> int:
+    """Pull an author's live posts from the public feed. Returns how many were archived.
+
+    Drafts are left alone — they are already invisible, and republishing them requires a
+    verified position the author no longer has.
+    """
+    published = (
+        await db.execute(
+            select(CampusPost).where(CampusPost.author_id == author_id, CampusPost.status == 'published')
+        )
+    ).scalars().all()
+    for post in published:
+        await publishing.archive_post(db, actor=actor, post_id=post.id)
+    return len(published)
+
+
 async def revoke_position(
     db: AsyncSession,
     *,
     actor: User,
     position_id: UUID,
     review_note: str | None,
+    archive_posts: bool = False,
 ) -> CampusPosition:
     position = await get_position_or_404(db, position_id)
     if position.status != 'verified':
@@ -144,4 +162,13 @@ async def revoke_position(
     )
     await db.commit()
     await db.refresh(position)
+
+    # The position was this user's licence to message anyone — drop their live staff threads.
+    # Lazy import avoids a module-load cycle with the realtime package.
+    from app.features.realtime.runtime import revoke_staff_conversations
+
+    await revoke_staff_conversations(position.user_id)
+
+    if archive_posts:
+        await archive_authored_posts(db, actor=actor, author_id=position.user_id)
     return position

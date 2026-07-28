@@ -483,6 +483,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           children: [
             _ChatHeader(
               title: _isGroup ? (widget.groupTitle ?? 'Group') : (partner?.displayName ?? 'Chat'),
+              subtitle: _isGroup ? null : widget.thread?.partnerSubtitle,
               avatarUrl: _isGroup ? widget.groupAvatarUrl : partner?.avatarUrl,
               isGroup: _isGroup,
               onIdentityTap: _isGroup

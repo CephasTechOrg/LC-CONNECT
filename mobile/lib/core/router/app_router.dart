@@ -11,6 +11,8 @@ import '../../features/campus_hub/screens/campus_directory_screen.dart';
 import '../../features/campus_hub/screens/campus_position_detail_screen.dart';
 import '../../features/campus_hub/screens/campus_updates_screen.dart';
 import '../../features/campus_hub/screens/campus_resources_screen.dart';
+import '../../features/campus_hub/screens/compose_campus_post_screen.dart';
+import '../../features/campus_hub/screens/my_campus_posts_screen.dart';
 import '../../features/discovery/screens/discovery_screen.dart';
 import '../../features/activities/screens/activities_screen.dart';
 import '../../features/activities/screens/activity_detail_screen.dart';
@@ -18,6 +20,7 @@ import '../../features/activities/screens/create_activity_screen.dart';
 import '../../features/activities/providers/activities_provider.dart';
 import '../../features/messages/screens/chat_screen.dart';
 import '../../features/messages/screens/messages_screen.dart';
+import '../../features/messages/screens/new_message_screen.dart';
 import '../../features/messages/providers/messages_provider.dart';
 import '../../features/groups/data/group_models.dart';
 import '../../features/groups/screens/group_detail_screen.dart';
@@ -162,6 +165,16 @@ final routerProvider = Provider<GoRouter>((ref) {
                 builder: (context, state) => const CampusResourcesScreen(),
               ),
               GoRoute(
+                path: 'my-posts',
+                builder: (context, state) => const MyCampusPostsScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'new',
+                    builder: (context, state) => const ComposeCampusPostScreen(),
+                  ),
+                ],
+              ),
+              GoRoute(
                 path: 'posts/:postId',
                 builder: (context, state) => CampusPostDetailScreen(
                   postId: state.pathParameters['postId']!,
@@ -202,6 +215,11 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/messages',
             builder: (context, state) => const MessagesScreen(),
             routes: [
+              GoRoute(
+                // Static segment — must come before :matchId below so it isn't swallowed by it.
+                path: 'new',
+                builder: (context, state) => const NewMessageScreen(),
+              ),
               GoRoute(
                 // Two segments, so it never collides with the single-segment :matchId below.
                 path: 'group/:conversationId',

@@ -73,6 +73,69 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
+class _PublisherCta extends ConsumerWidget {
+  const _PublisherCta();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final caps = ref.watch(publishingCapabilitiesProvider).asData?.value;
+    if (caps == null || !caps.canPublish) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+      child: Material(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          onTap: () => context.push('/home/my-posts'),
+          borderRadius: BorderRadius.circular(14),
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: AppColors.primarySoft,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.edit_note_outlined, color: AppColors.primary, size: 22),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Publish to campus',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textDark,
+                        ),
+                      ),
+                      Text(
+                        'Create updates and opportunities. Manage your posts.',
+                        style: GoogleFonts.dmSans(fontSize: 11.5, color: AppColors.textMuted),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted, size: 20),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _CampusLifeCta extends StatelessWidget {
   const _CampusLifeCta();
 

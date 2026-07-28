@@ -15,6 +15,7 @@ const _categories = <String, String>{
   'advising': 'Advising',
   'residential_life': 'Residential Life',
   'campus_services': 'Campus Services',
+  'campus_safety': 'Campus Safety',
 };
 
 /// Edit / resubmit campus position after reject or revoke.

@@ -12,6 +12,7 @@ import '../../notifications/widgets/notifications_bell_button.dart';
 import '../../profile/providers/profile_provider.dart';
 import '../models/campus_post.dart';
 import '../providers/campus_hub_provider.dart';
+import '../providers/campus_publishing_provider.dart';
 
 part '../widgets/urgent_update_banner.dart';
 part '../widgets/campus_quick_action.dart';
@@ -96,6 +97,7 @@ class CampusHubScreen extends ConsumerWidget {
                 ],
                 const SizedBox(height: 16),
                 const _QuickActionsRow(),
+                const _PublisherCta(),
                 _SectionHeader(
                   title: 'Latest updates',
                   action: 'See all',

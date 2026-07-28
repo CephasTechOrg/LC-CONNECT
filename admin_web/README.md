@@ -1,6 +1,9 @@
-# LC Connect Admin Web (Phase 3)
+# LC Connect Admin Web (legacy)
 
-Minimal static admin portal for reviewing campus position submissions.
+**Prefer the Next.js app in [`admin/`](../admin/)** (Supabase login + MFA, no token paste).
+See [`docs/getting-started/admin_portal.md`](../docs/getting-started/admin_portal.md).
+
+This folder is a temporary static tool for reviewing campus position submissions.
 
 ## What it does
 

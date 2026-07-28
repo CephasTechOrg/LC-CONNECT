@@ -16,7 +16,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import Conversation, ConversationMember, Message, User
 from app.security import verify_supabase_access_token
 from app.shared.conversations import active_member_ids, is_active_member, resolve_conversation
-from app.shared.policies import users_are_blocked
+from app.shared.policies import staff_thread_is_open, users_are_blocked
+
+# Kept in sync with `app.shared.conversations._BLOCKABLE_KINDS`.
+_BLOCKABLE_KINDS = ('dm', 'staff_dm')
 
 
 class WsAuthFailed(Exception):
@@ -56,7 +59,7 @@ def _ensure_account_ok(user: User) -> None:
     if not user.is_active or user.status != 'active':
         raise WsForbidden('Account inactive or suspended')
     if not user.is_verified:
-        raise WsForbidden('Verified student required')
+        raise WsForbidden('Verified account required')
 
 
 async def authorize_conversation(db: AsyncSession, user_id: UUID, conversation_ref: UUID) -> Conversation:
@@ -71,10 +74,13 @@ async def authorize_conversation(db: AsyncSession, user_id: UUID, conversation_r
         raise WsForbidden('Conversation not accessible')
 
     # DM-only relationship rule: a block closes the conversation for both sides.
-    if conversation.kind == 'dm':
+    if conversation.kind in _BLOCKABLE_KINDS:
         for other_id in await active_member_ids(db, conversation.id, exclude=user_id):
             if await users_are_blocked(db, user_id, other_id):
                 raise WsForbidden('Conversation not accessible')
+    # A staff thread closes once the staff side is no longer official (position revoked).
+    if conversation.kind == 'staff_dm' and not await staff_thread_is_open(db, conversation.id):
+        raise WsForbidden('Conversation not accessible')
     return conversation
 
 

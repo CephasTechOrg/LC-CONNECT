@@ -7,12 +7,21 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/avatar_widget.dart';
 import '../../../shared/widgets/app_states.dart';
+import '../../messages/providers/messages_provider.dart';
+import '../../messages/providers/staff_messaging_provider.dart';
 import '../providers/campus_directory_provider.dart';
 
-class CampusPositionDetailScreen extends ConsumerWidget {
+class CampusPositionDetailScreen extends ConsumerStatefulWidget {
   final String positionId;
 
   const CampusPositionDetailScreen({super.key, required this.positionId});
+
+  @override
+  ConsumerState<CampusPositionDetailScreen> createState() => _CampusPositionDetailScreenState();
+}
+
+class _CampusPositionDetailScreenState extends ConsumerState<CampusPositionDetailScreen> {
+  bool _messaging = false;
 
   Future<void> _launch(Uri uri) async {
     if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
@@ -20,9 +29,32 @@ class CampusPositionDetailScreen extends ConsumerWidget {
     }
   }
 
+  Future<void> _message(DirectoryEntry entry) async {
+    if (_messaging) return;
+    setState(() => _messaging = true);
+    try {
+      final thread = await ref.read(staffMessagingServiceProvider).startThread(entry.userId);
+      ref.read(threadsNotifierProvider.notifier).upsertThread(thread);
+      if (!mounted) return;
+      context.push('/messages/${thread.addressingId}', extra: thread);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Couldn't start that conversation", style: GoogleFonts.dmSans(color: Colors.white)),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _messaging = false);
+    }
+  }
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final entryAsync = ref.watch(campusDirectoryEntryProvider(positionId));
+  Widget build(BuildContext context) {
+    final entryAsync = ref.watch(campusDirectoryEntryProvider(widget.positionId));
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -35,7 +67,7 @@ class CampusPositionDetailScreen extends ConsumerWidget {
               Expanded(
                 child: AppErrorState(
                   message: 'Could not load this directory entry.',
-                  onRetry: () => ref.invalidate(campusDirectoryEntryProvider(positionId)),
+                  onRetry: () => ref.invalidate(campusDirectoryEntryProvider(widget.positionId)),
                 ),
               ),
             ],
@@ -86,6 +118,29 @@ class CampusPositionDetailScreen extends ConsumerWidget {
                           ),
                         ),
                       ],
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed: _messaging ? null : () => _message(entry),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        icon: _messaging
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              )
+                            : const Icon(Icons.chat_bubble_outline_rounded, size: 18, color: Colors.white),
+                        label: Text(
+                          'Message',
+                          style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, color: Colors.white),
+                        ),
+                      ),
                     ),
                     if (entry.bio != null && entry.bio!.isNotEmpty) ...[
                       const SizedBox(height: 20),

@@ -106,12 +106,16 @@ class ChatMessage {
       );
 }
 
-// ── Message thread (DM or group) ──────────────────────────────────
+// ── Message thread (DM, staff DM, or group) ────────────────────────
 class MessageThread {
   final String conversationId; // always present
-  final String kind; // 'dm' | 'group'
+  final String kind; // 'dm' | 'staff_dm' | 'group'
   final String? matchId; // dm only
-  final MessagePartner? partner; // dm only
+  final MessagePartner? partner; // dm / staff_dm only
+  // Staff identity context for the partner (staff_dm; set when they hold a verified
+  // campus position) — e.g. "Officer Jane Doe · Campus Security".
+  final String? partnerPositionTitle;
+  final String? partnerDepartment;
   final String? groupId; // group only
   final String? groupName; // group only
   final String? groupAvatarUrl; // group only
@@ -123,6 +127,8 @@ class MessageThread {
     required this.kind,
     this.matchId,
     this.partner,
+    this.partnerPositionTitle,
+    this.partnerDepartment,
     this.groupId,
     this.groupName,
     this.groupAvatarUrl,
@@ -131,13 +137,22 @@ class MessageThread {
   });
 
   bool get isGroup => kind == 'group';
+  bool get isStaffThread => kind == 'staff_dm';
 
   /// The id the client addresses this thread by everywhere (open/subscribe/unread/live-match):
-  /// the match id for a DM, the conversation id for a group. Matches the server's frame ids.
+  /// the match id for a DM, the conversation id for a group or staff thread. Matches the
+  /// server's frame ids.
   String get addressingId => matchId ?? conversationId;
 
   String get title => isGroup ? (groupName ?? 'Group') : (partner?.displayName ?? 'LC Student');
   String? get avatarUrl => isGroup ? groupAvatarUrl : partner?.avatarUrl;
+
+  /// "Campus Safety Officer · Campus Security" — shown under the partner's name so a student
+  /// knows who they're talking to, or null when there's nothing to show.
+  String? get partnerSubtitle {
+    if (partnerPositionTitle == null && partnerDepartment == null) return null;
+    return [partnerPositionTitle, partnerDepartment].whereType<String>().join(' · ');
+  }
 
   factory MessageThread.fromJson(Map<String, dynamic> j) {
     final group = j['group'] as Map<String, dynamic>?;
@@ -148,6 +163,8 @@ class MessageThread {
       partner: j['partner'] != null
           ? MessagePartner.fromJson(j['partner'] as Map<String, dynamic>)
           : null,
+      partnerPositionTitle: j['partner_position_title'] as String?,
+      partnerDepartment: j['partner_department'] as String?,
       groupId: group?['id'] as String?,
       groupName: group?['name'] as String?,
       groupAvatarUrl: group?['avatar_url'] as String?,
@@ -162,6 +179,8 @@ class MessageThread {
         kind: kind,
         matchId: matchId,
         partner: partner,
+        partnerPositionTitle: partnerPositionTitle,
+        partnerDepartment: partnerDepartment,
         groupId: groupId,
         groupName: groupName,
         groupAvatarUrl: groupAvatarUrl,
@@ -212,7 +231,12 @@ class ThreadsNotifier extends AsyncNotifier<List<MessageThread>> {
     if (current == null) return;
 
     final idx = current.indexWhere((t) => t.addressingId == event.conversationId);
-    if (idx == -1) return; // thread not loaded (e.g. brand-new match) — refreshed on return
+    if (idx == -1) {
+      // A thread we don't have yet — a new match, or a staff member messaging us out of the
+      // blue. Refetch so it appears in the inbox immediately instead of on next open.
+      ref.invalidateSelf();
+      return;
+    }
 
     _typingTimers.remove(event.conversationId)?.cancel(); // a new message clears typing
     final msg = ChatMessage.fromJson(event.message);
@@ -248,5 +272,14 @@ class ThreadsNotifier extends AsyncNotifier<List<MessageThread>> {
     final updated = List<MessageThread>.from(current);
     updated[idx] = updated[idx].copyWith(partnerTyping: typing);
     state = AsyncData(updated);
+  }
+
+  /// Add a freshly started thread (e.g. a new staff conversation) to the top of the inbox,
+  /// if it isn't already loaded — so it shows up without a full refetch.
+  void upsertThread(MessageThread thread) {
+    final current = state.asData?.value;
+    if (current == null) return;
+    if (current.any((t) => t.conversationId == thread.conversationId)) return;
+    state = AsyncData([thread, ...current]);
   }
 }

@@ -44,6 +44,17 @@ class Settings(BaseSettings):
     rate_limit_avatar_uploads_per_day: int = Field(default=10, alias='RATE_LIMIT_AVATAR_UPLOADS_PER_DAY')
     rate_limit_reports_per_day: int = Field(default=20, alias='RATE_LIMIT_REPORTS_PER_DAY')
     rate_limit_group_invites_per_day: int = Field(default=200, alias='RATE_LIMIT_GROUP_INVITES_PER_DAY')
+    rate_limit_staff_threads_per_day: int = Field(default=200, alias='RATE_LIMIT_STAFF_THREADS_PER_DAY')
+    # Per minute, not per day: staff search interactively, but this caps directory scraping.
+    rate_limit_recipient_searches_per_minute: int = Field(
+        default=60, alias='RATE_LIMIT_RECIPIENT_SEARCHES_PER_MINUTE'
+    )
+    rate_limit_campus_post_creates_per_day: int = Field(
+        default=30, alias='RATE_LIMIT_CAMPUS_POST_CREATES_PER_DAY'
+    )
+    rate_limit_campus_post_publishes_per_day: int = Field(
+        default=20, alias='RATE_LIMIT_CAMPUS_POST_PUBLISHES_PER_DAY'
+    )
 
     allowed_email_domains: str = Field(
         default='students.livingstone.edu,livingstone.edu',
@@ -78,6 +89,13 @@ class Settings(BaseSettings):
     firebase_credentials_json: str | None = Field(default=None, alias='FIREBASE_CREDENTIALS_JSON')
     # Grace before an offline push: absorb Wi-Fi↔cellular handoffs / rapid reconnects.
     push_reconnect_grace_seconds: float = Field(default=3.0, alias='PUSH_RECONNECT_GRACE_SECONDS')
+
+    # Delegated campus publishing: verified staff may author posts when enabled.
+    staff_publishing_enabled: bool = Field(default=True, alias='STAFF_PUBLISHING_ENABLED')
+
+    # Staff-to-anyone messaging: verified staff may message any active user (and be messaged
+    # back) without a connection, when enabled.
+    staff_messaging_enabled: bool = Field(default=True, alias='STAFF_MESSAGING_ENABLED')
 
     @property
     def push_enabled(self) -> bool:

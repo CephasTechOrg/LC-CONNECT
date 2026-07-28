@@ -17,11 +17,16 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 
 from app.models import Conversation, ConversationMember, Match
-from app.shared.policies import users_are_blocked
+from app.shared.policies import staff_thread_is_open, users_are_blocked
 
 ACTIVE = 'active'
+
+# Conversation kinds where a mutual block should close the thread for both sides (unlike a
+# group, which has moderators and can't be "blocked" as a pair).
+_BLOCKABLE_KINDS = ('dm', 'staff_dm')
 
 
 async def _dm_conversation(db: AsyncSession, match_id: UUID) -> Conversation | None:
@@ -63,6 +68,48 @@ async def ensure_dm_conversation(db: AsyncSession, match: Match) -> Conversation
     return conversation
 
 
+async def find_staff_dm(db: AsyncSession, user_a: UUID, user_b: UUID) -> Conversation | None:
+    """The existing `staff_dm` conversation between exactly these two users, if any."""
+    member_a = aliased(ConversationMember)
+    member_b = aliased(ConversationMember)
+    return (
+        await db.execute(
+            select(Conversation)
+            .join(member_a, member_a.conversation_id == Conversation.id)
+            .join(member_b, member_b.conversation_id == Conversation.id)
+            .where(
+                Conversation.kind == 'staff_dm',
+                member_a.user_id == user_a,
+                member_a.status == ACTIVE,
+                member_b.user_id == user_b,
+                member_b.status == ACTIVE,
+            )
+        )
+    ).scalars().first()
+
+
+async def ensure_staff_dm_conversation(db: AsyncSession, user_a: UUID, user_b: UUID) -> Conversation:
+    """Get-or-create the `staff_dm` conversation between two users.
+
+    Unlike `ensure_dm_conversation`, there is no `Match` to key uniqueness off of — a
+    `staff_dm` is addressed directly by its own conversation id (the same pattern a group
+    uses). Creation is a rare, human-initiated action (not a swipe-matching hot path), so a
+    plain check-then-create is an acceptable trade-off over adding pair-uniqueness plumbing
+    for a single low-contention feature.
+    """
+    existing = await find_staff_dm(db, user_a, user_b)
+    if existing is not None:
+        return existing
+
+    conversation = Conversation(kind='staff_dm')
+    db.add(conversation)
+    await db.flush()
+    for user_id in (user_a, user_b):
+        db.add(ConversationMember(conversation_id=conversation.id, user_id=user_id, role='member', status=ACTIVE))
+    await db.flush()
+    return conversation
+
+
 async def conversation_for_match_id(db: AsyncSession, match_id: UUID) -> Conversation | None:
     """Resolve a match id to its conversation, provisioning one if it's missing."""
     match = await db.get(Match, match_id)
@@ -91,10 +138,15 @@ async def accessible_conversation(db: AsyncSession, ref: UUID, user_id: UUID) ->
     conversation = await resolve_conversation(db, ref)
     if conversation is None or not await is_active_member(db, conversation.id, user_id):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Conversation not found')
-    if conversation.kind == 'dm':
+    if conversation.kind in _BLOCKABLE_KINDS:
         for other_id in await active_member_ids(db, conversation.id, exclude=user_id):
             if await users_are_blocked(db, user_id, other_id):
                 raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='Messaging is blocked')
+    # A staff thread closes once the staff side is no longer official (position revoked).
+    if conversation.kind == 'staff_dm' and not await staff_thread_is_open(db, conversation.id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail='This staff conversation is no longer available'
+        )
     return conversation
 
 

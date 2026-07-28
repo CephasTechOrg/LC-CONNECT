@@ -8,7 +8,7 @@ from sqlalchemy import select
 
 from app.dependencies import require_verified_connect_student
 from app.features.discovery.router import get_discovery_cards
-from app.models import Profile, User
+from app.models import Profile
 
 
 async def test_require_verified_connect_student_blocks_staff():

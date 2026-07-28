@@ -16,6 +16,7 @@ from app.features.admin.schema import (
     CampusPostAdminRead,
     CampusResourceAdminRead,
     PositionReviewRequest,
+    PositionRevokeRequest,
     SuspendUserRequest,
 )
 from app.features.admin.service import remove_activity as do_remove_activity
@@ -119,7 +120,7 @@ async def reject_campus_position(
 @router.post('/campus-positions/{position_id}/revoke', response_model=CampusPositionRead)
 async def revoke_campus_position(
     position_id: UUID,
-    payload: PositionReviewRequest,
+    payload: PositionRevokeRequest,
     actor: User = Depends(require_admin_aal2),
     db: AsyncSession = Depends(get_db),
 ) -> CampusPositionRead:
@@ -128,6 +129,7 @@ async def revoke_campus_position(
         actor=actor,
         position_id=position_id,
         review_note=payload.review_note,
+        archive_posts=payload.archive_posts,
     )
     return CampusPositionRead.model_validate(position)
 

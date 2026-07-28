@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, Field, HttpUrl, model_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, HttpUrl, model_validator
 
 
 class DirectoryEntryRead(BaseModel):
@@ -37,6 +37,33 @@ class CampusPostSummaryRead(BaseModel):
 class CampusPostRead(CampusPostSummaryRead):
     body: str
     audience: str
+
+
+class AuthorCampusPostRead(BaseModel):
+    """Author-facing post including drafts (publish_at may be null)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    kind: str
+    title: str
+    summary: str | None
+    body: str
+    audience: str
+    category: str | None
+    priority: str
+    status: str
+    publish_at: datetime | None
+    expires_at: datetime | None
+    external_url: str | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class PublishingCapabilitiesRead(BaseModel):
+    can_publish: bool
+    staff_publishing_enabled: bool
+    reason: str | None = None
 
 
 class CampusHubOverviewRead(BaseModel):

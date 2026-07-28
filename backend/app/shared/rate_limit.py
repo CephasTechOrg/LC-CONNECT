@@ -17,7 +17,7 @@ from collections.abc import Callable, Hashable
 from fastapi import Depends, HTTPException, status
 
 from app.config import settings
-from app.dependencies import require_verified_student
+from app.dependencies import require_verified_user
 from app.models import User
 
 # Every RateLimiter registers here so a periodic task can drop idle buckets (bounded memory).
@@ -90,7 +90,9 @@ class UserRateLimit:
         self._message = message
         self._limiter = RateLimiter(limit, per_seconds)
 
-    async def __call__(self, current_user: User = Depends(require_verified_student)) -> User:
+    async def __call__(self, current_user: User = Depends(require_verified_user)) -> User:
+        # `require_verified_user` (not the student-matching gate) so staff-facing actions —
+        # messaging search, campus publishing — can share the same limiter pattern.
         if not self._limiter.allow(current_user.id):
             raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=self._message)
         return current_user
@@ -116,4 +118,22 @@ report_limit = UserRateLimit(
 group_invite_limit = UserRateLimit(
     'group_invite', settings.rate_limit_group_invites_per_day, _DAY,
     "You've sent too many invites today — try again tomorrow.",
+)
+staff_thread_limit = UserRateLimit(
+    'staff_thread', settings.rate_limit_staff_threads_per_day, _DAY,
+    "You've started too many new conversations today — try again tomorrow.",
+)
+# Guards the recipient directory against scripted enumeration (staff-only, but still a
+# name-listing surface).
+recipient_search_limit = UserRateLimit(
+    'recipient_search', settings.rate_limit_recipient_searches_per_minute, 60,
+    'Too many searches — please slow down.',
+)
+campus_post_create_limit = UserRateLimit(
+    'campus_post_create', settings.rate_limit_campus_post_creates_per_day, _DAY,
+    "You've drafted too many campus posts today — try again tomorrow.",
+)
+campus_post_publish_limit = UserRateLimit(
+    'campus_post_publish', settings.rate_limit_campus_post_publishes_per_day, _DAY,
+    "You've published too many campus posts today — try again tomorrow.",
 )

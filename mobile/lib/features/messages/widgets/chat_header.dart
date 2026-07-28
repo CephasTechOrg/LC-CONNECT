@@ -5,6 +5,8 @@ part of '../screens/chat_screen.dart';
 // partner's profile (DM) or the group's info screen (group); no separate identity card below.
 class _ChatHeader extends StatelessWidget {
   final String title;
+  /// Staff-thread context shown under the name, e.g. "Campus Safety Officer · Campus Security".
+  final String? subtitle;
   final String? avatarUrl;
   final bool isGroup;
 
@@ -16,6 +18,7 @@ class _ChatHeader extends StatelessWidget {
 
   const _ChatHeader({
     this.title = 'Messages',
+    this.subtitle,
     this.avatarUrl,
     this.isGroup = false,
     this.onIdentityTap,
@@ -47,15 +50,28 @@ class _ChatHeader extends StatelessWidget {
                     _HeaderAvatar(url: avatarUrl, isGroup: isGroup),
                     const SizedBox(width: 10),
                     Expanded(
-                      child: Text(
-                        title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.dmSans(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textDark,
-                        ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.dmSans(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textDark,
+                            ),
+                          ),
+                          if (subtitle != null)
+                            Text(
+                              subtitle!,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.dmSans(fontSize: 11.5, color: AppColors.textMuted),
+                            ),
+                        ],
                       ),
                     ),
                   ],

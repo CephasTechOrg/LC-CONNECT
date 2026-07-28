@@ -411,6 +411,125 @@
         "title": "AdminUserRead",
         "type": "object"
       },
+      "AuthorCampusPostRead": {
+        "description": "Author-facing post including drafts (publish_at may be null).",
+        "properties": {
+          "audience": {
+            "title": "Audience",
+            "type": "string"
+          },
+          "body": {
+            "title": "Body",
+            "type": "string"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          },
+          "external_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "External Url"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "priority": {
+            "title": "Priority",
+            "type": "string"
+          },
+          "publish_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publish At"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "title",
+          "summary",
+          "body",
+          "audience",
+          "category",
+          "priority",
+          "status",
+          "publish_at",
+          "expires_at",
+          "external_url",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "AuthorCampusPostRead",
+        "type": "object"
+      },
       "Body_change_member_role_api_v1_groups__group_id__members__user_id__patch": {
         "properties": {
           "role": {
@@ -614,7 +733,8 @@
               "academic",
               "advising",
               "residential_life",
-              "campus_services"
+              "campus_services",
+              "campus_safety"
             ],
             "title": "Category",
             "type": "string"
@@ -774,7 +894,8 @@
               "academic",
               "advising",
               "residential_life",
-              "campus_services"
+              "campus_services",
+              "campus_safety"
             ],
             "title": "Category",
             "type": "string"
@@ -865,7 +986,8 @@
               "academic",
               "advising",
               "residential_life",
-              "campus_services"
+              "campus_services",
+              "campus_safety"
             ],
             "title": "Category",
             "type": "string"
@@ -1005,7 +1127,8 @@
                   "academic",
                   "advising",
                   "residential_life",
-                  "campus_services"
+                  "campus_services",
+                  "campus_safety"
                 ],
                 "type": "string"
               },
@@ -3245,6 +3368,28 @@
                 "type": "null"
               }
             ]
+          },
+          "partner_department": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Partner Department"
+          },
+          "partner_position_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Partner Position Title"
           }
         },
         "required": [
@@ -3253,6 +3398,24 @@
           "latest_message"
         ],
         "title": "MessageThreadRead",
+        "type": "object"
+      },
+      "MessagingCapabilities": {
+        "properties": {
+          "can_message_anyone": {
+            "title": "Can Message Anyone",
+            "type": "boolean"
+          },
+          "staff_messaging_enabled": {
+            "title": "Staff Messaging Enabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "can_message_anyone",
+          "staff_messaging_enabled"
+        ],
+        "title": "MessagingCapabilities",
         "type": "object"
       },
       "MyProfileRead": {
@@ -3600,6 +3763,29 @@
           }
         },
         "title": "PositionReviewRequest",
+        "type": "object"
+      },
+      "PositionRevokeRequest": {
+        "properties": {
+          "archive_posts": {
+            "default": false,
+            "title": "Archive Posts",
+            "type": "boolean"
+          },
+          "review_note": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Review Note"
+          }
+        },
+        "title": "PositionRevokeRequest",
         "type": "object"
       },
       "ProfilePublic": {
@@ -3953,6 +4139,101 @@
         "title": "ProfileUpdate",
         "type": "object"
       },
+      "PublishingCapabilitiesRead": {
+        "properties": {
+          "can_publish": {
+            "title": "Can Publish",
+            "type": "boolean"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "staff_publishing_enabled": {
+            "title": "Staff Publishing Enabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "can_publish",
+          "staff_publishing_enabled"
+        ],
+        "title": "PublishingCapabilitiesRead",
+        "type": "object"
+      },
+      "RecipientSearchResult": {
+        "description": "A lightweight, message-composer-facing user match (not the full profile).",
+        "properties": {
+          "avatar_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Url"
+          },
+          "department": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Department"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "position_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Position Title"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          },
+          "user_id": {
+            "format": "uuid",
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "display_name",
+          "avatar_url",
+          "role"
+        ],
+        "title": "RecipientSearchResult",
+        "type": "object"
+      },
       "ReportCreate": {
         "properties": {
           "activity_id": {
@@ -4135,6 +4416,21 @@
           "created_at"
         ],
         "title": "ReportRead",
+        "type": "object"
+      },
+      "StaffThreadCreate": {
+        "description": "Start (or resolve) a staff\u2194anyone conversation \u2014 no connection required.",
+        "properties": {
+          "target_user_id": {
+            "format": "uuid",
+            "title": "Target User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "target_user_id"
+        ],
+        "title": "StaffThreadCreate",
         "type": "object"
       },
       "SuspendUserRequest": {
@@ -5039,7 +5335,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/PositionReviewRequest"
+                "$ref": "#/components/schemas/PositionRevokeRequest"
               }
             }
           },
@@ -5847,6 +6143,239 @@
         ]
       }
     },
+    "/api/v1/campus-hub/my-posts": {
+      "get": {
+        "operationId": "list_my_posts_api_v1_campus_hub_my_posts_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AuthorCampusPostRead"
+                  },
+                  "title": "Response List My Posts Api V1 Campus Hub My Posts Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List My Posts",
+        "tags": [
+          "campus-hub",
+          "campus-hub"
+        ]
+      },
+      "post": {
+        "operationId": "create_my_post_api_v1_campus_hub_my_posts_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CampusPostCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorCampusPostRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create My Post",
+        "tags": [
+          "campus-hub",
+          "campus-hub"
+        ]
+      }
+    },
+    "/api/v1/campus-hub/my-posts/{post_id}": {
+      "patch": {
+        "operationId": "update_my_post_api_v1_campus_hub_my_posts__post_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "post_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Post Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CampusPostUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorCampusPostRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update My Post",
+        "tags": [
+          "campus-hub",
+          "campus-hub"
+        ]
+      }
+    },
+    "/api/v1/campus-hub/my-posts/{post_id}/archive": {
+      "post": {
+        "operationId": "archive_my_post_api_v1_campus_hub_my_posts__post_id__archive_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "post_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Post Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorCampusPostRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Archive My Post",
+        "tags": [
+          "campus-hub",
+          "campus-hub"
+        ]
+      }
+    },
+    "/api/v1/campus-hub/my-posts/{post_id}/publish": {
+      "post": {
+        "operationId": "publish_my_post_api_v1_campus_hub_my_posts__post_id__publish_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "post_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Post Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorCampusPostRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Publish My Post",
+        "tags": [
+          "campus-hub",
+          "campus-hub"
+        ]
+      }
+    },
     "/api/v1/campus-hub/overview": {
       "get": {
         "operationId": "get_overview_api_v1_campus_hub_overview_get",
@@ -6019,6 +6548,33 @@
         ],
         "summary": "Get Post",
         "tags": [
+          "campus-hub"
+        ]
+      }
+    },
+    "/api/v1/campus-hub/publishing/capabilities": {
+      "get": {
+        "operationId": "publishing_capabilities_api_v1_campus_hub_publishing_capabilities_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublishingCapabilitiesRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Publishing Capabilities",
+        "tags": [
+          "campus-hub",
           "campus-hub"
         ]
       }
@@ -7698,9 +8254,149 @@
         ]
       }
     },
+    "/api/v1/messages/capabilities": {
+      "get": {
+        "description": "Whether this account can start a new conversation with anyone (verified staff).",
+        "operationId": "get_messaging_capabilities_api_v1_messages_capabilities_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagingCapabilities"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Messaging Capabilities",
+        "tags": [
+          "messages"
+        ]
+      }
+    },
+    "/api/v1/messages/search-recipients": {
+      "get": {
+        "description": "Search students + staff to start a new conversation with \u2014 verified staff only.",
+        "operationId": "search_message_recipients_api_v1_messages_search_recipients_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "default": "",
+              "maxLength": 120,
+              "title": "Q",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RecipientSearchResult"
+                  },
+                  "title": "Response Search Message Recipients Api V1 Messages Search Recipients Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Search Message Recipients",
+        "tags": [
+          "messages"
+        ]
+      }
+    },
+    "/api/v1/messages/staff-threads": {
+      "post": {
+        "description": "Get-or-create a conversation with `target_user_id` \u2014 no connection required, as long\nas one side is a verified staff messenger (see `can_message_as_staff`).",
+        "operationId": "start_staff_thread_api_v1_messages_staff_threads_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StaffThreadCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageThreadRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Start Staff Thread",
+        "tags": [
+          "messages"
+        ]
+      }
+    },
     "/api/v1/messages/threads": {
       "get": {
-        "description": "The unified inbox \u2014 DM and group threads, newest activity first.",
+        "description": "The unified inbox \u2014 DM, staff, and group threads, newest activity first.",
         "operationId": "list_threads_api_v1_messages_threads_get",
         "responses": {
           "200": {

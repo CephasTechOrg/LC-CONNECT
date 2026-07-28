@@ -4,13 +4,15 @@ from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
-CampusCategory = Literal['academic', 'advising', 'residential_life', 'campus_services']
+CampusCategory = Literal['academic', 'advising', 'residential_life', 'campus_services', 'campus_safety']
 CampusPositionStatus = Literal['pending', 'verified', 'rejected', 'revoked']
 
 
 class CampusPositionRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: UUID
     user_id: UUID
     category: CampusCategory

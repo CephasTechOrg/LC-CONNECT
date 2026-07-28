@@ -18,7 +18,7 @@ from app.features.notifications.push import push_sender
 from app.features.realtime import protocol
 from app.features.realtime.event_bus import InMemoryEventBus
 from app.features.realtime.manager import ConnectionManager
-from app.models import Profile
+from app.models import Conversation, ConversationMember, Profile
 from app.shared.rate_limit import RateLimiter
 
 logger = logging.getLogger('lc_connect.realtime')
@@ -75,6 +75,35 @@ async def disconnect_user(user_id: UUID) -> None:
     """A suspension happened — close every socket for the user."""
     frame = protocol.error(protocol.ErrorCode.FORBIDDEN, 'Account suspended')
     await manager.close_user(user_id, frame, protocol.CloseCode.FORBIDDEN)
+
+
+async def revoke_staff_conversations(user_id: UUID) -> None:
+    """A staff position was revoked — drop every live `staff_dm` the user is in.
+
+    Authorization is re-checked per frame, so a revoked member can no longer send; this also
+    detaches both sides' open subscriptions so an ex-official channel stops streaming.
+    Best-effort: the revocation itself is the source of truth.
+    """
+    try:
+        async with AsyncSessionLocal() as db:
+            conversation_ids = list(
+                (
+                    await db.execute(
+                        select(Conversation.id)
+                        .join(ConversationMember, ConversationMember.conversation_id == Conversation.id)
+                        .where(
+                            Conversation.kind == 'staff_dm',
+                            ConversationMember.user_id == user_id,
+                            ConversationMember.status == 'active',
+                        )
+                    )
+                ).scalars().all()
+            )
+        frame = protocol.error(protocol.ErrorCode.FORBIDDEN, 'Conversation access revoked')
+        for conversation_id in conversation_ids:
+            await manager.revoke_conversation(conversation_id, frame)
+    except Exception as exc:  # noqa: BLE001 - revocation must never break the admin action
+        logger.warning('revoke_staff_conversations failed (user=%s): %s', user_id, exc)
 
 
 async def schedule_offline_push(recipient_id: UUID, sender_id: UUID, conversation_id: UUID) -> None:

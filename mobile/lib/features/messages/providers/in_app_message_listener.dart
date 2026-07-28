@@ -63,7 +63,9 @@ MessagePartner? _partnerFor(Ref ref, String conversationId) {
   final threads = ref.read(threadsNotifierProvider).asData?.value;
   if (threads == null) return null;
   for (final t in threads) {
-    if (t.matchId == conversationId) return t.partner;
+    // Match on the addressing id (match id for a DM, conversation id for a staff thread) —
+    // the same id the server puts in the event frame.
+    if (t.addressingId == conversationId) return t.partner;
   }
   return null;
 }
