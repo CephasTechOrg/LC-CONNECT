@@ -261,6 +261,36 @@ async def archive_post(
     return post
 
 
+def should_push_on_publish(post: CampusPost, *, now: datetime | None = None) -> bool:
+    """Whether a just-published post is worth an FCM push — important/urgent priority and
+    actually live now (a future `publish_at` means nothing to announce yet; a scheduling job,
+    not this path, would handle that later)."""
+    if post.priority not in {'important', 'urgent'}:
+        return False
+    now = now or datetime.now(UTC)
+    return post.publish_at is not None and post.publish_at <= now
+
+
+async def push_published_post(post_id: UUID) -> None:
+    """Send the FCM push for a just-published important/urgent post. Runs as a background task
+    (after the response), so it re-reads the post fresh rather than trusting the caller's
+    in-memory copy. Shared by both the staff and admin publish routes — this is the one place
+    that decides "should this publish page someone."
+    """
+    from app.database import AsyncSessionLocal
+    from app.features.notifications.push import push_sender
+
+    async with AsyncSessionLocal() as db:
+        post = await db.get(CampusPost, post_id)
+        if post is None or post.status != 'published' or not should_push_on_publish(post):
+            return
+        tokens = await recipient_tokens_for_post(db, post)
+        if tokens:
+            await push_sender.notify_campus_post(
+                db, tokens=tokens, title=post.title, post_id=post.id, priority=post.priority,
+            )
+
+
 async def recipient_tokens_for_post(db: AsyncSession, post: CampusPost) -> list[str]:
     role_filter = ['student', 'staff', 'admin']
     if post.audience == 'students':

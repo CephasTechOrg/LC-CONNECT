@@ -138,9 +138,9 @@ class _CampusUpdatesScreenState extends ConsumerState<CampusUpdatesScreen> {
   }
 }
 
-/// Rich gradient header — same navy treatment as the home "Latest updates" panel, so the
-/// Announcements list feels like part of one designed surface instead of a plain white page.
-/// Carries a live stat line (total + unread) instead of a bare title.
+/// Header — same navy tone as the home "Latest updates" panel (so this still reads as one
+/// designed surface, not a plain white page), pared down to just back + title + a live stat
+/// line. No extra icon badge or shadow — kept simple on purpose.
 class _AnnouncementsHero extends StatelessWidget {
   final VoidCallback onBack;
   final int? total;
@@ -156,20 +156,10 @@ class _AnnouncementsHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(4, 6, 20, 18),
+      padding: const EdgeInsets.fromLTRB(8, 4, 20, 16),
       decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF264A6E), Color(0xFF1B3A5C)],
-        ),
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(24),
-          bottomRight: Radius.circular(24),
-        ),
-        boxShadow: [
-          BoxShadow(color: Color(0x471B3A5C), blurRadius: 18, offset: Offset(0, 6)),
-        ],
+        color: Color(0xFF1B3A5C),
+        borderRadius: BorderRadius.vertical(bottom: Radius.circular(18)),
       ),
       child: Row(
         children: [
@@ -177,30 +167,18 @@ class _AnnouncementsHero extends StatelessWidget {
             icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: Colors.white),
             onPressed: onBack,
           ),
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.14), shape: BoxShape.circle),
-            child: const Icon(Icons.campaign_outlined, color: Colors.white, size: 18),
-          ),
-          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'Announcements',
-                  style: GoogleFonts.dmSans(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                    letterSpacing: -0.2,
-                  ),
+                  style: GoogleFonts.dmSans(fontSize: 17, fontWeight: FontWeight.w700, color: Colors.white),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   _subtitle,
-                  style: GoogleFonts.dmSans(fontSize: 12.5, color: Colors.white.withValues(alpha: 0.75)),
+                  style: GoogleFonts.dmSans(fontSize: 12.5, color: Colors.white.withValues(alpha: 0.7)),
                 ),
               ],
             ),

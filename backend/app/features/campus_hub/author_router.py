@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.database import AsyncSessionLocal, get_db
+from app.database import get_db
 from app.dependencies import require_verified_user
 from app.features.campus_hub import publishing
 from app.features.campus_hub.schema import (
@@ -18,7 +17,6 @@ from app.features.campus_hub.schema import (
     CampusPostUpdate,
     PublishingCapabilitiesRead,
 )
-from app.features.notifications.push import push_sender
 from app.models import CampusPost, User
 from app.shared.rate_limit import campus_post_create_limit, campus_post_publish_limit
 
@@ -27,27 +25,6 @@ router = APIRouter(tags=['campus-hub'])
 
 def _author_read(post: CampusPost) -> AuthorCampusPostRead:
     return AuthorCampusPostRead.model_validate(post)
-
-
-async def _push_if_live(post_id: UUID) -> None:
-    async with AsyncSessionLocal() as db:
-        post = await db.get(CampusPost, post_id)
-        if post is None or post.status != 'published':
-            return
-        if post.priority not in {'important', 'urgent'}:
-            return
-        now = datetime.now(UTC)
-        if post.publish_at is None or post.publish_at > now:
-            return
-        tokens = await publishing.recipient_tokens_for_post(db, post)
-        if tokens:
-            await push_sender.notify_campus_post(
-                db,
-                tokens=tokens,
-                title=post.title,
-                post_id=post.id,
-                priority=post.priority,
-            )
 
 
 @router.get('/publishing/capabilities', response_model=PublishingCapabilitiesRead)
@@ -119,10 +96,8 @@ async def publish_my_post(
     db: AsyncSession = Depends(get_db),
 ) -> AuthorCampusPostRead:
     post = await publishing.publish_post(db, actor=current_user, post_id=post_id, as_staff=True)
-    now = datetime.now(UTC)
-    is_live = post.publish_at is not None and post.publish_at <= now
-    if post.priority in {'important', 'urgent'} and is_live:
-        background_tasks.add_task(_push_if_live, post.id)
+    if publishing.should_push_on_publish(post):
+        background_tasks.add_task(publishing.push_published_post, post.id)
     return _author_read(post)
 
 

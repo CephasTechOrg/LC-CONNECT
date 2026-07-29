@@ -12,7 +12,6 @@ from app.models import CampusPost, User
 from app.shared.audit import record_audit
 
 get_post_or_404 = publishing.get_post_or_404
-recipient_tokens_for_post = publishing.recipient_tokens_for_post
 
 
 async def list_posts(db: AsyncSession, *, limit: int = 100) -> list[CampusPost]:

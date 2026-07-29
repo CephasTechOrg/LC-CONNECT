@@ -113,12 +113,7 @@ async def announcement_total(db: AsyncSession, user: User, *, category: str | No
 
 async def unread_announcement_count(db: AsyncSession, user: User) -> int:
     """How many visible announcements this user has not read yet — the badge number."""
-    read_exists = (
-        select(CampusPostRead.id)
-        .where(CampusPostRead.user_id == user.id, CampusPostRead.post_id == CampusPost.id)
-        .exists()
-    )
-    unread = _visible_announcements_stmt(user).where(~read_exists).subquery()
+    unread = _visible_announcements_stmt(user).where(~_read_exists(user)).subquery()
     return int((await db.execute(select(func.count()).select_from(unread))).scalar_one())
 
 

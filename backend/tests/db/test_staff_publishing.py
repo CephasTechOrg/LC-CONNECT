@@ -225,3 +225,32 @@ async def test_revoke_with_archive_posts_pulls_them_from_the_feed(db, factory):
     assert not await _student_sees(db, student, post)
     # Drafts are untouched: already invisible, and republishing needs a position they lost.
     assert draft.status == 'draft'
+
+
+# ── should_push_on_publish — the single gate both admin and staff publish routes share ────
+
+
+async def test_should_push_on_publish_true_for_live_important_post(db, factory):
+    _, staff = await _staff_with_verified_position(db, factory)
+    post = await _publish(db, staff, title='Heads up', priority='important')
+    assert publishing.should_push_on_publish(post) is True
+
+
+async def test_should_push_on_publish_false_for_normal_priority(db, factory):
+    _, staff = await _staff_with_verified_position(db, factory)
+    post = await _publish(db, staff, title='FYI', priority='normal')
+    assert publishing.should_push_on_publish(post) is False
+
+
+async def test_should_push_on_publish_false_when_scheduled_in_future(db, factory):
+    from datetime import UTC, datetime, timedelta
+
+    _, staff = await _staff_with_verified_position(db, factory)
+    future = datetime.now(UTC) + timedelta(days=1)
+    payload = CampusPostCreate(kind='announcement', body='Body', title='Later', priority='important', publish_at=future)
+    draft = await publishing.create_post(db, actor=staff, payload=payload, as_staff=True)
+    post = await publishing.publish_post(db, actor=staff, post_id=draft.id, as_staff=True)
+    # publish_post only defaults publish_at to "now" when it's None — an explicit future
+    # publish_at is left alone, so the post is published but not yet live.
+    assert post.publish_at == future
+    assert publishing.should_push_on_publish(post) is False

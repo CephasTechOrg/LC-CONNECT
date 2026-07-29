@@ -1,4 +1,3 @@
-from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends
@@ -21,6 +20,7 @@ from app.features.admin.schema import (
 )
 from app.features.admin.service import remove_activity as do_remove_activity
 from app.features.admin.service import suspend_user as do_suspend_user
+from app.features.campus_hub import publishing
 from app.features.campus_hub.schema import (
     CampusPostCreate,
     CampusPostUpdate,
@@ -28,7 +28,6 @@ from app.features.campus_hub.schema import (
     CampusResourceUpdate,
 )
 from app.features.campus_positions.schema import CampusPositionRead
-from app.features.notifications.push import push_sender
 from app.models import Profile, Report, User
 from app.shared.schemas import ReportRead
 
@@ -146,27 +145,6 @@ async def revoke_campus_position(
     return CampusPositionRead.model_validate(position)
 
 
-async def _push_published_post(post_id: UUID) -> None:
-    from app.database import AsyncSessionLocal
-    from app.models import CampusPost
-
-    async with AsyncSessionLocal() as db:
-        post = await db.get(CampusPost, post_id)
-        if post is None or post.status != 'published':
-            return
-        if post.priority not in {'important', 'urgent'}:
-            return
-        tokens = await posts_admin.recipient_tokens_for_post(db, post)
-        if tokens:
-            await push_sender.notify_campus_post(
-                db,
-                tokens=tokens,
-                title=post.title,
-                post_id=post.id,
-                priority=post.priority,
-            )
-
-
 @router.get('/campus-posts', response_model=list[CampusPostAdminRead])
 async def list_campus_posts(
     _: User = Depends(require_admin_aal2),
@@ -206,10 +184,8 @@ async def publish_campus_post(
 ) -> CampusPostAdminRead:
     post = await posts_admin.publish_post(db, actor=actor, post_id=post_id)
     # Only fan out push for posts that are live now — scheduled posts wait for a future job.
-    now = datetime.now(UTC)
-    is_live = post.publish_at is not None and post.publish_at <= now
-    if post.priority in {'important', 'urgent'} and is_live:
-        background_tasks.add_task(_push_published_post, post.id)
+    if publishing.should_push_on_publish(post):
+        background_tasks.add_task(publishing.push_published_post, post.id)
     return CampusPostAdminRead.model_validate(post)
 
 
