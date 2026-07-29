@@ -206,6 +206,12 @@ async def publish_post(
     )
     await db.commit()
     await db.refresh(post)
+    # Live ping so students' announcement counter ticks up the moment it goes live. Scheduled
+    # (future publish_at) posts wait — nothing to announce yet.
+    if post.kind == 'announcement' and post.publish_at is not None and post.publish_at <= now:
+        from app.features.realtime import runtime
+
+        await runtime.broadcast_announcement(post.audience)
     return post
 
 

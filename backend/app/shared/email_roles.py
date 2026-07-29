@@ -37,9 +37,10 @@ def infer_role_from_email(email: str) -> str:
     """Map a normalized campus email to `student` or `staff`. Raises on unknown domains."""
     normalized = normalize_campus_email(email)
     if normalized in settings.dev_test_email_set:
-        role = settings.dev_test_email_default_role
+        # A dev/test email may pin its own role (`email:staff`); otherwise the global default.
+        role = settings.dev_test_email_roles.get(normalized, settings.dev_test_email_default_role)
         if role not in {'student', 'staff'}:
-            raise ValueError('DEV_TEST_EMAIL_DEFAULT_ROLE must be student or staff')
+            raise ValueError('DEV_TEST_EMAIL role must be student or staff')
         return role
 
     domain = normalized.rsplit('@', 1)[-1]

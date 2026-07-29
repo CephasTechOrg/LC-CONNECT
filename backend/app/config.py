@@ -150,8 +150,28 @@ class Settings(BaseSettings):
         return self.is_development or self.is_testing
 
     @property
+    def _dev_test_email_pairs(self) -> list[tuple[str, str | None]]:
+        """Parse DEV_TEST_EMAILS entries, each `email` or `email:role` (role optional)."""
+        pairs: list[tuple[str, str | None]] = []
+        for item in self.dev_test_emails.split(','):
+            item = item.strip().lower()
+            if not item:
+                continue
+            if ':' in item:
+                email, role = item.split(':', 1)
+                pairs.append((email.strip(), role.strip() or None))
+            else:
+                pairs.append((item, None))
+        return pairs
+
+    @property
     def dev_test_email_set(self) -> frozenset[str]:
-        return frozenset(item.strip().lower() for item in self.dev_test_emails.split(',') if item.strip())
+        return frozenset(email for email, _ in self._dev_test_email_pairs)
+
+    @property
+    def dev_test_email_roles(self) -> dict[str, str]:
+        """Per-email role overrides (`email:role`); emails without one fall back to the default."""
+        return {email: role for email, role in self._dev_test_email_pairs if role}
 
     @property
     def allowed_email_domain_set(self) -> set[str]:
@@ -164,6 +184,9 @@ class Settings(BaseSettings):
         role = self.dev_test_email_default_role.strip().lower()
         if role not in {'student', 'staff'}:
             raise ValueError('DEV_TEST_EMAIL_DEFAULT_ROLE must be student or staff')
+        for email, per_role in self.dev_test_email_roles.items():
+            if per_role not in {'student', 'staff'}:
+                raise ValueError(f'DEV_TEST_EMAILS role for {email} must be student or staff, got {per_role!r}')
         return self
 
     @property

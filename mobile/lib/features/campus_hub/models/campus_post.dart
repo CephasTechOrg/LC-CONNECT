@@ -73,12 +73,10 @@ class CampusPost extends CampusPostSummary {
 class CampusHubOverview {
   final List<CampusPostSummary> urgentPosts;
   final List<CampusPostSummary> latestUpdates;
-  final List<CampusPostSummary> upcomingDeadlines;
 
   const CampusHubOverview({
     required this.urgentPosts,
     required this.latestUpdates,
-    required this.upcomingDeadlines,
   });
 
   factory CampusHubOverview.fromJson(Map<String, dynamic> json) => CampusHubOverview(
@@ -88,15 +86,11 @@ class CampusHubOverview {
         latestUpdates: (json['latest_updates'] as List)
             .map((item) => CampusPostSummary.fromJson(item as Map<String, dynamic>))
             .toList(),
-        upcomingDeadlines: (json['upcoming_deadlines'] as List)
-            .map((item) => CampusPostSummary.fromJson(item as Map<String, dynamic>))
-            .toList(),
       );
 }
 
+// Two clear types. Urgency is the post's priority, not a type.
 const postKindLabels = <String, String>{
-  'update': 'Update',
-  'deadline': 'Deadline',
+  'announcement': 'Announcement',
   'opportunity': 'Opportunity',
-  'alert': 'Alert',
 };

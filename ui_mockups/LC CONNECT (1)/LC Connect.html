@@ -44,12 +44,18 @@ const C = {
   border:    '#E5EAF0',
   green:     '#10B981',
 };
+/* Single student PNG placeholder — swap this one file to change every student photo.
+   Campus JPG is the fixed real asset used for spotlight backgrounds + announcements. */
+const STUDENT = 'uploads/volley-student.png';
+const CAMPUS  = 'uploads/sch-82fde14f.jpg';
 const IMG = {
-  students: 'uploads/students.png',
-  school:   'uploads/school.png',
-  headshot: 'uploads/headshots.png',
-  hero:     'uploads/groupstudents.png',
-  logo:     'uploads/lclogo.png',
+  students:   STUDENT,
+  school:     CAMPUS,
+  headshot:   STUDENT,
+  hero:       STUDENT,
+  logo:       'uploads/lclogo.png',
+  campus:     CAMPUS,
+  volleyball: STUDENT,
 };
 
 /* ── Inline SVG icon set (Feather/Lucide style) ── */
@@ -197,7 +203,7 @@ function LoginScreen({ onSignIn }) {
 
       {/* ── HERO — single campus photo, full-bleed under status bar ── */}
       <div style={{ position: 'relative', flexShrink: 0, height: 320, overflow: 'hidden' }}>
-        <img src={IMG.hero} alt="Livingstone College students" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: '50% 20%' }} />
+        <img src="uploads/groupstudents.png" alt="Livingstone College students" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: '50% 20%' }} />
         <svg viewBox="0 0 400 40" preserveAspectRatio="none" style={{ position: 'absolute', bottom: -1, left: 0, width: '100%', height: 40, display: 'block' }}>
           <path d="M0 26 Q200 2 400 26 L400 40 L0 40 Z" fill={C.white} />
         </svg>
@@ -251,151 +257,218 @@ Object.assign(window, { LoginScreen });
 
 <!-- ─────────────── SCREEN 2 · HOME ──────────────────────────── -->
 <script type="text/babel">
+/* ── Home-specific icons (24px stroke family) ── */
+const HomeIco = {
+  megaphone: c => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 11l14-6v14L3 13v-2z"/><path d="M3 11v2a2 2 0 002 2h1v3a1 1 0 001 1h1a1 1 0 001-1v-3"/><path d="M20 9a3 3 0 010 6"/></svg>,
+  idCard:    c => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="5" width="18" height="14" rx="2.5"/><circle cx="9" cy="11" r="2"/><path d="M6 16c.5-1.5 1.7-2.2 3-2.2s2.5.7 3 2.2"/><path d="M14.5 10h4M14.5 13.5h3"/></svg>,
+  book:      c => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M4 5a2 2 0 012-2h13v16H6a2 2 0 00-2 2V5z"/><path d="M4 19a2 2 0 012-2h13"/><path d="M9 7h6M9 10h6"/></svg>,
+  briefcase: c => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="7" width="18" height="13" rx="2.5"/><path d="M8 7V5.5A1.5 1.5 0 019.5 4h5A1.5 1.5 0 0116 5.5V7"/><path d="M3 12h18"/></svg>,
+  chevronR:  c => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg>,
+};
+
+/* ── Reusable hero SpotlightCard: layout is fixed, only data changes ── */
+function SpotlightCard({ data }) {
+  return (
+    <div style={{ position: 'relative', height: 188, borderRadius: 20, overflow: 'hidden', background: 'linear-gradient(135deg,#EAF2F9 0%,#D7E6F2 100%)', border: `1px solid ${C.border}`, boxShadow: '0 6px 20px rgba(36,95,145,0.12)' }}>
+      {/* Campus background — the fixed campus photo, clearly visible */}
+      {data.bg && <img src={data.bg} alt="" aria-hidden="true" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 55%', zIndex: 1 }} />}
+      {/* Left legibility wash */}
+      <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(105deg, rgba(238,245,251,0.97) 0%, rgba(238,245,251,0.82) 40%, rgba(238,245,251,0.25) 64%, rgba(238,245,251,0) 82%)', zIndex: 2 }} />
+      {/* Blue curved brand graphics */}
+      <div aria-hidden="true" style={{ position: 'absolute', top: -70, right: -70, width: 230, height: 230, borderRadius: '50%', background: 'rgba(63,127,181,0.16)', zIndex: 2 }} />
+      <svg viewBox="0 0 200 100" preserveAspectRatio="none" aria-hidden="true" style={{ position: 'absolute', bottom: 0, left: 0, width: 200, height: 66, zIndex: 4 }}>
+        <path d="M0 100 L0 52 Q70 92 200 100 Z" fill="#245F91" opacity="0.9" />
+        <path d="M0 100 L0 74 Q54 96 140 100 Z" fill="#3F7FB5" />
+      </svg>
+      {/* Student — supplied as a subject image, feathered into the scene */}
+      {data.student && (
+        <div style={{ position: 'absolute', top: 0, bottom: 0, right: 0, width: '56%', zIndex: 3, WebkitMaskImage: 'linear-gradient(to right, transparent 0%, #000 12%, #000 95%, transparent 100%), linear-gradient(to bottom, transparent 0%, #000 6%, #000 100%)', WebkitMaskComposite: 'source-in', maskImage: 'linear-gradient(to right, transparent 0%, #000 12%, #000 95%, transparent 100%), linear-gradient(to bottom, transparent 0%, #000 6%, #000 100%)', maskComposite: 'intersect' }}>
+          <img src={data.student} alt={data.studentAlt || ''} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top' }} />
+        </div>
+      )}
+      {/* Content */}
+      <div style={{ position: 'absolute', inset: 0, zIndex: 5, padding: '16px 18px', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ lineHeight: 1 }}>
+          <div style={{ fontFamily: 'Georgia, "Times New Roman", serif', fontSize: 17, fontWeight: 700, color: '#1B2A3A', letterSpacing: '0.02em' }}>LIVINGSTONE</div>
+          <div style={{ fontFamily: 'Georgia, serif', fontSize: 9.5, fontWeight: 600, color: '#3A4A5A', letterSpacing: '0.42em', marginTop: 2 }}>COLLEGE</div>
+        </div>
+        <div style={{ marginTop: 'auto' }}>
+          <h2 style={{ fontSize: 21, fontWeight: 800, color: C.dark, lineHeight: 1.14, letterSpacing: '-0.01em', maxWidth: 190 }}>
+            {data.headline.map((seg, i) => seg.t === '\n' ? <br key={i} /> : <span key={i} style={{ color: seg.hl ? C.blue : C.dark }}>{seg.t}</span>)}
+          </h2>
+          <p style={{ fontSize: 11.5, color: C.mid, lineHeight: 1.4, marginTop: 7, maxWidth: 175 }}>{data.desc}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const SPOTLIGHTS = [
+  { bg: IMG.campus, student: IMG.volleyball, studentAlt: 'Livingstone College volleyball student-athlete, #14',
+    headline: [{ t: 'Stay ' }, { t: 'connected.', hl: true }, { t: '\n' }, { t: 'Stay ' }, { t: 'involved.', hl: true }],
+    desc: 'Your campus. Your community. Your future.' },
+  { bg: IMG.campus, studentAlt: '',
+    headline: [{ t: 'Find your ' }, { t: 'people.', hl: true }],
+    desc: 'Join student groups and organizations built around what you love.' },
+  { bg: IMG.campus, studentAlt: '',
+    headline: [{ t: 'Never miss a ' }, { t: 'moment.', hl: true }],
+    desc: 'Discover campus events, games, and study sessions every week.' },
+];
+
+function HeroSpotlight() {
+  const [idx, setIdx] = React.useState(0);
+  const drag = React.useRef({ x: 0, active: false });
+  const n = SPOTLIGHTS.length;
+  const go = d => setIdx(i => Math.max(0, Math.min(n - 1, i + d)));
+  const onDown = e => { drag.current = { x: (e.touches ? e.touches[0].clientX : e.clientX), active: true }; };
+  const onUp = e => {
+    if (!drag.current.active) return;
+    const x = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
+    const dx = x - drag.current.x;
+    if (Math.abs(dx) > 40) go(dx < 0 ? 1 : -1);
+    drag.current.active = false;
+  };
+  return (
+    <div style={{ padding: '4px 20px 0' }}>
+      <div style={{ overflow: 'hidden', borderRadius: 20, touchAction: 'pan-y' }}
+           onTouchStart={onDown} onTouchEnd={onUp} onMouseDown={onDown} onMouseUp={onUp}>
+        <div style={{ display: 'flex', transform: `translateX(-${idx * 100}%)`, transition: 'transform 0.42s cubic-bezier(0.22,0.61,0.36,1)' }}>
+          {SPOTLIGHTS.map((s, i) => (
+            <div key={i} style={{ minWidth: '100%', flexShrink: 0 }}><SpotlightCard data={s} /></div>
+          ))}
+        </div>
+      </div>
+      <div role="tablist" aria-label="Spotlights" style={{ display: 'flex', justifyContent: 'center', gap: 7, marginTop: 12 }}>
+        {SPOTLIGHTS.map((_, i) => (
+          <button key={i} role="tab" aria-selected={i === idx} aria-label={`Spotlight ${i + 1}`} onClick={() => setIdx(i)}
+            style={{ width: i === idx ? 20 : 7, height: 7, borderRadius: 4, border: 'none', padding: 0, cursor: 'pointer', background: i === idx ? C.blue : '#C4D3E0', transition: 'all 0.3s' }} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 const QUICK_ACTIONS = [
-  { label: 'Connect',    icon: Ico.personPlus, screen: 'connect' },
-  { label: 'Groups',     icon: Ico.users,      screen: 'connect', tab: 'Groups' },
-  { label: 'Activities', icon: Ico.calendar,   screen: 'activities' },
-  { label: 'Messages',   icon: Ico.message,    screen: 'messages' },
-];
-const HOME_GROUPS = [
-  { name: 'Livingstone Volleyball', sub: '124 members', icon: 'lc' },
-  { name: 'Pre-Health Society',    sub: '98 members',  icon: c => Ico.heart(c) },
-  { name: 'Tech Club',              sub: '76 members',  icon: c => Ico.code(c) },
-  { name: "Men's Mentorship",       sub: '85 members',  icon: c => Ico.users(c), tone: 'green' },
-];
-const HOME_STUDENTS = [
-  { name: 'Malik J.',  sub: "Computer Science '26", tags: ['Coding', 'Soccer'] },
-  { name: 'Sophie L.', sub: "Biology '27",           tags: ['Study Buddies', 'Hiking'] },
-  { name: 'Ethan R.',  sub: "Economics '26",         tags: ['Finance', 'Basketball'] },
+  { label: 'Directory',     icon: HomeIco.idCard,    screen: 'connect' },
+  { label: 'Resources',     icon: HomeIco.book,      screen: 'activities' },
+  { label: 'Opportunities', icon: HomeIco.briefcase, screen: 'connect', tab: 'Groups' },
 ];
 const HOME_ACTS = [
-  { em: '📖', name: 'Study Session',  loc: 'Library, 2nd Floor', going: 8,  time: '2:00 PM' },
-  { em: '🏀', name: 'Basketball Run', loc: 'Recreation Center',  going: 12, time: '5:00 PM' },
-  { em: '☕', name: 'Coffee Meetup',  loc: 'Campus Cafe',        going: 6,  time: '7:30 PM' },
+  { mon: 'JUL', day: '30', name: 'Nature Talk', when: 'Thu, Jul 30 · Park',    going: '3/40 going' },
+  { mon: 'JUL', day: '30', name: 'Game night',  when: 'Thu, Jul 30 · Ballard', going: '2 going' },
 ];
+const HOME_SUGGEST = [
+  { name: 'Bonus',   major: 'Business',         match: 92 },
+  { name: 'Aaliyah', major: 'Nursing',          match: 87 },
+  { name: 'Jordan',  major: 'Computer Sci.',    match: 78 },
+];
+
+function HomeSectionHeader({ title, onAction }) {
+  return (
+    <div style={{ padding: '24px 20px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+      <span style={{ fontSize: 19, fontWeight: 700, color: C.dark, letterSpacing: '-0.01em' }}>{title}</span>
+      <button onClick={onAction} style={{ background: 'none', border: 'none', fontSize: 13, color: C.blue, fontWeight: 600, cursor: 'pointer', padding: 0 }}>See all</button>
+    </div>
+  );
+}
 
 function HomeScreen({ onNav }) {
   return (
-    <div style={{ background: C.bg }}>
-      <AppHeader title="Good morning, Cephas" subtitle="Livingstone College" action={<IconBtn label="Notifications, 1 unread" badge>{Ico.bell(C.muted)}</IconBtn>} />
-
-      {/* Search */}
-      <div style={{ padding: '12px 20px 0' }}>
-        <SearchBar placeholder="Search students, groups, or activities" />
+    <div style={{ background: C.bg, minHeight: '100%' }}>
+      {/* Greeting header */}
+      <div style={{ background: C.bg, padding: `${HDR_TOP}px 20px 6px`, display: 'flex', alignItems: 'center', gap: 12 }}>
+        <img src={IMG.logo} alt="Livingstone College Blue Bears" style={{ width: 46, height: 46, objectFit: 'contain', flexShrink: 0 }} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <h1 style={{ fontSize: 24, fontWeight: 800, color: C.dark, lineHeight: 1.1, letterSpacing: '-0.02em' }}>Good morning, Francis</h1>
+          <p style={{ fontSize: 13.5, color: C.muted, marginTop: 3 }}>Campus Hub · Livingstone College</p>
+        </div>
+        <button aria-label="Notifications, 2 unread" style={{ position: 'relative', width: 44, height: 44, border: 'none', background: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
+          {Ico.bell(C.mid)}
+          <span aria-hidden="true" style={{ position: 'absolute', top: 4, right: 4, minWidth: 17, height: 17, padding: '0 4px', borderRadius: 9, background: '#EF4444', color: '#fff', fontSize: 10.5, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1.5px solid #F6F9FB' }}>2</span>
+        </button>
       </div>
 
-      {/* Hero banner */}
-      <div style={{ margin: '16px 20px 4px', borderRadius: 16, overflow: 'hidden', position: 'relative', background: C.blue, display: 'flex', minHeight: 150 }}>
-        <div style={{ flex: 1, padding: '16px 8px 16px 18px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 7, position: 'relative', zIndex: 2 }}>
-          <span style={{ display: 'inline-block', fontSize: 10, fontWeight: 600, color: '#fff', background: 'rgba(255,255,255,0.18)', padding: '3px 9px', borderRadius: 20, width: 'fit-content' }}>Welcome to LC Connect</span>
-          <h2 style={{ fontSize: 19, fontWeight: 700, color: '#fff', lineHeight: 1.22 }}>Your campus.<br />Your community.</h2>
-          <p style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.85)', lineHeight: 1.4, maxWidth: 148 }}>Find your people, join groups, and achieve more together.</p>
-          <button onClick={() => onNav('connect')} style={{ marginTop: 4, padding: '8px 16px', borderRadius: 10, background: '#fff', border: 'none', color: C.blue, fontSize: 12, fontWeight: 700, cursor: 'pointer', width: 'fit-content' }}>Get Started</button>
-        </div>
-        <div style={{ width: 128, position: 'relative', flexShrink: 0 }}>
-          <img src={IMG.hero} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: '25% 25%' }} />
-          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to right, rgba(63,127,181,0.95), rgba(63,127,181,0))' }} />
-        </div>
+      {/* Hero spotlight carousel */}
+      <div style={{ marginTop: 8 }}>
+        <HeroSpotlight />
       </div>
 
       {/* Quick actions */}
-      <div style={{ display: 'flex', padding: '16px 20px 4px', gap: 8 }}>
+      <div style={{ display: 'flex', padding: '18px 20px 4px', gap: 12 }}>
         {QUICK_ACTIONS.map(qa => (
-          <button key={qa.label} onClick={() => onNav(qa.screen, qa.tab)} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7, background: 'none', border: 'none', cursor: 'pointer' }}>
-            <div style={{ width: 52, height: 52, borderRadius: 15, background: C.blueSoft, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{qa.icon(C.blue)}</div>
-            <span style={{ fontSize: 11, color: C.mid, fontWeight: 500 }}>{qa.label}</span>
+          <button key={qa.label} onClick={() => onNav(qa.screen, qa.tab)} style={{ flex: 1, minWidth: 0, background: C.white, border: `1px solid ${C.border}`, borderRadius: 16, padding: '16px 6px 13px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, cursor: 'pointer', boxShadow: '0 1px 3px rgba(17,24,39,0.04)' }}>
+            <div style={{ width: 46, height: 46, borderRadius: 13, background: C.blueSoft, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{qa.icon(C.blue)}</div>
+            <span style={{ fontSize: 13, color: C.dark, fontWeight: 600 }}>{qa.label}</span>
           </button>
         ))}
       </div>
 
-      {/* Recommended for you */}
-      <SectionHeader title="Recommended for you" action="View all" onAction={() => onNav('connect')} />
-      <div style={{ overflowX: 'auto', display: 'flex', gap: 12, padding: '0 20px 4px' }}>
-        {HOME_STUDENTS.map((s, i) => (
-          <div key={i} style={{ background: C.white, borderRadius: 16, border: `1px solid ${C.border}`, minWidth: 152, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '16px 14px 14px', gap: 10, boxShadow: '0 1px 3px rgba(17,24,39,0.05)' }}>
-            <Avatar size={60} sx={{ border: '2px solid #fff', boxShadow: '0 2px 10px rgba(17,24,39,0.12)' }} />
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 14, fontWeight: 600, color: C.dark }}>{s.name}</div>
-              <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{s.sub}</div>
-            </div>
-            <span style={{ fontSize: 10.5, color: C.blue, background: C.blueSoft, padding: '3px 10px', borderRadius: 20, fontWeight: 500 }}>{s.tags[0]}</span>
-            <button style={{ width: '100%', padding: '9px 0', borderRadius: 10, background: C.blue, border: 'none', color: '#fff', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-              <span style={{ display: 'flex', width: 15, height: 15, alignItems: 'center', justifyContent: 'center' }}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M13 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="7.5" cy="7" r="4"/><path d="M20 8v6M23 11h-6"/></svg></span>Connect
+      {/* Latest updates */}
+      <div style={{ padding: '18px 20px 0' }}>
+        <div style={{ borderRadius: 18, padding: '15px 16px 16px', background: 'linear-gradient(150deg,#264A6E 0%,#1B3A5C 100%)', boxShadow: '0 6px 18px rgba(27,58,92,0.28)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+            {HomeIco.megaphone('#fff')}
+            <span style={{ fontSize: 16, fontWeight: 700, color: '#fff', flex: 1 }}>Latest updates</span>
+            <button onClick={() => onNav('activities')} style={{ display: 'flex', alignItems: 'center', gap: 7, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+              <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.9)', fontWeight: 600 }}>See all</span>
+              <span aria-hidden="true" style={{ minWidth: 18, height: 18, padding: '0 5px', borderRadius: 9, background: '#EF4444', color: '#fff', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>2</span>
             </button>
           </div>
-        ))}
-        <div style={{ width: 4, flexShrink: 0 }} />
-      </div>
-
-      {/* Study partners CTA */}
-      <SectionHeader title="Study Partners" />
-      <div style={{ padding: '0 20px' }}>
-        <div onClick={() => onNav('connect', 'Study Partners')} style={{ background: C.white, borderRadius: 14, padding: '14px', border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', boxShadow: '0 1px 3px rgba(17,24,39,0.05)' }}>
-          <div style={{ width: 42, height: 42, borderRadius: 12, background: C.blueSoft, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{Ico.studyHat(C.blue)}</div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 13.5, fontWeight: 600, color: C.dark }}>Find a study partner</div>
-            <div style={{ fontSize: 11.5, color: C.muted, marginTop: 1 }}>Connect with students in your classes.</div>
+          <div onClick={() => onNav('activities')} style={{ marginTop: 13, background: 'rgba(255,255,255,0.09)', border: '1px solid rgba(255,255,255,0.14)', borderRadius: 13, padding: 11, display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
+            <div style={{ width: 58, height: 58, borderRadius: 11, overflow: 'hidden', flexShrink: 0, background: 'rgba(255,255,255,0.15)' }}>
+              <img src={IMG.school} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: '#fff' }}>Homecoming Week</div>
+              <div style={{ fontSize: 12.5, color: 'rgba(255,255,255,0.82)', lineHeight: 1.4, marginTop: 2 }}>Join us for a week of events and celebration!</div>
+              <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.6)', marginTop: 4 }}>2h ago</div>
+            </div>
+            {HomeIco.chevronR('rgba(255,255,255,0.7)')}
           </div>
-          {Ico.chevron(C.muted)}
         </div>
       </div>
 
       {/* Upcoming activities */}
-      <SectionHeader title="Upcoming Activities" action="See all" onAction={() => onNav('activities')} />
-      <div style={{ padding: '0 20px', display: 'flex', flexDirection: 'column', gap: 9 }}>
+      <HomeSectionHeader title="Upcoming activities" onAction={() => onNav('activities')} />
+      <div style={{ padding: '0 20px', display: 'flex', flexDirection: 'column', gap: 11 }}>
         {HOME_ACTS.map((a, i) => (
-          <div key={i} onClick={() => onNav('activities')} style={{ background: C.white, borderRadius: 14, padding: '12px 13px', border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 11, boxShadow: '0 1px 3px rgba(17,24,39,0.05)', cursor: 'pointer' }}>
-            <div style={{ width: 40, height: 40, borderRadius: 11, background: C.blueSoft, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 19, flexShrink: 0 }}>{a.em}</div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 13.5, fontWeight: 600, color: C.dark }}>{a.name}</div>
-              <div style={{ fontSize: 11.5, color: C.muted, marginTop: 1 }}>{a.loc}</div>
+          <div key={i} onClick={() => onNav('activities')} style={{ background: C.white, borderRadius: 16, padding: 13, border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 13, boxShadow: '0 1px 3px rgba(17,24,39,0.04)', cursor: 'pointer' }}>
+            <div style={{ width: 54, height: 54, borderRadius: 13, background: C.blueSoft, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <span style={{ fontSize: 10.5, fontWeight: 700, color: C.blue, letterSpacing: '0.06em' }}>{a.mon}</span>
+              <span style={{ fontSize: 21, fontWeight: 800, color: C.dark, lineHeight: 1 }}>{a.day}</span>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3 }}>
-              <span style={{ fontSize: 12.5, color: C.blue, fontWeight: 700 }}>{a.time}</span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>{Ico.usersSm(C.muted)}<span style={{ fontSize: 11, color: C.muted }}>{a.going} going</span></div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 15.5, fontWeight: 700, color: C.dark }}>{a.name}</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 4 }}>{Ico.pin(C.muted)}<span style={{ fontSize: 12.5, color: C.mid }}>{a.when}</span></div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 3 }}>{Ico.usersSm(C.muted)}<span style={{ fontSize: 12.5, color: C.mid }}>{a.going}</span></div>
             </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <div style={{ width: 38, height: 38, borderRadius: 11, background: C.blueSoft, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{Ico.calSm(C.blue)}</div>
+              {HomeIco.chevronR(C.muted)}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Suggested connections */}
+      <HomeSectionHeader title="Suggested connections" onAction={() => onNav('connect')} />
+      <div style={{ display: 'flex', gap: 12, overflowX: 'auto', padding: '0 20px 4px' }}>
+        {HOME_SUGGEST.map((s, i) => (
+          <div key={i} style={{ flex: '1 1 0', minWidth: 128, background: C.white, borderRadius: 16, border: `1px solid ${C.border}`, padding: 13, boxShadow: '0 1px 3px rgba(17,24,39,0.04)' }}>
+            <div style={{ position: 'relative', width: 'fit-content', marginBottom: 9 }}>
+              <Avatar size={48} />
+              <button aria-label={`Connect with ${s.name}`} onClick={() => onNav('connect')} style={{ position: 'absolute', bottom: -3, left: -3, width: 24, height: 24, borderRadius: '50%', background: C.blueSoft, border: '2px solid white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0 }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={C.blue} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M13 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="7.5" cy="7" r="4"/><path d="M20 8v6M23 11h-6"/></svg>
+              </button>
+            </div>
+            <div style={{ fontSize: 14.5, fontWeight: 700, color: C.dark, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.name}</div>
+            <div style={{ fontSize: 12, color: C.muted, marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.major}</div>
+            <div style={{ fontSize: 12.5, color: C.blue, fontWeight: 700, marginTop: 7 }}>{s.match}% match</div>
           </div>
         ))}
       </div>
 
-      {/* Campus groups */}
-      <SectionHeader title="Campus Groups" action="See all" onAction={() => onNav('connect', 'Groups')} />
-      <div style={{ overflowX: 'auto', display: 'flex', gap: 10, padding: '0 20px 6px' }}>
-        {HOME_GROUPS.map((g, i) => (
-          <div key={i} onClick={() => onNav('connect', 'Groups')} style={{ background: C.white, borderRadius: 14, border: `1px solid ${C.border}`, padding: '13px', minWidth: 122, flexShrink: 0, cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 9, boxShadow: '0 1px 3px rgba(17,24,39,0.05)' }}>
-            <div style={{ width: 38, height: 38, borderRadius: 11, background: g.tone === 'green' ? '#ECFDF5' : C.blueSoft, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              {g.icon === 'lc' ? <span style={{ color: C.blue, fontWeight: 700, fontSize: 13 }}>LC</span> : g.icon(g.tone === 'green' ? C.green : C.blue)}
-            </div>
-            <div>
-              <div style={{ fontSize: 12.5, fontWeight: 600, color: C.dark, lineHeight: 1.3 }}>{g.name}</div>
-              <div style={{ fontSize: 10.5, color: C.muted, marginTop: 2 }}>{g.sub}</div>
-            </div>
-          </div>
-        ))}
-        <div style={{ width: 4, flexShrink: 0 }} />
-      </div>
-
-      {/* Recent messages */}
-      <SectionHeader title="Messages" action="View all" onAction={() => onNav('messages')} />
-      <div style={{ padding: '0 20px 24px' }}>
-        <div onClick={() => onNav('messages')} style={{ background: C.white, borderRadius: 14, padding: '13px', border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 11, boxShadow: '0 1px 3px rgba(17,24,39,0.05)', cursor: 'pointer' }}>
-          <div style={{ position: 'relative' }}>
-            <Avatar size={44} />
-            <div style={{ position: 'absolute', top: 0, left: 0, width: 11, height: 11, borderRadius: '50%', background: C.blue, border: '2px solid white' }} />
-          </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 13.5, fontWeight: 600, color: C.dark }}>Sophie L.</div>
-            <div style={{ fontSize: 12, color: C.mid, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              Hey! I'm also taking BIO 201. Want to study together this week?
-            </div>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-            <span style={{ fontSize: 10, color: C.muted }}>2h</span>
-            <div style={{ width: 8, height: 8, borderRadius: '50%', background: C.blue }} />
-          </div>
-        </div>
-      </div>
-
+      <div style={{ height: 24 }} />
       <BottomNav active="home" onNav={onNav} />
     </div>
   );

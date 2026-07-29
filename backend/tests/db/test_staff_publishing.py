@@ -60,7 +60,7 @@ async def test_unverified_staff_cannot_publish(db, factory):
         await publishing.create_post(
             db,
             actor=staff,
-            payload=CampusPostCreate(kind='update', title='Hi', body='Body'),
+            payload=CampusPostCreate(kind='announcement', title='Hi', body='Body'),
             as_staff=True,
         )
     assert exc.value.status_code == 403
@@ -96,7 +96,7 @@ async def test_staff_cannot_set_urgent_priority(db, factory):
             db,
             actor=staff,
             payload=CampusPostCreate(
-                kind='alert',
+                kind='announcement',
                 title='Campus closed',
                 body='Weather alert',
                 priority='urgent',
@@ -129,7 +129,7 @@ async def test_staff_cannot_manage_another_authors_post(db, factory):
     post = await publishing.create_post(
         db,
         actor=staff_a,
-        payload=CampusPostCreate(kind='update', title='Owned by A', body='Secret'),
+        payload=CampusPostCreate(kind='announcement', title='Owned by A', body='Secret'),
         as_staff=True,
     )
     with pytest.raises(HTTPException) as exc:
@@ -145,14 +145,14 @@ async def test_student_cannot_publish(db, factory):
         await publishing.create_post(
             db,
             actor=student,
-            payload=CampusPostCreate(kind='update', title='Nope', body='Nope'),
+            payload=CampusPostCreate(kind='announcement', title='Nope', body='Nope'),
             as_staff=True,
         )
     assert exc.value.status_code == 403
 
 
 async def _publish(db, staff, **kwargs):
-    payload = CampusPostCreate(kind='update', body='Body', **kwargs)
+    payload = CampusPostCreate(kind='announcement', body='Body', **kwargs)
     draft = await publishing.create_post(db, actor=staff, payload=payload, as_staff=True)
     return await publishing.publish_post(db, actor=staff, post_id=draft.id, as_staff=True)
 
@@ -210,7 +210,7 @@ async def test_revoke_with_archive_posts_pulls_them_from_the_feed(db, factory):
     draft = await publishing.create_post(
         db,
         actor=staff,
-        payload=CampusPostCreate(kind='update', title='Unsent', body='Body'),
+        payload=CampusPostCreate(kind='announcement', title='Unsent', body='Body'),
         as_staff=True,
     )
     position = await get_primary_position(db, staff.id)

@@ -108,6 +108,13 @@ class MessageDeleted extends InboundEvent {
   const MessageDeleted(this.conversationId, this.messageId);
 }
 
+/// Campus-wide ping that a new announcement went live. Content-free — carries only the audience
+/// ('all' | 'students' | 'staff') so the client bumps its counter only when it applies.
+class AnnouncementEvent extends InboundEvent {
+  final String audience;
+  const AnnouncementEvent(this.audience);
+}
+
 class WsError extends InboundEvent {
   final String code;
   final String message;
@@ -149,6 +156,8 @@ InboundEvent parseInbound(Map<String, dynamic> raw) {
       );
     case 'notification':
       return NotificationEvent(Map<String, dynamic>.from(raw['notification'] as Map));
+    case 'announcement':
+      return AnnouncementEvent(raw['audience'] as String? ?? 'all');
     case 'message.deleted':
       return MessageDeleted(raw['conversation_id'] as String, raw['message_id'] as String);
     case 'error':

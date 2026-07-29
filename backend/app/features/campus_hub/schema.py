@@ -81,7 +81,6 @@ class PublishingCapabilitiesRead(BaseModel):
 class CampusHubOverviewRead(BaseModel):
     urgent_posts: list[CampusPostSummaryRead]
     latest_updates: list[CampusPostSummaryRead]
-    upcoming_deadlines: list[CampusPostSummaryRead]
 
 
 class CampusResourceRead(BaseModel):
@@ -98,7 +97,9 @@ class CampusResourceRead(BaseModel):
 
 
 class CampusPostCreate(BaseModel):
-    kind: str = Field(pattern=r'^(update|deadline|opportunity|alert)$')
+    # Two clear types students see. Urgency is the `priority` field (urgent → alert banner),
+    # not a separate kind — that keeps type and urgency from overlapping.
+    kind: str = Field(pattern=r'^(announcement|opportunity)$')
     title: str = Field(min_length=1, max_length=200)
     summary: str | None = Field(default=None, max_length=400)
     body: str = Field(min_length=1, max_length=8000)
@@ -117,7 +118,7 @@ class CampusPostCreate(BaseModel):
 
 
 class CampusPostUpdate(BaseModel):
-    kind: str | None = Field(default=None, pattern=r'^(update|deadline|opportunity|alert)$')
+    kind: str | None = Field(default=None, pattern=r'^(announcement|opportunity)$')
     title: str | None = Field(default=None, min_length=1, max_length=200)
     summary: str | None = Field(default=None, max_length=400)
     body: str | None = Field(default=None, min_length=1, max_length=8000)

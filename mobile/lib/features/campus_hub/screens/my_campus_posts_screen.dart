@@ -95,8 +95,9 @@ class MyCampusPostsScreen extends ConsumerWidget {
                           separatorBuilder: (_, _) => const SizedBox(height: 10),
                           itemBuilder: (context, index) => _AuthorPostTile(
                             post: posts[index],
+                            onEdit: () => context.push('/home/my-posts/new', extra: posts[index]),
                             onPublish: () => _publish(context, ref, posts[index]),
-                            onArchive: () => _archive(context, ref, posts[index]),
+                            onRemove: () => _archive(context, ref, posts[index]),
                             onOpen: posts[index].isPublished
                                 ? () => context.push('/home/posts/${posts[index].id}')
                                 : null,
@@ -152,11 +153,15 @@ class MyCampusPostsScreen extends ConsumerWidget {
     final ok = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Archive this post?'),
-        content: Text('“${post.title}” will leave Campus Hub. You can still see it here as archived.'),
+        title: const Text('Remove this post?'),
+        content: Text('“${post.title}” will be taken off Campus Hub. It stays here as archived, so nothing is lost.'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Archive')),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+            child: const Text('Remove'),
+          ),
         ],
       ),
     );
@@ -166,7 +171,7 @@ class MyCampusPostsScreen extends ConsumerWidget {
       _invalidateFeeds(ref);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Archived')),
+          const SnackBar(content: Text('Removed from Campus Hub')),
         );
       }
     } catch (e) {
@@ -187,16 +192,20 @@ class MyCampusPostsScreen extends ConsumerWidget {
 
 class _AuthorPostTile extends StatelessWidget {
   final AuthorCampusPost post;
+  final VoidCallback onEdit;
   final VoidCallback onPublish;
-  final VoidCallback onArchive;
+  final VoidCallback onRemove;
   final VoidCallback? onOpen;
 
   const _AuthorPostTile({
     required this.post,
+    required this.onEdit,
     required this.onPublish,
-    required this.onArchive,
+    required this.onRemove,
     this.onOpen,
   });
+
+  bool get _archived => post.status == 'archived';
 
   @override
   Widget build(BuildContext context) {
@@ -208,7 +217,7 @@ class _AuthorPostTile extends StatelessWidget {
         onTap: onOpen,
         borderRadius: BorderRadius.circular(14),
         child: Container(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.fromLTRB(14, 12, 8, 14),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(14),
             border: Border.all(color: AppColors.border),
@@ -218,46 +227,83 @@ class _AuthorPostTile extends StatelessWidget {
             children: [
               Row(
                 children: [
+                  _StatusPill(status: post.status),
+                  const SizedBox(width: 8),
                   Text(
                     kind,
                     style: GoogleFonts.dmSans(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    post.status,
-                    style: GoogleFonts.dmSans(fontSize: 11, color: AppColors.textMuted),
+                        fontSize: 11.5, fontWeight: FontWeight.w600, color: AppColors.textMuted),
                   ),
                   const Spacer(),
                   if (post.isDraft)
-                    TextButton(onPressed: onPublish, child: const Text('Publish')),
-                  if (!post.isDraft && post.status != 'archived')
-                    TextButton(onPressed: onArchive, child: const Text('Archive')),
+                    TextButton(
+                      onPressed: onPublish,
+                      style: TextButton.styleFrom(minimumSize: const Size(0, 32)),
+                      child: Text('Publish',
+                          style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, color: AppColors.primary)),
+                    ),
+                  if (!_archived) _menu(),
                 ],
               ),
-              Text(
-                post.title,
-                style: GoogleFonts.dmSans(
-                  fontSize: 14.5,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textDark,
+              Padding(
+                padding: const EdgeInsets.only(left: 2, right: 6),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      post.title,
+                      style: GoogleFonts.dmSans(
+                          fontSize: 14.5, fontWeight: FontWeight.w700, color: AppColors.textDark),
+                    ),
+                    if (post.summary != null && post.summary!.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        post.summary!,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.textMid),
+                      ),
+                    ],
+                  ],
                 ),
               ),
-              if (post.summary != null && post.summary!.isNotEmpty) ...[
-                const SizedBox(height: 4),
-                Text(
-                  post.summary!,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.textMid),
-                ),
-              ],
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _menu() {
+    return PopupMenuButton<String>(
+      icon: const Icon(Icons.more_vert_rounded, size: 20, color: AppColors.textMuted),
+      onSelected: (v) => v == 'edit' ? onEdit() : onRemove(),
+      itemBuilder: (_) => [
+        const PopupMenuItem(value: 'edit', child: Text('Edit')),
+        const PopupMenuItem(value: 'remove', child: Text('Remove from Hub')),
+      ],
+    );
+  }
+}
+
+class _StatusPill extends StatelessWidget {
+  final String status;
+  const _StatusPill({required this.status});
+
+  @override
+  Widget build(BuildContext context) {
+    final (Color fg, Color bg, String label) = switch (status) {
+      'published' => (AppColors.green, AppColors.green.withValues(alpha: 0.12), 'Published'),
+      'draft' => (AppColors.primary, AppColors.primarySoft, 'Draft'),
+      'archived' => (AppColors.textMuted, AppColors.border, 'Archived'),
+      _ => (AppColors.textMuted, AppColors.border, status),
+    };
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(20)),
+      child: Text(
+        label,
+        style: GoogleFonts.dmSans(fontSize: 11, fontWeight: FontWeight.w700, color: fg),
       ),
     );
   }

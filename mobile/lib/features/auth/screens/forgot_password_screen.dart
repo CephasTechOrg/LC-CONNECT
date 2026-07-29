@@ -26,6 +26,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   }
 
   Future<void> _submit() async {
+    if (_loading) return; // Prevent double-submit / double pop
     if (!_formKey.currentState!.validate()) return;
     setState(() => _loading = true);
     try {
@@ -42,7 +43,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ));
-      context.pop();
+      context.pop(); // Navigate back to sign-in
     } catch (e) {
       if (!mounted) return;
       final msg = e is AuthException
@@ -69,7 +70,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded,
               size: 18, color: Color(0xFF111827)),
-          onPressed: () => context.pop(),
+          onPressed: _loading ? null : () => context.pop(),
         ),
       ),
       body: SafeArea(
@@ -130,7 +131,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                 const SizedBox(height: 20),
                 Center(
                   child: GestureDetector(
-                    onTap: () => context.pop(),
+                    onTap: _loading ? null : () => context.pop(),
                     child: Text(
                       'Back to sign in',
                       style: GoogleFonts.dmSans(
@@ -180,6 +181,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
   }
 
   Future<void> _submit() async {
+    if (_loading) return; // Prevent double-submit
     if (!_formKey.currentState!.validate()) return;
     setState(() => _loading = true);
     try {
@@ -216,7 +218,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded,
               size: 18, color: Color(0xFF111827)),
-          onPressed: () => context.pop(),
+          onPressed: _loading ? null : () => context.pop(),
         ),
       ),
       body: SafeArea(

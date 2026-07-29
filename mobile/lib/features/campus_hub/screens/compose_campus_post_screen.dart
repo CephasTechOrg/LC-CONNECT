@@ -5,12 +5,16 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/api/api_error.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/app_filter_chip.dart';
 import '../models/campus_post.dart';
 import '../providers/campus_hub_provider.dart';
 import '../providers/campus_publishing_provider.dart';
 
+/// Create or edit a campus post. Pass `existing` to edit. One clean form — grouped selectors up
+/// top, then the content fields — styled to match the rest of the app (no raw Material chips).
 class ComposeCampusPostScreen extends ConsumerStatefulWidget {
-  const ComposeCampusPostScreen({super.key});
+  final AuthorCampusPost? existing;
+  const ComposeCampusPostScreen({super.key, this.existing});
 
   @override
   ConsumerState<ComposeCampusPostScreen> createState() => _ComposeCampusPostScreenState();
@@ -20,10 +24,27 @@ class _ComposeCampusPostScreenState extends ConsumerState<ComposeCampusPostScree
   final _titleCtrl = TextEditingController();
   final _summaryCtrl = TextEditingController();
   final _bodyCtrl = TextEditingController();
-  String _kind = 'update';
-  String _audience = 'all';
-  String _priority = 'normal';
+  late String _kind;
+  late String _audience;
+  late String _priority;
   bool _loading = false;
+
+  bool get _isEditing => widget.existing != null;
+
+  static const _audiences = {'all': 'Everyone', 'students': 'Students', 'staff': 'Staff'};
+  static const _priorities = {'normal': 'Normal', 'important': 'Important'};
+
+  @override
+  void initState() {
+    super.initState();
+    final p = widget.existing;
+    _kind = p?.kind ?? 'announcement';
+    _audience = p?.audience ?? 'all';
+    _priority = p?.priority ?? 'normal';
+    _titleCtrl.text = p?.title ?? '';
+    _summaryCtrl.text = p?.summary ?? '';
+    _bodyCtrl.text = p?.body ?? '';
+  }
 
   @override
   void dispose() {
@@ -35,20 +56,47 @@ class _ComposeCampusPostScreenState extends ConsumerState<ComposeCampusPostScree
 
   Future<void> _save({required bool publish}) async {
     if (_titleCtrl.text.trim().isEmpty || _bodyCtrl.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Title and body are required')),
-      );
+      _toast('Title and body are required');
       return;
     }
     if (publish) {
-      final ok = await showDialog<bool>(
+      final ok = await _confirmPublish();
+      if (ok != true) return;
+    }
+    setState(() => _loading = true);
+    try {
+      final service = ref.read(campusPublishingServiceProvider);
+      final title = _titleCtrl.text.trim();
+      final summary = _summaryCtrl.text.trim();
+      final body = _bodyCtrl.text.trim();
+      if (_isEditing) {
+        await service.updatePost(widget.existing!.id,
+            kind: _kind, title: title, summary: summary, body: body, audience: _audience, priority: _priority);
+      } else {
+        final draft = await service.createPost(
+            kind: _kind, title: title, summary: summary, body: body, audience: _audience, priority: _priority);
+        if (publish) await service.publishPost(draft.id);
+      }
+      _invalidateFeeds();
+      if (!mounted) return;
+      _toast(_isEditing ? 'Changes saved' : (publish ? 'Published' : 'Draft saved'));
+      context.pop();
+    } catch (e) {
+      if (mounted) _toast(apiErrorMessage(e, fallback: 'Could not save post'));
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<bool?> _confirmPublish() => showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
-          title: const Text('Publish now?'),
+          title: Text('Publish now?', style: GoogleFonts.dmSans(fontWeight: FontWeight.w700)),
           content: Text(
             _priority == 'important'
                 ? 'This may notify the campus audience.'
                 : 'This will appear in Campus Hub for the selected audience.',
+            style: GoogleFonts.dmSans(color: AppColors.textMid),
           ),
           actions: [
             TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
@@ -56,143 +104,207 @@ class _ComposeCampusPostScreenState extends ConsumerState<ComposeCampusPostScree
           ],
         ),
       );
-      if (ok != true) return;
-    }
-    setState(() => _loading = true);
-    try {
-      final service = ref.read(campusPublishingServiceProvider);
-      final draft = await service.createPost(
-        kind: _kind,
-        title: _titleCtrl.text.trim(),
-        summary: _summaryCtrl.text.trim(),
-        body: _bodyCtrl.text.trim(),
-        audience: _audience,
-        priority: _priority,
-      );
-      if (publish) {
-        await service.publishPost(draft.id);
-      }
-      ref.invalidate(myCampusPostsProvider);
-      ref.invalidate(campusHubOverviewProvider);
-      ref.invalidate(campusPostsProvider);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(publish ? 'Published' : 'Draft saved')),
-      );
-      context.pop();
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(apiErrorMessage(e, fallback: 'Could not save post'))),
-      );
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
+
+  void _invalidateFeeds() {
+    ref.invalidate(myCampusPostsProvider);
+    ref.invalidate(campusHubOverviewProvider);
+    ref.invalidate(campusPostsProvider);
   }
+
+  void _toast(String message) => ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message, style: GoogleFonts.dmSans()),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
-                  onPressed: () => context.pop(),
-                ),
-                Text(
-                  'New campus post',
-                  style: GoogleFonts.dmSans(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textDark,
+            _Header(title: _isEditing ? 'Edit post' : 'New campus post'),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
+                children: [
+                  const _Label('Type'),
+                  _ChipWrap(
+                    options: postKindLabels,
+                    selected: _kind,
+                    onSelect: (v) => setState(() => _kind = v),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text('Type', style: _label),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              children: postKindLabels.entries
-                  .where((e) => e.key != 'alert')
-                  .map(
-                    (e) => ChoiceChip(
-                      label: Text(e.value),
-                      selected: _kind == e.key,
-                      onSelected: (_) => setState(() => _kind = e.key),
+                  const SizedBox(height: 20),
+                  const _Label('Audience'),
+                  _ChipWrap(options: _audiences, selected: _audience, onSelect: (v) => setState(() => _audience = v)),
+                  const SizedBox(height: 20),
+                  const _Label('Priority'),
+                  _ChipWrap(options: _priorities, selected: _priority, onSelect: (v) => setState(() => _priority = v)),
+                  const SizedBox(height: 24),
+                  const _Label('Title'),
+                  TextField(
+                    controller: _titleCtrl,
+                    textCapitalization: TextCapitalization.sentences,
+                    decoration: const InputDecoration(hintText: 'A short, clear headline'),
+                  ),
+                  const SizedBox(height: 16),
+                  const _Label('Summary', optional: true),
+                  TextField(
+                    controller: _summaryCtrl,
+                    textCapitalization: TextCapitalization.sentences,
+                    decoration: const InputDecoration(hintText: 'One line shown in the feed'),
+                  ),
+                  const SizedBox(height: 16),
+                  const _Label('Details'),
+                  TextField(
+                    controller: _bodyCtrl,
+                    maxLines: 7,
+                    textCapitalization: TextCapitalization.sentences,
+                    decoration: const InputDecoration(
+                      hintText: 'Write the full message…',
+                      alignLabelWithHint: true,
                     ),
-                  )
-                  .toList(),
-            ),
-            const SizedBox(height: 14),
-            Text('Audience', style: _label),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              children: [
-                for (final entry in {'all': 'Everyone', 'students': 'Students', 'staff': 'Staff'}.entries)
-                  ChoiceChip(
-                    label: Text(entry.value),
-                    selected: _audience == entry.key,
-                    onSelected: (_) => setState(() => _audience = entry.key),
                   ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            Text('Priority', style: _label),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              children: [
-                for (final entry in {'normal': 'Normal', 'important': 'Important'}.entries)
-                  ChoiceChip(
-                    label: Text(entry.value),
-                    selected: _priority == entry.key,
-                    onSelected: (_) => setState(() => _priority = entry.key),
+                  const SizedBox(height: 28),
+                  _Actions(
+                    isEditing: _isEditing,
+                    loading: _loading,
+                    onSaveDraft: () => _save(publish: false),
+                    onPublish: () => _save(publish: true),
+                    onSaveChanges: () => _save(publish: false),
                   ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _titleCtrl,
-              decoration: const InputDecoration(labelText: 'Title'),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _summaryCtrl,
-              decoration: const InputDecoration(labelText: 'Summary (optional)'),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _bodyCtrl,
-              maxLines: 6,
-              decoration: const InputDecoration(labelText: 'Body'),
-            ),
-            const SizedBox(height: 24),
-            OutlinedButton(
-              onPressed: _loading ? null : () => _save(publish: false),
-              child: Text(_loading ? 'Saving…' : 'Save draft'),
-            ),
-            const SizedBox(height: 10),
-            FilledButton(
-              onPressed: _loading ? null : () => _save(publish: true),
-              child: const Text('Publish now'),
+                ],
+              ),
             ),
           ],
         ),
       ),
     );
   }
+}
 
-  TextStyle get _label => GoogleFonts.dmSans(
-        fontSize: 13,
-        fontWeight: FontWeight.w600,
-        color: AppColors.textDark,
+// ── Pieces ────────────────────────────────────────────────────────
+class _Header extends StatelessWidget {
+  final String title;
+  const _Header({required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 8, 20, 8),
+      child: Row(
+        children: [
+          IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
+            onPressed: () => context.pop(),
+          ),
+          Expanded(
+            child: Text(
+              title,
+              style: GoogleFonts.dmSans(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textDark),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Label extends StatelessWidget {
+  final String text;
+  final bool optional;
+  const _Label(this.text, {this.optional = false});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        children: [
+          Text(text,
+              style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textDark)),
+          if (optional) ...[
+            const SizedBox(width: 6),
+            Text('optional', style: GoogleFonts.dmSans(fontSize: 11, color: AppColors.textMuted)),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _ChipWrap extends StatelessWidget {
+  final Map<String, String> options;
+  final String selected;
+  final ValueChanged<String> onSelect;
+  const _ChipWrap({required this.options, required this.selected, required this.onSelect});
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        for (final e in options.entries)
+          AppFilterChip(label: e.value, selected: selected == e.key, onTap: () => onSelect(e.key)),
+      ],
+    );
+  }
+}
+
+class _Actions extends StatelessWidget {
+  final bool isEditing;
+  final bool loading;
+  final VoidCallback onSaveDraft;
+  final VoidCallback onPublish;
+  final VoidCallback onSaveChanges;
+  const _Actions({
+    required this.isEditing,
+    required this.loading,
+    required this.onSaveDraft,
+    required this.onPublish,
+    required this.onSaveChanges,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (isEditing) {
+      return SizedBox(
+        width: double.infinity,
+        height: 50,
+        child: FilledButton(
+          onPressed: loading ? null : onSaveChanges,
+          child: Text(loading ? 'Saving…' : 'Save changes',
+              style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 15)),
+        ),
       );
+    }
+    return Column(
+      children: [
+        SizedBox(
+          width: double.infinity,
+          height: 50,
+          child: FilledButton(
+            onPressed: loading ? null : onPublish,
+            child: Text(loading ? 'Working…' : 'Publish now',
+                style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 15)),
+          ),
+        ),
+        const SizedBox(height: 10),
+        SizedBox(
+          width: double.infinity,
+          height: 50,
+          child: OutlinedButton(
+            onPressed: loading ? null : onSaveDraft,
+            child: Text('Save as draft',
+                style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 15, color: AppColors.primary)),
+          ),
+        ),
+      ],
+    );
+  }
 }

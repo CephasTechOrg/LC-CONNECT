@@ -10,8 +10,8 @@ import { signOut } from '@/lib/auth/session';
 const NAV = [
   { href: '/dashboard', label: 'Overview' },
   { href: '/dashboard/positions', label: 'Positions' },
-  { href: '/dashboard/posts', label: 'Posts' },
-  { href: '/dashboard/resources', label: 'Resources' },
+  { href: '/dashboard/content', label: 'Content' },
+  { href: '/dashboard/moderation', label: 'Moderation' },
 ];
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {

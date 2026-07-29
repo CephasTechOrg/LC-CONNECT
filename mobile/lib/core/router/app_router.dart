@@ -13,6 +13,7 @@ import '../../features/campus_hub/screens/campus_updates_screen.dart';
 import '../../features/campus_hub/screens/campus_resources_screen.dart';
 import '../../features/campus_hub/screens/compose_campus_post_screen.dart';
 import '../../features/campus_hub/screens/my_campus_posts_screen.dart';
+import '../../features/campus_hub/providers/campus_publishing_provider.dart';
 import '../../features/discovery/screens/discovery_screen.dart';
 import '../../features/activities/screens/activities_screen.dart';
 import '../../features/activities/screens/activity_detail_screen.dart';
@@ -170,7 +171,10 @@ final routerProvider = Provider<GoRouter>((ref) {
                 routes: [
                   GoRoute(
                     path: 'new',
-                    builder: (context, state) => const ComposeCampusPostScreen(),
+                    // `extra` carries an AuthorCampusPost when editing; null when creating.
+                    builder: (context, state) => ComposeCampusPostScreen(
+                      existing: state.extra as AuthorCampusPost?,
+                    ),
                   ),
                 ],
               ),

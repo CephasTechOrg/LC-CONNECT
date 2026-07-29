@@ -194,6 +194,12 @@ def notification_event(notification: dict[str, Any]) -> dict[str, Any]:
     return {'type': 'notification', 'notification': notification}
 
 
+def announcement_event(audience: str) -> dict[str, Any]:
+    """Campus-wide ping that a new announcement was published. Content-free (just the audience) so a
+    client can bump an unread counter without leaking staff-only content to students."""
+    return {'type': 'announcement', 'audience': audience}
+
+
 def message_deleted(conversation_id: UUID, message_id: UUID) -> dict[str, Any]:
     """A message was deleted for everyone — clients tombstone it in the open chat."""
     return {'type': 'message.deleted', 'conversation_id': str(conversation_id), 'message_id': str(message_id)}

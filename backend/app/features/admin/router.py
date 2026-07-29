@@ -81,6 +81,18 @@ async def list_pending_campus_positions(
     return [_position_admin_read(position, user, profile) for position, user, profile in rows]
 
 
+@router.get('/campus-positions', response_model=list[CampusPositionAdminRead])
+async def list_campus_positions(
+    status: str = 'pending',
+    _: User = Depends(require_admin_aal2),
+    db: AsyncSession = Depends(get_db),
+) -> list[CampusPositionAdminRead]:
+    """List positions by status (pending | verified | rejected | revoked) — lets the admin act on
+    verified positions (e.g. revoke) without pasting a UUID."""
+    rows = await campus_admin.list_positions(db, status=status)
+    return [_position_admin_read(position, user, profile) for position, user, profile in rows]
+
+
 @router.get('/campus-positions/{position_id}', response_model=CampusPositionAdminRead)
 async def get_campus_position(
     position_id: UUID,
@@ -211,6 +223,16 @@ async def archive_campus_post(
     return CampusPostAdminRead.model_validate(post)
 
 
+@router.delete('/campus-posts/{post_id}')
+async def delete_campus_post(
+    post_id: UUID,
+    actor: User = Depends(require_admin_aal2),
+    db: AsyncSession = Depends(get_db),
+):
+    await posts_admin.delete_post(db, actor=actor, post_id=post_id)
+    return {'status': 'deleted', 'post_id': str(post_id)}
+
+
 @router.get('/campus-resources', response_model=list[CampusResourceAdminRead])
 async def list_campus_resources(
     _: User = Depends(require_admin_aal2),
@@ -239,6 +261,16 @@ async def update_campus_resource(
 ) -> CampusResourceAdminRead:
     resource = await resources_admin.update_resource(db, actor=actor, resource_id=resource_id, payload=payload)
     return CampusResourceAdminRead.model_validate(resource)
+
+
+@router.delete('/campus-resources/{resource_id}')
+async def delete_campus_resource(
+    resource_id: UUID,
+    actor: User = Depends(require_admin_aal2),
+    db: AsyncSession = Depends(get_db),
+):
+    await resources_admin.delete_resource(db, actor=actor, resource_id=resource_id)
+    return {'status': 'deleted', 'resource_id': str(resource_id)}
 
 
 @router.post('/users/{user_id}/suspend')

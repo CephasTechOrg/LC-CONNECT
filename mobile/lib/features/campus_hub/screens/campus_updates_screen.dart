@@ -6,11 +6,10 @@ import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../../../shared/widgets/app_filter_chip.dart';
 import '../../../shared/widgets/app_states.dart';
 import '../models/campus_post.dart';
 import '../providers/campus_hub_provider.dart';
-import 'campus_hub_screen.dart';
+import '../widgets/campus_post_card.dart';
 
 class CampusUpdatesScreen extends ConsumerStatefulWidget {
   const CampusUpdatesScreen({super.key});
@@ -20,25 +19,33 @@ class CampusUpdatesScreen extends ConsumerStatefulWidget {
 }
 
 class _CampusUpdatesScreenState extends ConsumerState<CampusUpdatesScreen> {
-  String _kind = 'all';
+  final _scrollController = ScrollController();
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final kindParam = GoRouterState.of(context).uri.queryParameters['kind'];
-    if (kindParam != null && kindParam != _kind) {
-      _kind = kindParam;
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+    // Opening the list clears the "new announcements" badge (deferred — can't mutate a provider
+    // during the first build).
+    Future.microtask(() => ref.read(announcementCountProvider.notifier).markSeen());
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    // Load the next page a little before the very bottom for a seamless feel.
+    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 300) {
+      ref.read(announcementsProvider.notifier).loadMore();
     }
   }
 
-  CampusPostsQuery get _query => CampusPostsQuery(
-        kind: _kind == 'all' ? null : _kind,
-      );
-
   @override
   Widget build(BuildContext context) {
-    final postsAsync = ref.watch(campusPostsProvider(_query));
-    final filters = ['all', ...postKindLabels.keys];
+    final async = ref.watch(announcementsProvider);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -46,51 +53,48 @@ class _CampusUpdatesScreenState extends ConsumerState<CampusUpdatesScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _SubpageHeader(title: 'Campus updates', onBack: () => context.pop()),
-            SizedBox(
-              height: 36,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                children: filters.map((key) {
-                  final label = key == 'all' ? 'All' : (postKindLabels[key] ?? key);
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: AppFilterChip(
-                      label: label,
-                      selected: _kind == key,
-                      onTap: () => setState(() => _kind = key),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
-            const SizedBox(height: 8),
+            _SubpageHeader(title: 'Announcements', onBack: () => context.pop()),
             Expanded(
               child: RefreshIndicator(
                 color: AppColors.primary,
-                onRefresh: () async => ref.invalidate(campusPostsProvider(_query)),
-                child: postsAsync.when(
+                onRefresh: () async => ref.invalidate(announcementsProvider),
+                child: async.when(
                   loading: () => const Center(child: CircularProgressIndicator()),
                   error: (_, _) => AppErrorState(
-                    message: 'Could not load updates.',
-                    onRetry: () => ref.invalidate(campusPostsProvider(_query)),
+                    message: 'Could not load announcements.',
+                    onRetry: () => ref.invalidate(announcementsProvider),
                   ),
-                  data: (posts) {
-                    if (posts.isEmpty) {
+                  data: (data) {
+                    if (data.items.isEmpty) {
                       return const AppEmptyState(
                         icon: Icons.campaign_outlined,
-                        title: 'No updates found',
-                        subtitle: 'Try another filter or check back later.',
+                        title: 'No announcements yet',
+                        subtitle: 'Official campus announcements will appear here.',
                       );
                     }
                     return ListView.builder(
+                      controller: _scrollController,
                       padding: const EdgeInsets.only(top: 8, bottom: 24),
-                      itemCount: posts.length,
-                      itemBuilder: (context, index) => CampusPostCard(
-                        post: posts[index],
-                        onTap: () => context.push('/home/posts/${posts[index].id}'),
-                      ),
+                      itemCount: data.items.length + (data.hasMore ? 1 : 0),
+                      itemBuilder: (context, index) {
+                        if (index >= data.items.length) {
+                          return const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 20),
+                            child: Center(
+                              child: SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              ),
+                            ),
+                          );
+                        }
+                        final post = data.items[index];
+                        return CampusPostCard(
+                          post: post,
+                          onTap: () => context.push('/home/posts/${post.id}'),
+                        );
+                      },
                     );
                   },
                 ),
@@ -154,10 +158,19 @@ class CampusOpportunitiesScreen extends ConsumerWidget {
   }
 }
 
-class CampusPostDetailScreen extends ConsumerWidget {
+class CampusPostDetailScreen extends ConsumerStatefulWidget {
   final String postId;
 
   const CampusPostDetailScreen({super.key, required this.postId});
+
+  @override
+  ConsumerState<CampusPostDetailScreen> createState() => _CampusPostDetailScreenState();
+}
+
+class _CampusPostDetailScreenState extends ConsumerState<CampusPostDetailScreen> {
+  bool _countedAsRead = false;
+
+  String get postId => widget.postId;
 
   Future<void> _launchExternal(String url) async {
     final uri = Uri.parse(url);
@@ -167,8 +180,15 @@ class CampusPostDetailScreen extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final postAsync = ref.watch(campusPostProvider(postId));
+
+    // Reading an announcement takes one off the "new" badge (once per open).
+    final post = postAsync.asData?.value;
+    if (!_countedAsRead && post != null && post.kind == 'announcement') {
+      _countedAsRead = true;
+      Future.microtask(() => ref.read(announcementCountProvider.notifier).decrement());
+    }
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -177,7 +197,7 @@ class CampusPostDetailScreen extends ConsumerWidget {
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (_, _) => Column(
             children: [
-              _SubpageHeader(title: 'Update', onBack: () => context.pop()),
+              _SubpageHeader(title: 'Post', onBack: () => context.pop()),
               Expanded(
                 child: AppErrorState(
                   message: 'Could not load this update.',
@@ -188,7 +208,7 @@ class CampusPostDetailScreen extends ConsumerWidget {
           ),
           data: (post) => Column(
             children: [
-              _SubpageHeader(title: postKindLabels[post.kind] ?? 'Update', onBack: () => context.pop()),
+              _SubpageHeader(title: postKindLabels[post.kind] ?? 'Post', onBack: () => context.pop()),
               Expanded(
                 child: ListView(
                   padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),

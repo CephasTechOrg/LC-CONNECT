@@ -81,6 +81,8 @@ flutter:
     - assets/images/groupstudents.png
     - assets/images/lclogo.png
     - assets/images/groupstudent.png
+    - assets/images/spotlight_campus.jpg
+    - assets/images/spotlight_student.png
     - assets/images/featured/
     - assets/sounds/new_message.wav
 

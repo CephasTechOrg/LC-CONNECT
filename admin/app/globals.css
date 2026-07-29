@@ -189,6 +189,8 @@ button {
 .brand strong {
   display: block;
   font-size: 16px;
+  color: var(--primary);
+  letter-spacing: -0.01em;
 }
 
 .brand span {
@@ -230,6 +232,9 @@ button {
   padding: 18px 24px;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 5;
 }
 
 .topbar h1 {
@@ -253,6 +258,7 @@ button {
   border: 1px solid var(--border);
   border-radius: 14px;
   padding: 18px;
+  box-shadow: 0 1px 2px rgba(17, 24, 39, 0.04);
 }
 
 .panel + .panel {
@@ -272,7 +278,7 @@ button {
 
 .stat-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 12px;
 }
 
@@ -287,11 +293,28 @@ button {
   display: block;
   font-size: 24px;
   letter-spacing: -0.03em;
+  color: var(--text);
 }
 
 .stat span {
   color: var(--muted);
   font-size: 13px;
+}
+
+a.stat {
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+a.stat:hover {
+  border-color: var(--primary);
+  box-shadow: 0 4px 14px rgba(63, 127, 181, 0.1);
+}
+
+.stat.attention {
+  border-color: #fcd34d;
+  background: #fffbeb;
 }
 
 .card-list {
@@ -304,6 +327,7 @@ button {
   border-radius: 12px;
   padding: 14px;
   background: #fff;
+  box-shadow: 0 1px 2px rgba(17, 24, 39, 0.04);
 }
 
 .card-head {
@@ -363,6 +387,69 @@ button {
   padding: 28px;
   text-align: center;
   color: var(--muted);
+}
+
+/* Tabs — consolidate related surfaces on one page without sidebar sprawl. */
+.tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tab {
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  color: var(--text-mid);
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.tab.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+/* Status badge variants (default is the amber "pending" look). */
+.badge.success {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.badge.muted {
+  background: var(--border);
+  color: var(--muted);
+}
+
+.badge.danger {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+/* Compact table for row-dense admin lists (users, etc.). */
+table.rows {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+table.rows th,
+table.rows td {
+  text-align: left;
+  padding: 10px 8px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  vertical-align: middle;
+}
+
+table.rows th {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.table-scroll {
+  overflow-x: auto;
 }
 
 @media (max-width: 900px) {

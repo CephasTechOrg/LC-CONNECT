@@ -37,7 +37,9 @@ class _CampusPositionDetailScreenState extends ConsumerState<CampusPositionDetai
       final thread = await ref.read(staffMessagingServiceProvider).startThread(entry.userId);
       ref.read(threadsNotifierProvider.notifier).upsertThread(thread);
       if (!mounted) return;
-      context.push('/messages/${thread.addressingId}', extra: thread);
+      // This detail route lives outside the shell navigator, so enter the messages branch with
+      // `go` to avoid cross-navigator push locking during transition.
+      context.go('/messages/${thread.addressingId}', extra: thread);
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

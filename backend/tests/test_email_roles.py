@@ -49,6 +49,19 @@ def test_dev_test_email_gets_configured_role(monkeypatch: pytest.MonkeyPatch) ->
     assert email_roles.infer_role_from_email('tester@example.com') == 'staff'
 
 
+def test_dev_test_email_per_email_role_overrides_default(monkeypatch: pytest.MonkeyPatch) -> None:
+    """`email:role` pins that account's role, so staff and student test accounts can coexist."""
+    monkeypatch.setattr(email_roles.settings, 'environment', 'development')
+    monkeypatch.setattr(
+        email_roles.settings,
+        'dev_test_emails',
+        'prof@example.com:staff,pupil@example.com',
+    )
+    monkeypatch.setattr(email_roles.settings, 'dev_test_email_default_role', 'student')
+    assert email_roles.infer_role_from_email('prof@example.com') == 'staff'  # pinned
+    assert email_roles.infer_role_from_email('pupil@example.com') == 'student'  # default
+
+
 def test_dev_test_email_rejected_outside_dev(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(email_roles.settings, 'environment', 'staging')
     monkeypatch.setattr(email_roles.settings, 'dev_test_emails', 'tester@example.com')

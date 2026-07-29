@@ -681,13 +681,6 @@
             "title": "Latest Updates",
             "type": "array"
           },
-          "upcoming_deadlines": {
-            "items": {
-              "$ref": "#/components/schemas/CampusPostSummaryRead"
-            },
-            "title": "Upcoming Deadlines",
-            "type": "array"
-          },
           "urgent_posts": {
             "items": {
               "$ref": "#/components/schemas/CampusPostSummaryRead"
@@ -698,8 +691,7 @@
         },
         "required": [
           "urgent_posts",
-          "latest_updates",
-          "upcoming_deadlines"
+          "latest_updates"
         ],
         "title": "CampusHubOverviewRead",
         "type": "object"
@@ -1357,7 +1349,7 @@
             "title": "External Url"
           },
           "kind": {
-            "pattern": "^(update|deadline|opportunity|alert)$",
+            "pattern": "^(announcement|opportunity)$",
             "title": "Kind",
             "type": "string"
           },
@@ -1652,7 +1644,7 @@
           "kind": {
             "anyOf": [
               {
-                "pattern": "^(update|deadline|opportunity|alert)$",
+                "pattern": "^(announcement|opportunity)$",
                 "type": "string"
               },
               {
@@ -5297,6 +5289,59 @@
         ]
       }
     },
+    "/api/v1/admin/campus-positions": {
+      "get": {
+        "description": "List positions by status (pending | verified | rejected | revoked) \u2014 lets the admin act on\nverified positions (e.g. revoke) without pasting a UUID.",
+        "operationId": "list_campus_positions_api_v1_admin_campus_positions_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "default": "pending",
+              "title": "Status",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CampusPositionAdminRead"
+                  },
+                  "title": "Response List Campus Positions Api V1 Admin Campus Positions Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Campus Positions",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
     "/api/v1/admin/campus-positions/pending": {
       "get": {
         "operationId": "list_pending_campus_positions_api_v1_admin_campus_positions_pending_get",
@@ -5614,6 +5659,50 @@
       }
     },
     "/api/v1/admin/campus-posts/{post_id}": {
+      "delete": {
+        "operationId": "delete_campus_post_api_v1_admin_campus_posts__post_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "post_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Post Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete Campus Post",
+        "tags": [
+          "admin"
+        ]
+      },
       "patch": {
         "operationId": "update_campus_post_api_v1_admin_campus_posts__post_id__patch",
         "parameters": [
@@ -5842,6 +5931,50 @@
       }
     },
     "/api/v1/admin/campus-resources/{resource_id}": {
+      "delete": {
+        "operationId": "delete_campus_resource_api_v1_admin_campus_resources__resource_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "resource_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Resource Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete Campus Resource",
+        "tags": [
+          "admin"
+        ]
+      },
       "patch": {
         "operationId": "update_campus_resource_api_v1_admin_campus_resources__resource_id__patch",
         "parameters": [
@@ -6628,6 +6761,17 @@
               "maximum": 100,
               "minimum": 1,
               "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
               "type": "integer"
             }
           }

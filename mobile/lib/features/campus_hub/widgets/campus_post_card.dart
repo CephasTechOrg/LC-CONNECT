@@ -1,4 +1,9 @@
-part of '../screens/campus_hub_screen.dart';
+import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
+
+import '../../../core/theme/app_theme.dart';
+import '../models/campus_post.dart';
 
 class CampusPostCard extends StatelessWidget {
   final CampusPostSummary post;

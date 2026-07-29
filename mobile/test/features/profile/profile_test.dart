@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lc_connect/features/auth/providers/auth_provider.dart';
 import 'package:lc_connect/features/profile/providers/profile_provider.dart';
 import 'package:lc_connect/features/profile/screens/profile_screen.dart';
+import 'package:lc_connect/features/profile/screens/public_profile_screen.dart';
 
 // ── Mock notifiers ────────────────────────────────────────────────
 class _MockProfileNotifier extends MyProfileNotifier {
@@ -23,6 +24,29 @@ class _MockAuthNotifier extends AuthNotifier {
         profileCompleted: true,
       );
 }
+
+class _RoleAuthNotifier extends AuthNotifier {
+  final String _role;
+  _RoleAuthNotifier(this._role);
+  @override
+  Future<AuthUser?> build() async => AuthUser(
+        id: 'viewer-me',
+        email: 'viewer@livingstone.edu',
+        role: _role,
+        profileCompleted: true,
+      );
+}
+
+PublicProfile _studentProfile() => const PublicProfile(
+      profileId: 'p-stu',
+      userId: 'u-stu',
+      displayName: 'Maya Chen',
+      interests: [],
+      languagesSpoken: [],
+      languagesLearning: [],
+      lookingFor: ['Friendship'],
+      isVerified: true,
+    );
 
 ProviderScope _scope(MyProfile profile) {
   return ProviderScope(
@@ -224,6 +248,31 @@ void main() {
       expect(p.isStaff, isFalse);
       expect(p.role, 'student');
       expect(p.contactEmail, isNull); // student email never present
+    });
+  });
+
+  // ── Public profile bottom bar (staff vs student viewer) ───────────
+  group('PublicProfileScreen action bar', () {
+    Widget scope(String viewerRole) => ProviderScope(
+          overrides: [
+            authNotifierProvider.overrideWith(() => _RoleAuthNotifier(viewerRole)),
+            publicProfileProvider.overrideWith((ref, id) async => _studentProfile()),
+          ],
+          child: const MaterialApp(home: PublicProfileScreen(profileId: 'p-stu')),
+        );
+
+    testWidgets('staff viewing a student sees Message, not Connect', (tester) async {
+      await tester.pumpWidget(scope('staff'));
+      await tester.pumpAndSettle();
+      expect(find.text('Message'), findsOneWidget);
+      expect(find.text('Connect'), findsNothing); // staff never send connection requests
+    });
+
+    testWidgets('student viewing a student sees Connect', (tester) async {
+      await tester.pumpWidget(scope('student'));
+      await tester.pumpAndSettle();
+      expect(find.text('Connect'), findsOneWidget);
+      expect(find.text('Message'), findsNothing);
     });
   });
 

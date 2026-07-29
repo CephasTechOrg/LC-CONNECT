@@ -6,7 +6,7 @@ class _QuickActionsRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.fromLTRB(20, 10, 20, 2),
       child: Row(
         children: [
           CampusQuickAction(
@@ -14,13 +14,13 @@ class _QuickActionsRow extends StatelessWidget {
             label: 'Directory',
             onTap: () => context.push('/home/directory'),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 12),
           CampusQuickAction(
             icon: Icons.menu_book_outlined,
             label: 'Resources',
             onTap: () => context.push('/home/resources'),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 12),
           CampusQuickAction(
             icon: Icons.work_outline,
             label: 'Opportunities',
@@ -69,17 +69,19 @@ class _SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 22, 20, 12),
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.baseline,
+        textBaseline: TextBaseline.alphabetic,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
             title,
             style: GoogleFonts.dmSans(
-              fontSize: 16,
+              fontSize: 19,
               fontWeight: FontWeight.w700,
               color: AppColors.textDark,
-              letterSpacing: -0.2,
+              letterSpacing: -0.19,
             ),
           ),
           if (action != null && onAction != null)
@@ -112,14 +114,14 @@ class _PublisherCta extends ConsumerWidget {
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
       child: Material(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         child: InkWell(
           onTap: () => context.push('/home/my-posts'),
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(16),
           child: Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(16),
               border: Border.all(color: AppColors.border),
             ),
             child: Row(
@@ -148,66 +150,6 @@ class _PublisherCta extends ConsumerWidget {
                       ),
                       Text(
                         'Create updates and opportunities. Manage your posts.',
-                        style: GoogleFonts.dmSans(fontSize: 11.5, color: AppColors.textMuted),
-                      ),
-                    ],
-                  ),
-                ),
-                const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted, size: 20),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _CampusLifeCta extends StatelessWidget {
-  const _CampusLifeCta();
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Material(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
-        child: InkWell(
-          onTap: () => context.go('/activities'),
-          borderRadius: BorderRadius.circular(14),
-          child: Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppColors.border),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    color: AppColors.primarySoft,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(Icons.event_outlined, color: AppColors.primary, size: 20),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Explore campus activities',
-                        style: GoogleFonts.dmSans(
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textDark,
-                        ),
-                      ),
-                      Text(
-                        'Study groups, sports, social events, and more.',
                         style: GoogleFonts.dmSans(fontSize: 11.5, color: AppColors.textMuted),
                       ),
                     ],

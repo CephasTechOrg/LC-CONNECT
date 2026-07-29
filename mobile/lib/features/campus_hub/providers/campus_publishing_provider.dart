@@ -113,6 +113,26 @@ class CampusPublishingService {
     return AuthorCampusPost.fromJson(response.data as Map<String, dynamic>);
   }
 
+  Future<AuthorCampusPost> updatePost(
+    String postId, {
+    required String kind,
+    required String title,
+    required String body,
+    String? summary,
+    String audience = 'all',
+    String priority = 'normal',
+  }) async {
+    final response = await _client.dio.patch('/campus-hub/my-posts/$postId', data: {
+      'kind': kind,
+      'title': title,
+      'body': body,
+      'summary': summary ?? '',
+      'audience': audience,
+      'priority': priority,
+    });
+    return AuthorCampusPost.fromJson(response.data as Map<String, dynamic>);
+  }
+
   Future<AuthorCampusPost> publishPost(String postId) async {
     final response = await _client.dio.post('/campus-hub/my-posts/$postId/publish');
     return AuthorCampusPost.fromJson(response.data as Map<String, dynamic>);

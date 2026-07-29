@@ -39,6 +39,7 @@ async def list_posts(
     priority: str | None = Query(default=None),
     category: str | None = Query(default=None),
     limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
     current_user: User = Depends(require_verified_user),
     db: AsyncSession = Depends(get_db),
 ) -> list[CampusPostSummaryRead]:
@@ -49,6 +50,7 @@ async def list_posts(
         priority=priority,
         category=category,
         limit=limit,
+        offset=offset,
     )
     return [CampusPostSummaryRead.model_validate(row) for row in rows]
 

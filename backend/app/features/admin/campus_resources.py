@@ -88,3 +88,20 @@ async def update_resource(
     await db.commit()
     await db.refresh(resource)
     return resource
+
+
+async def delete_resource(db: AsyncSession, *, actor: User, resource_id: UUID) -> None:
+    """Permanently remove a resource (admin only). Deactivate is the reversible option; this fully
+    deletes the row. Audited before removal."""
+    resource = await get_resource_or_404(db, resource_id)
+    await record_audit(
+        db,
+        actor_id=actor.id,
+        action='campus_resource.delete',
+        target_type='campus_resource',
+        target_id=resource.id,
+        before_data=_resource_snapshot(resource),
+        after_data=None,
+    )
+    await db.delete(resource)
+    await db.commit()

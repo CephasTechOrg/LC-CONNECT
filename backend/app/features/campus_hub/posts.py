@@ -42,6 +42,7 @@ async def list_posts(
     priority: str | None = None,
     category: str | None = None,
     limit: int = 50,
+    offset: int = 0,
 ) -> list[dict]:
     stmt = published_posts_stmt(user=user)
     if kind:
@@ -50,7 +51,8 @@ async def list_posts(
         stmt = stmt.where(CampusPost.priority == priority.strip().lower())
     if category:
         stmt = stmt.where(CampusPost.category == category.strip().lower())
-    stmt = stmt.order_by(CampusPost.publish_at.desc()).limit(limit)
+    # Stable order for offset paging: newest first, id as the tiebreaker.
+    stmt = stmt.order_by(CampusPost.publish_at.desc(), CampusPost.id.desc()).limit(limit).offset(offset)
     posts = (await db.execute(stmt)).scalars().all()
     return [_summary(post) for post in posts]
 
@@ -72,18 +74,10 @@ async def build_overview(db: AsyncSession, *, user: User) -> dict:
     ).scalars().all()
     updates = (
         await db.execute(
-            base.where(CampusPost.kind == 'update').order_by(CampusPost.publish_at.desc()).limit(5)
-        )
-    ).scalars().all()
-    deadlines = (
-        await db.execute(
-            base.where(CampusPost.kind == 'deadline')
-            .order_by(CampusPost.expires_at.asc().nulls_last(), CampusPost.publish_at.desc())
-            .limit(5)
+            base.where(CampusPost.kind == 'announcement').order_by(CampusPost.publish_at.desc()).limit(5)
         )
     ).scalars().all()
     return {
         'urgent_posts': [_summary(post) for post in urgent],
         'latest_updates': [_summary(post) for post in updates],
-        'upcoming_deadlines': [_summary(post) for post in deadlines],
     }

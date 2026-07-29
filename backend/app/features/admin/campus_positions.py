@@ -31,18 +31,24 @@ async def get_position_or_404(db: AsyncSession, position_id: UUID) -> CampusPosi
     return position
 
 
-async def list_pending_positions(db: AsyncSession, *, limit: int = 100) -> list[tuple[CampusPosition, User, Profile]]:
+async def list_positions(
+    db: AsyncSession, *, status: str = 'pending', limit: int = 100
+) -> list[tuple[CampusPosition, User, Profile]]:
     rows = (
         await db.execute(
             select(CampusPosition, User, Profile)
             .join(User, User.id == CampusPosition.user_id)
             .join(Profile, Profile.user_id == User.id)
-            .where(CampusPosition.status == 'pending', CampusPosition.is_active.is_(True))
+            .where(CampusPosition.status == status, CampusPosition.is_active.is_(True))
             .order_by(CampusPosition.created_at.asc())
             .limit(limit)
         )
     ).all()
     return list(rows)
+
+
+async def list_pending_positions(db: AsyncSession, *, limit: int = 100) -> list[tuple[CampusPosition, User, Profile]]:
+    return await list_positions(db, status='pending', limit=limit)
 
 
 async def get_position_detail(

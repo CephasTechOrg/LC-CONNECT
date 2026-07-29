@@ -223,6 +223,9 @@ class ThreadsNotifier extends AsyncNotifier<List<MessageThread>> {
     return (response.data as List)
         .map((j) => MessageThread.fromJson(j as Map<String, dynamic>))
         .where((t) => t.isGroup || t.partner != null) // keep group + valid DM threads
+        // Staff can open a student chat before sending anything. Keep those empty staff threads
+        // out of the inbox until the first real message exists.
+        .where((t) => !t.isStaffThread || t.latestMessage != null)
         .toList();
   }
 
@@ -277,6 +280,7 @@ class ThreadsNotifier extends AsyncNotifier<List<MessageThread>> {
   /// Add a freshly started thread (e.g. a new staff conversation) to the top of the inbox,
   /// if it isn't already loaded — so it shows up without a full refetch.
   void upsertThread(MessageThread thread) {
+    if (thread.isStaffThread && thread.latestMessage == null) return;
     final current = state.asData?.value;
     if (current == null) return;
     if (current.any((t) => t.conversationId == thread.conversationId)) return;

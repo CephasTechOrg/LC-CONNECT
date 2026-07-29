@@ -55,6 +55,24 @@ async def test_register_and_deliver():
     await mgr.unregister(conn_b)
 
 
+async def test_broadcast_reaches_every_connected_socket():
+    mgr = ConnectionManager(outbox_max=16)
+    user_a, user_b = uuid4(), uuid4()
+    sock_a, sock_b = FakeSocket(), FakeSocket()
+    conn_a = mgr.register(sock_a, user_a)
+    conn_b = mgr.register(sock_b, user_b)
+
+    frame = {'type': 'announcement', 'audience': 'all'}
+    delivered = mgr.broadcast(frame)
+    await _tick()
+
+    assert delivered == 2  # both users' sockets
+    assert sock_a.sent == [frame]
+    assert sock_b.sent == [frame]
+    await mgr.unregister(conn_a)
+    await mgr.unregister(conn_b)
+
+
 async def test_unregister_cleans_indices():
     mgr = ConnectionManager()
     user, conv = uuid4(), uuid4()

@@ -57,6 +57,15 @@ async def emit_notification(
         logger.warning('emit_notification failed (type=%s user=%s): %s', notif_type, user_id, exc)
 
 
+async def broadcast_announcement(audience: str) -> None:
+    """Ping every connected client that a new announcement is live, so their unread counter can
+    tick up in real time. Best-effort and content-free — the client filters by its own role."""
+    try:
+        manager.broadcast(protocol.announcement_event(audience))
+    except Exception as exc:  # noqa: BLE001 — a live ping must never break publishing
+        logger.warning('broadcast_announcement failed (audience=%s): %s', audience, exc)
+
+
 async def broadcast_message_deleted(conversation_id: UUID, message_id: UUID, member_ids: list[UUID]) -> None:
     """Tell every conversation member (via their user channel) that a message was deleted, so an
     open chat tombstones it live. Best-effort."""

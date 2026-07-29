@@ -143,6 +143,16 @@ class ConnectionManager:
             return 0
         return sum(1 for conn in tuple(conns) if conn.enqueue(frame))
 
+    def broadcast(self, frame: dict[str, Any]) -> int:
+        """Enqueue `frame` to every open socket across all users — a campus-wide ping (e.g. a new
+        announcement). Keep the frame content-free so audience filtering can happen client-side."""
+        delivered = 0
+        for conns in tuple(self._by_user.values()):
+            for conn in tuple(conns):
+                if conn.enqueue(frame):
+                    delivered += 1
+        return delivered
+
     async def deliver_to_conversation(
         self,
         conversation_id: UUID,

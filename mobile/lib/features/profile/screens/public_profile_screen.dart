@@ -83,7 +83,9 @@ class _PublicBodyState extends ConsumerState<_PublicBody> {
           await ref.read(staffMessagingServiceProvider).startThread(widget.profile.userId);
       ref.read(threadsNotifierProvider.notifier).upsertThread(thread);
       if (!mounted) return;
-      context.push('/messages/${thread.addressingId}', extra: thread);
+      // This screen sits outside the shell navigator; switching into the messages branch with
+      // `push` can lock the navigator during the cross-stack transition. Use `go` here instead.
+      context.go('/messages/${thread.addressingId}', extra: thread);
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -145,7 +147,11 @@ class _PublicBodyState extends ConsumerState<_PublicBody> {
   @override
   Widget build(BuildContext context) {
     final profile = widget.profile;
-    final isStaff = profile.isStaff;
+    final viewerIsStaff =
+        (ref.watch(authNotifierProvider).asData?.value?.role ?? 'student') != 'student';
+    // Use the staff-messaging path whenever it applies: the person is staff, OR the viewer is
+    // staff (staff message students directly — they never send student connection requests).
+    final canMessage = profile.isStaff || viewerIsStaff;
     return Column(
       children: [
         Expanded(
@@ -153,8 +159,8 @@ class _PublicBodyState extends ConsumerState<_PublicBody> {
             children: [
               _HeroCard(profile: profile),
               const SizedBox(height: 8),
-              // Staff: a clean contact block (email / office / availability).
-              if (isStaff) ...[
+              // Contact block only for a staff *profile* (email / office / availability).
+              if (profile.isStaff) ...[
                 _StaffContactSection(profile: profile),
                 const SizedBox(height: 8),
               ],
@@ -164,8 +170,8 @@ class _PublicBodyState extends ConsumerState<_PublicBody> {
                 _InfoRows(profile: profile),
                 const SizedBox(height: 8),
               ],
-              // "Looking for" is student matching intent — never shown for staff.
-              if (!isStaff && profile.lookingFor.isNotEmpty) ...[
+              // "Looking for" is student↔student matching intent — hidden when either side is staff.
+              if (!canMessage && profile.lookingFor.isNotEmpty) ...[
                 _LookingForSection(lookingFor: profile.lookingFor),
                 const SizedBox(height: 8),
               ],
@@ -174,7 +180,7 @@ class _PublicBodyState extends ConsumerState<_PublicBody> {
           ),
         ),
         if (!widget.isSelf)
-          isStaff
+          canMessage
               ? _StaffMessageBar(loading: _messaging, onMessage: _message)
               : _ConnectBar(
                   loading: _connecting,
