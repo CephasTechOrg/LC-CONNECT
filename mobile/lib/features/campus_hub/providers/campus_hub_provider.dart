@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/api/api_client.dart';
 import '../../../core/realtime/realtime_client.dart';
@@ -49,33 +50,58 @@ final campusPostsProvider =
       .toList();
 });
 
-// ── Live "new announcements" counter ──────────────────────────────
-/// Mirrors the notification bell counter, but for announcements: it ticks up in real time on the
-/// WS `announcement` ping (filtered to the viewer's audience) and clears when they open the
-/// announcements page. Session-live (starts at 0 each launch) — there's no per-user read state to
-/// seed from, so it counts what arrives while the app is running.
+// ── "New announcements" counter (server-backed, mirrors the notification bell) ────
+/// Unread announcement badge. Server is the source of truth (survives restarts): seed from
+/// `GET /campus-hub/announcements/unread-count`, bump on the live WS `announcement` ping (filtered
+/// to the viewer's audience), and re-seed on reconnect/app-resume. Reading one announcement marks
+/// it read on the server and decrements; opening the list marks them all read.
 final announcementCountProvider =
     NotifierProvider<AnnouncementCountNotifier, int>(AnnouncementCountNotifier.new);
 
 class AnnouncementCountNotifier extends Notifier<int> {
-  StreamSubscription<InboundEvent>? _sub;
+  StreamSubscription<InboundEvent>? _eventsSub;
+  StreamSubscription<void>? _reconnectSub;
+  _AnnouncementResumeObserver? _resumeObserver;
+  String _role = 'student';
 
   @override
   int build() {
-    final role = ref.watch(authNotifierProvider.select((a) => a.asData?.value?.role)) ?? 'student';
+    _role = ref.watch(authNotifierProvider.select((a) => a.asData?.value?.role)) ?? 'student';
+    final userId = ref.watch(authNotifierProvider.select((a) => a.asData?.value?.id));
     final RealtimeClient client;
     try {
       client = ref.watch(realtimeClientProvider);
     } catch (_) {
       return 0; // realtime/env unavailable (e.g. widget tests) — no badge
     }
-    _sub = client.events.listen((event) {
-      if (event is AnnouncementEvent && _appliesTo(event.audience, role)) {
-        state = state + 1;
-      }
+
+    _eventsSub = client.events.listen(_onEvent);
+    _reconnectSub = client.reconnected.listen((_) => _seed());
+    _resumeObserver = _AnnouncementResumeObserver(_seed);
+    WidgetsBinding.instance.addObserver(_resumeObserver!);
+
+    ref.onDispose(() {
+      _eventsSub?.cancel();
+      _reconnectSub?.cancel();
+      if (_resumeObserver != null) WidgetsBinding.instance.removeObserver(_resumeObserver!);
     });
-    ref.onDispose(() => _sub?.cancel());
+
+    if (userId != null) _seed();
     return 0;
+  }
+
+  bool get _authed => ref.read(authNotifierProvider).asData?.value?.id != null;
+
+  Future<void> _seed() async {
+    if (!_authed) return;
+    try {
+      final resp = await ref.read(apiClientProvider).dio.get('/campus-hub/announcements/unread-count');
+      state = ((resp.data as Map<String, dynamic>)['count'] as num).toInt();
+    } catch (_) {/* keep current; next reconnect/resume re-seeds */}
+  }
+
+  void _onEvent(InboundEvent event) {
+    if (event is AnnouncementEvent && _appliesTo(event.audience, _role)) state = state + 1;
   }
 
   bool _appliesTo(String audience, String role) {
@@ -89,11 +115,36 @@ class AnnouncementCountNotifier extends Notifier<int> {
     }
   }
 
-  /// Clear the badge — called when the announcements list opens (they've seen them all).
-  void markSeen() => state = 0;
+  /// Reading one announcement: decrement locally for instant feel, then set the badge to the
+  /// server's authoritative count (so re-reading an already-read one can't drift the number).
+  Future<void> readOne(String postId) async {
+    state = state > 0 ? state - 1 : 0;
+    await _postRead('/campus-hub/announcements/$postId/read');
+  }
 
-  /// Reading one announcement removes one from the count (never below zero).
-  void decrement() => state = state > 0 ? state - 1 : 0;
+  /// Opening the list marks everything read.
+  Future<void> markAllRead() async {
+    state = 0;
+    await _postRead('/campus-hub/announcements/read');
+  }
+
+  Future<void> _postRead(String path) async {
+    try {
+      final resp = await ref.read(apiClientProvider).dio.post(path);
+      final count = (resp.data as Map<String, dynamic>?)?['count'];
+      if (count is num) state = count.toInt(); // authoritative — no drift
+    } catch (_) {/* keep the optimistic value; next reconnect/resume re-seeds */}
+  }
+}
+
+class _AnnouncementResumeObserver extends WidgetsBindingObserver {
+  final VoidCallback onResume;
+  _AnnouncementResumeObserver(this.onResume);
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) onResume();
+  }
 }
 
 // ── Announcements feed (paginated / infinite scroll) ──────────────

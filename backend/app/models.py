@@ -443,6 +443,26 @@ class CampusPost(Base):
     )
 
 
+class CampusPostRead(Base):
+    """Per-user read marker for a campus post. Campus posts are shared rows (one per post, seen by
+    many), so read state can't live on the post like a Notification's `read_at` — it lives here.
+    A row's existence means "this user has read this post"; the unread count is the visible
+    announcements with no row for the user. Mirrors the notification read model, adapted to
+    shared content."""
+
+    __tablename__ = 'campus_post_reads'
+    __table_args__ = (UniqueConstraint('user_id', 'post_id', name='uq_campus_post_read'),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey('users.id', ondelete='CASCADE'), index=True, nullable=False
+    )
+    post_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey('campus_posts.id', ondelete='CASCADE'), index=True, nullable=False
+    )
+    read_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
 class CampusResource(Base):
     """Evergreen campus service information for the Resources screen."""
 

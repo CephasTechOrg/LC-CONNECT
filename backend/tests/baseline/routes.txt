@@ -20,6 +20,7 @@ GET /api/v1/admin/campus-resources
 GET /api/v1/admin/reports
 GET /api/v1/admin/users
 GET /api/v1/auth/me
+GET /api/v1/campus-hub/announcements/unread-count
 GET /api/v1/campus-hub/directory
 GET /api/v1/campus-hub/directory/{position_id}
 GET /api/v1/campus-hub/my-posts
@@ -77,6 +78,8 @@ POST /api/v1/admin/campus-resources
 POST /api/v1/admin/users/{user_id}/suspend
 POST /api/v1/auth/bootstrap
 POST /api/v1/blocks/{user_id}
+POST /api/v1/campus-hub/announcements/read
+POST /api/v1/campus-hub/announcements/{post_id}/read
 POST /api/v1/campus-hub/my-posts
 POST /api/v1/campus-hub/my-posts/{post_id}/archive
 POST /api/v1/campus-hub/my-posts/{post_id}/publish

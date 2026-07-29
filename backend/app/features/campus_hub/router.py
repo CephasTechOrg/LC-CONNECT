@@ -10,6 +10,7 @@ from app.features.campus_hub import resources as resources_service
 from app.features.campus_hub import service as directory_service
 from app.features.campus_hub.author_router import router as author_router
 from app.features.campus_hub.schema import (
+    AnnouncementUnreadCount,
     CampusHubOverviewRead,
     CampusPostRead,
     CampusPostSummaryRead,
@@ -63,6 +64,38 @@ async def get_post(
 ) -> CampusPostRead:
     row = await posts_service.get_post(db, user=current_user, post_id=post_id)
     return CampusPostRead.model_validate(row)
+
+
+# ── announcement read state (per-user unread badge, mirrors /notifications) ────────
+@router.get('/announcements/unread-count', response_model=AnnouncementUnreadCount)
+async def announcements_unread_count(
+    current_user: User = Depends(require_verified_user),
+    db: AsyncSession = Depends(get_db),
+) -> AnnouncementUnreadCount:
+    return AnnouncementUnreadCount(count=await posts_service.unread_announcement_count(db, current_user))
+
+
+@router.post('/announcements/read', response_model=AnnouncementUnreadCount)
+async def mark_all_announcements_read(
+    current_user: User = Depends(require_verified_user),
+    db: AsyncSession = Depends(get_db),
+) -> AnnouncementUnreadCount:
+    """Mark every visible announcement read — called when the user opens the announcements list.
+    Returns the fresh unread count so the client badge stays authoritative (no drift)."""
+    await posts_service.mark_all_announcements_read(db, current_user)
+    return AnnouncementUnreadCount(count=await posts_service.unread_announcement_count(db, current_user))
+
+
+@router.post('/announcements/{post_id}/read', response_model=AnnouncementUnreadCount)
+async def mark_announcement_read(
+    post_id: UUID,
+    current_user: User = Depends(require_verified_user),
+    db: AsyncSession = Depends(get_db),
+) -> AnnouncementUnreadCount:
+    """Mark one announcement read — called when the user opens it. Returns the fresh unread count
+    so re-reading an already-read announcement can't push the badge out of sync."""
+    await posts_service.mark_announcement_read(db, current_user, post_id)
+    return AnnouncementUnreadCount(count=await posts_service.unread_announcement_count(db, current_user))
 
 
 @router.get('/directory', response_model=list[DirectoryEntryRead])

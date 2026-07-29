@@ -9,7 +9,14 @@ from fastapi import HTTPException
 
 from app.features.admin.campus_posts import archive_post, create_post, delete_post, publish_post
 from app.features.admin.campus_resources import create_resource, delete_resource
-from app.features.campus_hub.posts import build_overview, get_post, list_posts
+from app.features.campus_hub.posts import (
+    build_overview,
+    get_post,
+    list_posts,
+    mark_all_announcements_read,
+    mark_announcement_read,
+    unread_announcement_count,
+)
 from app.features.campus_hub.resources import get_resource, list_resources
 from app.features.campus_hub.schema import CampusPostCreate, CampusResourceCreate
 
@@ -127,6 +134,47 @@ async def test_archive_removes_post_from_feed(db, factory):
     with pytest.raises(HTTPException) as exc:
         await get_post(db, user=student, post_id=post.id)
     assert exc.value.status_code == 404
+
+
+async def _published_announcement(db, admin, *, title='Note', audience='all'):
+    post = await create_post(
+        db, actor=admin, payload=CampusPostCreate(kind='announcement', title=title, body='Body', audience=audience),
+    )
+    await publish_post(db, actor=admin, post_id=post.id)
+    return post
+
+
+async def test_announcement_unread_count_decrements_per_read(db, factory):
+    admin = await _admin(db, factory)
+    student = await factory.user(display_name='Student')
+    student.role = 'student'
+    await db.commit()
+    a1 = await _published_announcement(db, admin, title='A1')
+    a2 = await _published_announcement(db, admin, title='A2')
+
+    assert await unread_announcement_count(db, student) == 2
+
+    await mark_announcement_read(db, student, a1.id)
+    assert await unread_announcement_count(db, student) == 1  # reading one takes one off
+
+    await mark_announcement_read(db, student, a1.id)  # again → idempotent
+    assert await unread_announcement_count(db, student) == 1
+
+    await mark_all_announcements_read(db, student)
+    assert await unread_announcement_count(db, student) == 0
+    # a2 was covered by mark-all
+    assert a2.id is not None
+
+
+async def test_announcement_unread_respects_audience(db, factory):
+    admin = await _admin(db, factory)
+    student = await factory.user(display_name='Student')
+    student.role = 'student'
+    await db.commit()
+    await _published_announcement(db, admin, title='Staff only', audience='staff')
+
+    # A staff-audience announcement is not visible to a student, so it never counts as unread.
+    assert await unread_announcement_count(db, student) == 0
 
 
 async def test_admin_can_delete_post(db, factory):

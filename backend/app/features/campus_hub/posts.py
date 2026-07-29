@@ -6,10 +6,12 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import HTTPException, status
+from sqlalchemy import func, select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.campus_hub.content_visibility import is_post_visible, published_posts_stmt
-from app.models import CampusPost, User
+from app.models import CampusPost, CampusPostRead, User
 
 
 def _summary(post: CampusPost) -> dict:
@@ -81,3 +83,49 @@ async def build_overview(db: AsyncSession, *, user: User) -> dict:
         'urgent_posts': [_summary(post) for post in urgent],
         'latest_updates': [_summary(post) for post in updates],
     }
+
+
+# ── announcement read state (per-user, mirrors notification read tracking) ────────
+
+
+def _visible_announcements_stmt(user: User):
+    """Announcements the user can currently see (published, in-window, correct audience)."""
+    return published_posts_stmt(user=user).where(CampusPost.kind == 'announcement')
+
+
+async def unread_announcement_count(db: AsyncSession, user: User) -> int:
+    """How many visible announcements this user has not read yet — the badge number."""
+    read_exists = (
+        select(CampusPostRead.id)
+        .where(CampusPostRead.user_id == user.id, CampusPostRead.post_id == CampusPost.id)
+        .exists()
+    )
+    unread = _visible_announcements_stmt(user).where(~read_exists).subquery()
+    return int((await db.execute(select(func.count()).select_from(unread))).scalar_one())
+
+
+async def mark_announcement_read(db: AsyncSession, user: User, post_id: UUID) -> None:
+    """Mark one announcement read (idempotent). 404 unless it's an announcement the user can see."""
+    post = await db.get(CampusPost, post_id)
+    if post is None or post.kind != 'announcement' or not is_post_visible(post, user=user):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Announcement not found')
+    await db.execute(
+        pg_insert(CampusPostRead)
+        .values(user_id=user.id, post_id=post_id)
+        .on_conflict_do_nothing(index_elements=['user_id', 'post_id'])
+    )
+    await db.commit()
+
+
+async def mark_all_announcements_read(db: AsyncSession, user: User) -> None:
+    """Mark every currently-visible announcement read (called when the user opens the list)."""
+    visible = _visible_announcements_stmt(user).subquery()
+    ids = (await db.execute(select(visible.c.id))).scalars().all()
+    if not ids:
+        return
+    await db.execute(
+        pg_insert(CampusPostRead)
+        .values([{'user_id': user.id, 'post_id': pid} for pid in ids])
+        .on_conflict_do_nothing(index_elements=['user_id', 'post_id'])
+    )
+    await db.commit()

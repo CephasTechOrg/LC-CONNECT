@@ -25,9 +25,9 @@ class _CampusUpdatesScreenState extends ConsumerState<CampusUpdatesScreen> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
-    // Opening the list clears the "new announcements" badge (deferred — can't mutate a provider
-    // during the first build).
-    Future.microtask(() => ref.read(announcementCountProvider.notifier).markSeen());
+    // Opening the list marks every announcement read (deferred — can't mutate a provider during
+    // the first build).
+    Future.microtask(() => ref.read(announcementCountProvider.notifier).markAllRead());
   }
 
   @override
@@ -183,11 +183,11 @@ class _CampusPostDetailScreenState extends ConsumerState<CampusPostDetailScreen>
   Widget build(BuildContext context) {
     final postAsync = ref.watch(campusPostProvider(postId));
 
-    // Reading an announcement takes one off the "new" badge (once per open).
+    // Reading an announcement marks that one read on the server + takes it off the badge (once).
     final post = postAsync.asData?.value;
     if (!_countedAsRead && post != null && post.kind == 'announcement') {
       _countedAsRead = true;
-      Future.microtask(() => ref.read(announcementCountProvider.notifier).decrement());
+      Future.microtask(() => ref.read(announcementCountProvider.notifier).readOne(postId));
     }
 
     return Scaffold(

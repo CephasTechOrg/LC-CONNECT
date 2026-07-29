@@ -10,6 +10,75 @@ import '../../../shared/widgets/app_states.dart';
 import '../models/campus_resource.dart';
 import '../providers/campus_resources_provider.dart';
 
+class _ResourceCategory {
+  final String key;
+  final String title;
+  final String description;
+  final IconData icon;
+  final Color iconColor;
+  final Color iconBg;
+
+  const _ResourceCategory({
+    required this.key,
+    required this.title,
+    required this.description,
+    required this.icon,
+    required this.iconColor,
+    required this.iconBg,
+  });
+}
+
+const _staticCategories = <_ResourceCategory>[
+  _ResourceCategory(
+    key: 'advising',
+    title: 'Academic Advising',
+    description: 'Get help with course planning and degree requirements.',
+    icon: Icons.account_balance_outlined,
+    iconColor: Color(0xFF2563EB),
+    iconBg: Color(0xFFE0EDFF),
+  ),
+  _ResourceCategory(
+    key: 'housing',
+    title: 'Housing &\nResidence Life',
+    description: 'Find housing options and residence life resources.',
+    icon: Icons.home_outlined,
+    iconColor: Color(0xFFEA580C),
+    iconBg: Color(0xFFFFF1E6),
+  ),
+  _ResourceCategory(
+    key: 'financial_aid',
+    title: 'Financial Aid',
+    description: 'Information on loans, grants, scholarships, and billing.',
+    icon: Icons.attach_money_rounded,
+    iconColor: Color(0xFF16A34A),
+    iconBg: Color(0xFFDCFCE7),
+  ),
+  _ResourceCategory(
+    key: 'health',
+    title: 'Health & Wellness',
+    description: 'Access health services, counseling, and wellness programs.',
+    icon: Icons.favorite_outline_rounded,
+    iconColor: Color(0xFF7C3AED),
+    iconBg: Color(0xFFF3E8FF),
+  ),
+  _ResourceCategory(
+    key: 'career',
+    title: 'Career Services',
+    description: 'Resume help, career coaching, and job opportunities.',
+    icon: Icons.work_outline_rounded,
+    iconColor: Color(0xFFD97706),
+    iconBg: Color(0xFFFEF3C7),
+  ),
+  _ResourceCategory(
+    key: 'student_support',
+    title: 'Student Support',
+    description: 'Support services for personal and academic success.',
+    icon: Icons.groups_outlined,
+    iconColor: Color(0xFF2563EB),
+    iconBg: Color(0xFFE0EDFF),
+  ),
+];
+
 class CampusResourcesScreen extends ConsumerStatefulWidget {
   const CampusResourcesScreen({super.key});
 
@@ -40,53 +109,11 @@ class _CampusResourcesScreenState extends ConsumerState<CampusResourcesScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(8, 8, 12, 0),
-              child: Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
-                    onPressed: () => context.pop(),
-                  ),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Campus resources',
-                          style: GoogleFonts.dmSans(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textDark,
-                          ),
-                        ),
-                        Text(
-                          'Services, offices, and support',
-                          style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textMuted),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            _Header(onBack: () => context.pop()),
             const SizedBox(height: 8),
-            SizedBox(
-              height: 36,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                children: resourceCategories.entries.map((entry) {
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: AppFilterChip(
-                      label: entry.value,
-                      selected: _category == entry.key,
-                      onTap: () => setState(() => _category = entry.key),
-                    ),
-                  );
-                }).toList(),
-              ),
+            _FilterBar(
+              selected: _category,
+              onChanged: (v) => setState(() => _category = v),
             ),
             const SizedBox(height: 8),
             Expanded(
@@ -101,25 +128,13 @@ class _CampusResourcesScreenState extends ConsumerState<CampusResourcesScreen> {
                   ),
                   data: (resources) {
                     if (resources.isEmpty) {
-                      return const AppEmptyState(
-                        icon: Icons.menu_book_outlined,
-                        title: 'No resources found',
-                        subtitle: 'Try another category or check back later.',
+                      return _StaticCategoryGrid(
+                        onCategoryTap: (key) => setState(() => _category = key),
                       );
                     }
-                    return ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-                      itemCount: resources.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 10),
-                      itemBuilder: (context, index) {
-                        final resource = resources[index];
-                        return _ResourceCard(
-                          resource: resource,
-                          onOpenLink: resource.externalUrl != null
-                              ? () => _launch(resource.externalUrl!)
-                              : null,
-                        );
-                      },
+                    return _ResourceList(
+                      resources: resources,
+                      onOpenLink: _launch,
                     );
                   },
                 ),
@@ -128,6 +143,194 @@ class _CampusResourcesScreenState extends ConsumerState<CampusResourcesScreen> {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _Header extends StatelessWidget {
+  final VoidCallback onBack;
+  const _Header({required this.onBack});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 8, 12, 0),
+      child: Row(
+        children: [
+          IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
+            onPressed: onBack,
+          ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Campus resources',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textDark,
+                  ),
+                ),
+                Text(
+                  'Services, offices, and support',
+                  style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textMuted),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.search_rounded, size: 22, color: AppColors.textMid),
+            onPressed: () {},
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FilterBar extends StatelessWidget {
+  final String selected;
+  final ValueChanged<String> onChanged;
+
+  const _FilterBar({required this.selected, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 36,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        children: resourceCategories.entries.map((entry) {
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: AppFilterChip(
+              label: entry.value,
+              selected: selected == entry.key,
+              onTap: () => onChanged(entry.key),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+}
+
+class _StaticCategoryGrid extends StatelessWidget {
+  final ValueChanged<String> onCategoryTap;
+  const _StaticCategoryGrid({required this.onCategoryTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GridView.count(
+      crossAxisCount: 2,
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+      mainAxisSpacing: 14,
+      crossAxisSpacing: 14,
+      childAspectRatio: 0.82,
+      children: _staticCategories
+          .map((cat) => _StaticCategoryCard(cat: cat, onTap: () => onCategoryTap(cat.key)))
+          .toList(),
+    );
+  }
+}
+
+class _StaticCategoryCard extends StatelessWidget {
+  final _ResourceCategory cat;
+  final VoidCallback onTap;
+
+  const _StaticCategoryCard({required this.cat, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: cat.iconBg,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(cat.icon, color: cat.iconColor, size: 24),
+              ),
+              const SizedBox(height: 14),
+              Text(
+                cat.title,
+                style: GoogleFonts.dmSans(
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textDark,
+                  height: 1.25,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Expanded(
+                child: Text(
+                  cat.description,
+                  style: GoogleFonts.dmSans(
+                    fontSize: 12,
+                    color: AppColors.textMid,
+                    height: 1.4,
+                  ),
+                ),
+              ),
+              Row(
+                children: [
+                  Text(
+                    'View resources',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  const Icon(Icons.chevron_right_rounded, size: 18, color: AppColors.primary),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ResourceList extends StatelessWidget {
+  final List<CampusResource> resources;
+  final Future<void> Function(String url) onOpenLink;
+
+  const _ResourceList({required this.resources, required this.onOpenLink});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.separated(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+      itemCount: resources.length,
+      separatorBuilder: (_, _) => const SizedBox(height: 10),
+      itemBuilder: (context, index) {
+        final resource = resources[index];
+        return _ResourceCard(
+          resource: resource,
+          onOpenLink: resource.externalUrl != null ? () => onOpenLink(resource.externalUrl!) : null,
+        );
+      },
     );
   }
 }

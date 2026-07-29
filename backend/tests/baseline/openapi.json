@@ -411,6 +411,19 @@
         "title": "AdminUserRead",
         "type": "object"
       },
+      "AnnouncementUnreadCount": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "count"
+        ],
+        "title": "AnnouncementUnreadCount",
+        "type": "object"
+      },
       "AuthorCampusPostRead": {
         "description": "Author-facing post including drafts (publish_at may be null).",
         "properties": {
@@ -6287,6 +6300,108 @@
         "summary": "Block User",
         "tags": [
           "safety"
+        ]
+      }
+    },
+    "/api/v1/campus-hub/announcements/read": {
+      "post": {
+        "description": "Mark every visible announcement read \u2014 called when the user opens the announcements list.\nReturns the fresh unread count so the client badge stays authoritative (no drift).",
+        "operationId": "mark_all_announcements_read_api_v1_campus_hub_announcements_read_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnouncementUnreadCount"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Mark All Announcements Read",
+        "tags": [
+          "campus-hub"
+        ]
+      }
+    },
+    "/api/v1/campus-hub/announcements/unread-count": {
+      "get": {
+        "operationId": "announcements_unread_count_api_v1_campus_hub_announcements_unread_count_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnouncementUnreadCount"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Announcements Unread Count",
+        "tags": [
+          "campus-hub"
+        ]
+      }
+    },
+    "/api/v1/campus-hub/announcements/{post_id}/read": {
+      "post": {
+        "description": "Mark one announcement read \u2014 called when the user opens it. Returns the fresh unread count\nso re-reading an already-read announcement can't push the badge out of sync.",
+        "operationId": "mark_announcement_read_api_v1_campus_hub_announcements__post_id__read_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "post_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Post Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnouncementUnreadCount"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Mark Announcement Read",
+        "tags": [
+          "campus-hub"
         ]
       }
     },
