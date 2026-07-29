@@ -32,6 +32,16 @@ typing_limiter = RateLimiter(settings.ws_typing_rate_per_10s, 10)
 subscribe_limiter = RateLimiter(settings.ws_subscribe_rate_per_10s, 10)
 malformed_limiter = RateLimiter(settings.ws_max_malformed_frames, 60)
 
+# Deliberately small: only notifications worth a push. Everything else (role changes, removals,
+# rejections, ...) stays live-only — the in-app badge catches them up on next open.
+PUSHABLE_NOTIFICATION_TYPES = frozenset({
+    'connection_request',
+    'connection_accepted',
+    'group_invite',
+    'group_join_request',
+    'group_request_approved',
+})
+
 
 async def emit_notification(
     *, user_id: UUID, notif_type: str, group_id: UUID | None = None, actor_id: UUID | None = None
@@ -40,7 +50,8 @@ async def emit_notification(
 
     Best-effort and self-contained (own session): the group action is the source of truth, this
     is a side effect. An offline recipient still gets it — the row persists and their badge seeds
-    from `GET /notifications/unread-count` on next open.
+    from `GET /notifications/unread-count` on next open. For the small set of high-value types
+    (see `PUSHABLE_NOTIFICATION_TYPES`), a still-offline recipient also gets a push.
     """
     from app.features.notifications import service as notifications_service
 
@@ -53,8 +64,26 @@ async def emit_notification(
             await db.refresh(notification)
             dto = await notifications_service.read_one(db, notification)
         await event_bus.publish_to_user(user_id, protocol.notification_event(dto.model_dump(mode='json')))
+        if notif_type in PUSHABLE_NOTIFICATION_TYPES and push_sender.enabled:
+            actor_name = dto.actor.display_name if dto.actor else None
+            group_name = dto.group.name if dto.group else None
+            asyncio.create_task(_schedule_notification_push(user_id, notif_type, actor_name, group_name))
     except Exception as exc:  # noqa: BLE001 - a notification must never break the triggering action
         logger.warning('emit_notification failed (type=%s user=%s): %s', notif_type, user_id, exc)
+
+
+async def _schedule_notification_push(
+    user_id: UUID, notif_type: str, actor_name: str | None, group_name: str | None
+) -> None:
+    """Push only if the recipient is *still* offline after a short grace window — mirrors the
+    message-push grace (absorbs Wi-Fi↔cellular handoffs); they already got it live otherwise."""
+    await asyncio.sleep(settings.push_reconnect_grace_seconds)
+    if manager.user_socket_count(user_id) != 0:
+        return  # reconnected during the grace window — they'll see it live
+    async with AsyncSessionLocal() as db:
+        await push_sender.notify_in_app_event(
+            db, recipient_id=user_id, notif_type=notif_type, actor_name=actor_name, group_name=group_name,
+        )
 
 
 async def broadcast_announcement(audience: str) -> None:

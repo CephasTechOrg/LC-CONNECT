@@ -9,7 +9,9 @@ from fastapi import HTTPException
 
 from app.features.admin.campus_posts import archive_post, create_post, delete_post, publish_post
 from app.features.admin.campus_resources import create_resource, delete_resource
+from app.features.campus_hub import publishing
 from app.features.campus_hub.posts import (
+    announcement_total,
     build_overview,
     get_post,
     list_posts,
@@ -18,7 +20,7 @@ from app.features.campus_hub.posts import (
     unread_announcement_count,
 )
 from app.features.campus_hub.resources import get_resource, list_resources
-from app.features.campus_hub.schema import CampusPostCreate, CampusResourceCreate
+from app.features.campus_hub.schema import CampusPostCreate, CampusPostUpdate, CampusResourceCreate
 
 
 async def _admin(db, factory):
@@ -175,6 +177,96 @@ async def test_announcement_unread_respects_audience(db, factory):
 
     # A staff-audience announcement is not visible to a student, so it never counts as unread.
     assert await unread_announcement_count(db, student) == 0
+
+
+async def test_category_must_be_a_known_value(db, factory):
+    admin = await _admin(db, factory)
+    with pytest.raises(ValueError):
+        CampusPostCreate(kind='announcement', title='Bad', body='Body', category='made_up')
+
+    # Known categories are accepted and persist.
+    post = await create_post(
+        db, actor=admin, payload=CampusPostCreate(kind='announcement', title='Good', body='Body', category='safety'),
+    )
+    assert post.category == 'safety'
+
+
+async def test_opportunity_and_announcement_categories_do_not_cross(db, factory):
+    """Each kind has its own category vocabulary — an opportunity category on an announcement
+    (and vice versa) must be rejected, not silently accepted."""
+    admin = await _admin(db, factory)
+
+    # An opportunity category is invalid for an announcement.
+    with pytest.raises(ValueError):
+        CampusPostCreate(kind='announcement', title='Bad', body='Body', category='internship')
+
+    # An announcement category is invalid for an opportunity.
+    with pytest.raises(ValueError):
+        CampusPostCreate(kind='opportunity', title='Bad', body='Body', category='safety')
+
+    # Each kind accepts its own vocabulary.
+    opportunity = await create_post(
+        db, actor=admin,
+        payload=CampusPostCreate(kind='opportunity', title='Intern wanted', body='Body', category='internship'),
+    )
+    assert opportunity.category == 'internship'
+
+
+async def test_update_post_validates_category_against_resolved_kind(db, factory):
+    """On a partial update, `kind` may be absent from the payload — validation must use the
+    post's *existing* kind, not silently skip the check."""
+    admin = await _admin(db, factory)
+    announcement = await create_post(
+        db, actor=admin, payload=CampusPostCreate(kind='announcement', title='Note', body='Body', category='general'),
+    )
+
+    # category-only update: no kind in the payload — must still validate against 'announcement'.
+    with pytest.raises(HTTPException) as exc:
+        await publishing.update_post(
+            db, actor=admin, post_id=announcement.id, payload=CampusPostUpdate(category='internship'), as_staff=False,
+        )
+    assert exc.value.status_code == 400
+
+    # A valid announcement category still updates fine.
+    updated = await publishing.update_post(
+        db, actor=admin, post_id=announcement.id, payload=CampusPostUpdate(category='safety'), as_staff=False,
+    )
+    assert updated.category == 'safety'
+
+
+async def test_announcement_total_counts_and_filters_by_category(db, factory):
+    admin = await _admin(db, factory)
+    student = await factory.user(display_name='Student')
+    student.role = 'student'
+    await db.commit()
+
+    p1 = await create_post(
+        db, actor=admin, payload=CampusPostCreate(kind='announcement', title='A', body='B', category='safety'),
+    )
+    await publish_post(db, actor=admin, post_id=p1.id)
+    p2 = await create_post(
+        db, actor=admin, payload=CampusPostCreate(kind='announcement', title='B', body='B', category='academic'),
+    )
+    await publish_post(db, actor=admin, post_id=p2.id)
+
+    assert await announcement_total(db, student) == 2
+    assert await announcement_total(db, student, category='safety') == 1
+    assert await announcement_total(db, student, category='events') == 0
+
+
+async def test_list_posts_reports_read_state_per_user(db, factory):
+    admin = await _admin(db, factory)
+    student = await factory.user(display_name='Student')
+    student.role = 'student'
+    await db.commit()
+    post = await _published_announcement(db, admin, title='Read me')
+
+    unread_rows = await list_posts(db, user=student, kind='announcement')
+    assert unread_rows[0]['read'] is False
+
+    await mark_announcement_read(db, student, post.id)
+    read_rows = await list_posts(db, user=student, kind='announcement')
+    assert read_rows[0]['read'] is True
 
 
 async def test_admin_can_delete_post(db, factory):

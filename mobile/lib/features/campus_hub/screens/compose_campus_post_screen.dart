@@ -25,6 +25,7 @@ class _ComposeCampusPostScreenState extends ConsumerState<ComposeCampusPostScree
   final _summaryCtrl = TextEditingController();
   final _bodyCtrl = TextEditingController();
   late String _kind;
+  late String _category;
   late String _audience;
   late String _priority;
   bool _loading = false;
@@ -39,11 +40,23 @@ class _ComposeCampusPostScreenState extends ConsumerState<ComposeCampusPostScree
     super.initState();
     final p = widget.existing;
     _kind = p?.kind ?? 'announcement';
+    // Category vocab depends on kind — fall back to that kind's first category if the existing
+    // post has none (e.g. an older post created before categories existed).
+    _category = p?.category ?? categoryLabelsForKind(_kind).keys.first;
     _audience = p?.audience ?? 'all';
     _priority = p?.priority ?? 'normal';
     _titleCtrl.text = p?.title ?? '';
     _summaryCtrl.text = p?.summary ?? '';
     _bodyCtrl.text = p?.body ?? '';
+  }
+
+  /// Switching type changes the category vocabulary — reset to that vocabulary's first option so
+  /// _category is never a stale value from the other kind (e.g. "Internships" on an Announcement).
+  void _onKindChanged(String kind) {
+    setState(() {
+      _kind = kind;
+      _category = categoryLabelsForKind(kind).keys.first;
+    });
   }
 
   @override
@@ -71,10 +84,12 @@ class _ComposeCampusPostScreenState extends ConsumerState<ComposeCampusPostScree
       final body = _bodyCtrl.text.trim();
       if (_isEditing) {
         await service.updatePost(widget.existing!.id,
-            kind: _kind, title: title, summary: summary, body: body, audience: _audience, priority: _priority);
+            kind: _kind, title: title, summary: summary, body: body, audience: _audience, priority: _priority,
+            category: _category);
       } else {
         final draft = await service.createPost(
-            kind: _kind, title: title, summary: summary, body: body, audience: _audience, priority: _priority);
+            kind: _kind, title: title, summary: summary, body: body, audience: _audience, priority: _priority,
+            category: _category);
         if (publish) await service.publishPost(draft.id);
       }
       _invalidateFeeds();
@@ -136,7 +151,14 @@ class _ComposeCampusPostScreenState extends ConsumerState<ComposeCampusPostScree
                   _ChipWrap(
                     options: postKindLabels,
                     selected: _kind,
-                    onSelect: (v) => setState(() => _kind = v),
+                    onSelect: _onKindChanged,
+                  ),
+                  const SizedBox(height: 20),
+                  const _Label('Category'),
+                  _ChipWrap(
+                    options: categoryLabelsForKind(_kind),
+                    selected: _category,
+                    onSelect: (v) => setState(() => _category = v),
                   ),
                   const SizedBox(height: 20),
                   const _Label('Audience'),

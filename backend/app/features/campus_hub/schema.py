@@ -5,6 +5,15 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, HttpUrl, model_validator
 
+# `category` classifies a post within its `kind` — each kind has its own vocabulary (they drive
+# different filter chips/colors on their respective screens, so the sets don't overlap).
+ANNOUNCEMENT_CATEGORIES = frozenset({'general', 'academic', 'campus', 'events', 'safety'})
+OPPORTUNITY_CATEGORIES = frozenset({'internship', 'job', 'volunteer', 'leadership'})
+
+
+def categories_for_kind(kind: str) -> frozenset[str]:
+    return OPPORTUNITY_CATEGORIES if kind == 'opportunity' else ANNOUNCEMENT_CATEGORIES
+
 
 class DirectoryEntryRead(BaseModel):
     position_id: UUID
@@ -48,6 +57,7 @@ class CampusPostSummaryRead(BaseModel):
     publish_at: datetime
     expires_at: datetime | None
     external_url: str | None
+    read: bool = False  # whether the requesting user has read this post
 
 
 class CampusPostRead(CampusPostSummaryRead):
@@ -118,6 +128,9 @@ class CampusPostCreate(BaseModel):
     def _validate_schedule(self) -> CampusPostCreate:
         if self.expires_at is not None and self.publish_at is not None and self.expires_at <= self.publish_at:
             raise ValueError('expires_at must be after publish_at')
+        if self.category is not None and self.category not in categories_for_kind(self.kind):
+            allowed = ', '.join(sorted(categories_for_kind(self.kind)))
+            raise ValueError(f"category for kind={self.kind} must be one of: {allowed}")
         return self
 
 
@@ -135,6 +148,12 @@ class CampusPostUpdate(BaseModel):
 
     @model_validator(mode='after')
     def _validate_schedule(self) -> CampusPostUpdate:
+        # Full kind-vs-category validation happens in the service layer, which knows the existing
+        # post's kind when `kind` isn't part of this partial update. Here we only catch the case
+        # where both are given together in the same payload and already disagree.
+        if self.kind is not None and self.category is not None and self.category not in categories_for_kind(self.kind):
+            allowed = ', '.join(sorted(categories_for_kind(self.kind)))
+            raise ValueError(f"category for kind={self.kind} must be one of: {allowed}")
         if self.expires_at is not None and self.publish_at is not None and self.expires_at <= self.publish_at:
             raise ValueError('expires_at must be after publish_at')
         return self

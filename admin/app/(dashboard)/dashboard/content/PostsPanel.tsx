@@ -11,6 +11,7 @@ type Post = {
   summary: string | null;
   body: string;
   audience: string;
+  category: string | null;
   priority: string;
   status: string;
 };
@@ -21,12 +22,34 @@ function statusClass(status: string): string {
   return 'badge';
 }
 
+// `category` classifies a post within its kind — each kind has its own vocabulary (mirrors the
+// backend's `categories_for_kind`), so the picker only ever shows categories that apply.
+const ANNOUNCEMENT_CATEGORIES: Record<string, string> = {
+  general: 'General',
+  academic: 'Academic',
+  campus: 'Campus',
+  events: 'Events',
+  safety: 'Safety',
+};
+
+const OPPORTUNITY_CATEGORIES: Record<string, string> = {
+  internship: 'Internships',
+  job: 'Jobs',
+  volunteer: 'Volunteering',
+  leadership: 'Leadership',
+};
+
+function categoriesForKind(kind: string): Record<string, string> {
+  return kind === 'opportunity' ? OPPORTUNITY_CATEGORIES : ANNOUNCEMENT_CATEGORIES;
+}
+
 export default function PostsPanel() {
   const [items, setItems] = useState<Post[]>([]);
   const [status, setStatus] = useState('Loading posts…');
   const [error, setError] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [kind, setKind] = useState('announcement');
+  const [category, setCategory] = useState(Object.keys(ANNOUNCEMENT_CATEGORIES)[0]);
   const [priority, setPriority] = useState('normal');
   const [audience, setAudience] = useState('all');
   const [title, setTitle] = useState('');
@@ -38,6 +61,7 @@ export default function PostsPanel() {
   function resetForm() {
     setEditingId(null);
     setKind('announcement');
+    setCategory(Object.keys(ANNOUNCEMENT_CATEGORIES)[0]);
     setPriority('normal');
     setAudience('all');
     setTitle('');
@@ -45,9 +69,17 @@ export default function PostsPanel() {
     setBody('');
   }
 
+  // Switching type changes the category vocabulary — reset to that vocabulary's first option so
+  // category is never a stale value from the other kind (e.g. "Internships" on an Announcement).
+  function onKindChange(nextKind: string) {
+    setKind(nextKind);
+    setCategory(Object.keys(categoriesForKind(nextKind))[0]);
+  }
+
   function startEdit(item: Post) {
     setEditingId(item.id);
     setKind(item.kind);
+    setCategory(item.category ?? Object.keys(categoriesForKind(item.kind))[0]);
     setPriority(item.priority);
     setAudience(item.audience);
     setTitle(item.title);
@@ -83,6 +115,7 @@ export default function PostsPanel() {
       if (!token) throw new Error('Not signed in');
       const payload = {
         kind,
+        category,
         priority,
         audience,
         title: title.trim(),
@@ -160,9 +193,19 @@ export default function PostsPanel() {
         <div className="grid-2">
           <div className="field">
             <label htmlFor="kind">Kind</label>
-            <select id="kind" value={kind} onChange={(e) => setKind(e.target.value)}>
+            <select id="kind" value={kind} onChange={(e) => onKindChange(e.target.value)}>
               <option value="announcement">Announcement</option>
               <option value="opportunity">Opportunity</option>
+            </select>
+          </div>
+          <div className="field">
+            <label htmlFor="category">Category</label>
+            <select id="category" value={category} onChange={(e) => setCategory(e.target.value)}>
+              {Object.entries(categoriesForKind(kind)).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
             </select>
           </div>
           <div className="field">
@@ -221,7 +264,7 @@ export default function PostsPanel() {
               <div>
                 <h3>{item.title}</h3>
                 <p className="meta" style={{ textTransform: 'capitalize' }}>
-                  {item.kind} · {item.audience}
+                  {item.kind} · {categoriesForKind(item.kind)[item.category ?? ''] ?? 'No category'} · {item.audience}
                 </p>
               </div>
               <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>

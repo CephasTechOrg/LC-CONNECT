@@ -150,22 +150,37 @@ class _AnnouncementResumeObserver extends WidgetsBindingObserver {
 // ── Announcements feed (paginated / infinite scroll) ──────────────
 const _announcementsPageSize = 15;
 
+/// The selected category filter chip — null means "All". A plain filter-state provider (same
+/// shape as `activitiesFilterProvider`); `AnnouncementsNotifier.build()` watches it, so changing
+/// the filter automatically reloads a fresh first page for that category.
+final announcementCategoryFilterProvider =
+    NotifierProvider<AnnouncementCategoryFilterNotifier, String?>(AnnouncementCategoryFilterNotifier.new);
+
+class AnnouncementCategoryFilterNotifier extends Notifier<String?> {
+  @override
+  String? build() => null;
+  void set(String? category) => state = category;
+}
+
 class AnnouncementsState {
   final List<CampusPostSummary> items;
   final bool hasMore;
   final bool loadingMore;
+  final int total;
 
   const AnnouncementsState({
     required this.items,
     required this.hasMore,
     required this.loadingMore,
+    required this.total,
   });
 
-  AnnouncementsState copyWith({List<CampusPostSummary>? items, bool? hasMore, bool? loadingMore}) =>
+  AnnouncementsState copyWith({List<CampusPostSummary>? items, bool? hasMore, bool? loadingMore, int? total}) =>
       AnnouncementsState(
         items: items ?? this.items,
         hasMore: hasMore ?? this.hasMore,
         loadingMore: loadingMore ?? this.loadingMore,
+        total: total ?? this.total,
       );
 }
 
@@ -179,19 +194,23 @@ class AnnouncementsNotifier extends AsyncNotifier<AnnouncementsState> {
   @override
   Future<AnnouncementsState> build() async {
     ref.watch(authNotifierProvider);
-    final first = await _fetch(0);
+    final category = ref.watch(announcementCategoryFilterProvider);
+    final first = await _fetch(category, 0);
+    final total = await _fetchTotal(category);
     return AnnouncementsState(
       items: first,
       hasMore: first.length >= _announcementsPageSize,
       loadingMore: false,
+      total: total,
     );
   }
 
-  Future<List<CampusPostSummary>> _fetch(int offset) async {
+  Future<List<CampusPostSummary>> _fetch(String? category, int offset) async {
     final response = await ref.read(apiClientProvider).dio.get(
       '/campus-hub/posts',
       queryParameters: {
         'kind': 'announcement',
+        if (category != null) 'category': category,
         'limit': _announcementsPageSize,
         'offset': offset,
       },
@@ -201,14 +220,34 @@ class AnnouncementsNotifier extends AsyncNotifier<AnnouncementsState> {
         .toList();
   }
 
+  Future<int> _fetchTotal(String? category) async {
+    final response = await ref.read(apiClientProvider).dio.get(
+      '/campus-hub/announcements/count',
+      queryParameters: {if (category != null) 'category': category},
+    );
+    return ((response.data as Map<String, dynamic>)['count'] as num).toInt();
+  }
+
+  /// Flip one item to read in place (optimistic) so its unread dot clears the instant the user
+  /// opens it — no refetch, no scroll reset.
+  void markRead(String postId) {
+    final current = state.asData?.value;
+    if (current == null) return;
+    final items = [
+      for (final p in current.items) p.id == postId ? p.copyWith(read: true) : p,
+    ];
+    state = AsyncData(current.copyWith(items: items));
+  }
+
   /// Append the next page. No-op while a page is in flight or once we've reached the end.
   Future<void> loadMore() async {
     final current = state.asData?.value;
     if (current == null || !current.hasMore || current.loadingMore) return;
     state = AsyncData(current.copyWith(loadingMore: true));
     try {
-      final next = await _fetch(current.items.length);
-      state = AsyncData(AnnouncementsState(
+      final category = ref.read(announcementCategoryFilterProvider);
+      final next = await _fetch(category, current.items.length);
+      state = AsyncData(current.copyWith(
         items: [...current.items, ...next],
         hasMore: next.length >= _announcementsPageSize,
         loadingMore: false,

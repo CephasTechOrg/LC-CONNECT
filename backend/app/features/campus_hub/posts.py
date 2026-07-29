@@ -14,7 +14,7 @@ from app.features.campus_hub.content_visibility import is_post_visible, publishe
 from app.models import CampusPost, CampusPostRead, User
 
 
-def _summary(post: CampusPost) -> dict:
+def _summary(post: CampusPost, *, read: bool = False) -> dict:
     return {
         'id': post.id,
         'kind': post.kind,
@@ -25,7 +25,17 @@ def _summary(post: CampusPost) -> dict:
         'publish_at': post.publish_at,
         'expires_at': post.expires_at,
         'external_url': post.external_url,
+        'read': read,
     }
+
+
+def _read_exists(user: User):
+    """Correlated EXISTS: has this user read the current CampusPost row?"""
+    return (
+        select(CampusPostRead.id)
+        .where(CampusPostRead.post_id == CampusPost.id, CampusPostRead.user_id == user.id)
+        .exists()
+    )
 
 
 def _detail(post: CampusPost) -> dict:
@@ -46,7 +56,7 @@ async def list_posts(
     limit: int = 50,
     offset: int = 0,
 ) -> list[dict]:
-    stmt = published_posts_stmt(user=user)
+    stmt = published_posts_stmt(user=user).add_columns(_read_exists(user).label('read'))
     if kind:
         stmt = stmt.where(CampusPost.kind == kind.strip().lower())
     if priority:
@@ -55,8 +65,8 @@ async def list_posts(
         stmt = stmt.where(CampusPost.category == category.strip().lower())
     # Stable order for offset paging: newest first, id as the tiebreaker.
     stmt = stmt.order_by(CampusPost.publish_at.desc(), CampusPost.id.desc()).limit(limit).offset(offset)
-    posts = (await db.execute(stmt)).scalars().all()
-    return [_summary(post) for post in posts]
+    rows = (await db.execute(stmt)).all()
+    return [_summary(post, read=bool(read)) for post, read in rows]
 
 
 async def get_post(db: AsyncSession, *, user: User, post_id: UUID) -> dict:
@@ -68,20 +78,20 @@ async def get_post(db: AsyncSession, *, user: User, post_id: UUID) -> dict:
 
 async def build_overview(db: AsyncSession, *, user: User) -> dict:
     now = datetime.now(UTC)
-    base = published_posts_stmt(user=user, now=now)
+    base = published_posts_stmt(user=user, now=now).add_columns(_read_exists(user).label('read'))
     urgent = (
         await db.execute(
             base.where(CampusPost.priority == 'urgent').order_by(CampusPost.publish_at.desc()).limit(3)
         )
-    ).scalars().all()
+    ).all()
     updates = (
         await db.execute(
             base.where(CampusPost.kind == 'announcement').order_by(CampusPost.publish_at.desc()).limit(5)
         )
-    ).scalars().all()
+    ).all()
     return {
-        'urgent_posts': [_summary(post) for post in urgent],
-        'latest_updates': [_summary(post) for post in updates],
+        'urgent_posts': [_summary(post, read=bool(read)) for post, read in urgent],
+        'latest_updates': [_summary(post, read=bool(read)) for post, read in updates],
     }
 
 
@@ -91,6 +101,14 @@ async def build_overview(db: AsyncSession, *, user: User) -> dict:
 def _visible_announcements_stmt(user: User):
     """Announcements the user can currently see (published, in-window, correct audience)."""
     return published_posts_stmt(user=user).where(CampusPost.kind == 'announcement')
+
+
+async def announcement_total(db: AsyncSession, user: User, *, category: str | None = None) -> int:
+    """Total visible announcements (optionally in one category) — the 'of N' in 'showing X of N'."""
+    stmt = _visible_announcements_stmt(user)
+    if category:
+        stmt = stmt.where(CampusPost.category == category.strip().lower())
+    return int((await db.execute(select(func.count()).select_from(stmt.subquery()))).scalar_one())
 
 
 async def unread_announcement_count(db: AsyncSession, user: User) -> int:

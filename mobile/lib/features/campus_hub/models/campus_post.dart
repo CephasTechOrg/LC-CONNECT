@@ -8,6 +8,7 @@ class CampusPostSummary {
   final DateTime publishAt;
   final DateTime? expiresAt;
   final String? externalUrl;
+  final bool read;
 
   const CampusPostSummary({
     required this.id,
@@ -19,6 +20,7 @@ class CampusPostSummary {
     required this.publishAt,
     this.expiresAt,
     this.externalUrl,
+    this.read = false,
   });
 
   factory CampusPostSummary.fromJson(Map<String, dynamic> json) => CampusPostSummary(
@@ -31,10 +33,24 @@ class CampusPostSummary {
         publishAt: DateTime.parse(json['publish_at'] as String),
         expiresAt: json['expires_at'] != null ? DateTime.parse(json['expires_at'] as String) : null,
         externalUrl: json['external_url'] as String?,
+        read: json['read'] as bool? ?? false,
       );
 
   bool get isUrgent => priority == 'urgent';
   bool get isImportant => priority == 'important';
+
+  CampusPostSummary copyWith({bool? read}) => CampusPostSummary(
+        id: id,
+        kind: kind,
+        title: title,
+        summary: summary,
+        priority: priority,
+        category: category,
+        publishAt: publishAt,
+        expiresAt: expiresAt,
+        externalUrl: externalUrl,
+        read: read ?? this.read,
+      );
 }
 
 class CampusPost extends CampusPostSummary {
@@ -94,3 +110,23 @@ const postKindLabels = <String, String>{
   'announcement': 'Announcement',
   'opportunity': 'Opportunity',
 };
+
+// `category` classifies a post within its kind — each kind has its own vocabulary (mirrors the
+// backend's `categories_for_kind`), so a publisher only ever sees categories that apply.
+const announcementCategoryLabels = <String, String>{
+  'general': 'General',
+  'academic': 'Academic',
+  'campus': 'Campus',
+  'events': 'Events',
+  'safety': 'Safety',
+};
+
+const opportunityCategoryLabels = <String, String>{
+  'internship': 'Internships',
+  'job': 'Jobs',
+  'volunteer': 'Volunteering',
+  'leadership': 'Leadership',
+};
+
+Map<String, String> categoryLabelsForKind(String kind) =>
+    kind == 'opportunity' ? opportunityCategoryLabels : announcementCategoryLabels;

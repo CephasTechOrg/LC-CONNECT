@@ -19,7 +19,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.features.campus_hub.schema import CampusPostCreate, CampusPostUpdate
+from app.features.campus_hub.schema import CampusPostCreate, CampusPostUpdate, categories_for_kind
 from app.features.campus_positions.service import get_primary_position
 from app.models import CampusPost, DeviceToken, User
 from app.shared.audit import record_audit
@@ -157,6 +157,16 @@ async def update_post(
     updates = payload.model_dump(exclude_unset=True)
     if 'external_url' in updates and updates['external_url'] is not None:
         updates['external_url'] = str(updates['external_url'])
+    if 'category' in updates and updates['category'] is not None:
+        # `kind` may not be part of this partial update — validate against the post's kind as it
+        # will be *after* this update (a kind change and a category change can arrive together).
+        resolved_kind = updates.get('kind', post.kind)
+        if updates['category'] not in categories_for_kind(resolved_kind):
+            allowed = ', '.join(sorted(categories_for_kind(resolved_kind)))
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"category for kind={resolved_kind} must be one of: {allowed}",
+            )
     for key, value in updates.items():
         setattr(post, key, value)
 

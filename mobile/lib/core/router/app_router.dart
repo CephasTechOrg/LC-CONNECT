@@ -10,6 +10,8 @@ import '../../features/campus_hub/screens/campus_hub_screen.dart';
 import '../../features/campus_hub/screens/campus_directory_screen.dart';
 import '../../features/campus_hub/screens/campus_position_detail_screen.dart';
 import '../../features/campus_hub/screens/campus_updates_screen.dart';
+import '../../features/campus_hub/screens/campus_opportunities_screen.dart';
+import '../../features/campus_hub/screens/campus_post_detail_screen.dart';
 import '../../features/campus_hub/screens/campus_resources_screen.dart';
 import '../../features/campus_hub/screens/compose_campus_post_screen.dart';
 import '../../features/campus_hub/screens/my_campus_posts_screen.dart';

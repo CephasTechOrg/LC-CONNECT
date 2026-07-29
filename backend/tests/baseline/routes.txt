@@ -20,6 +20,7 @@ GET /api/v1/admin/campus-resources
 GET /api/v1/admin/reports
 GET /api/v1/admin/users
 GET /api/v1/auth/me
+GET /api/v1/campus-hub/announcements/count
 GET /api/v1/campus-hub/announcements/unread-count
 GET /api/v1/campus-hub/directory
 GET /api/v1/campus-hub/directory/{position_id}

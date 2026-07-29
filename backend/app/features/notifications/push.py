@@ -1,9 +1,12 @@
 """FCM push sender — guarded so the backend runs fine with no Firebase config.
 
-Privacy: the notification shows the sender's name only; the data payload carries just
-ids (`conversation_id`, `sender_id`), never the message body — the client fetches the
-message on open (rec #2). Invalid tokens FCM reports are pruned (rec #5); outcomes are
-logged (rec #6).
+Covers messages, campus posts, and a deliberately small set of in-app notifications
+(connections + group invites/requests — see `notify_in_app_event`). Everything else stays
+live-only (WebSocket + badge), to avoid pushing for every low-value event.
+
+Privacy: the notification shows the sender's/actor's name only; the data payload carries just
+ids, never message bodies or notification content — the client fetches details on open (rec #2).
+Invalid tokens FCM reports are pruned (rec #5); outcomes are logged (rec #6).
 """
 
 from __future__ import annotations
@@ -19,6 +22,23 @@ from app.config import settings
 from app.features.notifications.service import prune_tokens, tokens_for_user
 
 logger = logging.getLogger('lc_connect.push')
+
+
+def _notification_copy(notif_type: str, actor_name: str | None, group_name: str | None) -> tuple[str, str]:
+    """Title/body per notification type. Title is who did it (falls back to 'Someone'); body
+    is a short, non-sensitive description — never anything the actor wrote."""
+    who = actor_name or 'Someone'
+    if notif_type == 'connection_request':
+        return who, 'Wants to connect with you'
+    if notif_type == 'connection_accepted':
+        return who, 'Accepted your connection request'
+    if notif_type == 'group_invite':
+        return who, f'Invited you to {group_name}' if group_name else 'Invited you to a group'
+    if notif_type == 'group_join_request':
+        return who, f'Wants to join {group_name}' if group_name else 'Wants to join your group'
+    if notif_type == 'group_request_approved':
+        return group_name or 'Group request', 'Your request to join was approved'
+    return who, 'You have a new notification'
 
 
 class PushSender:
@@ -69,6 +89,54 @@ class PushSender:
             return
         if invalid:
             await prune_tokens(db, invalid)
+
+    async def notify_in_app_event(
+        self,
+        db: AsyncSession,
+        *,
+        recipient_id: UUID,
+        notif_type: str,
+        actor_name: str | None,
+        group_name: str | None,
+    ) -> None:
+        """Push for the small set of in-app notifications worth interrupting someone for —
+        a connection request/acceptance or a group invite/join-request/approval. Everything
+        else (role changes, removals, etc.) stays live-only; the badge still catches it up
+        on next open. Title is the actor's name (never the notification body's raw content)."""
+        if not self._ready:
+            return
+        tokens = await tokens_for_user(db, recipient_id)
+        if not tokens:
+            return
+        title, body = _notification_copy(notif_type, actor_name, group_name)
+        try:
+            invalid = await asyncio.to_thread(self._send_notification, tokens, notif_type, title, body)
+        except Exception as exc:  # noqa: BLE001 - a push failure must never surface to the actor
+            logger.warning('Notification push failed for user %s (type=%s): %s', recipient_id, notif_type, exc)
+            return
+        if invalid:
+            await prune_tokens(db, invalid)
+
+    def _send_notification(self, tokens: list[str], notif_type: str, title: str, body: str) -> list[str]:
+        from firebase_admin import messaging
+
+        message = messaging.MulticastMessage(
+            tokens=tokens,
+            notification=messaging.Notification(title=title, body=body),
+            data={'type': 'notification', 'notif_type': notif_type},
+            apns=messaging.APNSConfig(payload=messaging.APNSPayload(aps=messaging.Aps(sound='default'))),
+        )
+        response = messaging.send_each_for_multicast(message, app=self._app)
+        invalid = [
+            token
+            for token, result in zip(tokens, response.responses, strict=False)
+            if not result.success and isinstance(result.exception, messaging.UnregisteredError)
+        ]
+        logger.info(
+            'Notification push (%s): sent=%d failed=%d pruned=%d',
+            notif_type, response.success_count, response.failure_count, len(invalid),
+        )
+        return invalid
 
     async def notify_campus_post(
         self,

@@ -1473,6 +1473,11 @@
             "title": "Publish At",
             "type": "string"
           },
+          "read": {
+            "default": false,
+            "title": "Read",
+            "type": "boolean"
+          },
           "summary": {
             "anyOf": [
               {
@@ -1558,6 +1563,11 @@
             "format": "date-time",
             "title": "Publish At",
             "type": "string"
+          },
+          "read": {
+            "default": false,
+            "title": "Read",
+            "type": "boolean"
           },
           "summary": {
             "anyOf": [
@@ -6300,6 +6310,61 @@
         "summary": "Block User",
         "tags": [
           "safety"
+        ]
+      }
+    },
+    "/api/v1/campus-hub/announcements/count": {
+      "get": {
+        "description": "Total visible announcements (optionally filtered by category) \u2014 the 'of N' in the footer.",
+        "operationId": "announcements_total_api_v1_campus_hub_announcements_count_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "category",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnouncementUnreadCount"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Announcements Total",
+        "tags": [
+          "campus-hub"
         ]
       }
     },

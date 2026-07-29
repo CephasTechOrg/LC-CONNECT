@@ -2,10 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:intl/intl.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/app_filter_chip.dart';
 import '../../../shared/widgets/app_states.dart';
 import '../models/campus_post.dart';
 import '../providers/campus_hub_provider.dart';
@@ -25,9 +24,8 @@ class _CampusUpdatesScreenState extends ConsumerState<CampusUpdatesScreen> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
-    // Opening the list marks every announcement read (deferred — can't mutate a provider during
-    // the first build).
-    Future.microtask(() => ref.read(announcementCountProvider.notifier).markAllRead());
+    // Read state is per-item: an announcement counts as read only when the user opens *that*
+    // announcement (see the detail screen). Browsing the list does not mark everything read.
   }
 
   @override
@@ -46,6 +44,11 @@ class _CampusUpdatesScreenState extends ConsumerState<CampusUpdatesScreen> {
   @override
   Widget build(BuildContext context) {
     final async = ref.watch(announcementsProvider);
+    final selectedCategory = ref.watch(announcementCategoryFilterProvider);
+    // The live unread badge (server-backed, same counter as the home panel) — richer than a
+    // plain header, and it's already flowing through the app so it costs nothing extra to show.
+    final unread = ref.watch(announcementCountProvider);
+    final total = async.asData?.value.total;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -53,7 +56,35 @@ class _CampusUpdatesScreenState extends ConsumerState<CampusUpdatesScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _SubpageHeader(title: 'Announcements', onBack: () => context.pop()),
+            _AnnouncementsHero(onBack: () => context.pop(), total: total, unread: unread),
+            const SizedBox(height: 14),
+            SizedBox(
+              height: 36,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: AppFilterChip(
+                      label: 'All',
+                      selected: selectedCategory == null,
+                      onTap: () => ref.read(announcementCategoryFilterProvider.notifier).set(null),
+                    ),
+                  ),
+                  for (final entry in announcementCategoryLabels.entries)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: AppFilterChip(
+                        label: entry.value,
+                        selected: selectedCategory == entry.key,
+                        onTap: () => ref.read(announcementCategoryFilterProvider.notifier).set(entry.key),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
             Expanded(
               child: RefreshIndicator(
                 color: AppColors.primary,
@@ -75,24 +106,24 @@ class _CampusUpdatesScreenState extends ConsumerState<CampusUpdatesScreen> {
                     return ListView.builder(
                       controller: _scrollController,
                       padding: const EdgeInsets.only(top: 8, bottom: 24),
-                      itemCount: data.items.length + (data.hasMore ? 1 : 0),
+                      itemCount: data.items.length + 1, // +1 for the trailing footer/spinner
                       itemBuilder: (context, index) {
-                        if (index >= data.items.length) {
-                          return const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 20),
-                            child: Center(
-                              child: SizedBox(
-                                width: 22,
-                                height: 22,
-                                child: CircularProgressIndicator(strokeWidth: 2),
-                              ),
-                            ),
+                        if (index == data.items.length) {
+                          return _AnnouncementsFooter(
+                            loadingMore: data.loadingMore,
+                            shown: data.items.length,
+                            total: data.total,
                           );
                         }
                         final post = data.items[index];
                         return CampusPostCard(
                           post: post,
-                          onTap: () => context.push('/home/posts/${post.id}'),
+                          onTap: () {
+                            // Clear its unread dot immediately; the detail screen + counter handle
+                            // the server-side read + badge.
+                            ref.read(announcementsProvider.notifier).markRead(post.id);
+                            context.push('/home/posts/${post.id}');
+                          },
                         );
                       },
                     );
@@ -107,184 +138,96 @@ class _CampusUpdatesScreenState extends ConsumerState<CampusUpdatesScreen> {
   }
 }
 
-class CampusOpportunitiesScreen extends ConsumerWidget {
-  const CampusOpportunitiesScreen({super.key});
+/// Rich gradient header — same navy treatment as the home "Latest updates" panel, so the
+/// Announcements list feels like part of one designed surface instead of a plain white page.
+/// Carries a live stat line (total + unread) instead of a bare title.
+class _AnnouncementsHero extends StatelessWidget {
+  final VoidCallback onBack;
+  final int? total;
+  final int unread;
+  const _AnnouncementsHero({required this.onBack, required this.total, required this.unread});
 
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    const query = CampusPostsQuery(kind: 'opportunity');
-    final postsAsync = ref.watch(campusPostsProvider(query));
-
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _SubpageHeader(title: 'Opportunities', onBack: () => context.pop()),
-            Expanded(
-              child: RefreshIndicator(
-                color: AppColors.primary,
-                onRefresh: () async => ref.invalidate(campusPostsProvider(query)),
-                child: postsAsync.when(
-                  loading: () => const Center(child: CircularProgressIndicator()),
-                  error: (_, _) => AppErrorState(
-                    message: 'Could not load opportunities.',
-                    onRetry: () => ref.invalidate(campusPostsProvider(query)),
-                  ),
-                  data: (posts) {
-                    if (posts.isEmpty) {
-                      return const AppEmptyState(
-                        icon: Icons.work_outline,
-                        title: 'No opportunities yet',
-                        subtitle: 'Jobs, internships, and campus roles will appear here.',
-                      );
-                    }
-                    return ListView.builder(
-                      padding: const EdgeInsets.only(top: 8, bottom: 24),
-                      itemCount: posts.length,
-                      itemBuilder: (context, index) => CampusPostCard(
-                        post: posts[index],
-                        onTap: () => context.push('/home/posts/${posts[index].id}'),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class CampusPostDetailScreen extends ConsumerStatefulWidget {
-  final String postId;
-
-  const CampusPostDetailScreen({super.key, required this.postId});
-
-  @override
-  ConsumerState<CampusPostDetailScreen> createState() => _CampusPostDetailScreenState();
-}
-
-class _CampusPostDetailScreenState extends ConsumerState<CampusPostDetailScreen> {
-  bool _countedAsRead = false;
-
-  String get postId => widget.postId;
-
-  Future<void> _launchExternal(String url) async {
-    final uri = Uri.parse(url);
-    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-      throw Exception('Could not open $url');
-    }
+  String get _subtitle {
+    if (total == null) return 'Official campus announcements';
+    final countLabel = '$total announcement${total == 1 ? '' : 's'}';
+    return unread > 0 ? '$countLabel · $unread new' : countLabel;
   }
 
   @override
   Widget build(BuildContext context) {
-    final postAsync = ref.watch(campusPostProvider(postId));
-
-    // Reading an announcement marks that one read on the server + takes it off the badge (once).
-    final post = postAsync.asData?.value;
-    if (!_countedAsRead && post != null && post.kind == 'announcement') {
-      _countedAsRead = true;
-      Future.microtask(() => ref.read(announcementCountProvider.notifier).readOne(postId));
-    }
-
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: postAsync.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (_, _) => Column(
-            children: [
-              _SubpageHeader(title: 'Post', onBack: () => context.pop()),
-              Expanded(
-                child: AppErrorState(
-                  message: 'Could not load this update.',
-                  onRetry: () => ref.invalidate(campusPostProvider(postId)),
-                ),
-              ),
-            ],
-          ),
-          data: (post) => Column(
-            children: [
-              _SubpageHeader(title: postKindLabels[post.kind] ?? 'Post', onBack: () => context.pop()),
-              Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-                  children: [
-                    Text(
-                      post.title,
-                      style: GoogleFonts.dmSans(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textDark,
-                        letterSpacing: -0.3,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      DateFormat('EEEE, MMM d · h:mm a').format(post.publishAt.toLocal()),
-                      style: GoogleFonts.dmSans(fontSize: 12.5, color: AppColors.textMuted),
-                    ),
-                    if (post.expiresAt != null) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        'Deadline: ${DateFormat('MMM d, y').format(post.expiresAt!.toLocal())}',
-                        style: GoogleFonts.dmSans(fontSize: 12.5, color: AppColors.primary, fontWeight: FontWeight.w600),
-                      ),
-                    ],
-                    const SizedBox(height: 16),
-                    Text(
-                      post.body,
-                      style: GoogleFonts.dmSans(fontSize: 15, height: 1.5, color: AppColors.textMid),
-                    ),
-                    if (post.externalUrl != null && post.externalUrl!.isNotEmpty) ...[
-                      const SizedBox(height: 20),
-                      FilledButton.icon(
-                        onPressed: () => _launchExternal(post.externalUrl!),
-                        icon: const Icon(Icons.open_in_new_rounded, size: 18),
-                        label: const Text('Open link'),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ],
-          ),
+    return Container(
+      padding: const EdgeInsets.fromLTRB(4, 6, 20, 18),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF264A6E), Color(0xFF1B3A5C)],
         ),
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(24),
+          bottomRight: Radius.circular(24),
+        ),
+        boxShadow: [
+          BoxShadow(color: Color(0x471B3A5C), blurRadius: 18, offset: Offset(0, 6)),
+        ],
+      ),
+      child: Row(
+        children: [
+          IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: Colors.white),
+            onPressed: onBack,
+          ),
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.14), shape: BoxShape.circle),
+            child: const Icon(Icons.campaign_outlined, color: Colors.white, size: 18),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Announcements',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                    letterSpacing: -0.2,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  _subtitle,
+                  style: GoogleFonts.dmSans(fontSize: 12.5, color: Colors.white.withValues(alpha: 0.75)),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _SubpageHeader extends StatelessWidget {
-  final String title;
-  final VoidCallback onBack;
-
-  const _SubpageHeader({required this.title, required this.onBack});
+class _AnnouncementsFooter extends StatelessWidget {
+  final bool loadingMore;
+  final int shown;
+  final int total;
+  const _AnnouncementsFooter({required this.loadingMore, required this.shown, required this.total});
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 8, 20, 8),
-      child: Row(
-        children: [
-          IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
-            onPressed: onBack,
-          ),
-          Expanded(
-            child: Text(
-              title,
-              style: GoogleFonts.dmSans(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textDark,
+      padding: const EdgeInsets.symmetric(vertical: 20),
+      child: Center(
+        child: loadingMore
+            ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2))
+            : Text(
+                'Showing $shown of $total announcement${total == 1 ? '' : 's'}',
+                style: GoogleFonts.dmSans(fontSize: 12.5, color: AppColors.textMuted),
               ),
-            ),
-          ),
-        ],
       ),
     );
   }

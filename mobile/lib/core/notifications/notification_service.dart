@@ -36,6 +36,7 @@ class NotificationService {
     Dio dio, {
     required void Function(String conversationId) onOpenConversation,
     required void Function(String postId) onOpenCampusPost,
+    required VoidCallback onOpenNotifications,
   }) async {
     if (!_available) return;
     final messaging = FirebaseMessaging.instance;
@@ -50,7 +51,7 @@ class NotificationService {
         _token = refreshed;
         _register(dio, refreshed);
       });
-      void open(RemoteMessage m) => _open(m, onOpenConversation, onOpenCampusPost);
+      void open(RemoteMessage m) => _open(m, onOpenConversation, onOpenCampusPost, onOpenNotifications);
       FirebaseMessaging.onMessageOpenedApp.listen(open);
       final initial = await messaging.getInitialMessage();
       if (initial != null) open(initial);
@@ -63,6 +64,7 @@ class NotificationService {
     RemoteMessage message,
     void Function(String) onOpenConversation,
     void Function(String) onOpenCampusPost,
+    VoidCallback onOpenNotifications,
   ) {
     final data = message.data;
     final type = data['type'];
@@ -72,6 +74,11 @@ class NotificationService {
         onOpenCampusPost(postId);
         return;
       }
+    }
+    if (type == 'notification') {
+      // Connection/group-invite pushes — the notifications screen has the full detail + action.
+      onOpenNotifications();
+      return;
     }
     final conversationId = data['conversation_id'];
     if (conversationId is String && conversationId.isNotEmpty) {
@@ -121,6 +128,9 @@ final notificationRegistrarProvider = Provider<void>((ref) {
         },
         onOpenCampusPost: (postId) {
           ref.read(routerProvider).push('/home/posts/$postId');
+        },
+        onOpenNotifications: () {
+          ref.read(routerProvider).push('/notifications');
         },
       );
     } else {

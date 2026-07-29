@@ -66,6 +66,18 @@ async def get_post(
     return CampusPostRead.model_validate(row)
 
 
+@router.get('/announcements/count', response_model=AnnouncementUnreadCount)
+async def announcements_total(
+    category: str | None = Query(default=None),
+    current_user: User = Depends(require_verified_user),
+    db: AsyncSession = Depends(get_db),
+) -> AnnouncementUnreadCount:
+    """Total visible announcements (optionally filtered by category) — the 'of N' in the footer."""
+    return AnnouncementUnreadCount(
+        count=await posts_service.announcement_total(db, current_user, category=category)
+    )
+
+
 # ── announcement read state (per-user unread badge, mirrors /notifications) ────────
 @router.get('/announcements/unread-count', response_model=AnnouncementUnreadCount)
 async def announcements_unread_count(
