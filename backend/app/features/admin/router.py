@@ -9,6 +9,7 @@ from app.dependencies import require_admin_aal2
 from app.features.admin import campus_positions as campus_admin
 from app.features.admin import campus_posts as posts_admin
 from app.features.admin import campus_resources as resources_admin
+from app.features.admin import programs as programs_admin
 from app.features.admin.schema import (
     AdminUserRead,
     CampusPositionAdminRead,
@@ -16,6 +17,9 @@ from app.features.admin.schema import (
     CampusResourceAdminRead,
     PositionReviewRequest,
     PositionRevokeRequest,
+    ProgramMembershipAdminRead,
+    ProgramMembershipRevokeRequest,
+    ProgramMembershipVerifyRequest,
     SuspendUserRequest,
 )
 from app.features.admin.service import remove_activity as do_remove_activity
@@ -29,6 +33,7 @@ from app.features.campus_hub.schema import (
 )
 from app.features.campus_positions.schema import CampusPositionRead
 from app.models import Profile, Report, User
+from app.shared.profiles import get_profile_by_user_id
 from app.shared.schemas import ReportRead
 
 router = APIRouter(prefix='/admin', tags=['admin'])
@@ -40,6 +45,22 @@ def _position_admin_read(position, user: User, profile: Profile) -> CampusPositi
         **base,
         user_email=user.email,
         user_role=user.role,
+        display_name=profile.display_name,
+    )
+
+
+def _membership_admin_read(membership, user: User, profile: Profile, program) -> ProgramMembershipAdminRead:
+    return ProgramMembershipAdminRead(
+        id=membership.id,
+        user_id=membership.user_id,
+        status=membership.status,
+        verified_at=membership.verified_at,
+        revoked_at=membership.revoked_at,
+        created_at=membership.created_at,
+        updated_at=membership.updated_at,
+        program_slug=program.slug,
+        program_name=program.name,
+        user_email=user.email,
         display_name=profile.display_name,
     )
 
@@ -268,3 +289,50 @@ async def remove_activity(
 ):
     activity = await do_remove_activity(db, activity_id)
     return {'status': 'removed', 'activity_id': str(activity.id)}
+
+
+@router.get('/programs/{slug}/members', response_model=list[ProgramMembershipAdminRead])
+async def list_program_memberships(
+    slug: str,
+    status: str = 'active',
+    _: User = Depends(require_admin_aal2),
+    db: AsyncSession = Depends(get_db),
+) -> list[ProgramMembershipAdminRead]:
+    program = await programs_admin.get_program_by_slug_or_404(db, slug)
+    rows = await programs_admin.list_memberships(db, program_id=program.id, status_filter=status)
+    return [_membership_admin_read(membership, user, profile, program) for membership, user, profile in rows]
+
+
+@router.post('/programs/{slug}/members', response_model=ProgramMembershipAdminRead, status_code=201)
+async def verify_program_membership(
+    slug: str,
+    payload: ProgramMembershipVerifyRequest,
+    actor: User = Depends(require_admin_aal2),
+    db: AsyncSession = Depends(get_db),
+) -> ProgramMembershipAdminRead:
+    program = await programs_admin.get_program_by_slug_or_404(db, slug)
+    membership, user, profile = await programs_admin.verify_membership(
+        db, actor=actor, program=program, email=payload.email
+    )
+
+    from app.features.realtime.runtime import emit_notification
+
+    await emit_notification(user_id=user.id, notif_type='program_membership_verified')
+    return _membership_admin_read(membership, user, profile, program)
+
+
+@router.post('/programs/{slug}/members/{user_id}/revoke', response_model=ProgramMembershipAdminRead)
+async def revoke_program_membership(
+    slug: str,
+    user_id: UUID,
+    payload: ProgramMembershipRevokeRequest,
+    actor: User = Depends(require_admin_aal2),
+    db: AsyncSession = Depends(get_db),
+) -> ProgramMembershipAdminRead:
+    program = await programs_admin.get_program_by_slug_or_404(db, slug)
+    membership = await programs_admin.revoke_membership(
+        db, actor=actor, program=program, user_id=user_id, reason=payload.reason
+    )
+    target = await db.get(User, membership.user_id)
+    profile = await get_profile_by_user_id(db, membership.user_id)
+    return _membership_admin_read(membership, target, profile, program)

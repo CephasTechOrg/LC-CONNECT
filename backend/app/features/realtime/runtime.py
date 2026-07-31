@@ -40,6 +40,7 @@ PUSHABLE_NOTIFICATION_TYPES = frozenset({
     'group_invite',
     'group_join_request',
     'group_request_approved',
+    'program_membership_verified',
 })
 
 

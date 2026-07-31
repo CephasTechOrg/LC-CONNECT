@@ -4,6 +4,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from app.features.campus_positions.schema import CampusPositionRead
+from app.features.programs.schema import ProgramMembershipRead
 
 
 class AdminUserRead(BaseModel):
@@ -33,6 +34,19 @@ class PositionRevokeRequest(PositionReviewRequest):
 class CampusPositionAdminRead(CampusPositionRead):
     user_email: EmailStr
     user_role: str
+    display_name: str | None = None
+
+
+class ProgramMembershipVerifyRequest(BaseModel):
+    email: EmailStr
+
+
+class ProgramMembershipRevokeRequest(BaseModel):
+    reason: str | None = Field(default=None, max_length=500)
+
+
+class ProgramMembershipAdminRead(ProgramMembershipRead):
+    user_email: EmailStr
     display_name: str | None = None
 
 

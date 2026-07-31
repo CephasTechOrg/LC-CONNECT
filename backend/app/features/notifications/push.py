@@ -1,8 +1,9 @@
 """FCM push sender — guarded so the backend runs fine with no Firebase config.
 
 Covers messages, campus posts, and a deliberately small set of in-app notifications
-(connections + group invites/requests — see `notify_in_app_event`). Everything else stays
-live-only (WebSocket + badge), to avoid pushing for every low-value event.
+(connections + group invites/requests + program membership verification — see
+`notify_in_app_event`). Everything else stays live-only (WebSocket + badge), to avoid pushing for
+every low-value event.
 
 Privacy: the notification shows the sender's/actor's name only; the data payload carries just
 ids, never message bodies or notification content — the client fetches details on open (rec #2).
@@ -38,6 +39,8 @@ def _notification_copy(notif_type: str, actor_name: str | None, group_name: str 
         return who, f'Wants to join {group_name}' if group_name else 'Wants to join your group'
     if notif_type == 'group_request_approved':
         return group_name or 'Group request', 'Your request to join was approved'
+    if notif_type == 'program_membership_verified':
+        return 'LC Connect', "You've been verified for a new program — check your profile"
     return who, 'You have a new notification'
 
 

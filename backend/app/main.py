@@ -22,6 +22,7 @@ from app.features.messages import router as messages_router
 from app.features.notifications import inbox_router as notifications_inbox_router
 from app.features.notifications import router as notifications_router
 from app.features.profiles import router as profiles_router
+from app.features.programs import router as programs_router
 from app.features.realtime import router as realtime_router
 from app.features.realtime.protocol import CloseCode
 from app.features.realtime.runtime import manager as ws_manager
@@ -115,6 +116,7 @@ app.include_router(connections_router, prefix=settings.api_v1_prefix)
 app.include_router(messages_router, prefix=settings.api_v1_prefix)
 app.include_router(activities_router, prefix=settings.api_v1_prefix)
 app.include_router(groups_router, prefix=settings.api_v1_prefix)
+app.include_router(programs_router, prefix=settings.api_v1_prefix)
 app.include_router(safety_router, prefix=settings.api_v1_prefix)
 app.include_router(admin_router, prefix=settings.api_v1_prefix)
 app.include_router(account_router, prefix=settings.api_v1_prefix)

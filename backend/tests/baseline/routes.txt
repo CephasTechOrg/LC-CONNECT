@@ -17,6 +17,7 @@ GET /api/v1/admin/campus-positions/pending
 GET /api/v1/admin/campus-positions/{position_id}
 GET /api/v1/admin/campus-posts
 GET /api/v1/admin/campus-resources
+GET /api/v1/admin/programs/{slug}/members
 GET /api/v1/admin/reports
 GET /api/v1/admin/users
 GET /api/v1/auth/me
@@ -54,6 +55,7 @@ GET /api/v1/notifications
 GET /api/v1/notifications/unread-count
 GET /api/v1/profiles/me
 GET /api/v1/profiles/{profile_id}
+GET /api/v1/programs/me
 GET /health
 PATCH /api/v1/activities/{activity_id}
 PATCH /api/v1/admin/campus-posts/{post_id}
@@ -76,6 +78,8 @@ POST /api/v1/admin/campus-posts
 POST /api/v1/admin/campus-posts/{post_id}/archive
 POST /api/v1/admin/campus-posts/{post_id}/publish
 POST /api/v1/admin/campus-resources
+POST /api/v1/admin/programs/{slug}/members
+POST /api/v1/admin/programs/{slug}/members/{user_id}/revoke
 POST /api/v1/admin/users/{user_id}/suspend
 POST /api/v1/auth/bootstrap
 POST /api/v1/blocks/{user_id}

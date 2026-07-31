@@ -400,6 +400,50 @@ class CampusPosition(Base):
     )
 
 
+class Program(Base):
+    """A school-run program a student can be enrolled in (e.g. Presidential Scholars) — the
+    generic foundation the Blueprint Bond module is built on. Seeded, not admin-CRUD'd, for now."""
+
+    __tablename__ = 'programs'
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    slug: Mapped[str] = mapped_column(String(60), unique=True, index=True, nullable=False)
+    name: Mapped[str] = mapped_column(String(160), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
+class ProgramMembership(Base):
+    """A user's enrollment in a `Program` — never self-declared; an Honors admin verifies from an
+    official roster (see `app/features/admin/programs.py`). One row per (user, program): a revoke
+    flips `status` rather than deleting, so a later re-verify reactivates the same row instead of
+    duplicating history."""
+
+    __tablename__ = 'program_memberships'
+    __table_args__ = (
+        UniqueConstraint('user_id', 'program_id', name='uq_program_membership_user_program'),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey('users.id', ondelete='CASCADE'), index=True, nullable=False
+    )
+    program_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey('programs.id', ondelete='CASCADE'), index=True, nullable=False
+    )
+    status: Mapped[str] = mapped_column(String(20), default='active', index=True, nullable=False)
+    verified_by_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey('users.id', ondelete='SET NULL'), nullable=True
+    )
+    verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+
 class AdminAuditLog(Base):
     """Immutable record of sensitive admin actions (position review, suspensions, etc.)."""
 

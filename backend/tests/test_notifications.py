@@ -130,6 +130,7 @@ async def test_notify_noop_when_no_tokens(monkeypatch):
         ('group_join_request', 'Alex', 'Chess Club', 'Alex', 'Chess Club'),
         ('group_request_approved', 'Alex', 'Chess Club', 'Chess Club', 'approved'),
         ('group_request_approved', 'Alex', None, 'Group request', 'approved'),
+        ('program_membership_verified', 'Alex', None, 'LC Connect', 'verified'),
     ],
 )
 def test_notification_copy_per_type(notif_type, actor_name, group_name, expected_title, expected_body_contains):

@@ -10,14 +10,16 @@ from app.features.realtime import runtime
 
 
 def test_pushable_notification_types_is_the_agreed_small_set():
-    """Locks the deliberately narrow set — connections + group invites/requests only. Adding a
-    type here is a product decision, not something that should drift silently."""
+    """Locks the deliberately narrow set — connections, group invites/requests, and program
+    membership verification. Adding a type here is a product decision, not something that should
+    drift silently."""
     assert runtime.PUSHABLE_NOTIFICATION_TYPES == {
         'connection_request',
         'connection_accepted',
         'group_invite',
         'group_join_request',
         'group_request_approved',
+        'program_membership_verified',
     }
 
 
