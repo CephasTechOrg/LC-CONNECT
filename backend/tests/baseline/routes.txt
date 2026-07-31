@@ -19,6 +19,7 @@ GET /api/v1/admin/campus-positions/pending
 GET /api/v1/admin/campus-positions/{position_id}
 GET /api/v1/admin/campus-posts
 GET /api/v1/admin/campus-resources
+GET /api/v1/admin/employers
 GET /api/v1/admin/programs/{slug}/members
 GET /api/v1/admin/reports
 GET /api/v1/admin/users
@@ -86,6 +87,8 @@ POST /api/v1/admin/campus-posts
 POST /api/v1/admin/campus-posts/{post_id}/archive
 POST /api/v1/admin/campus-posts/{post_id}/publish
 POST /api/v1/admin/campus-resources
+POST /api/v1/admin/employers/{org_id}/approve
+POST /api/v1/admin/employers/{org_id}/reject
 POST /api/v1/admin/programs/{slug}/members
 POST /api/v1/admin/programs/{slug}/members/{user_id}/revoke
 POST /api/v1/admin/users/{user_id}/suspend
@@ -101,6 +104,7 @@ POST /api/v1/connections/request
 POST /api/v1/connections/{request_id}/accept
 POST /api/v1/connections/{request_id}/decline
 POST /api/v1/devices
+POST /api/v1/employers/register
 POST /api/v1/groups
 POST /api/v1/groups/{group_id}/avatar
 POST /api/v1/groups/{group_id}/invites

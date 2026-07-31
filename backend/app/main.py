@@ -16,6 +16,7 @@ from app.features.campus_hub import router as campus_hub_router
 from app.features.campus_positions import router as campus_positions_router
 from app.features.connections import router as connections_router
 from app.features.discovery import router as discovery_router
+from app.features.employers import router as employers_router
 from app.features.groups.router import router as groups_router
 from app.features.lookups import router as lookups_router
 from app.features.messages import router as messages_router
@@ -119,6 +120,7 @@ app.include_router(activities_router, prefix=settings.api_v1_prefix)
 app.include_router(groups_router, prefix=settings.api_v1_prefix)
 app.include_router(programs_router, prefix=settings.api_v1_prefix)
 app.include_router(scholars_router, prefix=settings.api_v1_prefix)
+app.include_router(employers_router, prefix=settings.api_v1_prefix)
 app.include_router(safety_router, prefix=settings.api_v1_prefix)
 app.include_router(admin_router, prefix=settings.api_v1_prefix)
 app.include_router(account_router, prefix=settings.api_v1_prefix)

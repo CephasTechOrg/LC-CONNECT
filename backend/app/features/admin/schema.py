@@ -4,6 +4,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from app.features.campus_positions.schema import CampusPositionRead
+from app.features.employers.schema import EmployerOrganizationRead
 from app.features.programs.schema import ProgramMembershipRead
 
 
@@ -70,6 +71,16 @@ class AdminMembershipRead(BaseModel):
 
 class MyAdminScopesRead(BaseModel):
     scopes: list[str]
+
+
+class EmployerRejectRequest(BaseModel):
+    reason: str | None = Field(default=None, max_length=500)
+
+
+class EmployerOrganizationAdminRead(EmployerOrganizationRead):
+    contact_email: EmailStr
+    contact_name: str | None = None
+    review_note: str | None = None
 
 
 class CampusPostAdminRead(BaseModel):

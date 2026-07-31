@@ -197,11 +197,9 @@ vs. absent by reading the code, not assumed from the spec:
   copy-paste of an existing helper — build it following the same guarded-client shape
   (`if self.client is None: raise/return`) but as a new method, not by relaxing the existing public
   one.
-- **No employer identity type exists.** Auth today is one `User` table with `role` in
-  `student`/`staff`/`admin`, all Supabase-Auth-backed. Whether `EmployerAccount` becomes
-  `User.role = 'employer'` (reusing the existing auth plumbing) or a fully separate identity/table
-  is an **open design decision** — resolve it explicitly before Phase 4 starts, don't default into
-  it mid-implementation.
+- **No employer identity type exists** *(resolved in Phase 4 — see §11 Phase 4)*: `EmployerAccount`
+  is a fully separate identity/table, never `User.role = 'employer'`, specifically to keep every
+  existing student/staff endpoint default-deny for employers without re-auditing any of them.
 
 ### Cross-cutting bar for every phase below — not a one-time step, a standing requirement
 
@@ -273,14 +271,18 @@ vs. absent by reading the code, not assumed from the spec:
 - [x] **Deferred, not built this pass** — "manage professional-profile status," "Honors resources," and "program analytics" from the original Admin UI prose: none of these have a concrete spec (no `status` field exists on `ScholarProfessionalProfile`, no `HonorsResource` model, no defined analytics metrics anywhere in this document). Building any of them now would mean inventing requirements rather than implementing them. Flagging explicitly rather than silently skipping — needs a real spec before a future pass.
 - [x] Tests: `can_invite` matrix (14 cases) + `get_admin_scopes` + invite (new user, existing user, duplicate-409, reactivate-after-revoke, unknown-role-422, audit entry, failure leaves nothing half-created) + revoke (audit entry, cross-scope 403, not-found-404, already-revoked-409) + `require_admin_scope` dependency (31 tests total, `tests/db/test_admin_admins.py`). Full suite: backend 349 passed/ruff clean/snapshot additive-only; admin portal builds and lints cleanly.
 
-### Phase 4 — Employer organization registration and approval
-- [ ] Resolve the open design decision from §11.0 first: employer identity as `User.role = 'employer'` (reuse existing Supabase-Auth-backed plumbing) vs. a fully separate identity — document the choice before modeling `EmployerAccount`.
-- [ ] `EmployerOrganization` model (name, status: pending/approved/rejected).
-- [ ] `EmployerAccount` model per the resolved identity decision above.
-- [ ] Employer registration flow leaves the org/account `pending` with zero access until an Honors Admin approves.
-- [ ] Honors Admin approval queue (approve/reject), audited via `record_audit()`.
-- [ ] Error handling: a pending/rejected employer hitting any employer-only endpoint gets a clear `403` (`"Your organization is pending approval"` / `"…was not approved"`), not a generic auth failure — the employer portal needs to render that message meaningfully.
-- [ ] Tests: a pending employer cannot submit opportunities, browse scholars, or otherwise touch any scholar data; a rejected employer stays rejected (no re-registration loophole that resets status to pending without Honors Admin action).
+### Phase 4 — Employer organization registration and approval ✅ (2026-07-31)
+- [x] **Identity decision resolved**: `EmployerAccount` is a **fully separate identity, never a `User` row** (not `User.role='employer'`). Reasoning: reusing `User` would mean every one of the ~15 existing student/staff endpoints implicitly trusts anyone with a valid Supabase session unless individually re-audited to exclude the new role — a large, risky blast radius for a security-sensitive external-actor boundary. A fully separate identity means employers structurally can't resolve against `get_current_user`/`require_verified_student`/etc. at all — default-deny holds automatically, satisfying §8's "no employer access to social profiles, activities, or messages" by construction rather than by remembering to check a role everywhere.
+- [x] `EmployerOrganization` model (name, status: pending/approved/rejected, review_note, reviewed_by/at) + `EmployerAccount` (organization_id, email — unique, the login identity — display_name, `auth_user_id` nullable). Migration `60d27337c593`.
+- [x] Employer registration (`POST /employers/register`, public/unauthenticated — `app/features/employers/`) leaves the org **and** account pending with zero access: `EmployerAccount.auth_user_id` stays NULL until approved, so a pending employer has no Supabase identity at all, not just a gated one — the strongest form of "zero access."
+- [x] Honors Admin approval queue (`app/features/admin/employers.py`, wired into `admin/router.py` under `require_admin_scope('honors_admin')`) — approval reuses the exact same `invite_auth_user` path Phase 3 built for admins: approving an employer sends them a real Supabase invite email (never an admin-set password). Rejection requires nothing beyond marking the org `rejected` (no auth ever granted).
+- [x] Error handling: invite-side failure on approval leaves the org `pending` (not falsely marked `approved` with no matching Supabase identity) — same "auth call before any local mutation" pattern as Phase 3's admin invite; `409` for approving/rejecting a non-pending org; `404` for an unknown org id.
+- [x] Tests (14, `tests/db/test_employers.py` + `tests/db/test_admin_employers.py`): duplicate-email registration blocked whether the existing org is pending/approved/rejected (**the explicit re-registration-loophole test** — confirms a second registration attempt never resets a rejected org back to pending), approve sets status + invites + audits, approve failure leaves org pending, reject sets status + note + audits, list filters by status, org-not-found 404.
+- [x] Admin portal: new **Employers** page (Honors-only nav item) — pending/approved/rejected tabs, approve/reject with an optional rejection note.
+- [x] **Not built this pass, by design**: no employer-facing registration *web page* — only the backend endpoint. Building a full separate employer-facing portal (registration UI, login, and eventually the Phase 5/6 dashboard) is a substantial standalone frontend project the Phase 4 checklist's own bullets don't ask for (they describe backend/admin-approval behavior); flagging this explicitly as a distinct future frontend deliverable rather than silently leaving it undiscussed.
+- [x] **Prerequisite paid down mid-phase**: `app/models.py` was at 595/600 lines — Phase 4's new models would have pushed it over the hard cap and failed CI. Split into `app/models/` (a package: `core.py`, `social.py`, `messaging.py`, `groups.py`, `activities.py`, `notifications.py`, `campus.py`, `programs.py`, `admin.py`, `employers.py`, all sharing one `Base`/metadata via `__init__.py` re-exports — satisfies CLAUDE.md's "one metadata," not literally "one file"). Zero of the 78 files that `from app.models import X` needed to change. Proven behavior-identical: full suite passed before and after with the same count, and the OpenAPI snapshot was byte-for-byte unchanged.
+- [x] Full suite: backend 363 passed, ruff clean, snapshot additive-only; admin portal builds + lints cleanly.
+- [x] **Heads up for Phase 5/6**: `admin/router.py` is now at 447 lines (soft-target warning, not a hard-cap risk yet) — growing the same way `models.py` did each phase. Worth splitting into per-domain sub-routers before it gets as tight as `models.py` was.
 
 ### Phase 5 — Employer opportunity submission and existing-feed publication
 - [ ] `EmployerOpportunitySubmission` model (org_id, content, status: pending/approved/rejected, reviewer_id, reviewed_at).

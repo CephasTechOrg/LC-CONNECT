@@ -10,6 +10,7 @@ from app.features.admin import admins as admins_admin
 from app.features.admin import campus_positions as campus_admin
 from app.features.admin import campus_posts as posts_admin
 from app.features.admin import campus_resources as resources_admin
+from app.features.admin import employers as employers_admin
 from app.features.admin import programs as programs_admin
 from app.features.admin.schema import (
     AdminMembershipRead,
@@ -17,6 +18,8 @@ from app.features.admin.schema import (
     CampusPositionAdminRead,
     CampusPostAdminRead,
     CampusResourceAdminRead,
+    EmployerOrganizationAdminRead,
+    EmployerRejectRequest,
     InviteAdminRequest,
     MyAdminScopesRead,
     PositionReviewRequest,
@@ -36,6 +39,7 @@ from app.features.campus_hub.schema import (
     CampusResourceUpdate,
 )
 from app.features.campus_positions.schema import CampusPositionRead
+from app.features.employers.schema import EmployerOrganizationRead
 from app.models import Profile, Report, User
 from app.shared.profiles import get_profile_by_user_id
 from app.shared.schemas import ReportRead
@@ -399,3 +403,45 @@ async def revoke_admin(
     user = await db.get(User, membership.user_id)
     profile = await get_profile_by_user_id(db, membership.user_id)
     return _admin_membership_read(membership, user, profile)
+
+
+def _employer_org_admin_read(org, account) -> EmployerOrganizationAdminRead:
+    base = EmployerOrganizationRead.model_validate(org).model_dump()
+    return EmployerOrganizationAdminRead(
+        **base,
+        contact_email=account.email,
+        contact_name=account.display_name,
+        review_note=org.review_note,
+    )
+
+
+@router.get('/employers', response_model=list[EmployerOrganizationAdminRead])
+async def list_employer_organizations(
+    status: str = 'pending',
+    _: User = Depends(admins_admin.require_admin_scope('honors_admin')),
+    db: AsyncSession = Depends(get_db),
+) -> list[EmployerOrganizationAdminRead]:
+    rows = await employers_admin.list_organizations(db, status_filter=status)
+    return [_employer_org_admin_read(org, account) for org, account in rows]
+
+
+@router.post('/employers/{org_id}/approve', response_model=EmployerOrganizationAdminRead)
+async def approve_employer_organization(
+    org_id: UUID,
+    actor: User = Depends(admins_admin.require_admin_scope('honors_admin')),
+    db: AsyncSession = Depends(get_db),
+) -> EmployerOrganizationAdminRead:
+    org, account = await employers_admin.approve_organization(db, actor=actor, org_id=org_id)
+    return _employer_org_admin_read(org, account)
+
+
+@router.post('/employers/{org_id}/reject', response_model=EmployerOrganizationAdminRead)
+async def reject_employer_organization(
+    org_id: UUID,
+    payload: EmployerRejectRequest,
+    actor: User = Depends(admins_admin.require_admin_scope('honors_admin')),
+    db: AsyncSession = Depends(get_db),
+) -> EmployerOrganizationAdminRead:
+    org = await employers_admin.reject_organization(db, actor=actor, org_id=org_id, reason=payload.reason)
+    account = await employers_admin.get_account_for_org(db, org.id)
+    return _employer_org_admin_read(org, account)

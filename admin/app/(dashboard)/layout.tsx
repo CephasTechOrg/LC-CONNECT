@@ -66,7 +66,11 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   }, [router]);
 
   const nav = scopes.includes('honors_admin')
-    ? [...BASE_NAV, { href: '/dashboard/scholars', label: 'Scholars' }]
+    ? [
+        ...BASE_NAV,
+        { href: '/dashboard/scholars', label: 'Scholars' },
+        { href: '/dashboard/employers', label: 'Employers' },
+      ]
     : BASE_NAV;
 
   async function onLogout() {
