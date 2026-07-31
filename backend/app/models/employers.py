@@ -84,3 +84,20 @@ class EmployerOpportunitySubmission(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
+
+
+class EmployerProfileView(Base):
+    """Audit trail: which approved employer viewed which scholar's professional view, and when.
+    Logged once per detail fetch (`GET /employers/scholars/{user_id}`) — not on list/browse, and
+    not separately for the headshot/résumé signed-URL calls that follow from the same view."""
+
+    __tablename__ = 'employer_profile_views'
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    employer_account_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey('employer_accounts.id', ondelete='CASCADE'), index=True, nullable=False
+    )
+    scholar_user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey('users.id', ondelete='CASCADE'), index=True, nullable=False
+    )
+    viewed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)

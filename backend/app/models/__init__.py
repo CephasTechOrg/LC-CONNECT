@@ -19,7 +19,12 @@ from app.models.core import (
     profile_interests,
     user_looking_for,
 )
-from app.models.employers import EmployerAccount, EmployerOpportunitySubmission, EmployerOrganization
+from app.models.employers import (
+    EmployerAccount,
+    EmployerOpportunitySubmission,
+    EmployerOrganization,
+    EmployerProfileView,
+)
 from app.models.groups import Group
 from app.models.messaging import Conversation, ConversationMember, Message
 from app.models.notifications import DeviceToken, Notification
@@ -43,6 +48,7 @@ __all__ = [
     'EmployerAccount',
     'EmployerOpportunitySubmission',
     'EmployerOrganization',
+    'EmployerProfileView',
     'Group',
     'Interest',
     'Language',

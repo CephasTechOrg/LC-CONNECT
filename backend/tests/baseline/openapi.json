@@ -2964,6 +2964,95 @@
         "title": "EmployerRejectRequest",
         "type": "object"
       },
+      "EmployerScholarView": {
+        "description": "The **entire** employer-facing view of a scholar \u2014 deliberately hand-built (never\n`ProfilePublic.model_validate(...)`, never `**profile.__dict__`) so a future field added to\nthe social `Profile` or `User` can never leak through here by accident. `display_name` is the\none non-\"professional\" field allowed \u2014 baseline identification, not social/behavioral data\n(no bio, major, class year, interests, avatar, activities, groups, or messages).",
+        "properties": {
+          "career_interests": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Career Interests",
+            "type": "array"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "handshake_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Handshake Url"
+          },
+          "has_headshot": {
+            "title": "Has Headshot",
+            "type": "boolean"
+          },
+          "has_resume": {
+            "title": "Has Resume",
+            "type": "boolean"
+          },
+          "linkedin_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Linkedin Url"
+          },
+          "skills": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Skills",
+            "type": "array"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "user_id": {
+            "format": "uuid",
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "display_name",
+          "linkedin_url",
+          "handshake_url",
+          "summary",
+          "skills",
+          "career_interests",
+          "has_headshot",
+          "has_resume"
+        ],
+        "title": "EmployerScholarView",
+        "type": "object"
+      },
       "GroupCreate": {
         "properties": {
           "category": {
@@ -9428,6 +9517,181 @@
           }
         },
         "summary": "Register Employer",
+        "tags": [
+          "employers"
+        ]
+      }
+    },
+    "/api/v1/employers/scholars": {
+      "get": {
+        "description": "Only scholars with active Presidential Scholars membership **and** current\nemployer-visibility consent \u2014 re-evaluated on every call, never cached.",
+        "operationId": "list_eligible_scholars_api_v1_employers_scholars_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/EmployerScholarView"
+                  },
+                  "title": "Response List Eligible Scholars Api V1 Employers Scholars Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Eligible Scholars",
+        "tags": [
+          "employers"
+        ]
+      }
+    },
+    "/api/v1/employers/scholars/{user_id}": {
+      "get": {
+        "operationId": "get_eligible_scholar_api_v1_employers_scholars__user_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmployerScholarView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Eligible Scholar",
+        "tags": [
+          "employers"
+        ]
+      }
+    },
+    "/api/v1/employers/scholars/{user_id}/headshot-url": {
+      "get": {
+        "operationId": "get_scholar_headshot_url_api_v1_employers_scholars__user_id__headshot_url_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SignedUrlRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Scholar Headshot Url",
+        "tags": [
+          "employers"
+        ]
+      }
+    },
+    "/api/v1/employers/scholars/{user_id}/resume-url": {
+      "get": {
+        "operationId": "get_scholar_resume_url_api_v1_employers_scholars__user_id__resume_url_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SignedUrlRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Scholar Resume Url",
         "tags": [
           "employers"
         ]

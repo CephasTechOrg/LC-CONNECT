@@ -53,3 +53,21 @@ class OpportunitySubmissionRead(BaseModel):
     status: OpportunitySubmissionStatus
     review_note: str | None
     created_at: datetime
+
+
+class EmployerScholarView(BaseModel):
+    """The **entire** employer-facing view of a scholar — deliberately hand-built (never
+    `ProfilePublic.model_validate(...)`, never `**profile.__dict__`) so a future field added to
+    the social `Profile` or `User` can never leak through here by accident. `display_name` is the
+    one non-"professional" field allowed — baseline identification, not social/behavioral data
+    (no bio, major, class year, interests, avatar, activities, groups, or messages)."""
+
+    user_id: UUID
+    display_name: str | None
+    linkedin_url: str | None
+    handshake_url: str | None
+    summary: str | None
+    skills: list[str]
+    career_interests: list[str]
+    has_headshot: bool
+    has_resume: bool
