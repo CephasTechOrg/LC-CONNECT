@@ -79,11 +79,22 @@ class _MemberTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  member.nameOrFallback,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textDark),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        member.nameOrFallback,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textDark),
+                      ),
+                    ),
+                    if (member.isVerified) ...[
+                      const SizedBox(width: 4),
+                      const VerifiedBadge(size: 13),
+                    ],
+                  ],
                 ),
                 Text(_subtitle, style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textMuted)),
               ],

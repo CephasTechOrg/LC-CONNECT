@@ -65,6 +65,7 @@ async def get_discovery_cards(current_user: User = Depends(require_verified_conn
             major=public.major,
             class_year=public.class_year,
             bio=public.bio,
+            is_verified=public.is_verified,
             interests=public.interests,
             languages_spoken=public.languages_spoken,
             languages_learning=public.languages_learning,

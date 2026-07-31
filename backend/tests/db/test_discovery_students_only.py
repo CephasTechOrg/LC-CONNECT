@@ -52,3 +52,6 @@ async def test_discovery_excludes_staff_candidates(db, factory):
     user_ids = {card.user_id for card in cards}
     assert student.id in user_ids
     assert staff.id not in user_ids
+    # is_verified rides along on every card (drives the checkmark badge in the app).
+    student_card = next(card for card in cards if card.user_id == student.id)
+    assert student_card.is_verified is True

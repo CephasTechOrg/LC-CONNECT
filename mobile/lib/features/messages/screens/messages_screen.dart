@@ -10,6 +10,7 @@ import '../../../core/widgets/avatar_widget.dart';
 import '../../../shared/widgets/app_search_field.dart';
 import '../../../shared/widgets/app_shell_header.dart';
 import '../../../shared/widgets/app_states.dart';
+import '../../../shared/widgets/verified_badge.dart';
 import '../providers/messages_provider.dart';
 import '../providers/staff_messaging_provider.dart';
 import '../providers/unread_provider.dart';
@@ -158,13 +159,24 @@ class _ThreadCard extends ConsumerWidget {
                   Row(
                     children: [
                       Expanded(
-                        child: Text(
-                          thread.title,
-                          style: GoogleFonts.dmSans(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textDark,
-                          ),
+                        child: Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                thread.title,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.textDark,
+                                ),
+                              ),
+                            ),
+                            if (!thread.isGroup && (thread.partner?.isVerified ?? false)) ...[
+                              const SizedBox(width: 4),
+                              const VerifiedBadge(size: 14),
+                            ],
+                          ],
                         ),
                       ),
                       if (latest != null)

@@ -9,7 +9,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.activities.schema import ActivityParticipantRead, ActivityRead
-from app.models import Activity, ActivityParticipant, Profile
+from app.models import Activity, ActivityParticipant, Profile, User
 
 
 async def activity_count(db: AsyncSession, activity_id: UUID) -> int:
@@ -26,8 +26,10 @@ async def participants_read(db: AsyncSession, activity: Activity) -> list[Activi
                 Profile.id,
                 Profile.display_name,
                 Profile.avatar_url,
+                User.is_verified,
             )
             .outerjoin(Profile, Profile.user_id == ActivityParticipant.user_id)
+            .join(User, User.id == ActivityParticipant.user_id)
             .where(ActivityParticipant.activity_id == activity.id)
             .order_by(ActivityParticipant.created_at.asc())
         )
@@ -38,9 +40,10 @@ async def participants_read(db: AsyncSession, activity: Activity) -> list[Activi
             profile_id=profile_id,
             display_name=display_name,
             avatar_url=avatar_url,
+            is_verified=is_verified,
             is_creator=(user_id == activity.creator_id),
         )
-        for user_id, profile_id, display_name, avatar_url in rows
+        for user_id, profile_id, display_name, avatar_url, is_verified in rows
     ]
 
 

@@ -9,6 +9,8 @@ class _ChatHeader extends StatelessWidget {
   final String? subtitle;
   final String? avatarUrl;
   final bool isGroup;
+  /// DM only: shows the checkmark next to their name.
+  final bool isVerified;
 
   /// Tap the avatar/name → the partner's profile (DM) or the group detail screen (group).
   final VoidCallback? onIdentityTap;
@@ -21,6 +23,7 @@ class _ChatHeader extends StatelessWidget {
     this.subtitle,
     this.avatarUrl,
     this.isGroup = false,
+    this.isVerified = false,
     this.onIdentityTap,
     this.onMenu,
   });
@@ -54,15 +57,26 @@ class _ChatHeader extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text(
-                            title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.dmSans(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.textDark,
-                            ),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  title,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: GoogleFonts.dmSans(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.textDark,
+                                  ),
+                                ),
+                              ),
+                              if (isVerified) ...[
+                                const SizedBox(width: 4),
+                                const VerifiedBadge(size: 15),
+                              ],
+                            ],
                           ),
                           if (subtitle != null)
                             Text(

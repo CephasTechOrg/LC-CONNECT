@@ -11,6 +11,7 @@ class PartnerProfile {
   final String? avatarUrl;
   final String? major;
   final int? classYear;
+  final bool isVerified;
   final List<String> lookingFor;
 
   const PartnerProfile({
@@ -20,6 +21,7 @@ class PartnerProfile {
     this.avatarUrl,
     this.major,
     this.classYear,
+    this.isVerified = false,
     required this.lookingFor,
   });
 
@@ -30,6 +32,7 @@ class PartnerProfile {
         avatarUrl: j['avatar_url'] as String?,
         major: j['major'] as String?,
         classYear: j['class_year'] as int?,
+        isVerified: j['is_verified'] as bool? ?? false,
         lookingFor: List<String>.from(j['looking_for'] ?? []),
       );
 }

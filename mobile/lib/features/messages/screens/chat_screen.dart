@@ -11,6 +11,7 @@ import '../../../core/realtime/realtime_client.dart';
 import '../../../core/realtime/ws_protocol.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/avatar_widget.dart';
+import '../../../shared/widgets/verified_badge.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../groups/providers/groups_provider.dart';
 import '../../safety/providers/safety_provider.dart';
@@ -503,6 +504,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               subtitle: _isGroup ? null : widget.thread?.partnerSubtitle,
               avatarUrl: _isGroup ? widget.groupAvatarUrl : partner?.avatarUrl,
               isGroup: _isGroup,
+              isVerified: !_isGroup && (partner?.isVerified ?? false),
               onIdentityTap: _isGroup
                   ? () => context.push('/groups/${widget.groupId}')
                   : (partner != null

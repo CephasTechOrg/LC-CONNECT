@@ -359,20 +359,21 @@ void main() {
       expect(find.text('Edit Profile'), findsOneWidget);
     });
 
-    // The hero carries two independent badges: email-verified (mark_email_read) and
-    // campus-position-verified (verified_rounded). They must not imply each other.
-    testWidgets('shows email-verified badge and row when isVerified is true',
+    // The hero carries two independent badges: verified-student (verified_rounded, the familiar
+    // checkmark) and campus-position-verified (workspace_premium_rounded). They must not imply
+    // each other.
+    testWidgets('shows verified badge and row when isVerified is true',
         (tester) async {
       await tester.pumpWidget(_scope(_makeProfile(isVerified: true)));
       await tester.pumpAndSettle();
       expect(find.text('Verified Student'), findsOneWidget);
       expect(
-        find.byIcon(Icons.mark_email_read_outlined, skipOffstage: false),
+        find.byIcon(Icons.verified_rounded, skipOffstage: false),
         findsOneWidget,
       );
       // Email verification alone must not show the campus-position badge.
       expect(
-        find.byIcon(Icons.verified_rounded, skipOffstage: false),
+        find.byIcon(Icons.workspace_premium_rounded, skipOffstage: false),
         findsNothing,
       );
     });
@@ -383,7 +384,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Verified Student', skipOffstage: false), findsNothing);
       expect(
-        find.byIcon(Icons.mark_email_read_outlined, skipOffstage: false),
+        find.byIcon(Icons.verified_rounded, skipOffstage: false),
         findsNothing,
       );
     });
@@ -395,7 +396,7 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(
-        find.byIcon(Icons.verified_rounded, skipOffstage: false),
+        find.byIcon(Icons.workspace_premium_rounded, skipOffstage: false),
         findsOneWidget,
       );
     });

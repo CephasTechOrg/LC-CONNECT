@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/avatar_widget.dart';
+import '../../../shared/widgets/verified_badge.dart';
 import '../providers/activities_provider.dart';
 
 /// Bottom sheet showing an activity's roster — names + avatars, organizer first, tappable to
@@ -83,8 +84,20 @@ class _ParticipantTile extends StatelessWidget {
     return ListTile(
       onTap: pid != null ? () => context.push('/users/$pid', extra: participant.displayName) : null,
       leading: AvatarWidget(imageUrl: participant.avatarUrl, size: 42, cacheScope: participant.userId),
-      title: Text(participant.name,
-          style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textDark)),
+      title: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Flexible(
+            child: Text(participant.name,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textDark)),
+          ),
+          if (participant.isVerified) ...[
+            const SizedBox(width: 4),
+            const VerifiedBadge(size: 13),
+          ],
+        ],
+      ),
       trailing: participant.isCreator
           ? Container(
               padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),

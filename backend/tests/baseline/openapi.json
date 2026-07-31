@@ -127,6 +127,10 @@
             "title": "Is Creator",
             "type": "boolean"
           },
+          "is_verified": {
+            "title": "Is Verified",
+            "type": "boolean"
+          },
           "profile_id": {
             "anyOf": [
               {
@@ -150,6 +154,7 @@
           "profile_id",
           "display_name",
           "avatar_url",
+          "is_verified",
           "is_creator"
         ],
         "title": "ActivityParticipantRead",
@@ -2603,6 +2608,10 @@
             "title": "Interests",
             "type": "array"
           },
+          "is_verified": {
+            "title": "Is Verified",
+            "type": "boolean"
+          },
           "languages_learning": {
             "items": {
               "type": "string"
@@ -2672,6 +2681,7 @@
           "major",
           "class_year",
           "bio",
+          "is_verified",
           "interests",
           "languages_spoken",
           "languages_learning",

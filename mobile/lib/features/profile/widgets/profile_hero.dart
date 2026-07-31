@@ -77,8 +77,8 @@ class _HeroSection extends StatelessWidget {
                         if (profile.isVerified) ...[
                           const SizedBox(width: 6),
                           Tooltip(
-                            message: 'Email verified',
-                            child: const Icon(Icons.mark_email_read_outlined,
+                            message: 'Verified student',
+                            child: const Icon(Icons.verified_rounded,
                                 color: AppColors.primary, size: 18),
                           ),
                         ],
@@ -86,7 +86,7 @@ class _HeroSection extends StatelessWidget {
                           const SizedBox(width: 6),
                           Tooltip(
                             message: 'Campus position verified',
-                            child: const Icon(Icons.verified_rounded,
+                            child: const Icon(Icons.workspace_premium_rounded,
                                 color: AppColors.primary, size: 18),
                           ),
                         ],

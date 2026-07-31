@@ -11,6 +11,7 @@ class DiscoveryCard(BaseModel):
     major: str | None
     class_year: int | None
     bio: str | None
+    is_verified: bool
     interests: list[str]
     languages_spoken: list[str]
     languages_learning: list[str]

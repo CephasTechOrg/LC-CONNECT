@@ -92,16 +92,27 @@ class _StudentCard extends StatelessWidget {
               child: AvatarWidget(imageUrl: card.avatarUrl, size: 60),
             ),
             const SizedBox(height: 10),
-            Text(
-              card.displayName ?? 'LC Student',
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.dmSans(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textDark,
-              ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Flexible(
+                  child: Text(
+                    card.displayName ?? 'LC Student',
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.dmSans(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textDark,
+                    ),
+                  ),
+                ),
+                if (card.isVerified) ...[
+                  const SizedBox(width: 3),
+                  const VerifiedBadge(size: 13),
+                ],
+              ],
             ),
             const SizedBox(height: 2),
             Text(

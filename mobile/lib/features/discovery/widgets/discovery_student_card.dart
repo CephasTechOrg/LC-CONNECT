@@ -109,14 +109,26 @@ class _StudentCardState extends State<_StudentCard> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        c.displayName ?? 'Student',
-                        style: GoogleFonts.dmSans(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textDark,
-                          letterSpacing: -0.3,
-                        ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              c.displayName ?? 'Student',
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.dmSans(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textDark,
+                                letterSpacing: -0.3,
+                              ),
+                            ),
+                          ),
+                          if (c.isVerified) ...[
+                            const SizedBox(width: 5),
+                            const VerifiedBadge(size: 16),
+                          ],
+                        ],
                       ),
                       if (c.classYear != null) ...[
                         const SizedBox(height: 1),

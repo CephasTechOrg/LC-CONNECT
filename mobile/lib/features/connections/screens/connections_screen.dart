@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/avatar_widget.dart';
 import '../../../shared/widgets/app_states.dart';
+import '../../../shared/widgets/verified_badge.dart';
 import '../providers/connections_provider.dart';
 
 part '../widgets/connections_header.dart';

@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../../core/api/api_error.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/avatar_widget.dart';
+import '../../../shared/widgets/verified_badge.dart';
 import '../../messages/providers/messages_provider.dart';
 import '../../safety/providers/safety_provider.dart';
 import '../../safety/widgets/safety_sheet.dart';

@@ -115,7 +115,7 @@ async def test_cancelled_activity_is_hidden(db, factory):
 
 async def test_participants_roster_lists_creator_first(db, factory):
     creator = await factory.user(display_name='Organizer')
-    joiner = await factory.user(display_name='Joiner')
+    joiner = await factory.user(display_name='Joiner', is_verified=False)
     activity = await _activity(db, creator)
     await join_activity(db, activity.id, joiner.id)
     await db.commit()
@@ -125,6 +125,9 @@ async def test_participants_roster_lists_creator_first(db, factory):
     assert roster[0].is_creator is True
     assert roster[1].is_creator is False
     assert roster[0].profile_id is not None  # for tap-through to the profile
+    # is_verified is carried per-participant (drives the checkmark badge on the roster).
+    assert roster[0].is_verified is True
+    assert roster[1].is_verified is False
 
 
 async def test_join_capacity_is_race_safe(db, sessions, factory):

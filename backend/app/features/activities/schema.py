@@ -40,6 +40,7 @@ class ActivityParticipantRead(BaseModel):
     profile_id: UUID | None
     display_name: str | None
     avatar_url: str | None
+    is_verified: bool
     is_creator: bool
 
 

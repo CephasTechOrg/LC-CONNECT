@@ -128,8 +128,14 @@ class _CampusResourcesScreenState extends ConsumerState<CampusResourcesScreen> {
                   ),
                   data: (resources) {
                     if (resources.isEmpty) {
-                      return _StaticCategoryGrid(
-                        onCategoryTap: (key) => setState(() => _category = key),
+                      if (_category == 'all') {
+                        return _StaticCategoryGrid(
+                          onCategoryTap: (key) => setState(() => _category = key),
+                        );
+                      }
+                      return _ComingSoon(
+                        category: _category,
+                        onBack: () => setState(() => _category = 'all'),
                       );
                     }
                     return _ResourceList(
@@ -306,6 +312,73 @@ class _StaticCategoryCard extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Shown when a specific category (tapped from the grid or filter bar) has no resources yet —
+/// acknowledges the tap instead of silently re-showing the same grid.
+class _ComingSoon extends StatelessWidget {
+  final String category;
+  final VoidCallback onBack;
+  const _ComingSoon({required this.category, required this.onBack});
+
+  @override
+  Widget build(BuildContext context) {
+    final cat = _staticCategories.where((c) => c.key == category).firstOrNull;
+    final label = (cat?.title ?? resourceCategories[category] ?? category).replaceAll('\n', ' ');
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                color: cat?.iconBg ?? AppColors.primarySoft,
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: Icon(cat?.icon ?? Icons.info_outline_rounded,
+                  color: cat?.iconColor ?? AppColors.primary, size: 30),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.dmSans(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textDark,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Coming soon',
+              style: GoogleFonts.dmSans(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.primary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              "We're still adding ${label.toLowerCase()} resources. Check back soon.",
+              textAlign: TextAlign.center,
+              style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.textMuted, height: 1.4),
+            ),
+            const SizedBox(height: 20),
+            TextButton.icon(
+              onPressed: onBack,
+              icon: const Icon(Icons.arrow_back_rounded, size: 16),
+              label: const Text('Back to all categories'),
+              style: TextButton.styleFrom(foregroundColor: AppColors.primary),
+            ),
+          ],
         ),
       ),
     );

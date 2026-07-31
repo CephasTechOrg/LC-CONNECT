@@ -70,6 +70,7 @@ class ActivityParticipant {
   final String? profileId;
   final String? displayName;
   final String? avatarUrl;
+  final bool isVerified;
   final bool isCreator;
 
   const ActivityParticipant({
@@ -77,6 +78,7 @@ class ActivityParticipant {
     this.profileId,
     this.displayName,
     this.avatarUrl,
+    this.isVerified = false,
     required this.isCreator,
   });
 
@@ -85,6 +87,7 @@ class ActivityParticipant {
         profileId: j['profile_id'] as String?,
         displayName: j['display_name'] as String?,
         avatarUrl: j['avatar_url'] as String?,
+        isVerified: j['is_verified'] as bool? ?? false,
         isCreator: j['is_creator'] as bool? ?? false,
       );
 
