@@ -14,8 +14,11 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import EmployerAccount, EmployerOrganization, User
+from app.features.campus_hub import publishing
+from app.features.campus_hub.schema import CampusPostCreate
+from app.models import CampusPost, EmployerAccount, EmployerOpportunitySubmission, EmployerOrganization, User
 from app.shared.audit import record_audit
+from app.shared.programs import PRESIDENTIAL_SCHOLARS_SLUG
 from app.shared.supabase_admin import invite_auth_user
 
 
@@ -115,3 +118,123 @@ async def reject_organization(
     await db.commit()
     await db.refresh(org)
     return org
+
+
+# ── opportunity submission review ──────────────────────────────────────────────
+
+
+def _submission_snapshot(submission: EmployerOpportunitySubmission) -> dict[str, str | None]:
+    return {'status': submission.status, 'review_note': submission.review_note}
+
+
+async def get_submission_or_404(db: AsyncSession, submission_id: UUID) -> EmployerOpportunitySubmission:
+    submission = await db.get(EmployerOpportunitySubmission, submission_id)
+    if submission is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Opportunity submission not found')
+    return submission
+
+
+async def list_submissions(
+    db: AsyncSession, *, status_filter: str = 'pending', limit: int = 200
+) -> list[tuple[EmployerOpportunitySubmission, EmployerOrganization]]:
+    rows = (
+        await db.execute(
+            select(EmployerOpportunitySubmission, EmployerOrganization)
+            .join(EmployerOrganization, EmployerOrganization.id == EmployerOpportunitySubmission.organization_id)
+            .where(EmployerOpportunitySubmission.status == status_filter)
+            .order_by(EmployerOpportunitySubmission.created_at.asc())
+            .limit(limit)
+        )
+    ).all()
+    return list(rows)
+
+
+async def approve_submission(
+    db: AsyncSession, *, actor: User, submission_id: UUID
+) -> EmployerOpportunitySubmission:
+    """Publishes through the *existing* campus_hub path — no parallel content table. Idempotent
+    against a partial prior failure: `create_post`/`publish_post` each commit on their own, so if
+    this function died after publishing but before marking the submission `approved`, a retry
+    must not publish a second, duplicate post. `published_post_id` is the guard: once set, a retry
+    skips straight to (re-)marking the submission approved instead of creating anything new."""
+    submission = await get_submission_or_404(db, submission_id)
+    if submission.status != 'pending':
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail='Only a pending submission can be approved'
+        )
+
+    if submission.published_post_id is not None:
+        post = await db.get(CampusPost, submission.published_post_id)
+    else:
+        payload = CampusPostCreate(
+            kind='opportunity',
+            title=submission.title,
+            body=submission.description,
+            category=submission.category,
+            external_url=submission.external_url,
+        )
+        post = await publishing.create_post(db, actor=actor, payload=payload)
+        post.source = 'employer'
+        post.eligible_program_slug = PRESIDENTIAL_SCHOLARS_SLUG
+        # Record the link BEFORE attempting to publish — if `publish_post` fails, a retry must
+        # see this draft via `published_post_id` and just retry publishing it, never create a
+        # second draft.
+        submission.published_post_id = post.id
+        await db.commit()
+        await db.refresh(post)
+
+    if post.status != 'published':
+        post = await publishing.publish_post(db, actor=actor, post_id=post.id)
+
+    before = _submission_snapshot(submission)
+    submission.status = 'approved'
+    submission.reviewed_by_id = actor.id
+    submission.reviewed_at = datetime.now(UTC)
+    submission.review_note = None
+
+    await record_audit(
+        db,
+        actor_id=actor.id,
+        action='employer_opportunity_submission.approve',
+        target_type='employer_opportunity_submission',
+        target_id=submission.id,
+        before_data=before,
+        after_data=_submission_snapshot(submission),
+    )
+    await db.commit()
+    await db.refresh(submission)
+    return submission
+
+
+async def reject_submission(
+    db: AsyncSession, *, actor: User, submission_id: UUID, reason: str
+) -> EmployerOpportunitySubmission:
+    submission = await get_submission_or_404(db, submission_id)
+    if submission.status != 'pending':
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail='Only a pending submission can be rejected'
+        )
+    stripped_reason = reason.strip()
+    if not stripped_reason:
+        # Enforced here too, not just the request schema's min_length — a reason recorded, not
+        # just a boolean flip, is the whole point of this endpoint.
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='A rejection reason is required')
+
+    before = _submission_snapshot(submission)
+    submission.status = 'rejected'
+    submission.review_note = stripped_reason
+    submission.reviewed_by_id = actor.id
+    submission.reviewed_at = datetime.now(UTC)
+
+    await record_audit(
+        db,
+        actor_id=actor.id,
+        action='employer_opportunity_submission.reject',
+        target_type='employer_opportunity_submission',
+        target_id=submission.id,
+        before_data=before,
+        after_data=_submission_snapshot(submission),
+    )
+    await db.commit()
+    await db.refresh(submission)
+    return submission

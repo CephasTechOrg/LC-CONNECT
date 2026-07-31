@@ -22,6 +22,8 @@ from app.features.admin.schema import (
     EmployerRejectRequest,
     InviteAdminRequest,
     MyAdminScopesRead,
+    OpportunitySubmissionAdminRead,
+    OpportunitySubmissionRejectRequest,
     PositionReviewRequest,
     PositionRevokeRequest,
     ProgramMembershipAdminRead,
@@ -39,7 +41,7 @@ from app.features.campus_hub.schema import (
     CampusResourceUpdate,
 )
 from app.features.campus_positions.schema import CampusPositionRead
-from app.features.employers.schema import EmployerOrganizationRead
+from app.features.employers.schema import EmployerOrganizationRead, OpportunitySubmissionRead
 from app.models import Profile, Report, User
 from app.shared.profiles import get_profile_by_user_id
 from app.shared.schemas import ReportRead
@@ -445,3 +447,43 @@ async def reject_employer_organization(
     org = await employers_admin.reject_organization(db, actor=actor, org_id=org_id, reason=payload.reason)
     account = await employers_admin.get_account_for_org(db, org.id)
     return _employer_org_admin_read(org, account)
+
+
+def _submission_admin_read(submission, *, org_name: str) -> OpportunitySubmissionAdminRead:
+    base = OpportunitySubmissionRead.model_validate(submission).model_dump()
+    return OpportunitySubmissionAdminRead(**base, organization_id=submission.organization_id, organization_name=org_name)
+
+
+@router.get('/employers/opportunities', response_model=list[OpportunitySubmissionAdminRead])
+async def list_opportunity_submissions(
+    status: str = 'pending',
+    _: User = Depends(admins_admin.require_admin_scope('honors_admin')),
+    db: AsyncSession = Depends(get_db),
+) -> list[OpportunitySubmissionAdminRead]:
+    rows = await employers_admin.list_submissions(db, status_filter=status)
+    return [_submission_admin_read(submission, org_name=org.name) for submission, org in rows]
+
+
+@router.post('/employers/opportunities/{submission_id}/approve', response_model=OpportunitySubmissionAdminRead)
+async def approve_opportunity_submission(
+    submission_id: UUID,
+    actor: User = Depends(admins_admin.require_admin_scope('honors_admin')),
+    db: AsyncSession = Depends(get_db),
+) -> OpportunitySubmissionAdminRead:
+    submission = await employers_admin.approve_submission(db, actor=actor, submission_id=submission_id)
+    org = await employers_admin.get_organization_or_404(db, submission.organization_id)
+    return _submission_admin_read(submission, org_name=org.name)
+
+
+@router.post('/employers/opportunities/{submission_id}/reject', response_model=OpportunitySubmissionAdminRead)
+async def reject_opportunity_submission(
+    submission_id: UUID,
+    payload: OpportunitySubmissionRejectRequest,
+    actor: User = Depends(admins_admin.require_admin_scope('honors_admin')),
+    db: AsyncSession = Depends(get_db),
+) -> OpportunitySubmissionAdminRead:
+    submission = await employers_admin.reject_submission(
+        db, actor=actor, submission_id=submission_id, reason=payload.reason
+    )
+    org = await employers_admin.get_organization_or_404(db, submission.organization_id)
+    return _submission_admin_read(submission, org_name=org.name)

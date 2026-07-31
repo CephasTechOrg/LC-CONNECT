@@ -1559,6 +1559,11 @@
             "title": "Id",
             "type": "string"
           },
+          "is_blueprint_bond": {
+            "default": false,
+            "title": "Is Blueprint Bond",
+            "type": "boolean"
+          },
           "kind": {
             "title": "Kind",
             "type": "string"
@@ -1576,6 +1581,11 @@
             "default": false,
             "title": "Read",
             "type": "boolean"
+          },
+          "source": {
+            "default": "campus",
+            "title": "Source",
+            "type": "string"
           },
           "summary": {
             "anyOf": [
@@ -1650,6 +1660,11 @@
             "title": "Id",
             "type": "string"
           },
+          "is_blueprint_bond": {
+            "default": false,
+            "title": "Is Blueprint Bond",
+            "type": "boolean"
+          },
           "kind": {
             "title": "Kind",
             "type": "string"
@@ -1667,6 +1682,11 @@
             "default": false,
             "title": "Read",
             "type": "boolean"
+          },
+          "source": {
+            "default": "campus",
+            "title": "Source",
+            "type": "string"
           },
           "summary": {
             "anyOf": [
@@ -4092,6 +4112,211 @@
           "created_at"
         ],
         "title": "NotificationRead",
+        "type": "object"
+      },
+      "OpportunitySubmissionAdminRead": {
+        "properties": {
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "external_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "External Url"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "organization_id": {
+            "format": "uuid",
+            "title": "Organization Id",
+            "type": "string"
+          },
+          "organization_name": {
+            "title": "Organization Name",
+            "type": "string"
+          },
+          "review_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Review Note"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "approved",
+              "rejected"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "description",
+          "category",
+          "external_url",
+          "status",
+          "review_note",
+          "created_at",
+          "organization_id",
+          "organization_name"
+        ],
+        "title": "OpportunitySubmissionAdminRead",
+        "type": "object"
+      },
+      "OpportunitySubmissionCreate": {
+        "properties": {
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "description": {
+            "maxLength": 8000,
+            "minLength": 1,
+            "title": "Description",
+            "type": "string"
+          },
+          "external_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "External Url"
+          },
+          "title": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "description",
+          "category"
+        ],
+        "title": "OpportunitySubmissionCreate",
+        "type": "object"
+      },
+      "OpportunitySubmissionRead": {
+        "properties": {
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "external_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "External Url"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "review_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Review Note"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "approved",
+              "rejected"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "description",
+          "category",
+          "external_url",
+          "status",
+          "review_note",
+          "created_at"
+        ],
+        "title": "OpportunitySubmissionRead",
+        "type": "object"
+      },
+      "OpportunitySubmissionRejectRequest": {
+        "properties": {
+          "reason": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "OpportunitySubmissionRejectRequest",
         "type": "object"
       },
       "PositionReviewRequest": {
@@ -6961,6 +7186,164 @@
         ]
       }
     },
+    "/api/v1/admin/employers/opportunities": {
+      "get": {
+        "operationId": "list_opportunity_submissions_api_v1_admin_employers_opportunities_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "default": "pending",
+              "title": "Status",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/OpportunitySubmissionAdminRead"
+                  },
+                  "title": "Response List Opportunity Submissions Api V1 Admin Employers Opportunities Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Opportunity Submissions",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/employers/opportunities/{submission_id}/approve": {
+      "post": {
+        "operationId": "approve_opportunity_submission_api_v1_admin_employers_opportunities__submission_id__approve_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "submission_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Submission Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpportunitySubmissionAdminRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Approve Opportunity Submission",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/employers/opportunities/{submission_id}/reject": {
+      "post": {
+        "operationId": "reject_opportunity_submission_api_v1_admin_employers_opportunities__submission_id__reject_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "submission_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Submission Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OpportunitySubmissionRejectRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpportunitySubmissionAdminRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Reject Opportunity Submission",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
     "/api/v1/admin/employers/{org_id}/approve": {
       "post": {
         "operationId": "approve_employer_organization_api_v1_admin_employers__org_id__approve_post",
@@ -8929,6 +9312,82 @@
         "summary": "Get Discovery Cards",
         "tags": [
           "discovery"
+        ]
+      }
+    },
+    "/api/v1/employers/opportunities": {
+      "post": {
+        "operationId": "submit_opportunity_api_v1_employers_opportunities_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OpportunitySubmissionCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpportunitySubmissionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Submit Opportunity",
+        "tags": [
+          "employers"
+        ]
+      }
+    },
+    "/api/v1/employers/opportunities/me": {
+      "get": {
+        "operationId": "list_my_opportunities_api_v1_employers_opportunities_me_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/OpportunitySubmissionRead"
+                  },
+                  "title": "Response List My Opportunities Api V1 Employers Opportunities Me Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List My Opportunities",
+        "tags": [
+          "employers"
         ]
       }
     },

@@ -58,6 +58,8 @@ class CampusPostSummaryRead(BaseModel):
     expires_at: datetime | None
     external_url: str | None
     read: bool = False  # whether the requesting user has read this post
+    source: str = 'campus'  # 'campus' (staff/admin-authored) or 'employer' (Blueprint Bond partner)
+    is_blueprint_bond: bool = False  # drives the Blueprint Bond opportunity filter on the client
 
 
 class CampusPostRead(CampusPostSummaryRead):

@@ -17,11 +17,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.features.scholars.schema import ScholarProfessionalProfileRead, ScholarProfessionalProfileUpdate
-from app.models import Program, ProgramMembership, ScholarProfessionalProfile
+from app.models import ScholarProfessionalProfile
 from app.shared.image_processing import sanitize_avatar
+from app.shared.programs import PRESIDENTIAL_SCHOLARS_SLUG, is_active_program_member
 from app.shared.storage import storage_service
 
-PRESIDENTIAL_SCHOLARS_SLUG = 'presidential_scholars'
 CURRENT_CONSENT_VERSION = 1
 MAX_SKILL_LENGTH = 60
 
@@ -33,18 +33,7 @@ _DOCX_CONTENT_TYPE = 'application/vnd.openxmlformats-officedocument.wordprocessi
 async def is_verified_scholar(db: AsyncSession, user_id: UUID) -> bool:
     """Whether this user has an active `presidential_scholars` membership — the single gate
     every professional-profile endpoint enforces."""
-    row = (
-        await db.execute(
-            select(ProgramMembership.id)
-            .join(Program, Program.id == ProgramMembership.program_id)
-            .where(
-                ProgramMembership.user_id == user_id,
-                ProgramMembership.status == 'active',
-                Program.slug == PRESIDENTIAL_SCHOLARS_SLUG,
-            )
-        )
-    ).scalar_one_or_none()
-    return row is not None
+    return await is_active_program_member(db, user_id, PRESIDENTIAL_SCHOLARS_SLUG)
 
 
 def _to_read(profile: ScholarProfessionalProfile) -> ScholarProfessionalProfileRead:

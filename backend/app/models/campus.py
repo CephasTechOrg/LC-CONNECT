@@ -80,6 +80,14 @@ class CampusPost(Base):
     publish_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True, nullable=True)
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True, nullable=True)
     external_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Blueprint Bond (Phase 5): 'campus' (staff/admin-authored, the default) or 'employer' (an
+    # approved employer's opportunity submission, published via app/features/admin/employers.py).
+    # Drives the "Campus Opportunity" vs "Employer Partner" source badge on the client.
+    source: Mapped[str] = mapped_column(String(20), default='campus', nullable=False)
+    # When set, only active members of this Program (see app/shared/programs.py) may see the
+    # post — layered on top of the existing `audience` check, NULL for every ordinary post (no
+    # extra query on the common path). The one field behind the Blueprint Bond opportunity filter.
+    eligible_program_slug: Mapped[str | None] = mapped_column(String(60), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False

@@ -8,11 +8,14 @@ employer has no Supabase identity at all, not just a gated one.
 
 from __future__ import annotations
 
+from uuid import UUID
+
 from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import EmployerAccount, EmployerOrganization
+from app.features.employers.schema import OpportunitySubmissionCreate
+from app.models import EmployerAccount, EmployerOpportunitySubmission, EmployerOrganization
 
 
 async def register_employer(
@@ -43,3 +46,34 @@ async def register_employer(
     await db.commit()
     await db.refresh(org)
     return org
+
+
+async def submit_opportunity(
+    db: AsyncSession, *, account: EmployerAccount, payload: OpportunitySubmissionCreate
+) -> EmployerOpportunitySubmission:
+    submission = EmployerOpportunitySubmission(
+        organization_id=account.organization_id,
+        submitted_by_id=account.id,
+        title=payload.title.strip(),
+        description=payload.description.strip(),
+        category=payload.category,
+        external_url=str(payload.external_url) if payload.external_url else None,
+    )
+    db.add(submission)
+    await db.commit()
+    await db.refresh(submission)
+    return submission
+
+
+async def list_my_submissions(
+    db: AsyncSession, *, organization_id: UUID, limit: int = 100
+) -> list[EmployerOpportunitySubmission]:
+    rows = (
+        await db.execute(
+            select(EmployerOpportunitySubmission)
+            .where(EmployerOpportunitySubmission.organization_id == organization_id)
+            .order_by(EmployerOpportunitySubmission.created_at.desc())
+            .limit(limit)
+        )
+    ).scalars().all()
+    return list(rows)

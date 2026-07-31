@@ -5,9 +5,11 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 from sqlalchemy import or_, select
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import Select
 
-from app.models import CampusPost, User
+from app.models import CampusPost, Program, ProgramMembership, User
+from app.shared.programs import is_active_program_member
 
 
 def audiences_for_role(role: str) -> list[str]:
@@ -18,6 +20,21 @@ def audiences_for_role(role: str) -> list[str]:
     return ['all', 'students']
 
 
+def _eligible_for_program(user_id) -> Select:
+    """Correlated EXISTS against the post's `eligible_program_slug` — only ever evaluated for
+    the rare post that sets it; every ordinary post (NULL) skips this via the `or_` below."""
+    return (
+        select(ProgramMembership.id)
+        .join(Program, Program.id == ProgramMembership.program_id)
+        .where(
+            ProgramMembership.user_id == user_id,
+            ProgramMembership.status == 'active',
+            Program.slug == CampusPost.eligible_program_slug,
+        )
+        .exists()
+    )
+
+
 def published_posts_stmt(*, user: User, now: datetime | None = None) -> Select:
     now = now or datetime.now(UTC)
     return select(CampusPost).where(
@@ -26,13 +43,18 @@ def published_posts_stmt(*, user: User, now: datetime | None = None) -> Select:
         CampusPost.publish_at <= now,
         or_(CampusPost.expires_at.is_(None), CampusPost.expires_at > now),
         CampusPost.audience.in_(audiences_for_role(user.role)),
+        or_(CampusPost.eligible_program_slug.is_(None), _eligible_for_program(user.id)),
     )
 
 
-def is_post_visible(post: CampusPost, *, user: User, now: datetime | None = None) -> bool:
+async def is_post_visible(db: AsyncSession, post: CampusPost, *, user: User, now: datetime | None = None) -> bool:
     now = now or datetime.now(UTC)
     if post.status != 'published' or post.publish_at is None or post.publish_at > now:
         return False
     if post.expires_at is not None and post.expires_at <= now:
         return False
-    return post.audience in audiences_for_role(user.role)
+    if post.audience not in audiences_for_role(user.role):
+        return False
+    if post.eligible_program_slug is not None:
+        return await is_active_program_member(db, user.id, post.eligible_program_slug)
+    return True

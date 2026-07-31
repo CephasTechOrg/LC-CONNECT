@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/app_filter_chip.dart';
 import '../../../shared/widgets/app_states.dart';
+import '../../programs/providers/programs_provider.dart';
 import '../models/campus_post.dart';
 import '../providers/campus_hub_provider.dart';
 
@@ -18,6 +19,11 @@ const _opportunityFilters = <String, String>{
   'leadership': 'Leadership',
 };
 
+// Source tab — independent of the category chips below. The server already never sends a
+// Blueprint Bond post to anyone but a verified scholar, so this is a client-side filter over
+// posts the user was already allowed to receive, not a second authorization check.
+enum _SourceTab { all, campus, blueprintBond }
+
 class CampusOpportunitiesScreen extends ConsumerStatefulWidget {
   const CampusOpportunitiesScreen({super.key});
 
@@ -27,15 +33,28 @@ class CampusOpportunitiesScreen extends ConsumerStatefulWidget {
 
 class _OpportunitiesState extends ConsumerState<CampusOpportunitiesScreen> {
   String _filter = 'all';
+  _SourceTab _sourceTab = _SourceTab.all;
 
   CampusPostsQuery get _query => CampusPostsQuery(
         kind: 'opportunity',
         category: _filter == 'all' ? null : _filter,
       );
 
+  List<CampusPostSummary> _bySource(List<CampusPostSummary> posts) {
+    switch (_sourceTab) {
+      case _SourceTab.all:
+        return posts;
+      case _SourceTab.campus:
+        return posts.where((p) => !p.isBlueprintBond).toList();
+      case _SourceTab.blueprintBond:
+        return posts.where((p) => p.isBlueprintBond).toList();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final postsAsync = ref.watch(campusPostsProvider(_query));
+    final isVerifiedScholar = ref.watch(isVerifiedScholarProvider);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -74,6 +93,41 @@ class _OpportunitiesState extends ConsumerState<CampusOpportunitiesScreen> {
               child: ListView(
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 20),
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: AppFilterChip(
+                      label: 'All',
+                      selected: _sourceTab == _SourceTab.all,
+                      onTap: () => setState(() => _sourceTab = _SourceTab.all),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: AppFilterChip(
+                      label: 'Campus',
+                      selected: _sourceTab == _SourceTab.campus,
+                      onTap: () => setState(() => _sourceTab = _SourceTab.campus),
+                    ),
+                  ),
+                  if (isVerifiedScholar)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: AppFilterChip(
+                        label: 'Blueprint Bond',
+                        selected: _sourceTab == _SourceTab.blueprintBond,
+                        onTap: () => setState(() => _sourceTab = _SourceTab.blueprintBond),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 36,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 20),
                 children: _opportunityFilters.entries.map((e) {
                   return Padding(
                     padding: const EdgeInsets.only(right: 8),
@@ -97,7 +151,8 @@ class _OpportunitiesState extends ConsumerState<CampusOpportunitiesScreen> {
                     message: 'Could not load opportunities.',
                     onRetry: () => ref.invalidate(campusPostsProvider(_query)),
                   ),
-                  data: (posts) {
+                  data: (allPosts) {
+                    final posts = _bySource(allPosts);
                     if (posts.isEmpty) {
                       return _OpportunitiesEmpty(filter: _filter);
                     }
@@ -189,6 +244,22 @@ class _OpportunityCard extends StatelessWidget {
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
                               color: badgeColor,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: post.isEmployerPartner ? const Color(0xFFEFF6FB) : AppColors.background,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            post.isEmployerPartner ? 'Employer Partner' : 'Campus Opportunity',
+                            style: GoogleFonts.dmSans(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w600,
+                              color: post.isEmployerPartner ? AppColors.primary : AppColors.textMuted,
                             ),
                           ),
                         ),

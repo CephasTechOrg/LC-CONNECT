@@ -26,6 +26,8 @@ def _summary(post: CampusPost, *, read: bool = False) -> dict:
         'expires_at': post.expires_at,
         'external_url': post.external_url,
         'read': read,
+        'source': post.source,
+        'is_blueprint_bond': post.eligible_program_slug is not None,
     }
 
 
@@ -71,7 +73,7 @@ async def list_posts(
 
 async def get_post(db: AsyncSession, *, user: User, post_id: UUID) -> dict:
     post = await db.get(CampusPost, post_id)
-    if post is None or not is_post_visible(post, user=user):
+    if post is None or not await is_post_visible(db, post, user=user):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Campus post not found')
     return _detail(post)
 
@@ -120,7 +122,7 @@ async def unread_announcement_count(db: AsyncSession, user: User) -> int:
 async def mark_announcement_read(db: AsyncSession, user: User, post_id: UUID) -> None:
     """Mark one announcement read (idempotent). 404 unless it's an announcement the user can see."""
     post = await db.get(CampusPost, post_id)
-    if post is None or post.kind != 'announcement' or not is_post_visible(post, user=user):
+    if post is None or post.kind != 'announcement' or not await is_post_visible(db, post, user=user):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Announcement not found')
     await db.execute(
         pg_insert(CampusPostRead)

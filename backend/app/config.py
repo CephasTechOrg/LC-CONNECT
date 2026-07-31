@@ -61,6 +61,9 @@ class Settings(BaseSettings):
         default=20, alias='RATE_LIMIT_CAMPUS_POST_PUBLISHES_PER_DAY'
     )
     rate_limit_scholar_uploads_per_day: int = Field(default=10, alias='RATE_LIMIT_SCHOLAR_UPLOADS_PER_DAY')
+    rate_limit_employer_opportunity_submissions_per_day: int = Field(
+        default=10, alias='RATE_LIMIT_EMPLOYER_OPPORTUNITY_SUBMISSIONS_PER_DAY'
+    )
 
     allowed_email_domains: str = Field(
         default='students.livingstone.edu,livingstone.edu',

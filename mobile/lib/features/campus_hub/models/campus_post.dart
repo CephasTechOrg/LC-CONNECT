@@ -9,6 +9,11 @@ class CampusPostSummary {
   final DateTime? expiresAt;
   final String? externalUrl;
   final bool read;
+  // Blueprint Bond: 'campus' (staff/admin-authored) or 'employer' (an approved employer
+  // partner's opportunity) — drives the source badge. isBlueprintBond drives the opportunities
+  // filter — only ever true for a post a verified scholar was already allowed to receive.
+  final String source;
+  final bool isBlueprintBond;
 
   const CampusPostSummary({
     required this.id,
@@ -21,6 +26,8 @@ class CampusPostSummary {
     this.expiresAt,
     this.externalUrl,
     this.read = false,
+    this.source = 'campus',
+    this.isBlueprintBond = false,
   });
 
   factory CampusPostSummary.fromJson(Map<String, dynamic> json) => CampusPostSummary(
@@ -34,10 +41,13 @@ class CampusPostSummary {
         expiresAt: json['expires_at'] != null ? DateTime.parse(json['expires_at'] as String) : null,
         externalUrl: json['external_url'] as String?,
         read: json['read'] as bool? ?? false,
+        source: json['source'] as String? ?? 'campus',
+        isBlueprintBond: json['is_blueprint_bond'] as bool? ?? false,
       );
 
   bool get isUrgent => priority == 'urgent';
   bool get isImportant => priority == 'important';
+  bool get isEmployerPartner => source == 'employer';
 
   CampusPostSummary copyWith({bool? read}) => CampusPostSummary(
         id: id,
@@ -50,6 +60,8 @@ class CampusPostSummary {
         expiresAt: expiresAt,
         externalUrl: externalUrl,
         read: read ?? this.read,
+        source: source,
+        isBlueprintBond: isBlueprintBond,
       );
 }
 
@@ -67,6 +79,8 @@ class CampusPost extends CampusPostSummary {
     required super.publishAt,
     super.expiresAt,
     super.externalUrl,
+    super.source,
+    super.isBlueprintBond,
     required this.body,
     required this.audience,
   });
@@ -81,6 +95,8 @@ class CampusPost extends CampusPostSummary {
         publishAt: DateTime.parse(json['publish_at'] as String),
         expiresAt: json['expires_at'] != null ? DateTime.parse(json['expires_at'] as String) : null,
         externalUrl: json['external_url'] as String?,
+        source: json['source'] as String? ?? 'campus',
+        isBlueprintBond: json['is_blueprint_bond'] as bool? ?? false,
         body: json['body'] as String,
         audience: json['audience'] as String,
       );

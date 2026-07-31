@@ -4,7 +4,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from app.features.campus_positions.schema import CampusPositionRead
-from app.features.employers.schema import EmployerOrganizationRead
+from app.features.employers.schema import EmployerOrganizationRead, OpportunitySubmissionRead
 from app.features.programs.schema import ProgramMembershipRead
 
 
@@ -81,6 +81,17 @@ class EmployerOrganizationAdminRead(EmployerOrganizationRead):
     contact_email: EmailStr
     contact_name: str | None = None
     review_note: str | None = None
+
+
+class OpportunitySubmissionRejectRequest(BaseModel):
+    # Required (not optional): rejecting a submission must always record why, so the employer
+    # portal can show the employer a real reason, not just a boolean flip.
+    reason: str = Field(min_length=1, max_length=500)
+
+
+class OpportunitySubmissionAdminRead(OpportunitySubmissionRead):
+    organization_id: UUID
+    organization_name: str
 
 
 class CampusPostAdminRead(BaseModel):
