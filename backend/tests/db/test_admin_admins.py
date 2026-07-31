@@ -16,7 +16,7 @@ from app.models import AdminAuditLog, AdminMembership, User
 def _mock_invite(monkeypatch):
     """Every test in this file that invites someone must never hit real Supabase — a bad mock
     here would mean real invite emails going out during a test run."""
-    monkeypatch.setattr(admins_service, 'invite_auth_user', lambda email: str(uuid4()))
+    monkeypatch.setattr(admins_service, 'invite_auth_user', lambda email, **kwargs: str(uuid4()))
 
 
 async def _admin_with_scope(db, factory, role: str) -> User:
@@ -97,6 +97,28 @@ async def test_super_admin_can_invite_new_email_creates_user_and_profile(db, fac
     assert profile.display_name  # non-empty default from the email local-part
 
 
+async def test_invite_existing_auth_identity_is_never_resent_an_invite(db, factory, monkeypatch):
+    """Promoting an existing verified student/staff account to admin must NOT call Supabase's
+    invite-by-email again — that call is for brand-new auth users only and errors on an email
+    that's already registered, which would otherwise make it impossible to ever promote an
+    existing account."""
+    super_admin = await _admin_with_scope(db, factory, 'super_admin')
+    target = await factory.user(display_name='Already Has Account')
+    target.auth_user_id = uuid4()
+    await db.commit()
+
+    def _fail_if_called(email, **kwargs):
+        raise AssertionError('invite_auth_user must not be called for an already-registered user')
+
+    monkeypatch.setattr(admins_service, 'invite_auth_user', _fail_if_called)
+
+    membership, user, _ = await admins_service.invite_admin(
+        db, actor=super_admin, email=target.email, role='content_admin'
+    )
+    assert membership.role == 'content_admin'
+    assert user.auth_user_id == target.auth_user_id
+
+
 async def test_school_admin_can_invite_honors_content_auditor(db, factory):
     school_admin = await _admin_with_scope(db, factory, 'school_admin')
     for role in ('honors_admin', 'content_admin', 'auditor'):
@@ -130,6 +152,16 @@ async def test_invite_unknown_role_is_422(db, factory):
 
     with pytest.raises(HTTPException) as exc:
         await admins_service.invite_admin(db, actor=super_admin, email=target.email, role='not_a_real_role')
+    assert exc.value.status_code == 422
+
+
+async def test_invite_non_campus_email_is_422_not_500(db, factory):
+    """`normalize_campus_email` raises a bare `ValueError` — it must be caught and turned into a
+    clean 422, not bubble up as an unhandled 500."""
+    super_admin = await _admin_with_scope(db, factory, 'super_admin')
+
+    with pytest.raises(HTTPException) as exc:
+        await admins_service.invite_admin(db, actor=super_admin, email='someone@gmail.com', role='auditor')
     assert exc.value.status_code == 422
 
 
@@ -174,7 +206,7 @@ async def test_invite_writes_audit_entry(db, factory):
 
 async def test_invite_failure_leaves_nothing_half_created(db, factory, monkeypatch):
     super_admin = await _admin_with_scope(db, factory, 'super_admin')
-    monkeypatch.setattr(admins_service, 'invite_auth_user', lambda email: None)
+    monkeypatch.setattr(admins_service, 'invite_auth_user', lambda email, **kwargs: None)
 
     with pytest.raises(HTTPException) as exc:
         await admins_service.invite_admin(db, actor=super_admin, email='ghost@livingstone.edu', role='auditor')

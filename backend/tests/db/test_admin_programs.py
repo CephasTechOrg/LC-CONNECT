@@ -99,6 +99,18 @@ async def test_verify_membership_unknown_email_404(db, factory):
     assert exc.value.status_code == 404
 
 
+async def test_verify_membership_non_campus_email_is_422_not_500(db, factory):
+    """`normalize_campus_email` raises a bare `ValueError` — it must be caught and turned into a
+    clean 422, not bubble up as an unhandled 500."""
+    admin = await factory.user(display_name='Honors Admin')
+    admin.role = 'admin'
+    program = await _program(db)
+
+    with pytest.raises(HTTPException) as exc:
+        await programs_admin.verify_membership(db, actor=admin, program=program, email='someone@gmail.com')
+    assert exc.value.status_code == 422
+
+
 async def test_revoke_membership_sets_revoked_and_writes_audit(db, factory):
     admin = await factory.user(display_name='Honors Admin')
     admin.role = 'admin'

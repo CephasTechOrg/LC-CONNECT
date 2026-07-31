@@ -10,9 +10,12 @@ from app.features.admin import admins as admins_admin
 from app.features.admin import campus_positions as campus_admin
 from app.features.admin import campus_posts as posts_admin
 from app.features.admin import campus_resources as resources_admin
+from app.features.admin import dashboard as dashboard_admin
 from app.features.admin import employers as employers_admin
 from app.features.admin import programs as programs_admin
+from app.features.admin import system_status as system_status_admin
 from app.features.admin.schema import (
+    AdminDashboardSummary,
     AdminMembershipRead,
     AdminUserRead,
     CampusPositionAdminRead,
@@ -30,7 +33,9 @@ from app.features.admin.schema import (
     ProgramMembershipRevokeRequest,
     ProgramMembershipVerifyRequest,
     SuspendUserRequest,
+    SystemStatusRead,
 )
+from app.features.admin.service import reactivate_user as do_reactivate_user
 from app.features.admin.service import remove_activity as do_remove_activity
 from app.features.admin.service import suspend_user as do_suspend_user
 from app.features.campus_hub import publishing
@@ -73,6 +78,22 @@ def _membership_admin_read(membership, user: User, profile: Profile, program) ->
         user_email=user.email,
         display_name=profile.display_name,
     )
+
+
+@router.get('/dashboard/summary', response_model=AdminDashboardSummary)
+async def get_dashboard_summary(
+    actor: User = Depends(require_admin_aal2),
+    db: AsyncSession = Depends(get_db),
+) -> AdminDashboardSummary:
+    return await dashboard_admin.get_dashboard_summary(db, user_id=actor.id)
+
+
+@router.get('/system-status', response_model=SystemStatusRead)
+async def get_system_status(
+    _: User = Depends(require_admin_aal2),
+    db: AsyncSession = Depends(get_db),
+) -> SystemStatusRead:
+    return await system_status_admin.get_system_status(db)
 
 
 @router.get('/users', response_model=list[AdminUserRead])
@@ -289,6 +310,16 @@ async def suspend_user(
 ):
     user = await do_suspend_user(db, user_id, actor_id=actor.id)
     return {'status': 'suspended', 'user_id': str(user.id), 'reason': payload.reason}
+
+
+@router.post('/users/{user_id}/reactivate')
+async def reactivate_user(
+    user_id: UUID,
+    actor: User = Depends(require_admin_aal2),
+    db: AsyncSession = Depends(get_db),
+):
+    user = await do_reactivate_user(db, user_id, actor_id=actor.id)
+    return {'status': 'active', 'user_id': str(user.id)}
 
 
 @router.post('/activities/{activity_id}/remove')

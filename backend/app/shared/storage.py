@@ -6,6 +6,7 @@ feature owns another feature's I/O client.
 
 from __future__ import annotations
 
+import logging
 import time
 from uuid import UUID
 
@@ -13,6 +14,8 @@ from fastapi import HTTPException, status
 from supabase import create_client
 
 from app.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 class SupabaseStorageService:
@@ -105,6 +108,18 @@ class SupabaseStorageService:
         if not url:
             raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='Could not generate a signed URL')
         return url
+
+    def ping(self) -> bool:
+        """A cheap, real reachability check for the admin dashboard's System Status strip — lists
+        buckets (no path/bucket-name assumptions needed), never a cached/assumed value."""
+        if self.client is None:
+            return False
+        try:
+            self.client.storage.list_buckets()
+            return True
+        except Exception:  # noqa: BLE001 — a status check must never itself raise
+            logger.exception('storage: ping failed')
+            return False
 
     def delete_scholar_file(self, user_id: UUID, kind: str) -> None:
         """Best-effort removal of a scholar file (all known extensions) — used on account

@@ -17,6 +17,7 @@ from fastapi import Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.database import get_db
 from app.dependencies import require_admin_aal2
 from app.models import AdminMembership, Profile, User
@@ -100,7 +101,10 @@ async def invite_admin(
     if not can_invite(_primary_role(actor_scopes), role):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='You are not allowed to invite this role')
 
-    normalized = normalize_campus_email(email)
+    try:
+        normalized = normalize_campus_email(email)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)) from exc
     target = (await db.execute(select(User).where(User.email == normalized))).scalar_one_or_none()
     existing = None
     if target is not None:
@@ -112,13 +116,21 @@ async def invite_admin(
         if existing is not None and existing.status == 'active':
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='This person already holds that role')
 
-    # Auth-side invite FIRST — if this fails, nothing local has been created or changed yet, so
-    # there's never a half-created admin row with no matching Supabase invite.
-    auth_user_id = invite_auth_user(normalized)
-    if auth_user_id is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='Could not send the invite — try again later'
-        )
+    # An existing user who already has a real Supabase identity (any prior student/staff account)
+    # must NOT be sent a fresh invite — Supabase's invite call is for *new* auth users only and
+    # errors on an email that's already registered, which would make it impossible to ever promote
+    # an existing account to admin. Only invite when there's genuinely no auth identity yet.
+    if target is not None and target.auth_user_id is not None:
+        auth_user_id = target.auth_user_id
+    else:
+        # Auth-side invite FIRST — if this fails, nothing local has been created or changed yet, so
+        # there's never a half-created admin row with no matching Supabase invite.
+        redirect_to = f'{settings.admin_portal_url}/accept-invite' if settings.admin_portal_url else None
+        auth_user_id = invite_auth_user(normalized, redirect_to=redirect_to)
+        if auth_user_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='Could not send the invite — try again later'
+            )
 
     if target is None:
         target = User(email=normalized, role='admin', auth_user_id=auth_user_id, is_verified=True)

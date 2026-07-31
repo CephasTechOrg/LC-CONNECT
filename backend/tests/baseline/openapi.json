@@ -365,6 +365,85 @@
         "title": "ActivityUpdate",
         "type": "object"
       },
+      "AdminDashboardSummary": {
+        "description": "The dashboard's KPI-card payload. Honors-Program fields are `None` for an admin without\n`honors_admin` scope \u2014 the dashboard shows fewer cards rather than a fabricated zero.",
+        "properties": {
+          "active_opportunities": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active Opportunities"
+          },
+          "active_scholars": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active Scholars"
+          },
+          "employer_partners": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Employer Partners"
+          },
+          "open_reports": {
+            "title": "Open Reports",
+            "type": "integer"
+          },
+          "pending_employer_approvals": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pending Employer Approvals"
+          },
+          "pending_opportunity_reviews": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pending Opportunity Reviews"
+          },
+          "pending_positions": {
+            "title": "Pending Positions",
+            "type": "integer"
+          },
+          "total_users": {
+            "title": "Total Users",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total_users",
+          "open_reports",
+          "pending_positions"
+        ],
+        "title": "AdminDashboardSummary",
+        "type": "object"
+      },
       "AdminMembershipRead": {
         "properties": {
           "display_name": {
@@ -5694,6 +5773,51 @@
         "title": "SuspendUserRequest",
         "type": "object"
       },
+      "SystemStatusRead": {
+        "description": "Every field is the result of a real check made at request time (`app/features/admin/system_status.py`)\n\u2014 never a hardcoded 'operational'. No separate \"Email\" entry: Supabase Auth sends invite\nemails itself, there's no distinct email provider in this codebase to check independently.",
+        "properties": {
+          "api_gateway": {
+            "enum": [
+              "operational",
+              "down"
+            ],
+            "title": "Api Gateway",
+            "type": "string"
+          },
+          "auth": {
+            "enum": [
+              "operational",
+              "down"
+            ],
+            "title": "Auth",
+            "type": "string"
+          },
+          "database": {
+            "enum": [
+              "operational",
+              "down"
+            ],
+            "title": "Database",
+            "type": "string"
+          },
+          "storage": {
+            "enum": [
+              "operational",
+              "down"
+            ],
+            "title": "Storage",
+            "type": "string"
+          }
+        },
+        "required": [
+          "api_gateway",
+          "database",
+          "auth",
+          "storage"
+        ],
+        "title": "SystemStatusRead",
+        "type": "object"
+      },
       "UnreadCount": {
         "properties": {
           "count": {
@@ -7271,6 +7395,32 @@
         ]
       }
     },
+    "/api/v1/admin/dashboard/summary": {
+      "get": {
+        "operationId": "get_dashboard_summary_api_v1_admin_dashboard_summary_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminDashboardSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Dashboard Summary",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
     "/api/v1/admin/employers": {
       "get": {
         "operationId": "list_employer_organizations_api_v1_admin_employers_get",
@@ -7800,6 +7950,32 @@
         ]
       }
     },
+    "/api/v1/admin/system-status": {
+      "get": {
+        "operationId": "get_system_status_api_v1_admin_system_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemStatusRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get System Status",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
     "/api/v1/admin/users": {
       "get": {
         "operationId": "list_users_api_v1_admin_users_get",
@@ -7825,6 +8001,52 @@
           }
         ],
         "summary": "List Users",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/users/{user_id}/reactivate": {
+      "post": {
+        "operationId": "reactivate_user_api_v1_admin_users__user_id__reactivate_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Reactivate User",
         "tags": [
           "admin"
         ]

@@ -14,6 +14,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.features.campus_hub import publishing
 from app.features.campus_hub.schema import CampusPostCreate
 from app.models import CampusPost, EmployerAccount, EmployerOpportunitySubmission, EmployerOrganization, User
@@ -65,7 +66,8 @@ async def approve_organization(
 
     # Auth-side invite FIRST — if this fails, the org stays pending rather than being marked
     # approved with no matching Supabase identity for its contact.
-    auth_user_id = invite_auth_user(account.email)
+    redirect_to = f'{settings.employer_portal_url}/accept-invite' if settings.employer_portal_url else None
+    auth_user_id = invite_auth_user(account.email, redirect_to=redirect_to)
     if auth_user_id is None:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='Could not send the invite — try again later'

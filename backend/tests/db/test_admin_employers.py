@@ -16,7 +16,7 @@ from app.models import AdminAuditLog, AdminMembership
 @pytest.fixture(autouse=True)
 def _mock_invite(monkeypatch):
     """Never hit real Supabase during tests — a miss here would send a real invite email."""
-    monkeypatch.setattr(employers_admin, 'invite_auth_user', lambda email: str(uuid4()))
+    monkeypatch.setattr(employers_admin, 'invite_auth_user', lambda email, **kwargs: str(uuid4()))
 
 
 async def _honors_admin(db, factory):
@@ -76,7 +76,7 @@ async def test_approve_non_pending_is_409(db, factory):
 async def test_approve_failure_leaves_org_pending(db, factory, monkeypatch):
     admin = await _honors_admin(db, factory)
     org = await _pending_org(db)
-    monkeypatch.setattr(employers_admin, 'invite_auth_user', lambda email: None)
+    monkeypatch.setattr(employers_admin, 'invite_auth_user', lambda email, **kwargs: None)
 
     with pytest.raises(HTTPException) as exc:
         await employers_admin.approve_organization(db, actor=admin, org_id=org.id)

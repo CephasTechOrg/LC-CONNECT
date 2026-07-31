@@ -1,5 +1,6 @@
 'use client';
 
+import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { apiFetch } from '@/lib/api/client';
 import { getAccessToken } from '@/lib/auth/session';
@@ -13,24 +14,50 @@ type EmployerOrganization = {
   review_note: string | null;
 };
 
-type Tab = 'pending' | 'approved' | 'rejected';
+type OpportunitySubmission = {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  external_url: string | null;
+  status: string;
+  review_note: string | null;
+  organization_id: string;
+  organization_name: string;
+};
+
+type MainTab = 'organizations' | 'opportunities';
+type StatusTab = 'pending' | 'approved' | 'rejected';
+
+function badgeClass(tab: StatusTab): string {
+  if (tab === 'approved') return 'badge success';
+  if (tab === 'rejected') return 'badge danger';
+  return 'badge';
+}
 
 export default function EmployersPage() {
-  const [tab, setTab] = useState<Tab>('pending');
-  const [items, setItems] = useState<EmployerOrganization[]>([]);
+  const searchParams = useSearchParams();
+  const [mainTab, setMainTab] = useState<MainTab>(
+    searchParams.get('tab') === 'opportunities' ? 'opportunities' : 'organizations',
+  );
+  const [orgTab, setOrgTab] = useState<StatusTab>('pending');
+  const [oppTab, setOppTab] = useState<StatusTab>('pending');
+
+  const [orgs, setOrgs] = useState<EmployerOrganization[]>([]);
+  const [opps, setOpps] = useState<OpportunitySubmission[]>([]);
   const [status, setStatus] = useState('Loading…');
   const [error, setError] = useState(false);
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<string | null>(null);
 
-  const load = useCallback(async (which: Tab) => {
+  const loadOrgs = useCallback(async (which: StatusTab) => {
     setError(false);
     setStatus('Loading…');
     try {
       const token = await getAccessToken();
       if (!token) throw new Error('Not signed in');
       const data = await apiFetch<EmployerOrganization[]>(`/admin/employers?status=${which}`, token);
-      setItems(data);
+      setOrgs(data);
       setStatus(data.length ? `${data.length} ${which} organization(s).` : `No ${which} organizations.`);
     } catch (err) {
       setError(true);
@@ -38,11 +65,27 @@ export default function EmployersPage() {
     }
   }, []);
 
-  useEffect(() => {
-    void load(tab);
-  }, [load, tab]);
+  const loadOpps = useCallback(async (which: StatusTab) => {
+    setError(false);
+    setStatus('Loading…');
+    try {
+      const token = await getAccessToken();
+      if (!token) throw new Error('Not signed in');
+      const data = await apiFetch<OpportunitySubmission[]>(`/admin/employers/opportunities?status=${which}`, token);
+      setOpps(data);
+      setStatus(data.length ? `${data.length} ${which} submission(s).` : `No ${which} submissions.`);
+    } catch (err) {
+      setError(true);
+      setStatus(err instanceof Error ? err.message : 'Failed to load');
+    }
+  }, []);
 
-  async function act(id: string, action: 'approve' | 'reject', label: string) {
+  useEffect(() => {
+    if (mainTab === 'organizations') void loadOrgs(orgTab);
+    else void loadOpps(oppTab);
+  }, [mainTab, orgTab, oppTab, loadOrgs, loadOpps]);
+
+  async function actOrg(id: string, action: 'approve' | 'reject', label: string) {
     setBusy(id);
     try {
       const token = await getAccessToken();
@@ -51,7 +94,7 @@ export default function EmployersPage() {
       await apiFetch(`/admin/employers/${id}/${action}`, token, { method: 'POST', body });
       setError(false);
       setStatus(`${action[0].toUpperCase() + action.slice(1)}d ${label}.`);
-      await load(tab);
+      await loadOrgs(orgTab);
     } catch (err) {
       setError(true);
       setStatus(err instanceof Error ? err.message : `${action} failed`);
@@ -60,79 +103,179 @@ export default function EmployersPage() {
     }
   }
 
+  async function actOpp(id: string, action: 'approve' | 'reject', label: string) {
+    if (action === 'reject' && !notes[id]?.trim()) {
+      setError(true);
+      setStatus('A reason is required to reject a submission.');
+      return;
+    }
+    setBusy(id);
+    try {
+      const token = await getAccessToken();
+      if (!token) return;
+      const body = action === 'reject' ? JSON.stringify({ reason: notes[id]?.trim() }) : undefined;
+      await apiFetch(`/admin/employers/opportunities/${id}/${action}`, token, { method: 'POST', body });
+      setError(false);
+      setStatus(`${action[0].toUpperCase() + action.slice(1)}d ${label}.`);
+      await loadOpps(oppTab);
+    } catch (err) {
+      setError(true);
+      setStatus(err instanceof Error ? err.message : `${action} failed`);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  const statusTab = mainTab === 'organizations' ? orgTab : oppTab;
+  const setStatusTab = mainTab === 'organizations' ? setOrgTab : setOppTab;
+
   return (
     <>
       <header className="topbar">
         <div>
           <h1>Employer Partners</h1>
-          <p>Review employer organization applications — Blueprint Bond</p>
-        </div>
-        <div className="tabs">
-          <button type="button" className={`tab${tab === 'pending' ? ' active' : ''}`} onClick={() => setTab('pending')}>
-            Pending
-          </button>
-          <button
-            type="button"
-            className={`tab${tab === 'approved' ? ' active' : ''}`}
-            onClick={() => setTab('approved')}
-          >
-            Approved
-          </button>
-          <button
-            type="button"
-            className={`tab${tab === 'rejected' ? ' active' : ''}`}
-            onClick={() => setTab('rejected')}
-          >
-            Rejected
-          </button>
+          <p>Review employer organizations and their opportunity submissions — Blueprint Bond</p>
         </div>
       </header>
       <div className="content">
-        <div className="actions" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
-          <p className={`status${error ? ' error' : ''}`} style={{ margin: 0 }}>
-            {status}
-          </p>
-          <button className="btn ghost" type="button" onClick={() => void load(tab)} style={{ width: 'auto' }}>
+        <div className="tabs" style={{ marginBottom: 16 }}>
+          <button
+            type="button"
+            className={`tab${mainTab === 'organizations' ? ' active' : ''}`}
+            onClick={() => setMainTab('organizations')}
+          >
+            Organizations
+          </button>
+          <button
+            type="button"
+            className={`tab${mainTab === 'opportunities' ? ' active' : ''}`}
+            onClick={() => setMainTab('opportunities')}
+          >
+            Opportunities
+          </button>
+        </div>
+
+        <div className="actions" style={{ justifyContent: 'space-between', alignItems: 'center', marginTop: 0 }}>
+          <div className="tabs">
+            {(['pending', 'approved', 'rejected'] as StatusTab[]).map((t) => (
+              <button
+                key={t}
+                type="button"
+                className={`tab${statusTab === t ? ' active' : ''}`}
+                onClick={() => setStatusTab(t)}
+              >
+                {t[0].toUpperCase() + t.slice(1)}
+              </button>
+            ))}
+          </div>
+          <button
+            className="btn ghost"
+            type="button"
+            onClick={() => (mainTab === 'organizations' ? void loadOrgs(orgTab) : void loadOpps(oppTab))}
+            style={{ width: 'auto' }}
+          >
             Refresh
           </button>
         </div>
 
-        {items.length === 0 ? (
-          <div className="panel empty">{`No ${tab} organizations.`}</div>
+        <p className={`status${error ? ' error' : ''}`}>{status}</p>
+
+        {mainTab === 'organizations' ? (
+          orgs.length === 0 ? (
+            <div className="panel empty">{`No ${orgTab} organizations.`}</div>
+          ) : (
+            <div className="card-list">
+              {orgs.map((item) => {
+                const label = item.name;
+                return (
+                  <article key={item.id} className="card">
+                    <div className="card-head">
+                      <div>
+                        <h3>{label}</h3>
+                        <p className="meta">
+                          {item.contact_name ? `${item.contact_name} · ` : ''}
+                          {item.contact_email}
+                        </p>
+                        {item.review_note && <p className="meta">Note: {item.review_note}</p>}
+                      </div>
+                      <span className={badgeClass(orgTab)}>{item.status}</span>
+                    </div>
+
+                    {orgTab === 'pending' && (
+                      <>
+                        <div className="field" style={{ marginTop: 12, marginBottom: 0 }}>
+                          <label htmlFor={`org-note-${item.id}`}>Note (sent on reject)</label>
+                          <textarea
+                            id={`org-note-${item.id}`}
+                            rows={2}
+                            value={notes[item.id] || ''}
+                            onChange={(e) => setNotes((prev) => ({ ...prev, [item.id]: e.target.value }))}
+                            placeholder="Optional"
+                          />
+                        </div>
+                        <div className="actions">
+                          <button
+                            className="btn"
+                            type="button"
+                            disabled={busy === item.id}
+                            onClick={() => void actOrg(item.id, 'approve', label)}
+                          >
+                            Approve
+                          </button>
+                          <button
+                            className="btn danger"
+                            type="button"
+                            disabled={busy === item.id}
+                            onClick={() => void actOrg(item.id, 'reject', label)}
+                          >
+                            Reject
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </article>
+                );
+              })}
+            </div>
+          )
+        ) : opps.length === 0 ? (
+          <div className="panel empty">{`No ${oppTab} submissions.`}</div>
         ) : (
           <div className="card-list">
-            {items.map((item) => {
-              const label = item.name;
+            {opps.map((item) => {
+              const label = item.title;
               return (
                 <article key={item.id} className="card">
                   <div className="card-head">
                     <div>
                       <h3>{label}</h3>
                       <p className="meta">
-                        {item.contact_name ? `${item.contact_name} · ` : ''}
-                        {item.contact_email}
+                        {item.organization_name} · {item.category}
+                        {item.external_url ? (
+                          <>
+                            {' · '}
+                            <a href={item.external_url} target="_blank" rel="noopener noreferrer">
+                              link
+                            </a>
+                          </>
+                        ) : null}
                       </p>
+                      <p className="meta">{item.description}</p>
                       {item.review_note && <p className="meta">Note: {item.review_note}</p>}
                     </div>
-                    <span
-                      className={
-                        tab === 'approved' ? 'badge success' : tab === 'rejected' ? 'badge danger' : 'badge'
-                      }
-                    >
-                      {item.status}
-                    </span>
+                    <span className={badgeClass(oppTab)}>{item.status}</span>
                   </div>
 
-                  {tab === 'pending' && (
+                  {oppTab === 'pending' && (
                     <>
                       <div className="field" style={{ marginTop: 12, marginBottom: 0 }}>
-                        <label htmlFor={`note-${item.id}`}>Note (sent on reject)</label>
+                        <label htmlFor={`opp-note-${item.id}`}>Reason (required to reject)</label>
                         <textarea
-                          id={`note-${item.id}`}
+                          id={`opp-note-${item.id}`}
                           rows={2}
                           value={notes[item.id] || ''}
                           onChange={(e) => setNotes((prev) => ({ ...prev, [item.id]: e.target.value }))}
-                          placeholder="Optional"
+                          placeholder="Required only if rejecting"
                         />
                       </div>
                       <div className="actions">
@@ -140,15 +283,15 @@ export default function EmployersPage() {
                           className="btn"
                           type="button"
                           disabled={busy === item.id}
-                          onClick={() => void act(item.id, 'approve', label)}
+                          onClick={() => void actOpp(item.id, 'approve', label)}
                         >
-                          Approve
+                          Approve &amp; Publish
                         </button>
                         <button
                           className="btn danger"
                           type="button"
                           disabled={busy === item.id}
-                          onClick={() => void act(item.id, 'reject', label)}
+                          onClick={() => void actOpp(item.id, 'reject', label)}
                         >
                           Reject
                         </button>

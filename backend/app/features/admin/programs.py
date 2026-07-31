@@ -58,7 +58,10 @@ async def verify_membership(
 ) -> tuple[ProgramMembership, User, Profile]:
     """Grant (or reactivate) membership for the student at `email`. A duplicate verify on an
     already-active membership is a 409 — this is not the reactivation path."""
-    normalized = normalize_campus_email(email)
+    try:
+        normalized = normalize_campus_email(email)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)) from exc
     target = (await db.execute(select(User).where(User.email == normalized))).scalar_one_or_none()
     if target is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='No account found for that email')

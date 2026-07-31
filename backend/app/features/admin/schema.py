@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
@@ -71,6 +72,34 @@ class AdminMembershipRead(BaseModel):
 
 class MyAdminScopesRead(BaseModel):
     scopes: list[str]
+
+
+class AdminDashboardSummary(BaseModel):
+    """The dashboard's KPI-card payload. Honors-Program fields are `None` for an admin without
+    `honors_admin` scope — the dashboard shows fewer cards rather than a fabricated zero."""
+
+    total_users: int
+    open_reports: int
+    pending_positions: int
+    active_scholars: int | None = None
+    employer_partners: int | None = None
+    active_opportunities: int | None = None
+    pending_employer_approvals: int | None = None
+    pending_opportunity_reviews: int | None = None
+
+
+ServiceStatus = Literal['operational', 'down']
+
+
+class SystemStatusRead(BaseModel):
+    """Every field is the result of a real check made at request time (`app/features/admin/system_status.py`)
+    — never a hardcoded 'operational'. No separate "Email" entry: Supabase Auth sends invite
+    emails itself, there's no distinct email provider in this codebase to check independently."""
+
+    api_gateway: ServiceStatus
+    database: ServiceStatus
+    auth: ServiceStatus
+    storage: ServiceStatus
 
 
 class EmployerRejectRequest(BaseModel):

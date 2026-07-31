@@ -23,6 +23,13 @@ class Settings(BaseSettings):
 
     cors_origins: str = Field(default='', alias='CORS_ORIGINS')
 
+    # Where a Supabase invite email's confirmation link sends the invitee — admin invites (Phase 3)
+    # and employer-approval invites (Phase 4) share one Supabase project but land in two different
+    # Next.js apps, so each needs its own explicit redirect (never the Supabase dashboard's shared
+    # default Site URL, which can only point at one of the two).
+    admin_portal_url: str | None = Field(default=None, alias='ADMIN_PORTAL_URL')
+    employer_portal_url: str | None = Field(default=None, alias='EMPLOYER_PORTAL_URL')
+
     supabase_url: str | None = Field(default=None, alias='SUPABASE_URL')
     supabase_service_role_key: str | None = Field(default=None, alias='SUPABASE_SERVICE_ROLE_KEY')
     # Required for local/HS256 Supabase projects; JWKS covers asymmetric production keys.

@@ -7,13 +7,53 @@ import { apiFetch, bootstrapUser, type BootstrapUser } from '@/lib/api/client';
 import { createClient } from '@/lib/supabase/client';
 import { signOut } from '@/lib/auth/session';
 
-const BASE_NAV = [
-  { href: '/dashboard', label: 'Overview' },
-  { href: '/dashboard/positions', label: 'Positions' },
-  { href: '/dashboard/content', label: 'Content' },
-  { href: '/dashboard/moderation', label: 'Moderation' },
-  { href: '/dashboard/admins', label: 'Admins' },
+type NavItem = { href: string; label: string; icon: string };
+type NavSection = { title?: string; honorsOnly?: boolean; items: NavItem[] };
+
+const NAV_SECTIONS: NavSection[] = [
+  {
+    items: [
+      { href: '/dashboard', label: 'Dashboard', icon: '▦' },
+      { href: '/dashboard/content', label: 'Campus Hub', icon: '▥' },
+      { href: '/dashboard/users', label: 'Users', icon: '◉' },
+      { href: '/dashboard/positions', label: 'Campus Positions', icon: '▧' },
+      { href: '/dashboard/moderation', label: 'Moderation', icon: '⚑' },
+    ],
+  },
+  {
+    title: 'Honors Program',
+    honorsOnly: true,
+    items: [
+      { href: '/dashboard/scholars', label: 'Presidential Scholars', icon: '◈' },
+      { href: '/dashboard/employers', label: 'Employer Partners', icon: '▣' },
+    ],
+  },
+  {
+    title: 'Administration',
+    items: [
+      { href: '/dashboard/admins', label: 'Admins & Roles', icon: '❖' },
+      { href: '/dashboard/settings', label: 'Settings', icon: '⚙' },
+      { href: '/dashboard/audit-logs', label: 'Audit Logs', icon: '▨' },
+    ],
+  },
 ];
+
+function initials(email: string): string {
+  const name = email.split('@')[0].replace(/[._-]+/g, ' ').trim();
+  const parts = name.split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '?';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[1][0]).toUpperCase();
+}
+
+function roleLabel(scopes: string[]): string {
+  if (scopes.includes('super_admin')) return 'Super Administrator';
+  if (scopes.includes('school_admin')) return 'School Administrator';
+  if (scopes.includes('honors_admin')) return 'Honors Administrator';
+  if (scopes.includes('content_admin')) return 'Content Administrator';
+  if (scopes.includes('auditor')) return 'Auditor';
+  return 'Administrator';
+}
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -65,13 +105,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     })();
   }, [router]);
 
-  const nav = scopes.includes('honors_admin')
-    ? [
-        ...BASE_NAV,
-        { href: '/dashboard/scholars', label: 'Scholars' },
-        { href: '/dashboard/employers', label: 'Employers' },
-      ]
-    : BASE_NAV;
+  const isHonors = scopes.includes('honors_admin');
+  const sections = NAV_SECTIONS.filter((section) => !section.honorsOnly || isHonors);
 
   async function onLogout() {
     await signOut();
@@ -103,29 +138,45 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   return (
     <div className="app-shell">
       <aside className="sidebar">
-        <div className="brand">
-          <strong>LC Connect</strong>
-          <span>Campus Admin</span>
+        <div className="sidebar-brand">
+          <div className="sidebar-brand-mark">LC</div>
+          <div>
+            <strong>LC Connect</strong>
+            <span>Campus Admin</span>
+          </div>
         </div>
-        {nav.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={`nav-link${pathname === item.href ? ' active' : ''}`}
-          >
-            {item.label}
-          </Link>
+        {sections.map((section) => (
+          <div className="nav-section" key={section.title || 'base'}>
+            {section.title ? <div className="nav-section-title">{section.title}</div> : null}
+            {section.items.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`nav-link${pathname === item.href ? ' active' : ''}`}
+              >
+                <span className="nav-icon">{item.icon}</span>
+                {item.label}
+              </Link>
+            ))}
+          </div>
         ))}
-        <div className="sidebar-footer">
-          <p className="hint" style={{ marginTop: 0 }}>
-            {user.email}
-          </p>
-          <button className="btn ghost" type="button" onClick={() => void onLogout()}>
-            Sign out
-          </button>
-        </div>
       </aside>
-      <div className="main">{children}</div>
+      <div className="main">
+        <header className="appbar">
+          <div className="appbar-org">Livingstone College</div>
+          <div className="appbar-user">
+            <div className="appbar-avatar">{initials(user.email)}</div>
+            <div>
+              <div className="appbar-user-name">{user.email}</div>
+              <div className="appbar-user-role">{roleLabel(scopes)}</div>
+            </div>
+            <button className="btn ghost" type="button" onClick={() => void onLogout()} style={{ width: 'auto' }}>
+              Sign out
+            </button>
+          </div>
+        </header>
+        {children}
+      </div>
     </div>
   );
 }

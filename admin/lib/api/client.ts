@@ -52,3 +52,31 @@ export async function apiFetch<T>(
 export async function bootstrapUser(accessToken: string): Promise<BootstrapUser> {
   return apiFetch<BootstrapUser>('/auth/bootstrap', accessToken, { method: 'POST' });
 }
+
+export type AdminDashboardSummary = {
+  total_users: number;
+  open_reports: number;
+  pending_positions: number;
+  active_scholars: number | null;
+  employer_partners: number | null;
+  active_opportunities: number | null;
+  pending_employer_approvals: number | null;
+  pending_opportunity_reviews: number | null;
+};
+
+export async function dashboardSummary(accessToken: string): Promise<AdminDashboardSummary> {
+  return apiFetch<AdminDashboardSummary>('/admin/dashboard/summary', accessToken);
+}
+
+export type ServiceStatus = 'operational' | 'down';
+
+export type SystemStatus = {
+  api_gateway: ServiceStatus;
+  database: ServiceStatus;
+  auth: ServiceStatus;
+  storage: ServiceStatus;
+};
+
+export async function systemStatus(accessToken: string): Promise<SystemStatus> {
+  return apiFetch<SystemStatus>('/admin/system-status', accessToken);
+}
