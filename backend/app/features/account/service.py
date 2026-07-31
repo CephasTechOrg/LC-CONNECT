@@ -9,6 +9,7 @@ user sent, any group they own (and its whole chat), and the activities they crea
   - remove them from every group chat (keeping DM history for the other party),
   - clear the social graph (pending requests, blocks, their notifications, push tokens),
   - scrub the profile to a "Deleted user" tombstone and delete the avatar image,
+  - drop their Blueprint Bond professional profile row + private headshot/résumé files,
   - anonymize the user row (email/password/auth link) and stamp `deleted_at`,
   - then close their live sockets and delete the Supabase Auth user (best-effort).
 
@@ -37,6 +38,7 @@ from app.models import (
     Group,
     Notification,
     Profile,
+    ScholarProfessionalProfile,
     User,
     UserLanguage,
     profile_interests,
@@ -108,6 +110,7 @@ async def delete_account(db: AsyncSession, user: User) -> None:
     await db.execute(delete(Block).where(or_(Block.blocker_id == user_id, Block.blocked_id == user_id)))
     await db.execute(delete(Notification).where(Notification.user_id == user_id))
     await db.execute(delete(DeviceToken).where(DeviceToken.user_id == user_id))
+    await db.execute(delete(ScholarProfessionalProfile).where(ScholarProfessionalProfile.user_id == user_id))
 
     # 5. Profile → "Deleted user" tombstone; wipe personal data + avatar.
     profile = (await db.execute(select(Profile).where(Profile.user_id == user_id))).scalar_one_or_none()
@@ -143,5 +146,7 @@ async def delete_account(db: AsyncSession, user: User) -> None:
 
     # 7. External cleanup — best-effort, must not fail the deletion.
     await disconnect_user(user_id)
+    storage_service.delete_scholar_file(user_id, 'headshot')
+    storage_service.delete_scholar_file(user_id, 'resume')
     if auth_user_id is not None and not delete_auth_user(str(auth_user_id)):
         logger.warning('delete_account: Supabase auth user %s not removed; local row anonymized', auth_user_id)

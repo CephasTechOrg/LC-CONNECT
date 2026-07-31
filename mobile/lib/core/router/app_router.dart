@@ -32,6 +32,7 @@ import '../../features/campus_positions/screens/edit_campus_position_screen.dart
 import '../../features/profile/screens/profile_screen.dart';
 import '../../features/profile/screens/public_profile_screen.dart';
 import '../../features/profile/screens/edit_profile_screen.dart';
+import '../../features/scholars/screens/blueprint_bond_screen.dart';
 import '../../features/connections/screens/connections_screen.dart';
 import '../../features/onboarding/screens/onboarding_screen.dart';
 import '../../shared/widgets/nav_shell.dart';
@@ -259,6 +260,10 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: 'campus-position',
                 builder: (context, state) => const EditCampusPositionScreen(),
+              ),
+              GoRoute(
+                path: 'blueprint-bond',
+                builder: (context, state) => const BlueprintBondScreen(),
               ),
             ],
           ),

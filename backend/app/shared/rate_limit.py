@@ -111,6 +111,10 @@ avatar_upload_limit = UserRateLimit(
     'avatar_upload', settings.rate_limit_avatar_uploads_per_day, _DAY,
     'Too many photo updates today — try again later.',
 )
+scholar_upload_limit = UserRateLimit(
+    'scholar_upload', settings.rate_limit_scholar_uploads_per_day, _DAY,
+    "You've uploaded too many files today — try again tomorrow.",
+)
 report_limit = UserRateLimit(
     'report', settings.rate_limit_reports_per_day, _DAY,
     "You've filed many reports today — thank you; please try again tomorrow.",

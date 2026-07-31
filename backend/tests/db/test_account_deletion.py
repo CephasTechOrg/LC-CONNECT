@@ -21,7 +21,10 @@ from app.models import (
     Group,
     Message,
     Profile,
+    Program,
+    ProgramMembership,
     Report,
+    ScholarProfessionalProfile,
     User,
 )
 
@@ -79,6 +82,28 @@ async def test_delete_clears_social_graph_rows(db, factory):
     assert (await db.execute(select(func.count()).select_from(Block).where(Block.blocker_id == user.id))).scalar_one() == 0
     assert (await db.execute(select(func.count()).select_from(ConnectionRequest).where(ConnectionRequest.sender_id == user.id))).scalar_one() == 0
     assert (await db.execute(select(func.count()).select_from(DeviceToken).where(DeviceToken.user_id == user.id))).scalar_one() == 0
+
+
+async def test_delete_removes_scholar_professional_profile(db, factory):
+    from app.features.scholars import service as scholars_service
+    from app.features.scholars.schema import ScholarProfessionalProfileUpdate
+
+    user = await factory.user(display_name='Scholar')
+    program = Program(slug=scholars_service.PRESIDENTIAL_SCHOLARS_SLUG, name='Presidential Scholars')
+    db.add(program)
+    await db.flush()
+    db.add(ProgramMembership(user_id=user.id, program_id=program.id, status='active'))
+    await db.commit()
+    await scholars_service.update_profile(db, user.id, ScholarProfessionalProfileUpdate(summary='Bio'))
+
+    await delete_account(db, user)
+
+    remaining = (
+        await db.execute(
+            select(func.count()).select_from(ScholarProfessionalProfile).where(ScholarProfessionalProfile.user_id == user.id)
+        )
+    ).scalar_one()
+    assert remaining == 0
 
 
 async def test_delete_transfers_owned_group_to_next_member(db, factory):

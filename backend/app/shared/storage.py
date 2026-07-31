@@ -1,6 +1,6 @@
-"""Supabase Storage infrastructure (profile image uploads).
+"""Supabase Storage infrastructure (profile image uploads + Blueprint Bond private files).
 
-Cross-cutting infra used by the profiles feature. Kept in the shared kernel so no
+Cross-cutting infra used by the profiles and scholars features. Kept in the shared kernel so no
 feature owns another feature's I/O client.
 """
 
@@ -60,6 +60,61 @@ class SupabaseStorageService:
         for ext in ('jpg', 'jpeg', 'png', 'webp'):
             try:
                 bucket.remove([f'profiles/{user_id}/avatar.{ext}'])
+            except Exception:
+                pass
+
+    # ── Blueprint Bond: private scholar files (headshot / résumé) ───────────────────
+    # A separate PRIVATE bucket, never `supabase_profile_bucket` (public). Uploads return only
+    # the object *path* — never a URL. Every read goes through `scholar_signed_url`, generated
+    # fresh each time, so nothing long-lived-feeling ever gets cached client-side.
+
+    _SCHOLAR_FILE_EXTENSIONS: dict[str, tuple[str, ...]] = {
+        'headshot': ('jpg',),
+        'resume': ('pdf', 'docx'),
+    }
+
+    @staticmethod
+    def _scholar_path(user_id: UUID, kind: str, ext: str) -> str:
+        return f'{user_id}/{kind}.{ext}'
+
+    def upload_scholar_file(self, user_id: UUID, kind: str, ext: str, content_type: str, data: bytes) -> str:
+        """Upload a private scholar file (headshot|resume) and return its object path.
+
+        Replaces any prior file for that (user, kind) across known extensions first — one object
+        per (user, kind), same deterministic-path-plus-cleanup shape as `_upload_image`.
+        """
+        if self.client is None:
+            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='Supabase Storage is not configured')
+        bucket = self.client.storage.from_(settings.supabase_scholar_bucket)
+        for existing_ext in self._SCHOLAR_FILE_EXTENSIONS.get(kind, ()):
+            try:
+                bucket.remove([self._scholar_path(user_id, kind, existing_ext)])
+            except Exception:
+                pass
+        path = self._scholar_path(user_id, kind, ext)
+        bucket.upload(path=path, file=data, file_options={'content-type': content_type})
+        return path
+
+    def scholar_signed_url(self, path: str, *, expires_in: int) -> str:
+        """A fresh, short-lived signed URL for a private scholar file object path."""
+        if self.client is None:
+            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='Supabase Storage is not configured')
+        bucket = self.client.storage.from_(settings.supabase_scholar_bucket)
+        result = bucket.create_signed_url(path, expires_in)
+        url = result.get('signedURL') or result.get('signedUrl')
+        if not url:
+            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='Could not generate a signed URL')
+        return url
+
+    def delete_scholar_file(self, user_id: UUID, kind: str) -> None:
+        """Best-effort removal of a scholar file (all known extensions) — used on account
+        deletion. Never raises: a storage miss must not block the deletion."""
+        if self.client is None:
+            return
+        bucket = self.client.storage.from_(settings.supabase_scholar_bucket)
+        for ext in self._SCHOLAR_FILE_EXTENSIONS.get(kind, ()):
+            try:
+                bucket.remove([self._scholar_path(user_id, kind, ext)])
             except Exception:
                 pass
 

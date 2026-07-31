@@ -644,6 +644,34 @@
         "title": "Body_upload_my_avatar_api_v1_profiles_me_avatar_post",
         "type": "object"
       },
+      "Body_upload_my_headshot_api_v1_scholars_me_headshot_post": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_my_headshot_api_v1_scholars_me_headshot_post",
+        "type": "object"
+      },
+      "Body_upload_my_resume_api_v1_scholars_me_resume_post": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_my_resume_api_v1_scholars_me_resume_post",
+        "type": "object"
+      },
       "BootstrapResponse": {
         "properties": {
           "auth_user_id": {
@@ -2350,6 +2378,19 @@
           "created_at"
         ],
         "title": "ConnectionRequestRead",
+        "type": "object"
+      },
+      "ConsentUpdateRequest": {
+        "properties": {
+          "consent": {
+            "title": "Consent",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "consent"
+        ],
+        "title": "ConsentUpdateRequest",
         "type": "object"
       },
       "CurrentUserResponse": {
@@ -4740,6 +4781,208 @@
           "created_at"
         ],
         "title": "ReportRead",
+        "type": "object"
+      },
+      "ScholarProfessionalProfileRead": {
+        "properties": {
+          "career_interests": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Career Interests",
+            "type": "array"
+          },
+          "consent_given_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Consent Given At"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "employer_visibility_consent": {
+            "title": "Employer Visibility Consent",
+            "type": "boolean"
+          },
+          "handshake_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Handshake Url"
+          },
+          "has_headshot": {
+            "title": "Has Headshot",
+            "type": "boolean"
+          },
+          "has_resume": {
+            "title": "Has Resume",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "linkedin_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Linkedin Url"
+          },
+          "skills": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Skills",
+            "type": "array"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "user_id": {
+            "format": "uuid",
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "user_id",
+          "linkedin_url",
+          "handshake_url",
+          "summary",
+          "skills",
+          "career_interests",
+          "employer_visibility_consent",
+          "consent_given_at",
+          "has_headshot",
+          "has_resume",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ScholarProfessionalProfileRead",
+        "type": "object"
+      },
+      "ScholarProfessionalProfileUpdate": {
+        "properties": {
+          "career_interests": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 30,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Career Interests"
+          },
+          "handshake_url": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Handshake Url"
+          },
+          "linkedin_url": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Linkedin Url"
+          },
+          "skills": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 30,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Skills"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          }
+        },
+        "title": "ScholarProfessionalProfileUpdate",
+        "type": "object"
+      },
+      "SignedUrlRead": {
+        "properties": {
+          "expires_in": {
+            "title": "Expires In",
+            "type": "integer"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url",
+          "expires_in"
+        ],
+        "title": "SignedUrlRead",
         "type": "object"
       },
       "StaffThreadCreate": {
@@ -10035,6 +10278,266 @@
         "summary": "Create Report",
         "tags": [
           "safety"
+        ]
+      }
+    },
+    "/api/v1/scholars/me": {
+      "get": {
+        "operationId": "get_my_scholar_profile_api_v1_scholars_me_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScholarProfessionalProfileRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get My Scholar Profile",
+        "tags": [
+          "scholars"
+        ]
+      },
+      "patch": {
+        "operationId": "update_my_scholar_profile_api_v1_scholars_me_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScholarProfessionalProfileUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScholarProfessionalProfileRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update My Scholar Profile",
+        "tags": [
+          "scholars"
+        ]
+      }
+    },
+    "/api/v1/scholars/me/consent": {
+      "post": {
+        "operationId": "set_my_employer_consent_api_v1_scholars_me_consent_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConsentUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScholarProfessionalProfileRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Set My Employer Consent",
+        "tags": [
+          "scholars"
+        ]
+      }
+    },
+    "/api/v1/scholars/me/headshot": {
+      "post": {
+        "operationId": "upload_my_headshot_api_v1_scholars_me_headshot_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_my_headshot_api_v1_scholars_me_headshot_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScholarProfessionalProfileRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Upload My Headshot",
+        "tags": [
+          "scholars"
+        ]
+      }
+    },
+    "/api/v1/scholars/me/headshot-url": {
+      "get": {
+        "operationId": "get_my_headshot_url_api_v1_scholars_me_headshot_url_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SignedUrlRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get My Headshot Url",
+        "tags": [
+          "scholars"
+        ]
+      }
+    },
+    "/api/v1/scholars/me/resume": {
+      "post": {
+        "operationId": "upload_my_resume_api_v1_scholars_me_resume_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_my_resume_api_v1_scholars_me_resume_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScholarProfessionalProfileRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Upload My Resume",
+        "tags": [
+          "scholars"
+        ]
+      }
+    },
+    "/api/v1/scholars/me/resume-url": {
+      "get": {
+        "operationId": "get_my_resume_url_api_v1_scholars_me_resume_url_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SignedUrlRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get My Resume Url",
+        "tags": [
+          "scholars"
         ]
       }
     },

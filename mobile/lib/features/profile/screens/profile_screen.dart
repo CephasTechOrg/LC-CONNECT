@@ -10,6 +10,7 @@ import '../../../shared/widgets/app_shell_header.dart';
 import '../../../shared/widgets/app_states.dart';
 import '../../account/providers/account_provider.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../scholars/widgets/blueprint_bond_card.dart';
 import '../providers/profile_provider.dart';
 
 part '../widgets/profile_header.dart';
@@ -107,6 +108,7 @@ class _ProfileBodyState extends ConsumerState<_ProfileBody> {
             title: profile.campusPositionTitle,
             status: profile.campusPositionStatus!,
           ),
+        const BlueprintBondCard(),
         _HeroSection(
           profile: profile,
           uploading: _uploading,

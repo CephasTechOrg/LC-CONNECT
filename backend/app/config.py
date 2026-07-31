@@ -30,6 +30,11 @@ class Settings(BaseSettings):
     supabase_jwt_audience: str = Field(default='authenticated', alias='SUPABASE_JWT_AUDIENCE')
     supabase_profile_bucket: str = Field(default='profile-images', alias='SUPABASE_PROFILE_BUCKET')
     max_profile_image_mb: int = Field(default=5, alias='MAX_PROFILE_IMAGE_MB')
+    # Blueprint Bond: a PRIVATE bucket (never public like supabase_profile_bucket) — every read
+    # goes through a short-lived signed URL, generated server-side, never a public URL.
+    supabase_scholar_bucket: str = Field(default='scholar-private', alias='SUPABASE_SCHOLAR_BUCKET')
+    max_resume_mb: int = Field(default=5, alias='MAX_RESUME_MB')
+    scholar_signed_url_expires_seconds: int = Field(default=300, alias='SCHOLAR_SIGNED_URL_EXPIRES_SECONDS')
     # Hard cap on any request body, enforced at the edge (before buffering) via Content-Length —
     # stops oversized uploads from being received at all. Never below the image cap + headroom.
     max_request_body_mb: int = Field(default=12, alias='MAX_REQUEST_BODY_MB')
@@ -55,6 +60,7 @@ class Settings(BaseSettings):
     rate_limit_campus_post_publishes_per_day: int = Field(
         default=20, alias='RATE_LIMIT_CAMPUS_POST_PUBLISHES_PER_DAY'
     )
+    rate_limit_scholar_uploads_per_day: int = Field(default=10, alias='RATE_LIMIT_SCHOLAR_UPLOADS_PER_DAY')
 
     allowed_email_domains: str = Field(
         default='students.livingstone.edu,livingstone.edu',

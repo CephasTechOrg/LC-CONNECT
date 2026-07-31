@@ -56,6 +56,9 @@ GET /api/v1/notifications/unread-count
 GET /api/v1/profiles/me
 GET /api/v1/profiles/{profile_id}
 GET /api/v1/programs/me
+GET /api/v1/scholars/me
+GET /api/v1/scholars/me/headshot-url
+GET /api/v1/scholars/me/resume-url
 GET /health
 PATCH /api/v1/activities/{activity_id}
 PATCH /api/v1/admin/campus-posts/{post_id}
@@ -66,6 +69,7 @@ PATCH /api/v1/groups/{group_id}
 PATCH /api/v1/groups/{group_id}/members/me
 PATCH /api/v1/groups/{group_id}/members/{user_id}
 PATCH /api/v1/profiles/me
+PATCH /api/v1/scholars/me
 POST /api/v1/activities
 POST /api/v1/activities/{activity_id}/banner
 POST /api/v1/activities/{activity_id}/cancel
@@ -107,3 +111,6 @@ POST /api/v1/messages/threads/{match_id}
 POST /api/v1/notifications/read
 POST /api/v1/profiles/me/avatar
 POST /api/v1/reports
+POST /api/v1/scholars/me/consent
+POST /api/v1/scholars/me/headshot
+POST /api/v1/scholars/me/resume

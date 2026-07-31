@@ -27,6 +27,7 @@ from app.features.realtime import router as realtime_router
 from app.features.realtime.protocol import CloseCode
 from app.features.realtime.runtime import manager as ws_manager
 from app.features.safety import router as safety_router
+from app.features.scholars import router as scholars_router
 from app.routers import auth
 from app.shared.rate_limit import prune_idle_buckets
 from app.shared.request_limits import MaxBodySizeMiddleware
@@ -117,6 +118,7 @@ app.include_router(messages_router, prefix=settings.api_v1_prefix)
 app.include_router(activities_router, prefix=settings.api_v1_prefix)
 app.include_router(groups_router, prefix=settings.api_v1_prefix)
 app.include_router(programs_router, prefix=settings.api_v1_prefix)
+app.include_router(scholars_router, prefix=settings.api_v1_prefix)
 app.include_router(safety_router, prefix=settings.api_v1_prefix)
 app.include_router(admin_router, prefix=settings.api_v1_prefix)
 app.include_router(account_router, prefix=settings.api_v1_prefix)

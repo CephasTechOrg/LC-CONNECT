@@ -12,6 +12,7 @@ import '../../auth/providers/auth_provider.dart';
 import '../../discovery/providers/discovery_provider.dart';
 import '../../notifications/providers/notifications_provider.dart';
 import '../../profile/providers/profile_provider.dart';
+import '../../scholars/widgets/blueprint_bond_card.dart';
 import '../data/campus_spotlights.dart';
 import '../models/campus_post.dart';
 import '../providers/campus_hub_provider.dart';
@@ -65,6 +66,7 @@ class CampusHubScreen extends ConsumerWidget {
             children: [
               _HomeGreetingHeader(greeting: greeting),
               const SizedBox(height: 8),
+              const BlueprintBondCard(),
               const _SpotlightCarousel(),
               const _QuickActionsRow(),
               const _PublisherCta(),
