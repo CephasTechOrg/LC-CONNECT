@@ -186,6 +186,34 @@ async def test_signed_url_404_for_non_consenting_scholar_even_with_headshot(db, 
     assert exc.value.status_code == 404
 
 
+async def test_resume_signed_url_404_without_resume(db, factory):
+    scholar, _ = await _eligible_scholar(db, factory)
+    with pytest.raises(HTTPException) as exc:
+        await discovery.resume_signed_url(db, scholar.id)
+    assert exc.value.status_code == 404
+
+
+async def test_resume_signed_url_success(db, factory, monkeypatch):
+    scholar, profile = await _eligible_scholar(db, factory)
+    profile.resume_path = f'{scholar.id}/resume.pdf'
+    await db.commit()
+    monkeypatch.setattr(discovery.storage_service, 'scholar_signed_url', lambda *a, **kw: 'https://example.com/signed')
+
+    url = await discovery.resume_signed_url(db, scholar.id)
+    assert url == 'https://example.com/signed'
+
+
+async def test_resume_signed_url_404_for_non_consenting_scholar_even_with_resume(db, factory):
+    """Revoked consent blocks signed-URL issuance too, not just the profile view."""
+    scholar, profile = await _eligible_scholar(db, factory, consent=False)
+    profile.resume_path = f'{scholar.id}/resume.pdf'
+    await db.commit()
+
+    with pytest.raises(HTTPException) as exc:
+        await discovery.resume_signed_url(db, scholar.id)
+    assert exc.value.status_code == 404
+
+
 # ── EmployerScholarView allowlist ──────────────────────────────────────────────────
 
 

@@ -55,6 +55,17 @@ class OpportunitySubmissionRead(BaseModel):
     created_at: datetime
 
 
+class MyEmployerRead(BaseModel):
+    """The employer portal's session-check payload — mirrors the admin portal's `bootstrapUser`,
+    but resolved against `EmployerAccount`/`EmployerOrganization`, not `User`."""
+
+    organization_id: UUID
+    organization_name: str
+    organization_status: EmployerOrganizationStatus
+    email: EmailStr
+    display_name: str | None
+
+
 class EmployerScholarView(BaseModel):
     """The **entire** employer-facing view of a scholar — deliberately hand-built (never
     `ProfilePublic.model_validate(...)`, never `**profile.__dict__`) so a future field added to

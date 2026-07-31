@@ -42,6 +42,7 @@ GET /api/v1/connections/incoming
 GET /api/v1/connections/matches
 GET /api/v1/connections/outgoing
 GET /api/v1/discovery/cards
+GET /api/v1/employers/me
 GET /api/v1/employers/opportunities/me
 GET /api/v1/employers/scholars
 GET /api/v1/employers/scholars/{user_id}

@@ -3814,6 +3814,54 @@
         "title": "MyAdminScopesRead",
         "type": "object"
       },
+      "MyEmployerRead": {
+        "description": "The employer portal's session-check payload \u2014 mirrors the admin portal's `bootstrapUser`,\nbut resolved against `EmployerAccount`/`EmployerOrganization`, not `User`.",
+        "properties": {
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "email": {
+            "format": "email",
+            "title": "Email",
+            "type": "string"
+          },
+          "organization_id": {
+            "format": "uuid",
+            "title": "Organization Id",
+            "type": "string"
+          },
+          "organization_name": {
+            "title": "Organization Name",
+            "type": "string"
+          },
+          "organization_status": {
+            "enum": [
+              "pending",
+              "approved",
+              "rejected"
+            ],
+            "title": "Organization Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "organization_id",
+          "organization_name",
+          "organization_status",
+          "email",
+          "display_name"
+        ],
+        "title": "MyEmployerRead",
+        "type": "object"
+      },
       "MyProfileRead": {
         "properties": {
           "activity_count": {
@@ -9401,6 +9449,33 @@
         "summary": "Get Discovery Cards",
         "tags": [
           "discovery"
+        ]
+      }
+    },
+    "/api/v1/employers/me": {
+      "get": {
+        "description": "The portal's session-check call \u2014 succeeding at all means the caller is an *approved*\nemployer (pending/rejected 403s with the matching message before this ever returns).",
+        "operationId": "get_my_employer_context_api_v1_employers_me_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyEmployerRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get My Employer Context",
+        "tags": [
+          "employers"
         ]
       }
     },

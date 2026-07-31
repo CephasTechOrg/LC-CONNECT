@@ -12,6 +12,7 @@ from sqlalchemy import select
 
 from app.features.employers import auth as employers_auth
 from app.features.employers import service
+from app.features.employers.router import get_my_employer_context
 from app.models import EmployerAccount
 
 
@@ -90,3 +91,23 @@ async def test_missing_bearer_token_is_401(db):
     with pytest.raises(HTTPException) as exc:
         await employers_auth.get_employer_auth_context(credentials=None, db=db)
     assert exc.value.status_code == 401
+
+
+async def test_get_my_employer_context_shape(db, monkeypatch):
+    org = await service.register_employer(
+        db, organization_name='Acme', contact_name='Jamie', contact_email='jamie4@acme.com'
+    )
+    account = await _account_for(db, org)
+    account.auth_user_id = uuid4()
+    org.status = 'approved'
+    await db.commit()
+
+    monkeypatch.setattr(
+        employers_auth, 'verify_supabase_access_token', AsyncMock(return_value=SimpleNamespace(sub=account.auth_user_id))
+    )
+    ctx = await employers_auth.get_employer_auth_context(credentials=_creds(), db=db)
+    result = await get_my_employer_context(ctx=ctx)
+    assert result.organization_id == org.id
+    assert result.organization_name == 'Acme'
+    assert result.organization_status == 'approved'
+    assert result.email == account.email

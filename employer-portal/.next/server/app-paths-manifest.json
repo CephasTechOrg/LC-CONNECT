@@ -1,0 +1,11 @@
+{
+  "/_not-found/page": "app/_not-found/page.js",
+  "/(auth)/register/page": "app/(auth)/register/page.js",
+  "/(auth)/login/page": "app/(auth)/login/page.js",
+  "/page": "app/page.js",
+  "/(dashboard)/dashboard/opportunities/page": "app/(dashboard)/dashboard/opportunities/page.js",
+  "/(dashboard)/dashboard/page": "app/(dashboard)/dashboard/page.js",
+  "/(dashboard)/dashboard/scholars/page": "app/(dashboard)/dashboard/scholars/page.js",
+  "/(dashboard)/dashboard/scholars/[id]/page": "app/(dashboard)/dashboard/scholars/[id]/page.js",
+  "/(dashboard)/dashboard/organization/page": "app/(dashboard)/dashboard/organization/page.js"
+}

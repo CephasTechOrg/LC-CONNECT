@@ -12,6 +12,7 @@ from app.features.employers.schema import (
     EmployerOrganizationRead,
     EmployerRegisterRequest,
     EmployerScholarView,
+    MyEmployerRead,
     OpportunitySubmissionCreate,
     OpportunitySubmissionRead,
 )
@@ -48,6 +49,21 @@ async def register_employer(
         contact_email=payload.contact_email,
     )
     return EmployerOrganizationRead.model_validate(org)
+
+
+@router.get('/me', response_model=MyEmployerRead)
+async def get_my_employer_context(
+    ctx: EmployerAuthContext = Depends(require_approved_employer),
+) -> MyEmployerRead:
+    """The portal's session-check call — succeeding at all means the caller is an *approved*
+    employer (pending/rejected 403s with the matching message before this ever returns)."""
+    return MyEmployerRead(
+        organization_id=ctx.organization.id,
+        organization_name=ctx.organization.name,
+        organization_status=ctx.organization.status,
+        email=ctx.account.email,
+        display_name=ctx.account.display_name,
+    )
 
 
 @router.post(
