@@ -12,6 +12,8 @@ GET /
 GET /api/v1/activities
 GET /api/v1/activities/{activity_id}
 GET /api/v1/activities/{activity_id}/participants
+GET /api/v1/admin/admins
+GET /api/v1/admin/admins/me/scopes
 GET /api/v1/admin/campus-positions
 GET /api/v1/admin/campus-positions/pending
 GET /api/v1/admin/campus-positions/{position_id}
@@ -75,6 +77,8 @@ POST /api/v1/activities/{activity_id}/banner
 POST /api/v1/activities/{activity_id}/cancel
 POST /api/v1/activities/{activity_id}/join
 POST /api/v1/admin/activities/{activity_id}/remove
+POST /api/v1/admin/admins/invite
+POST /api/v1/admin/admins/{membership_id}/revoke
 POST /api/v1/admin/campus-positions/{position_id}/approve
 POST /api/v1/admin/campus-positions/{position_id}/reject
 POST /api/v1/admin/campus-positions/{position_id}/revoke

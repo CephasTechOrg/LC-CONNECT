@@ -365,6 +365,72 @@
         "title": "ActivityUpdate",
         "type": "object"
       },
+      "AdminMembershipRead": {
+        "properties": {
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "invited_at": {
+            "format": "date-time",
+            "title": "Invited At",
+            "type": "string"
+          },
+          "revoked_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revoked At"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "user_email": {
+            "format": "email",
+            "title": "User Email",
+            "type": "string"
+          },
+          "user_id": {
+            "format": "uuid",
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "user_id",
+          "role",
+          "status",
+          "invited_at",
+          "revoked_at",
+          "user_email"
+        ],
+        "title": "AdminMembershipRead",
+        "type": "object"
+      },
       "AdminUserRead": {
         "properties": {
           "display_name": {
@@ -3180,6 +3246,25 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "InviteAdminRequest": {
+        "properties": {
+          "email": {
+            "format": "email",
+            "title": "Email",
+            "type": "string"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "role"
+        ],
+        "title": "InviteAdminRequest",
+        "type": "object"
+      },
       "JoinResult": {
         "description": "`active` = joined an open group; `requested` = awaiting admin approval.",
         "properties": {
@@ -3458,6 +3543,22 @@
           "staff_messaging_enabled"
         ],
         "title": "MessagingCapabilities",
+        "type": "object"
+      },
+      "MyAdminScopesRead": {
+        "properties": {
+          "scopes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Scopes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "scopes"
+        ],
+        "title": "MyAdminScopesRead",
         "type": "object"
       },
       "MyProfileRead": {
@@ -5763,6 +5864,159 @@
           }
         ],
         "summary": "Remove Activity",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/admins": {
+      "get": {
+        "description": "The admin roster \u2014 read-only, open to any admin (no scope beyond `require_admin_aal2`).",
+        "operationId": "list_admin_memberships_api_v1_admin_admins_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AdminMembershipRead"
+                  },
+                  "title": "Response List Admin Memberships Api V1 Admin Admins Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Admin Memberships",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/admins/invite": {
+      "post": {
+        "description": "Only Super Admin / School Admin can actually succeed here \u2014 `invite_admin` enforces the\ninvite matrix itself (403 for anyone else), `require_admin_aal2` is just the base gate.",
+        "operationId": "invite_admin_api_v1_admin_admins_invite_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InviteAdminRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminMembershipRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Invite Admin",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/admins/me/scopes": {
+      "get": {
+        "description": "Lets the admin portal gate its own nav \u2014 any admin can see their own scopes.",
+        "operationId": "get_my_admin_scopes_api_v1_admin_admins_me_scopes_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyAdminScopesRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get My Admin Scopes",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/admins/{membership_id}/revoke": {
+      "post": {
+        "operationId": "revoke_admin_api_v1_admin_admins__membership_id__revoke_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "membership_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Membership Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminMembershipRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Revoke Admin",
         "tags": [
           "admin"
         ]

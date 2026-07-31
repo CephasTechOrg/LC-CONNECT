@@ -3,21 +3,23 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { ReactNode, useEffect, useState } from 'react';
-import { bootstrapUser, type BootstrapUser } from '@/lib/api/client';
+import { apiFetch, bootstrapUser, type BootstrapUser } from '@/lib/api/client';
 import { createClient } from '@/lib/supabase/client';
 import { signOut } from '@/lib/auth/session';
 
-const NAV = [
+const BASE_NAV = [
   { href: '/dashboard', label: 'Overview' },
   { href: '/dashboard/positions', label: 'Positions' },
   { href: '/dashboard/content', label: 'Content' },
   { href: '/dashboard/moderation', label: 'Moderation' },
+  { href: '/dashboard/admins', label: 'Admins' },
 ];
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const [user, setUser] = useState<BootstrapUser | null>(null);
+  const [scopes, setScopes] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
 
@@ -45,6 +47,16 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           return;
         }
         setUser(bootstrapped);
+        // Best-effort: an admin with no scope yet (e.g. legacy account) still sees the base nav.
+        try {
+          const scopesRes = await apiFetch<{ scopes: string[] }>(
+            '/admin/admins/me/scopes',
+            session.access_token,
+          );
+          setScopes(scopesRes.scopes);
+        } catch {
+          setScopes([]);
+        }
         setReady(true);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Could not load admin session');
@@ -52,6 +64,10 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       }
     })();
   }, [router]);
+
+  const nav = scopes.includes('honors_admin')
+    ? [...BASE_NAV, { href: '/dashboard/scholars', label: 'Scholars' }]
+    : BASE_NAV;
 
   async function onLogout() {
     await signOut();
@@ -87,7 +103,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           <strong>LC Connect</strong>
           <span>Campus Admin</span>
         </div>
-        {NAV.map((item) => (
+        {nav.map((item) => (
           <Link
             key={item.href}
             href={item.href}

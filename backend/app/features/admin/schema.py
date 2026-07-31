@@ -50,6 +50,28 @@ class ProgramMembershipAdminRead(ProgramMembershipRead):
     display_name: str | None = None
 
 
+class InviteAdminRequest(BaseModel):
+    email: EmailStr
+    role: str
+
+
+class AdminMembershipRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    user_id: UUID
+    role: str
+    status: str
+    invited_at: datetime
+    revoked_at: datetime | None
+    user_email: EmailStr
+    display_name: str | None = None
+
+
+class MyAdminScopesRead(BaseModel):
+    scopes: list[str]
+
+
 class CampusPostAdminRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
