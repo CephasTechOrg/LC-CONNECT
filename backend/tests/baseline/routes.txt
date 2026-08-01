@@ -88,6 +88,7 @@ POST /api/v1/activities/{activity_id}/cancel
 POST /api/v1/activities/{activity_id}/join
 POST /api/v1/admin/activities/{activity_id}/remove
 POST /api/v1/admin/admins/invite
+POST /api/v1/admin/admins/{membership_id}/resend-invite
 POST /api/v1/admin/admins/{membership_id}/revoke
 POST /api/v1/admin/campus-positions/{position_id}/approve
 POST /api/v1/admin/campus-positions/{position_id}/reject
@@ -100,6 +101,7 @@ POST /api/v1/admin/employers/opportunities/{submission_id}/approve
 POST /api/v1/admin/employers/opportunities/{submission_id}/reject
 POST /api/v1/admin/employers/{org_id}/approve
 POST /api/v1/admin/employers/{org_id}/reject
+POST /api/v1/admin/employers/{org_id}/resend-invite
 POST /api/v1/admin/programs/{slug}/members
 POST /api/v1/admin/programs/{slug}/members/{user_id}/revoke
 POST /api/v1/admin/users/{user_id}/reactivate

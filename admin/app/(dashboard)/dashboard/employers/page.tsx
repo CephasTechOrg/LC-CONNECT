@@ -103,6 +103,22 @@ export default function EmployersPage() {
     }
   }
 
+  async function onResendOrgInvite(id: string, label: string) {
+    setBusy(id);
+    try {
+      const token = await getAccessToken();
+      if (!token) return;
+      await apiFetch(`/admin/employers/${id}/resend-invite`, token, { method: 'POST' });
+      setError(false);
+      setStatus(`Resent invite to ${label}.`);
+    } catch (err) {
+      setError(true);
+      setStatus(err instanceof Error ? err.message : 'Resend failed');
+    } finally {
+      setBusy(null);
+    }
+  }
+
   async function actOpp(id: string, action: 'approve' | 'reject', label: string) {
     if (action === 'reject' && !notes[id]?.trim()) {
       setError(true);
@@ -232,6 +248,19 @@ export default function EmployersPage() {
                           </button>
                         </div>
                       </>
+                    )}
+
+                    {orgTab === 'approved' && (
+                      <div className="actions">
+                        <button
+                          className="btn ghost"
+                          type="button"
+                          disabled={busy === item.id}
+                          onClick={() => void onResendOrgInvite(item.id, label)}
+                        >
+                          Resend invite
+                        </button>
+                      </div>
                     )}
                   </article>
                 );

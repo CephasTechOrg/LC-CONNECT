@@ -6604,6 +6604,54 @@
         ]
       }
     },
+    "/api/v1/admin/admins/{membership_id}/resend-invite": {
+      "post": {
+        "operationId": "resend_admin_invite_api_v1_admin_admins__membership_id__resend_invite_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "membership_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Membership Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminMembershipRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Resend Admin Invite",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
     "/api/v1/admin/admins/{membership_id}/revoke": {
       "post": {
         "operationId": "revoke_admin_api_v1_admin_admins__membership_id__revoke_post",
@@ -7732,6 +7780,54 @@
           }
         ],
         "summary": "Reject Employer Organization",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/employers/{org_id}/resend-invite": {
+      "post": {
+        "operationId": "resend_employer_invite_api_v1_admin_employers__org_id__resend_invite_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmployerOrganizationAdminRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Resend Employer Invite",
         "tags": [
           "admin"
         ]

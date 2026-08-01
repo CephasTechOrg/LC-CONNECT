@@ -63,7 +63,7 @@ def upgrade() -> None:
             "INSERT INTO programs (id, slug, name, description, is_active) "
             "VALUES (:id, 'presidential_scholars', 'Presidential Scholars', "
             "'Blueprint Bond — Presidential Scholars program membership.', true)"
-        ).bindparams(id=str(PRESIDENTIAL_SCHOLARS_ID))
+        ).bindparams(sa.bindparam('id', value=PRESIDENTIAL_SCHOLARS_ID, type_=UUID(as_uuid=True)))
     )
 
 

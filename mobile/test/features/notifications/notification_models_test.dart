@@ -55,6 +55,12 @@ void main() {
     test('connection accepted', () {
       expect(make('connection_accepted').message, 'Alex accepted your connection request');
     });
+    test('admin membership invited', () {
+      expect(
+        make('admin_membership_invited').message,
+        "You've been granted admin access — sign in to the Admin Portal",
+      );
+    });
 
     test('route: group events → group, connection events → /connections', () {
       expect(make('group_invite').route, '/groups/g1');

@@ -197,3 +197,42 @@ async def revoke_admin_membership(db: AsyncSession, *, actor: User, membership_i
     await db.commit()
     await db.refresh(membership)
     return membership
+
+
+async def resend_admin_invite(db: AsyncSession, *, actor: User, membership_id: UUID) -> AdminMembership:
+    """For an active membership whose invitee never actually completed sign-up (email lost,
+    landed in spam, code expired). Calling Supabase's invite-by-email again is safe: Supabase
+    itself resends for an unconfirmed identity and only errors if the person already finished
+    signing up — in which case they need 'forgot password', not another invite."""
+    membership = await db.get(AdminMembership, membership_id)
+    if membership is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Admin membership not found')
+    if membership.status != 'active':
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='This membership is not active')
+
+    actor_scopes = await get_admin_scopes(db, actor.id)
+    if not can_invite(_primary_role(actor_scopes), membership.role):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail='You are not allowed to resend an invite for this role'
+        )
+
+    target = await db.get(User, membership.user_id)
+    redirect_to = f'{settings.admin_portal_url}/accept-invite' if settings.admin_portal_url else None
+    auth_user_id = invite_auth_user(target.email, redirect_to=redirect_to)
+    if auth_user_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail='Could not resend the invite — this person may have already finished signing up, '
+            'or the email service is temporarily unavailable',
+        )
+
+    await record_audit(
+        db,
+        actor_id=actor.id,
+        action='admin_membership.resend_invite',
+        target_type='admin_membership',
+        target_id=membership.id,
+    )
+    await db.commit()
+    await db.refresh(membership)
+    return membership

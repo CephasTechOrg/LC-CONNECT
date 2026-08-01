@@ -50,6 +50,7 @@ class AppNotification {
         'group_join_request' => '$_actor requested to join $_group',
         'connection_request' => '$_actor sent you a connection request',
         'connection_accepted' => '$_actor accepted your connection request',
+        'admin_membership_invited' => "You've been granted admin access — sign in to the Admin Portal",
         _ => 'You have a new notification',
       };
 

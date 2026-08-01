@@ -114,6 +114,23 @@ export default function AdminsPage() {
     }
   }
 
+  async function onResendInvite(item: AdminMembership) {
+    const label = item.display_name || item.user_email;
+    setBusy(item.id);
+    try {
+      const token = await getAccessToken();
+      if (!token) return;
+      await apiFetch(`/admin/admins/${item.id}/resend-invite`, token, { method: 'POST' });
+      setError(false);
+      setStatus(`Resent invite to ${label}.`);
+    } catch (err) {
+      setError(true);
+      setStatus(err instanceof Error ? err.message : 'Resend failed');
+    } finally {
+      setBusy(null);
+    }
+  }
+
   return (
     <>
       <header className="topbar">
@@ -185,6 +202,14 @@ export default function AdminsPage() {
                   </div>
                   {canRevoke && (
                     <div className="actions">
+                      <button
+                        className="btn ghost"
+                        type="button"
+                        disabled={busy === item.id}
+                        onClick={() => void onResendInvite(item)}
+                      >
+                        Resend invite
+                      </button>
                       <button
                         className="btn danger"
                         type="button"

@@ -41,6 +41,8 @@ def _notification_copy(notif_type: str, actor_name: str | None, group_name: str 
         return group_name or 'Group request', 'Your request to join was approved'
     if notif_type == 'program_membership_verified':
         return 'LC Connect', "You've been verified for a new program — check your profile"
+    if notif_type == 'admin_membership_invited':
+        return 'LC Connect', "You've been granted admin access — sign in to the Admin Portal"
     return who, 'You have a new notification'
 
 

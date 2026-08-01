@@ -269,6 +269,68 @@ async def test_revoke_already_revoked_is_409(db, factory):
     assert exc.value.status_code == 409
 
 
+# ── resend_admin_invite ─────────────────────────────────────────────────────────────
+
+
+async def test_resend_admin_invite_succeeds(db, factory):
+    super_admin = await _admin_with_scope(db, factory, 'super_admin')
+    target = await factory.user(display_name='Target')
+    membership, _, _ = await admins_service.invite_admin(db, actor=super_admin, email=target.email, role='auditor')
+
+    resent = await admins_service.resend_admin_invite(db, actor=super_admin, membership_id=membership.id)
+    assert resent.status == 'active'
+
+    audit_count = (
+        await db.execute(
+            select(func.count())
+            .select_from(AdminAuditLog)
+            .where(AdminAuditLog.action == 'admin_membership.resend_invite', AdminAuditLog.target_id == membership.id)
+        )
+    ).scalar_one()
+    assert audit_count == 1
+
+
+async def test_resend_admin_invite_requires_active_status(db, factory):
+    super_admin = await _admin_with_scope(db, factory, 'super_admin')
+    target = await factory.user(display_name='Target')
+    membership, _, _ = await admins_service.invite_admin(db, actor=super_admin, email=target.email, role='auditor')
+    await admins_service.revoke_admin_membership(db, actor=super_admin, membership_id=membership.id)
+
+    with pytest.raises(HTTPException) as exc:
+        await admins_service.resend_admin_invite(db, actor=super_admin, membership_id=membership.id)
+    assert exc.value.status_code == 409
+
+
+async def test_resend_admin_invite_not_found_404(db, factory):
+    super_admin = await _admin_with_scope(db, factory, 'super_admin')
+    with pytest.raises(HTTPException) as exc:
+        await admins_service.resend_admin_invite(db, actor=super_admin, membership_id=uuid4())
+    assert exc.value.status_code == 404
+
+
+async def test_school_admin_cannot_resend_super_admin_invite(db, factory):
+    school_admin = await _admin_with_scope(db, factory, 'school_admin')
+    other_super_admin = await _admin_with_scope(db, factory, 'super_admin')
+    membership = (
+        await db.execute(select(AdminMembership).where(AdminMembership.user_id == other_super_admin.id))
+    ).scalar_one()
+
+    with pytest.raises(HTTPException) as exc:
+        await admins_service.resend_admin_invite(db, actor=school_admin, membership_id=membership.id)
+    assert exc.value.status_code == 403
+
+
+async def test_resend_admin_invite_failure_is_503(db, factory, monkeypatch):
+    super_admin = await _admin_with_scope(db, factory, 'super_admin')
+    target = await factory.user(display_name='Target')
+    membership, _, _ = await admins_service.invite_admin(db, actor=super_admin, email=target.email, role='auditor')
+
+    monkeypatch.setattr(admins_service, 'invite_auth_user', lambda email, **kwargs: None)
+    with pytest.raises(HTTPException) as exc:
+        await admins_service.resend_admin_invite(db, actor=super_admin, membership_id=membership.id)
+    assert exc.value.status_code == 503
+
+
 # ── require_admin_scope dependency ─────────────────────────────────────────────────
 
 

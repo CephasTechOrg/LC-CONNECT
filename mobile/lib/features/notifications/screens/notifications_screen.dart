@@ -159,6 +159,7 @@ IconData _iconFor(String type) => switch (type) {
       'group_join_request' => Icons.group_add_outlined,
       'connection_request' => Icons.person_add_alt_1_outlined,
       'connection_accepted' => Icons.how_to_reg_outlined,
+      'admin_membership_invited' => Icons.admin_panel_settings_outlined,
       _ => Icons.notifications_outlined,
     };
 

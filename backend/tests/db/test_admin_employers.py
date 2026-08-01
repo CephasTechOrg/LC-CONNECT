@@ -86,6 +86,47 @@ async def test_approve_failure_leaves_org_pending(db, factory, monkeypatch):
     assert org.status == 'pending'  # never flipped to approved without a real invite
 
 
+async def test_resend_invite_succeeds_for_approved_org(db, factory):
+    admin = await _honors_admin(db, factory)
+    org = await _pending_org(db)
+    await employers_admin.approve_organization(db, actor=admin, org_id=org.id)
+
+    resent = await employers_admin.resend_organization_invite(db, actor=admin, org_id=org.id)
+    assert resent.status == 'approved'
+
+    audit_count = (
+        await db.execute(
+            select(func.count())
+            .select_from(AdminAuditLog)
+            .where(
+                AdminAuditLog.action == 'employer_organization.resend_invite',
+                AdminAuditLog.target_id == org.id,
+            )
+        )
+    ).scalar_one()
+    assert audit_count == 1
+
+
+async def test_resend_invite_requires_approved_status(db, factory):
+    admin = await _honors_admin(db, factory)
+    org = await _pending_org(db)  # still pending, never approved
+
+    with pytest.raises(HTTPException) as exc:
+        await employers_admin.resend_organization_invite(db, actor=admin, org_id=org.id)
+    assert exc.value.status_code == 409
+
+
+async def test_resend_invite_failure_is_503(db, factory, monkeypatch):
+    admin = await _honors_admin(db, factory)
+    org = await _pending_org(db)
+    await employers_admin.approve_organization(db, actor=admin, org_id=org.id)
+
+    monkeypatch.setattr(employers_admin, 'invite_auth_user', lambda email, **kwargs: None)
+    with pytest.raises(HTTPException) as exc:
+        await employers_admin.resend_organization_invite(db, actor=admin, org_id=org.id)
+    assert exc.value.status_code == 503
+
+
 async def test_reject_sets_status_and_note(db, factory):
     admin = await _honors_admin(db, factory)
     org = await _pending_org(db)

@@ -95,6 +95,40 @@ async def approve_organization(
     return org, account
 
 
+async def resend_organization_invite(db: AsyncSession, *, actor: User, org_id: UUID) -> EmployerOrganization:
+    """For an already-approved org whose contact never actually completed the invite (email lost,
+    landed in spam, code expired). Calling Supabase's invite-by-email again is safe: Supabase
+    itself resends for an unconfirmed identity and only errors if the person already finished
+    signing up — in which case they need 'forgot password', not another invite, and that's
+    exactly the message this surfaces."""
+    org = await get_organization_or_404(db, org_id)
+    if org.status != 'approved':
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail='Only an approved organization can have its invite resent'
+        )
+    account = await get_account_for_org(db, org.id)
+
+    redirect_to = f'{settings.employer_portal_url}/accept-invite' if settings.employer_portal_url else None
+    auth_user_id = invite_auth_user(account.email, redirect_to=redirect_to)
+    if auth_user_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail='Could not resend the invite — the contact may have already finished signing up, '
+            'or the email service is temporarily unavailable',
+        )
+
+    await record_audit(
+        db,
+        actor_id=actor.id,
+        action='employer_organization.resend_invite',
+        target_type='employer_organization',
+        target_id=org.id,
+    )
+    await db.commit()
+    await db.refresh(org)
+    return org
+
+
 async def reject_organization(
     db: AsyncSession, *, actor: User, org_id: UUID, reason: str | None
 ) -> EmployerOrganization:

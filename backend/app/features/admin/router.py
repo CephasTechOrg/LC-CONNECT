@@ -423,6 +423,14 @@ async def invite_admin(
     membership, user, profile = await admins_admin.invite_admin(
         db, actor=actor, email=payload.email, role=payload.role
     )
+
+    from app.features.realtime.runtime import emit_notification
+
+    # Promoting an *existing* account (the common case — students/staff already use the mobile
+    # app) never sends a Supabase invite email (see `invite_admin`'s existing-identity branch), so
+    # without this the person would have no way to ever find out. A brand-new invitee has no
+    # session/device tokens yet, so this is a harmless no-op for them until they eventually sign in.
+    await emit_notification(user_id=user.id, notif_type='admin_membership_invited')
     return _admin_membership_read(membership, user, profile)
 
 
@@ -433,6 +441,18 @@ async def revoke_admin(
     db: AsyncSession = Depends(get_db),
 ) -> AdminMembershipRead:
     membership = await admins_admin.revoke_admin_membership(db, actor=actor, membership_id=membership_id)
+    user = await db.get(User, membership.user_id)
+    profile = await get_profile_by_user_id(db, membership.user_id)
+    return _admin_membership_read(membership, user, profile)
+
+
+@router.post('/admins/{membership_id}/resend-invite', response_model=AdminMembershipRead)
+async def resend_admin_invite(
+    membership_id: UUID,
+    actor: User = Depends(require_admin_aal2),
+    db: AsyncSession = Depends(get_db),
+) -> AdminMembershipRead:
+    membership = await admins_admin.resend_admin_invite(db, actor=actor, membership_id=membership_id)
     user = await db.get(User, membership.user_id)
     profile = await get_profile_by_user_id(db, membership.user_id)
     return _admin_membership_read(membership, user, profile)
@@ -476,6 +496,17 @@ async def reject_employer_organization(
     db: AsyncSession = Depends(get_db),
 ) -> EmployerOrganizationAdminRead:
     org = await employers_admin.reject_organization(db, actor=actor, org_id=org_id, reason=payload.reason)
+    account = await employers_admin.get_account_for_org(db, org.id)
+    return _employer_org_admin_read(org, account)
+
+
+@router.post('/employers/{org_id}/resend-invite', response_model=EmployerOrganizationAdminRead)
+async def resend_employer_invite(
+    org_id: UUID,
+    actor: User = Depends(admins_admin.require_admin_scope('honors_admin')),
+    db: AsyncSession = Depends(get_db),
+) -> EmployerOrganizationAdminRead:
+    org = await employers_admin.resend_organization_invite(db, actor=actor, org_id=org_id)
     account = await employers_admin.get_account_for_org(db, org.id)
     return _employer_org_admin_read(org, account)
 

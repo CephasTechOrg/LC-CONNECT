@@ -4,27 +4,55 @@ import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 
+type Mode = 'checking' | 'code' | 'password';
+
 export default function AcceptInvitePage() {
   const router = useRouter();
-  const [ready, setReady] = useState(false);
-  const [validSession, setValidSession] = useState(false);
+  const [mode, setMode] = useState<Mode>('checking');
+
+  const [email, setEmail] = useState('');
+  const [code, setCode] = useState('');
+  const [verifying, setVerifying] = useState(false);
+
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [saving, setSaving] = useState(false);
+
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     void (async () => {
       const supabase = createClient();
-      // The invite email's link establishes a session automatically on load (Supabase's client
-      // detects the token in the URL) — this just waits for that and confirms it landed.
+      // Clicking the invite link auto-establishes a session (Supabase's client detects the
+      // token in the URL). If that already happened, skip straight to setting a password —
+      // otherwise fall back to the "enter the code from your email" step, since some mail
+      // clients strip/mangle the link and Supabase's invite email includes a one-time code too.
       const { data } = await supabase.auth.getSession();
-      setValidSession(Boolean(data.session));
-      setReady(true);
+      setMode(data.session ? 'password' : 'code');
     })();
   }, []);
 
-  async function onSubmit(event: FormEvent) {
+  async function onVerifyCode(event: FormEvent) {
+    event.preventDefault();
+    setError(null);
+    setVerifying(true);
+    try {
+      const supabase = createClient();
+      const { error: verifyError } = await supabase.auth.verifyOtp({
+        email: email.trim(),
+        token: code.trim(),
+        type: 'invite',
+      });
+      if (verifyError) throw verifyError;
+      setMode('password');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'That code is invalid or has expired.');
+    } finally {
+      setVerifying(false);
+    }
+  }
+
+  async function onSetPassword(event: FormEvent) {
     event.preventDefault();
     setError(null);
     if (password.length < 8) {
@@ -35,7 +63,7 @@ export default function AcceptInvitePage() {
       setError('Passwords do not match.');
       return;
     }
-    setLoading(true);
+    setSaving(true);
     try {
       const supabase = createClient();
       const { error: updateError } = await supabase.auth.updateUser({ password });
@@ -44,11 +72,11 @@ export default function AcceptInvitePage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not set your password');
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   }
 
-  if (!ready) {
+  if (mode === 'checking') {
     return (
       <div className="auth-shell">
         <p className="status">Preparing your invite…</p>
@@ -56,27 +84,55 @@ export default function AcceptInvitePage() {
     );
   }
 
-  if (!validSession) {
+  if (mode === 'code') {
     return (
       <div className="auth-shell">
-        <div className="auth-card">
+        <form className="auth-card" onSubmit={onVerifyCode}>
           <p className="eyebrow">LC Connect</p>
-          <h1>Invite link expired</h1>
+          <h1>Enter your invite code</h1>
           <p className="subtitle">
-            This invite link is invalid or has expired. Ask whoever invited you to send a new one,
-            or sign in below if you already set a password.
+            You&rsquo;ve been invited as an admin. Enter your email and the code from your invite
+            email (some mail clients don&rsquo;t open the link directly, so we accept the code
+            too).
           </p>
-          <a className="btn" href="/login">
-            Go to sign in
-          </a>
-        </div>
+          {error ? <div className="error-banner">{error}</div> : null}
+          <div className="field">
+            <label htmlFor="email">Email</label>
+            <input
+              id="email"
+              type="email"
+              autoComplete="username"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="code">Invite code</label>
+            <input
+              id="code"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              required
+            />
+          </div>
+          <button className="btn" type="submit" disabled={verifying}>
+            {verifying ? 'Verifying…' : 'Continue'}
+          </button>
+          <p className="hint">
+            Code expired or never arrived? Ask whoever invited you to send a new one, or{' '}
+            <a href="/login">sign in</a> if you already set a password.
+          </p>
+        </form>
       </div>
     );
   }
 
   return (
     <div className="auth-shell">
-      <form className="auth-card" onSubmit={onSubmit}>
+      <form className="auth-card" onSubmit={onSetPassword}>
         <p className="eyebrow">LC Connect</p>
         <h1>Welcome — set your password</h1>
         <p className="subtitle">
@@ -108,8 +164,8 @@ export default function AcceptInvitePage() {
             minLength={8}
           />
         </div>
-        <button className="btn" type="submit" disabled={loading}>
-          {loading ? 'Saving…' : 'Continue'}
+        <button className="btn" type="submit" disabled={saving}>
+          {saving ? 'Saving…' : 'Continue'}
         </button>
       </form>
     </div>
