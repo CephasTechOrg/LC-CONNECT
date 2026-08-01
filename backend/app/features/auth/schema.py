@@ -1,3 +1,4 @@
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field
@@ -25,3 +26,10 @@ class CurrentUserResponse(BaseModel):
 
 class MessageResponse(BaseModel):
     message: str = Field(min_length=1)
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+    # Which portal's /reset-password page to redirect through — the client says which app it is
+    # rather than passing an arbitrary URL, so this can never become an open-redirect vector.
+    portal: Literal['admin', 'employer']

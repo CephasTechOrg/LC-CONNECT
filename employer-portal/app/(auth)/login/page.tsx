@@ -66,6 +66,9 @@ export default function LoginPage() {
           {loading ? 'Signing in…' : 'Sign in'}
         </button>
         <p className="hint">
+          <Link href="/forgot-password">Forgot your password?</Link>
+        </p>
+        <p className="hint">
           Not registered yet? <Link href="/register">Apply to become an employer partner</Link>
         </p>
       </form>

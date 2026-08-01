@@ -8,32 +8,51 @@ The admin app lives in [`admin/`](../../admin/) and signs in with **Supabase Aut
 
 ---
 
-## Create the first admin
+## Create the first admin (Super Admin bootstrap)
 
-1. **Create the Auth user** in Supabase Dashboard → Authentication → Users  
-   (or sign up once in the mobile app with a `@livingstone.edu` email).  
-   Set a strong password. Confirm the email if required.
+Admin access has two layers: `users.role = admin` (the base gate, checked by every `/admin`
+call) plus a **scope** — `super_admin` / `school_admin` / `honors_admin` / `content_admin` /
+`auditor` — recorded in the `admin_memberships` table (see `app/features/admin/admins.py`).
+Scopes control what an admin can actually do (e.g. only `honors_admin` sees Scholars/Employers;
+only `super_admin`/`school_admin` can invite other admins).
 
-2. **Bootstrap the app user** — sign in once (mobile or the admin login page) so
-   `POST /api/v1/auth/bootstrap` creates the `users` row. For `@livingstone.edu`
-   the role will be `staff` until you promote.
-
-3. **Promote to admin** (from `backend/` with venv active):
+Run this **exactly once**, to create the one and only Super Admin — every admin after this is
+created through the in-app invite flow (Admins & Roles page → "Invite an admin"), never by
+running a script again:
 
 ```bash
 cd backend
 source .venv/bin/activate
-python scripts/promote_admin.py you@livingstone.edu
+python scripts/create_admin.py
 ```
 
-4. **Enroll MFA (TOTP)** for that Supabase user (Authenticator app).  
-   The Next.js admin login flow supports enroll/verify. Admin APIs reject tokens
-   that are only `aal1`.
+It prompts for an email + display name, invites them through Supabase Auth (a real email, via
+LC Connect's own branded sender — never a script-set password), and seeds the `super_admin`
+scope. It refuses to run again once any `super_admin` exists.
 
-5. Open the admin app and sign in with that email + password, then MFA.
+If the email you enter already has a Supabase identity (e.g. an existing student/staff account
+being promoted), no invite email is sent — the script grants Super Admin directly, and you sign
+in with the password you already use.
 
-There is no separate “super admin password.” The password is the Supabase Auth
-password; admin power is `role=admin` + MFA.
+Then:
+1. Check the invite email (or sign in directly, if promoting an existing account).
+2. **Enroll MFA (TOTP)** — the admin login flow walks you through enroll/verify on first login.
+   Admin APIs reject tokens that are only `aal1`.
+3. Open the admin app and sign in.
+
+Forgot your password later? Use **"Forgot your password?"** on the login page
+(`/forgot-password` → `/reset-password`) — same self-service flow as the invite, no dashboard
+access needed.
+
+There is no separate "super admin password." The password is the Supabase Auth password; admin
+power comes from `role=admin` + a scope + MFA.
+
+### Legacy: `promote_admin.py`
+
+`scripts/promote_admin.py` predates the scoped-admin system — it only sets the flat
+`users.role = 'admin'` column and grants **no scope at all**. An account promoted this way can
+sign into the admin portal but won't see any Honors/Admins-invite functionality. Prefer
+`create_admin.py` (bootstrap) or an in-app invite (every subsequent admin) instead.
 
 ---
 
@@ -66,5 +85,3 @@ Never put the Supabase **service role** key in the Next.js app.
 ## Legacy note
 
 [`admin_web/`](../../admin_web/) was a temporary token-paste tool. Prefer this Next.js app.
-The old `backend/scripts/create_admin.py` creates legacy password-hash admins — use
-`promote_admin.py` for the Supabase path instead.

@@ -67,7 +67,7 @@ async def approve_organization(
     # Auth-side invite FIRST — if this fails, the org stays pending rather than being marked
     # approved with no matching Supabase identity for its contact.
     redirect_to = f'{settings.employer_portal_url}/accept-invite' if settings.employer_portal_url else None
-    auth_user_id = invite_auth_user(account.email, redirect_to=redirect_to)
+    auth_user_id = invite_auth_user(account.email, redirect_to=redirect_to, context='employer')
     if auth_user_id is None:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='Could not send the invite — try again later'
@@ -109,7 +109,7 @@ async def resend_organization_invite(db: AsyncSession, *, actor: User, org_id: U
     account = await get_account_for_org(db, org.id)
 
     redirect_to = f'{settings.employer_portal_url}/accept-invite' if settings.employer_portal_url else None
-    auth_user_id = invite_auth_user(account.email, redirect_to=redirect_to)
+    auth_user_id = invite_auth_user(account.email, redirect_to=redirect_to, context='employer')
     if auth_user_id is None:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,

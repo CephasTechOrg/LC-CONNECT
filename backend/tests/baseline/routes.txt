@@ -107,6 +107,8 @@ POST /api/v1/admin/programs/{slug}/members/{user_id}/revoke
 POST /api/v1/admin/users/{user_id}/reactivate
 POST /api/v1/admin/users/{user_id}/suspend
 POST /api/v1/auth/bootstrap
+POST /api/v1/auth/forgot-password
+POST /api/v1/auth/webhooks/send-email
 POST /api/v1/blocks/{user_id}
 POST /api/v1/campus-hub/announcements/read
 POST /api/v1/campus-hub/announcements/{post_id}/read

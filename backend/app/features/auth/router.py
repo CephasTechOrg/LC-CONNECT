@@ -1,14 +1,49 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.database import get_db
 from app.dependencies import get_current_user, get_supabase_claims
-from app.features.auth.schema import BootstrapResponse, CurrentUserResponse
+from app.features.auth import email_hook
+from app.features.auth.schema import BootstrapResponse, CurrentUserResponse, ForgotPasswordRequest, MessageResponse
 from app.features.auth.service import bootstrap_user
 from app.models import User
 from app.security import SupabaseClaims
+from app.shared.supabase_admin import request_password_reset
 
 router = APIRouter(prefix='/auth', tags=['auth'])
+
+
+@router.post('/webhooks/send-email')
+async def send_email_hook(request: Request) -> JSONResponse:
+    """Supabase 'Send Email' Auth Hook — see `app/features/auth/email_hook.py` for the full
+    picture. Signature-verification failures (401/503) use FastAPI's normal error shape; a
+    same-request failure to actually send the email uses Supabase's documented hook-error shape
+    so the failure blocks the underlying auth action instead of completing silently with no way
+    for the user to confirm."""
+    payload = await email_hook.verify_and_parse(request)
+    try:
+        email_hook.send_for_payload(payload)
+    except HTTPException as exc:
+        return JSONResponse(status_code=exc.status_code, content={'error': {'http_code': exc.status_code, 'message': exc.detail}})
+    return JSONResponse(content={})
+
+
+@router.post('/forgot-password', response_model=MessageResponse)
+async def forgot_password(payload: ForgotPasswordRequest) -> MessageResponse:
+    """Public, unauthenticated — and deliberately reports the same success message whether or not
+    an account exists for this email, so this can never be used to enumerate accounts.
+
+    Same path as the legacy router's own `/auth/forgot-password` (`app/routers/auth.py`) — this
+    router is always mounted first, so if `AUTH_LEGACY_ENABLED` is ever flipped on for an
+    emergency rollback, this one wins and the legacy handler at this path becomes unreachable.
+    Acceptable: legacy is "do not extend, slated for deletion" (CLAUDE.md), and this endpoint
+    still successfully resets the password either way, just via the modern path."""
+    portal_url = settings.admin_portal_url if payload.portal == 'admin' else settings.employer_portal_url
+    redirect_to = f'{portal_url}/reset-password' if portal_url else None
+    request_password_reset(payload.email, redirect_to=redirect_to)
+    return MessageResponse(message='If an account exists for that email, a reset link has been sent.')
 
 
 @router.post('/bootstrap', response_model=BootstrapResponse)

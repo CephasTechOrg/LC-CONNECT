@@ -75,8 +75,11 @@ export default function LoginPage() {
           {loading ? 'Signing in…' : 'Sign in'}
         </button>
         <p className="hint">
-          First admin? Create the Supabase user, bootstrap once, then run{' '}
-          <code>python scripts/promote_admin.py your@email</code>. See docs/getting-started/admin_portal.md.
+          <a href="/forgot-password">Forgot your password?</a>
+        </p>
+        <p className="hint">
+          First admin? Run <code>python scripts/create_admin.py</code> to bootstrap the Super
+          Admin. See docs/getting-started/admin_portal.md.
         </p>
       </form>
     </div>

@@ -35,6 +35,12 @@ class Settings(BaseSettings):
     # Required for local/HS256 Supabase projects; JWKS covers asymmetric production keys.
     supabase_jwt_secret: str | None = Field(default=None, alias='SUPABASE_JWT_SECRET')
     supabase_jwt_audience: str = Field(default='authenticated', alias='SUPABASE_JWT_AUDIENCE')
+    # Supabase "Send Email" Auth Hook secret (Dashboard → Authentication → Hooks → Send Email →
+    # enable, then copy the generated secret here). Lets EVERY Supabase auth email — including the
+    # mobile app's direct signUp/resend/resetPasswordForEmail calls, which never touch this backend
+    # otherwise — route through LC Connect's own templates instead of Supabase's own mailer. Unset
+    # means the hook endpoint refuses all requests (never processes an unverifiable webhook).
+    supabase_send_email_hook_secret: str | None = Field(default=None, alias='SUPABASE_SEND_EMAIL_HOOK_SECRET')
     supabase_profile_bucket: str = Field(default='profile-images', alias='SUPABASE_PROFILE_BUCKET')
     max_profile_image_mb: int = Field(default=5, alias='MAX_PROFILE_IMAGE_MB')
     # Blueprint Bond: a PRIVATE bucket (never public like supabase_profile_bucket) — every read

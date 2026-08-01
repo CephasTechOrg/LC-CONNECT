@@ -16,14 +16,14 @@ function apiBase(): string {
 
 export async function apiFetch<T>(
   path: string,
-  accessToken: string,
+  accessToken: string | null,
   init: RequestInit = {},
 ): Promise<T> {
   const response = await fetch(`${apiBase()}${path}`, {
     ...init,
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${accessToken}`,
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       ...(init.headers || {}),
     },
   });
@@ -79,4 +79,11 @@ export type SystemStatus = {
 
 export async function systemStatus(accessToken: string): Promise<SystemStatus> {
   return apiFetch<SystemStatus>('/admin/system-status', accessToken);
+}
+
+export async function forgotPassword(email: string): Promise<void> {
+  await apiFetch('/auth/forgot-password', null, {
+    method: 'POST',
+    body: JSON.stringify({ email, portal: 'admin' }),
+  });
 }

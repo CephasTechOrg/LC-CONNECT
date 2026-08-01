@@ -8,6 +8,14 @@ stands; a left-behind auth user can't reach the app anyway since the backend row
 For `invite_auth_user` a miss is NOT something the caller should silently swallow — inviting an
 admin who never gets a real Supabase identity is a real failure — so its callers must check for
 `None` and surface a clear error, unlike the delete path.
+
+`invite_auth_user` deliberately uses `admin.generate_link` (which creates/looks up the auth
+identity and returns a link + one-time code **without sending any email**), never
+`admin.invite_user_by_email` (which would send Supabase's own dashboard-configured template,
+outside our control and inconsistent across the admin/employer contexts). LC Connect always sends
+its own branded email — `app/email.py`'s `send_invite_email` — over the exact same Resend/SMTP
+path already used for the legacy OTP emails. Supabase still owns the actual auth token/identity;
+only the email's content and delivery are ours.
 """
 
 from __future__ import annotations
@@ -16,6 +24,7 @@ import logging
 
 from supabase import create_client
 
+from app import email as email_service
 from app.config import settings
 
 logger = logging.getLogger(__name__)
@@ -52,23 +61,49 @@ def ping() -> bool:
         return False
 
 
-def invite_auth_user(email: str, *, redirect_to: str | None = None) -> str | None:
-    """Invite a new Supabase Auth user by email — sends them a real invite email to set their own
-    password and enroll in MFA (never a shared or admin-set password). Returns the new auth
+def invite_auth_user(email: str, *, redirect_to: str | None = None, context: str = 'admin') -> str | None:
+    """Invite a new Supabase Auth user by email — creates (or resolves) their Supabase identity via
+    `generate_link`, then sends our own branded invite email (never Supabase's own template) to set
+    their password and enroll in MFA (never a shared or admin-set password). Returns the new auth
     user's id, or `None` if unconfigured or the call failed — never raises; the caller (an admin
     invite endpoint) must treat `None` as a real failure, not swallow it.
 
     `redirect_to` should point at the *specific* portal's `/accept-invite` page — admin invites and
-    employer-approval invites land in two different Next.js apps sharing one Supabase project, so
-    leaving this unset would send both through the Supabase dashboard's single shared default Site
-    URL, which can only be correct for one of them."""
+    employer-approval invites land in two different Next.js apps sharing one Supabase project.
+    `context` is 'admin' or 'employer' — only cosmetic (which copy the email uses)."""
     if _client is None:
         logger.warning('supabase_admin: not configured; cannot invite %s', email)
         return None
     try:
-        options = {'redirect_to': redirect_to} if redirect_to else None
-        response = _client.auth.admin.invite_user_by_email(email, options=options)
+        options = {'redirect_to': redirect_to} if redirect_to else {}
+        response = _client.auth.admin.generate_link({'type': 'invite', 'email': email, 'options': options})
+        email_service.send_invite_email(
+            email,
+            action_link=response.properties.action_link,
+            code=response.properties.email_otp,
+            context=context,
+        )
         return response.user.id
     except Exception:  # noqa: BLE001 — the caller decides how to surface this; we just never raise here
         logger.exception('supabase_admin: failed to invite %s', email)
         return None
+
+
+def request_password_reset(email: str, *, redirect_to: str | None = None) -> bool:
+    """Same `generate_link`-then-send-our-own-email pattern as `invite_auth_user`, for
+    'recovery' instead of 'invite'. Returns False on any failure (unconfigured, no such account,
+    Resend error, ...) — the caller (`POST /auth/forgot-password`) must always report success to
+    the client regardless of this return value, to avoid confirming/denying account existence."""
+    if _client is None:
+        logger.warning('supabase_admin: not configured; cannot send password reset to %s', email)
+        return False
+    try:
+        options = {'redirect_to': redirect_to} if redirect_to else {}
+        response = _client.auth.admin.generate_link({'type': 'recovery', 'email': email, 'options': options})
+        email_service.send_password_reset_email(
+            email, action_link=response.properties.action_link, code=response.properties.email_otp
+        )
+        return True
+    except Exception:  # noqa: BLE001 — best-effort; the caller never surfaces this to the client
+        logger.exception('supabase_admin: failed to send password reset to %s', email)
+        return False

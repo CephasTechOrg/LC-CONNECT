@@ -1,5 +1,9 @@
 """Supabase Auth admin client wrapper — invite/delete/ping never raise, and invite passes through
-`redirect_to` so admin and employer invites can land in their own separate portal."""
+`redirect_to` so admin and employer invites can land in their own separate portal.
+
+`invite_auth_user` deliberately uses `generate_link` (never sends an email itself) and sends LC
+Connect's own branded email via `app.email.send_invite_email` — never Supabase's own mailer/
+template. See `app/shared/supabase_admin.py` for why."""
 
 from __future__ import annotations
 
@@ -10,16 +14,19 @@ from app.shared import supabase_admin
 
 class _FakeAdminAPI:
     def __init__(self):
-        self.invite_calls: list[tuple[str, dict | None]] = []
+        self.generate_link_calls: list[dict] = []
         self.list_users_calls = 0
         self.delete_calls: list[str] = []
         self.fail = False
 
-    def invite_user_by_email(self, email, options=None):
-        self.invite_calls.append((email, options))
+    def generate_link(self, params):
+        self.generate_link_calls.append(params)
         if self.fail:
             raise RuntimeError('boom')
-        return SimpleNamespace(user=SimpleNamespace(id='new-auth-id'))
+        return SimpleNamespace(
+            user=SimpleNamespace(id='new-auth-id'),
+            properties=SimpleNamespace(action_link='https://supabase.example/verify?token=abc', email_otp='12345678'),
+        )
 
     def list_users(self, page=None, per_page=None):
         self.list_users_calls += 1
@@ -48,17 +55,49 @@ def _install_fake_client(monkeypatch) -> _FakeClient:
     return fake
 
 
+def _mock_send_invite_email(monkeypatch) -> list[dict]:
+    """`invite_auth_user` calls the real Resend-backed `send_invite_email` — never let a test
+    actually hit that; capture the call instead so we can assert on what would have been sent."""
+    calls: list[dict] = []
+
+    def _fake(to_email, *, action_link, code, context='admin'):
+        calls.append({'to_email': to_email, 'action_link': action_link, 'code': code, 'context': context})
+
+    monkeypatch.setattr(supabase_admin.email_service, 'send_invite_email', _fake)
+    return calls
+
+
 def test_invite_auth_user_passes_redirect_to(monkeypatch):
     fake = _install_fake_client(monkeypatch)
+    _mock_send_invite_email(monkeypatch)
     auth_id = supabase_admin.invite_auth_user('a@b.com', redirect_to='https://admin.example.com/accept-invite')
     assert auth_id == 'new-auth-id'
-    assert fake.admin.invite_calls == [('a@b.com', {'redirect_to': 'https://admin.example.com/accept-invite'})]
+    assert fake.admin.generate_link_calls == [
+        {'type': 'invite', 'email': 'a@b.com', 'options': {'redirect_to': 'https://admin.example.com/accept-invite'}}
+    ]
 
 
-def test_invite_auth_user_no_redirect_to_passes_none_options(monkeypatch):
+def test_invite_auth_user_no_redirect_to_passes_empty_options(monkeypatch):
     fake = _install_fake_client(monkeypatch)
+    _mock_send_invite_email(monkeypatch)
     supabase_admin.invite_auth_user('a@b.com')
-    assert fake.admin.invite_calls == [('a@b.com', None)]
+    assert fake.admin.generate_link_calls == [{'type': 'invite', 'email': 'a@b.com', 'options': {}}]
+
+
+def test_invite_auth_user_sends_own_branded_email_never_supabases(monkeypatch):
+    """The whole point of `generate_link` over `invite_user_by_email`: Supabase never sends
+    anything itself, LC Connect composes and sends the one and only invite email."""
+    _install_fake_client(monkeypatch)
+    sent = _mock_send_invite_email(monkeypatch)
+    supabase_admin.invite_auth_user('a@b.com', context='employer')
+    assert sent == [
+        {
+            'to_email': 'a@b.com',
+            'action_link': 'https://supabase.example/verify?token=abc',
+            'code': '12345678',
+            'context': 'employer',
+        }
+    ]
 
 
 def test_invite_auth_user_returns_none_when_unconfigured(monkeypatch):
@@ -70,6 +109,41 @@ def test_invite_auth_user_returns_none_on_exception(monkeypatch):
     fake = _install_fake_client(monkeypatch)
     fake.admin.fail = True
     assert supabase_admin.invite_auth_user('a@b.com') is None
+
+
+def _mock_send_password_reset_email(monkeypatch) -> list[dict]:
+    calls: list[dict] = []
+
+    def _fake(to_email, *, action_link, code):
+        calls.append({'to_email': to_email, 'action_link': action_link, 'code': code})
+
+    monkeypatch.setattr(supabase_admin.email_service, 'send_password_reset_email', _fake)
+    return calls
+
+
+def test_request_password_reset_uses_recovery_type_and_sends_own_email(monkeypatch):
+    fake = _install_fake_client(monkeypatch)
+    sent = _mock_send_password_reset_email(monkeypatch)
+
+    result = supabase_admin.request_password_reset('a@b.com', redirect_to='https://x.com/reset-password')
+    assert result is True
+    assert fake.admin.generate_link_calls == [
+        {'type': 'recovery', 'email': 'a@b.com', 'options': {'redirect_to': 'https://x.com/reset-password'}}
+    ]
+    assert sent == [
+        {'to_email': 'a@b.com', 'action_link': 'https://supabase.example/verify?token=abc', 'code': '12345678'}
+    ]
+
+
+def test_request_password_reset_false_when_unconfigured(monkeypatch):
+    monkeypatch.setattr(supabase_admin, '_client', None)
+    assert supabase_admin.request_password_reset('a@b.com') is False
+
+
+def test_request_password_reset_false_on_exception(monkeypatch):
+    fake = _install_fake_client(monkeypatch)
+    fake.admin.fail = True
+    assert supabase_admin.request_password_reset('a@b.com') is False
 
 
 def test_ping_true_when_reachable(monkeypatch):

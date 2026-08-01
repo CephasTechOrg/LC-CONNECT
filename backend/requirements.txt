@@ -17,6 +17,7 @@ supabase==2.31.0
 email-validator==2.3.0
 orjson==3.11.9
 resend==2.34.0
+standardwebhooks==1.1.0
 alembic==1.18.5
 firebase-admin==7.5.0
 Pillow==12.3.0

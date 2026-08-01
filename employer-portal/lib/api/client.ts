@@ -50,3 +50,10 @@ export async function apiFetch<T>(
 export async function myEmployer(accessToken: string): Promise<MyEmployer> {
   return apiFetch<MyEmployer>('/employers/me', accessToken);
 }
+
+export async function forgotPassword(email: string): Promise<void> {
+  await apiFetch('/auth/forgot-password', null, {
+    method: 'POST',
+    body: JSON.stringify({ email, portal: 'employer' }),
+  });
+}

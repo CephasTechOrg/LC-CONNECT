@@ -3132,6 +3132,29 @@
         "title": "EmployerScholarView",
         "type": "object"
       },
+      "ForgotPasswordRequest": {
+        "properties": {
+          "email": {
+            "format": "email",
+            "title": "Email",
+            "type": "string"
+          },
+          "portal": {
+            "enum": [
+              "admin",
+              "employer"
+            ],
+            "title": "Portal",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "portal"
+        ],
+        "title": "ForgotPasswordRequest",
+        "type": "object"
+      },
       "GroupCreate": {
         "properties": {
           "category": {
@@ -3773,6 +3796,20 @@
           "read_at"
         ],
         "title": "MessageRead",
+        "type": "object"
+      },
+      "MessageResponse": {
+        "properties": {
+          "message": {
+            "minLength": 1,
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "title": "MessageResponse",
         "type": "object"
       },
       "MessageThreadRead": {
@@ -8230,6 +8267,48 @@
         ]
       }
     },
+    "/api/v1/auth/forgot-password": {
+      "post": {
+        "description": "Public, unauthenticated \u2014 and deliberately reports the same success message whether or not\nan account exists for this email, so this can never be used to enumerate accounts.\n\nSame path as the legacy router's own `/auth/forgot-password` (`app/routers/auth.py`) \u2014 this\nrouter is always mounted first, so if `AUTH_LEGACY_ENABLED` is ever flipped on for an\nemergency rollback, this one wins and the legacy handler at this path becomes unreachable.\nAcceptable: legacy is \"do not extend, slated for deletion\" (CLAUDE.md), and this endpoint\nstill successfully resets the password either way, just via the modern path.",
+        "operationId": "forgot_password_api_v1_auth_forgot_password_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ForgotPasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Forgot Password",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
     "/api/v1/auth/me": {
       "get": {
         "operationId": "me_api_v1_auth_me_get",
@@ -8251,6 +8330,26 @@
           }
         ],
         "summary": "Me",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/webhooks/send-email": {
+      "post": {
+        "description": "Supabase 'Send Email' Auth Hook \u2014 see `app/features/auth/email_hook.py` for the full\npicture. Signature-verification failures (401/503) use FastAPI's normal error shape; a\nsame-request failure to actually send the email uses Supabase's documented hook-error shape\nso the failure blocks the underlying auth action instead of completing silently with no way\nfor the user to confirm.",
+        "operationId": "send_email_hook_api_v1_auth_webhooks_send_email_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Send Email Hook",
         "tags": [
           "auth"
         ]
