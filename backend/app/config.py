@@ -83,14 +83,11 @@ class Settings(BaseSettings):
         alias='ALLOWED_EMAIL_DOMAINS',
     )
     # Development/testing only — non-Livingstone emails that may sign in locally.
-    # Must be empty in production (validated at startup).
-    dev_test_emails: str = Field(
-        default=(
-            'cephas.bonsuosei@gmail.com,asiedudev.hub@gmail.com,asieduminta27@gmail.com,'
-            'auralenx.team@gmail.com,bdoreen889@gmail.com'
-        ),
-        alias='DEV_TEST_EMAILS',
-    )
+    # Must be empty in production (validated at startup) — so the DEFAULT must be empty too.
+    # A non-empty default made production unbootable even when DEV_TEST_EMAILS was never set in
+    # the environment: the validator fired on the baked-in value and the app crashed at import.
+    # Opt in explicitly via .env for local work instead; never rely on a source-code default here.
+    dev_test_emails: str = Field(default='', alias='DEV_TEST_EMAILS')
     dev_test_email_default_role: str = Field(default='student', alias='DEV_TEST_EMAIL_DEFAULT_ROLE')
 
     # WebSocket real-time gateway (Phase 2). redis_url is the seam for multi-instance

@@ -65,3 +65,46 @@ services:
       # (not an error) if this is unset.
       - key: FIREBASE_CREDENTIALS_JSON
         sync: false
+
+  # ── Admin portal (Next.js) ────────────────────────────────────────────────────
+  # A Node web service, NOT a static site: `admin/middleware.ts` refreshes the Supabase
+  # session server-side on every request, which a static export cannot do.
+  - type: web
+    name: lc-connect-admin
+    env: node
+    region: oregon
+    plan: free
+    branch: main
+    rootDir: admin
+    buildCommand: npm ci && npm run build
+    # `next start` binds to Render's assigned $PORT automatically — never hardcode a port here.
+    startCommand: npm start
+    envVars:
+      # NEXT_PUBLIC_* values are inlined at BUILD time by Next.js, so these must be present
+      # before the build step, not just at runtime. Render supplies them for both.
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        sync: false
+      # Anon key only — the service-role key must never reach a browser bundle.
+      - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
+        sync: false
+      # Must include the /api/v1 suffix, e.g. https://lc-connect-api-xxxx.onrender.com/api/v1
+      - key: NEXT_PUBLIC_API_BASE_URL
+        sync: false
+
+  # ── Employer partner portal (Next.js) ─────────────────────────────────────────
+  - type: web
+    name: lc-connect-employer
+    env: node
+    region: oregon
+    plan: free
+    branch: main
+    rootDir: employer-portal
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
+        sync: false
+      - key: NEXT_PUBLIC_API_BASE_URL
+        sync: false
