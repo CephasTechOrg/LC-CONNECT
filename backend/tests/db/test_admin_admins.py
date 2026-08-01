@@ -347,3 +347,23 @@ async def test_require_admin_scope_rejects_missing_scope(db, factory):
     with pytest.raises(HTTPException) as exc:
         await dep(actor=honors_admin, db=db)
     assert exc.value.status_code == 403
+
+
+async def test_require_admin_scope_super_admin_always_passes(db, factory):
+    """super_admin is the platform's top scope — it must satisfy every `require_admin_scope(...)`
+    check, not just the ones it happens to also hold, matching the 'ultimate authority' framing
+    the invite matrix already gives it elsewhere."""
+    super_admin = await _admin_with_scope(db, factory, 'super_admin')
+    for required in ('honors_admin', 'school_admin', 'content_admin', 'auditor'):
+        dep = admins_service.require_admin_scope(required)
+        result = await dep(actor=super_admin, db=db)
+        assert result.id == super_admin.id
+
+
+async def test_require_admin_scope_non_super_admin_still_rejected(db, factory):
+    """Confirms the super_admin bypass didn't loosen the check for anyone else."""
+    content_admin = await _admin_with_scope(db, factory, 'content_admin')
+    dep = admins_service.require_admin_scope('honors_admin')
+    with pytest.raises(HTTPException) as exc:
+        await dep(actor=content_admin, db=db)
+    assert exc.value.status_code == 403

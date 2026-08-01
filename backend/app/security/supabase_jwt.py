@@ -117,7 +117,7 @@ async def verify_supabase_access_token(token: str) -> SupabaseClaims:
 
     if alg == 'HS256':
         if not settings.supabase_jwt_secret:
-            raise ValueError('HS256 token requires SUPABASE_JWT_SECRET')
+            raise ValueError('HS256 token requires SUPABASE_JWT_SECRET, which is not configured')
         key: Any = settings.supabase_jwt_secret
     else:
         kid = header.get('kid')
@@ -125,13 +125,21 @@ async def verify_supabase_access_token(token: str) -> SupabaseClaims:
         if jwk is None:
             jwk = await _jwks_cache.get(kid, force=True)
         if jwk is None:
-            raise ValueError('Signing key not found')
+            # The single most useful line in this whole module when auth breaks after a deploy:
+            # names exactly which config value to check, instead of a generic "invalid token."
+            raise ValueError(
+                f"No matching JWKS key for kid={kid!r} at {settings.supabase_jwks_url!r} — "
+                'check that SUPABASE_URL is set and exactly matches the project that issued this token'
+            )
         key = jwk.key
 
     try:
         payload = jwt.decode(token, key, **decode_kwargs)
     except jwt.PyJWTError as exc:
-        raise ValueError('Invalid or expired token') from exc
+        # Keep the real reason (expired vs bad signature vs wrong issuer/audience) instead of
+        # collapsing every cause into one string — the caller logs this, it's never sent to the
+        # client verbatim, but a same-day production incident needs this to be diagnosable.
+        raise ValueError(f'{type(exc).__name__}: {exc}') from exc
 
     if payload.get('role') != 'authenticated':
         raise ValueError('Unexpected token role')

@@ -52,7 +52,7 @@ export default function OverviewPage() {
     })();
   }, []);
 
-  const isHonors = scopes.includes('honors_admin');
+  const isHonors = scopes.includes('honors_admin') || scopes.includes('super_admin');
   const canInviteAdmins = scopes.includes('super_admin') || scopes.includes('school_admin');
 
   return (

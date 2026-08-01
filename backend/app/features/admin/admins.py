@@ -66,12 +66,18 @@ async def get_admin_scopes(db: AsyncSession, user_id: UUID) -> set[str]:
 
 def require_admin_scope(*allowed_roles: str) -> Callable[..., Coroutine[Any, Any, User]]:
     """A FastAPI dependency factory: `Depends(require_admin_scope('honors_admin'))` — layers a
-    scope check on top of `require_admin_aal2` (still the base admin+MFA gate)."""
+    scope check on top of `require_admin_aal2` (still the base admin+MFA gate).
+
+    `super_admin` always passes, regardless of `allowed_roles` — it's the platform's top scope
+    ("ultimate authority" per the builder's own framing when this system was designed), not just
+    one more scope in the set that happens to need granting per-feature like the others."""
 
     async def _dependency(
         actor: User = Depends(require_admin_aal2), db: AsyncSession = Depends(get_db)
     ) -> User:
         scopes = await get_admin_scopes(db, actor.id)
+        if 'super_admin' in scopes:
+            return actor
         if not scopes.intersection(allowed_roles):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,

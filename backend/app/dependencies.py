@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from uuid import UUID
 
@@ -15,6 +16,7 @@ from app.models import User
 from app.security import SupabaseClaims, decode_access_token, verify_supabase_access_token
 
 bearer_scheme = HTTPBearer(auto_error=False)
+logger = logging.getLogger('lc_connect.auth')
 
 
 @dataclass(frozen=True, slots=True)
@@ -31,7 +33,11 @@ async def get_supabase_claims(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Missing bearer token')
     try:
         return await verify_supabase_access_token(credentials.credentials)
-    except ValueError:
+    except ValueError as exc:
+        # The client only ever sees the generic message (never leak *why* a token failed to
+        # someone probing this endpoint) — but the real reason must be visible in server logs,
+        # or a production auth incident is undiagnosable from Render's log tail alone.
+        logger.warning('Supabase token rejected: %s', exc)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Invalid or expired token') from None
 
 

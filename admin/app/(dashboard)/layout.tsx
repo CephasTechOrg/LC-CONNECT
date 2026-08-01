@@ -105,7 +105,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     })();
   }, [router]);
 
-  const isHonors = scopes.includes('honors_admin');
+  const isHonors = scopes.includes('honors_admin') || scopes.includes('super_admin');
   const sections = NAV_SECTIONS.filter((section) => !section.honorsOnly || isHonors);
 
   async function onLogout() {
