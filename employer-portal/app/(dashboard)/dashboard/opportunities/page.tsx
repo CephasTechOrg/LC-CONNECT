@@ -1,7 +1,7 @@
 'use client';
 
 import { FormEvent, useCallback, useEffect, useState } from 'react';
-import { apiFetch } from '@/lib/api/client';
+import { apiFetch, toUserMessage } from '@/lib/api/client';
 import { getAccessToken } from '@/lib/auth/session';
 
 const CATEGORIES = ['internship', 'job', 'volunteer', 'leadership'] as const;
@@ -48,7 +48,7 @@ export default function OpportunitiesPage() {
       setStatus(data.length ? `${data.length} submission(s).` : 'No opportunities submitted yet.');
     } catch (err) {
       setError(true);
-      setStatus(err instanceof Error ? err.message : 'Failed to load');
+      setStatus(toUserMessage(err, 'Could not load this page. Please refresh and try again.'));
     }
   }, []);
 
@@ -80,7 +80,7 @@ export default function OpportunitiesPage() {
       setExternalUrl('');
       await load();
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Could not submit opportunity');
+      setFormError(toUserMessage(err, 'Could not submit opportunity'));
     } finally {
       setSubmitting(false);
     }

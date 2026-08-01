@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { toUserMessage } from '@/lib/api/client';
 
 export default function MfaPage() {
   const router = useRouter();
@@ -70,7 +71,7 @@ export default function MfaPage() {
       if (verified.error) throw verified.error;
       router.replace('/dashboard');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'MFA verification failed');
+      setError(toUserMessage(err, 'Could not verify that code. Please check your authenticator app and try again.'));
     } finally {
       setLoading(false);
     }

@@ -3,6 +3,7 @@
 import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { toUserMessage } from '@/lib/api/client';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -34,7 +35,7 @@ export default function LoginPage() {
       }
       router.replace('/dashboard');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Sign-in failed');
+      setError(toUserMessage(err, 'Could not sign you in. Please check your details and try again.'));
     } finally {
       setLoading(false);
     }
@@ -46,7 +47,8 @@ export default function LoginPage() {
         <p className="eyebrow">LC Connect</p>
         <h1>Admin sign in</h1>
         <p className="subtitle">
-          Use your Livingstone email and password. MFA is required for admin actions.
+          Sign in with your Livingstone College credentials. Two-factor authentication is required
+          for all administrator accounts.
         </p>
         {error ? <div className="error-banner">{error}</div> : null}
         <div className="field">
@@ -78,8 +80,8 @@ export default function LoginPage() {
           <a href="/forgot-password">Forgot your password?</a>
         </p>
         <p className="hint">
-          First admin? Run <code>python scripts/create_admin.py</code> to bootstrap the Super
-          Admin. See docs/getting-started/admin_portal.md.
+          Access is granted by invitation. Contact your system administrator if you need an
+          account.
         </p>
       </form>
     </div>

@@ -40,6 +40,9 @@ The backend is a FastAPI app served by `uvicorn`. On startup, it runs `scripts/i
 
 The file lives at the repository root (`render.yaml`):
 
+The live file is the source of truth — read it directly rather than trusting a copy pasted into
+this doc (this exact copy drifted out of sync once already). As of this writing:
+
 ```yaml
 services:
   - type: web
@@ -52,18 +55,15 @@ services:
     buildCommand: |
       pip install --upgrade pip
       pip install -r requirements.txt
-    startCommand: PYTHONPATH=. python scripts/init_db.py && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    startCommand: alembic upgrade head && PYTHONPATH=. python scripts/init_db.py && uvicorn app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
     envVars:
       - key: PYTHON_VERSION
         value: "3.12.0"
+      - key: PIP_ROOT_USER_ACTION
+        value: ignore
       - key: ENVIRONMENT
         value: production
-      - key: SUPABASE_PROFILE_BUCKET
-        value: profile-images
-      - key: MAX_PROFILE_IMAGE_MB
-        value: "5"
-      # These are set manually in Render dashboard (sync: false = not in YAML)
       - key: DATABASE_URL
         sync: false
       - key: JWT_SECRET_KEY
@@ -74,7 +74,33 @@ services:
         sync: false
       - key: SUPABASE_SERVICE_ROLE_KEY
         sync: false
+      - key: SUPABASE_PROFILE_BUCKET
+        value: profile-images
+      - key: MAX_PROFILE_IMAGE_MB
+        value: "5"
+      - key: SUPABASE_JWT_SECRET
+        sync: false
+      - key: ADMIN_PORTAL_URL
+        sync: false
+      - key: EMPLOYER_PORTAL_URL
+        sync: false
+      - key: EMAIL_PROVIDER
+        value: auto
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_FROM_EMAIL
+        sync: false
+      - key: RESEND_REPLY_TO
+        sync: false
+      - key: SUPABASE_SEND_EMAIL_HOOK_SECRET
+        sync: false
+      - key: FIREBASE_CREDENTIALS_JSON
+        sync: false
 ```
+
+Note the start command now runs `alembic upgrade head` before `init_db.py` — schema migrations are
+authoritative; `init_db.py`'s `Base.metadata.create_all` is just a fallback for local testing
+without Alembic (see `scripts/init_db.py`'s own comment).
 
 ### sync: false
 
@@ -99,15 +125,25 @@ Set these manually in the Render dashboard for the `lc-connect-api` service:
 | `CORS_ORIGINS` | Your Flutter app's origin, or `*` for development | Comma-separated list |
 | `SUPABASE_URL` | Supabase → Settings → API → Project URL | e.g., `https://xxxxx.supabase.co` |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Settings → API → service_role key | Backend-only, never in Flutter |
+| `SUPABASE_JWT_SECRET` | Supabase → Settings → API → JWT Secret | Only required if the project signs with HS256 — RS256 projects can rely on JWKS from `SUPABASE_URL` alone |
+| `ADMIN_PORTAL_URL` | The deployed `admin/` app's URL | Used to build invite/reset redirect links — see `docs/getting-started/send_email_hook.md` |
+| `EMPLOYER_PORTAL_URL` | The deployed `employer-portal/` app's URL | Same as above, for employer invites |
+| `RESEND_API_KEY` | Resend dashboard → API Keys | See `docs/getting-started/resend.md` |
+| `RESEND_FROM_EMAIL` | Your verified Resend sender, e.g. `LC Connect <noreply@yourdomain.com>` | Domain must show "Verified" in Resend or sends fail |
+| `RESEND_REPLY_TO` | Optional support inbox | |
+| `SUPABASE_SEND_EMAIL_HOOK_SECRET` | Supabase → Authentication → Hooks → Send Email → enable | See `docs/getting-started/send_email_hook.md` — without this the hook endpoint 503s |
+| `FIREBASE_CREDENTIALS_JSON` | Firebase service account JSON (whole file contents) | Push notifications cleanly disable if unset — not required |
 
 Variables set directly in the YAML (no manual step needed):
 
 | Variable | Value |
 |---|---|
 | `PYTHON_VERSION` | `3.12.0` |
+| `PIP_ROOT_USER_ACTION` | `ignore` |
 | `ENVIRONMENT` | `production` |
 | `SUPABASE_PROFILE_BUCKET` | `profile-images` |
 | `MAX_PROFILE_IMAGE_MB` | `5` |
+| `EMAIL_PROVIDER` | `auto` |
 
 ---
 
@@ -304,7 +340,14 @@ Use this before every deployment:
 - [ ] `JWT_SECRET_KEY` is set in Render dashboard
 - [ ] `SUPABASE_URL` is set in Render dashboard
 - [ ] `SUPABASE_SERVICE_ROLE_KEY` is set in Render dashboard
+- [ ] `SUPABASE_JWT_SECRET` is set if the project uses HS256
 - [ ] `CORS_ORIGINS` is set in Render dashboard
+- [ ] `ADMIN_PORTAL_URL` / `EMPLOYER_PORTAL_URL` are set once those apps are deployed (invites
+      silently fall back to Supabase's shared default Site URL otherwise)
+- [ ] `RESEND_API_KEY` / `RESEND_FROM_EMAIL` are set (email silently falls back to console
+      logging otherwise — no error, just nothing sent)
+- [ ] `SUPABASE_SEND_EMAIL_HOOK_SECRET` is set if the Send Email Auth Hook is enabled (see
+      `docs/getting-started/send_email_hook.md`) — otherwise the hook endpoint 503s
 - [ ] `requirements.txt` is up to date (`pip freeze > requirements.txt` inside `.venv`)
 - [ ] Local `.env` is in `.gitignore` (never commit secrets)
 - [ ] `/health` endpoint returns `{"status": "ok"}`

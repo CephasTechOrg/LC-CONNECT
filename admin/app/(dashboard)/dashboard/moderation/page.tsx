@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { apiFetch } from '@/lib/api/client';
+import { apiFetch, toUserMessage } from '@/lib/api/client';
 import { getAccessToken } from '@/lib/auth/session';
 
 type Report = {
@@ -54,7 +54,7 @@ export default function ModerationPage() {
       setStatus(`${r.length} report(s).`);
     } catch (err) {
       setError(true);
-      setStatus(err instanceof Error ? err.message : 'Failed to load');
+      setStatus(toUserMessage(err, 'Could not load this page. Please refresh and try again.'));
     }
   }, []);
 
@@ -83,7 +83,25 @@ export default function ModerationPage() {
       await load();
     } catch (err) {
       setError(true);
-      setStatus(err instanceof Error ? err.message : 'Suspend failed');
+      setStatus(toUserMessage(err, 'Could not suspend this account. Please try again.'));
+    }
+  }
+
+  async function removeActivity(activityId: string) {
+    const ok = window.confirm(
+      'Take down this activity? It will be cancelled and removed from student feeds.',
+    );
+    if (!ok) return;
+    try {
+      const token = await getAccessToken();
+      if (!token) return;
+      await apiFetch(`/admin/activities/${activityId}/remove`, token, { method: 'POST' });
+      setError(false);
+      setStatus('Activity taken down.');
+      await load();
+    } catch (err) {
+      setError(true);
+      setStatus(toUserMessage(err, 'Could not take down the activity'));
     }
   }
 
@@ -134,18 +152,33 @@ export default function ModerationPage() {
                       “{r.message_body}”
                     </p>
                   ) : null}
-                  {r.reported_user_id && reported && reported.status === 'active' ? (
-                    <div className="actions">
-                      <button
-                        className="btn danger"
-                        type="button"
-                        onClick={() => void suspend(r.reported_user_id!, label, `Report: ${r.reason}`)}
-                      >
-                        Suspend {label}
-                      </button>
-                    </div>
-                  ) : reported && reported.status !== 'active' ? (
+                  {reported && reported.status !== 'active' ? (
                     <p className="meta">Reported user is already {reported.status}.</p>
+                  ) : null}
+                  {(r.reported_user_id && reported && reported.status === 'active') || r.activity_id ? (
+                    <div className="actions">
+                      {r.reported_user_id && reported && reported.status === 'active' ? (
+                        <button
+                          className="btn danger"
+                          type="button"
+                          onClick={() => void suspend(r.reported_user_id!, label, `Report: ${r.reason}`)}
+                        >
+                          Suspend {label}
+                        </button>
+                      ) : null}
+                      {/* A report can name an activity rather than (or as well as) a person —
+                          without this the only remedy was suspending the host, which is a far
+                          blunter instrument than taking down the one activity. */}
+                      {r.activity_id ? (
+                        <button
+                          className="btn danger"
+                          type="button"
+                          onClick={() => void removeActivity(r.activity_id!)}
+                        >
+                          Take down activity
+                        </button>
+                      ) : null}
+                    </div>
                   ) : null}
                 </article>
               );

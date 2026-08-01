@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { apiFetch } from '@/lib/api/client';
+import { apiFetch, toUserMessage } from '@/lib/api/client';
 import { getAccessToken } from '@/lib/auth/session';
 
 type Scholar = { user_id: string };
@@ -45,7 +45,7 @@ export default function DashboardHomePage() {
       setStatus('');
     } catch (err) {
       setError(true);
-      setStatus(err instanceof Error ? err.message : 'Failed to load dashboard');
+      setStatus(toUserMessage(err, 'Could not load the dashboard. Please refresh and try again.'));
     }
   }, []);
 

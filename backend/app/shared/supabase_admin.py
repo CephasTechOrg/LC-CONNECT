@@ -29,6 +29,15 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
+
+class AuthUserAlreadyRegistered(Exception):
+    """Raised when an invite targets an email that has already completed sign-up.
+
+    Distinct from a generic failure because the remedy is completely different: the person
+    doesn't need another invite (Supabase refuses to issue one), they need a password reset.
+    Callers must surface that difference rather than reporting a vague "could not send"."""
+
+
 _client = None
 if settings.supabase_url and settings.supabase_service_role_key:
     _client = create_client(settings.supabase_url, settings.supabase_service_role_key)
@@ -84,8 +93,41 @@ def invite_auth_user(email: str, *, redirect_to: str | None = None, context: str
             context=context,
         )
         return response.user.id
-    except Exception:  # noqa: BLE001 — the caller decides how to surface this; we just never raise here
+    except AuthUserAlreadyRegistered:
+        raise
+    except Exception as exc:  # noqa: BLE001 — the caller decides how to surface this
+        # Supabase refuses to issue an invite for an email that already completed sign-up. That
+        # is NOT an outage — it means "this person already has an account", which the caller must
+        # be able to report precisely (verified against the live API, not assumed).
+        if 'already been registered' in str(exc).lower():
+            raise AuthUserAlreadyRegistered(email) from exc
         logger.exception('supabase_admin: failed to invite %s', email)
+        return None
+
+
+def get_auth_user_id_by_email(email: str) -> str | None:
+    """Resolve an existing Supabase identity by email, or `None`.
+
+    Used to *link* an already-registered person rather than failing an otherwise-legitimate
+    action (granting admin, approving an employer) just because they happen to already have an
+    LC Connect account — e.g. an employer contact who is also a student."""
+    if _client is None:
+        return None
+    normalized = email.strip().lower()
+    try:
+        # No get-by-email in the admin API; page through rather than assume page one is enough.
+        page = 1
+        while page <= 20:
+            users = _client.auth.admin.list_users(page=page, per_page=200)
+            if not users:
+                return None
+            for user in users:
+                if (user.email or '').lower() == normalized:
+                    return user.id
+            page += 1
+        return None
+    except Exception:  # noqa: BLE001 — a lookup miss must never raise into a caller
+        logger.exception('supabase_admin: failed to look up auth user for %s', email)
         return None
 
 

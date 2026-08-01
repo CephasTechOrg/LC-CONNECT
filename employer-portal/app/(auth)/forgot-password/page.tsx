@@ -1,7 +1,7 @@
 'use client';
 
 import { FormEvent, useState } from 'react';
-import { forgotPassword } from '@/lib/api/client';
+import { forgotPassword, toUserMessage } from '@/lib/api/client';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
@@ -17,7 +17,7 @@ export default function ForgotPasswordPage() {
       await forgotPassword(email.trim());
       setSubmitted(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong');
+      setError(toUserMessage(err, 'Something went wrong. Please try again.'));
     } finally {
       setLoading(false);
     }

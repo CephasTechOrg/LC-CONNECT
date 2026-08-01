@@ -9,7 +9,7 @@ import {
   type AdminDashboardSummary,
   type ServiceStatus,
   type SystemStatus,
-} from '@/lib/api/client';
+  toUserMessage, } from '@/lib/api/client';
 import { getAccessToken } from '@/lib/auth/session';
 
 function StatusChip({ icon, name, value }: { icon: string; name: string; value: ServiceStatus }) {
@@ -47,7 +47,7 @@ export default function OverviewPage() {
         setStatusData(statusRes);
         setScopes(scopesRes.scopes);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load dashboard');
+        setError(toUserMessage(err, 'Could not load the dashboard. Please refresh and try again.'));
       }
     })();
   }, []);

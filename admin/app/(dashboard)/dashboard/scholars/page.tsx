@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { apiFetch } from '@/lib/api/client';
+import { apiFetch, toUserMessage } from '@/lib/api/client';
 import { getAccessToken } from '@/lib/auth/session';
 
 type ProgramMembership = {
@@ -42,7 +42,7 @@ export default function ScholarsPage() {
       setStatus(data.length ? `${data.length} ${which} scholar(s).` : `No ${which} scholars.`);
     } catch (err) {
       setError(true);
-      setStatus(err instanceof Error ? err.message : 'Failed to load');
+      setStatus(toUserMessage(err, 'Could not load this page. Please refresh and try again.'));
     }
   }, []);
 
@@ -67,7 +67,7 @@ export default function ScholarsPage() {
       await load(tab);
     } catch (err) {
       setError(true);
-      setStatus(err instanceof Error ? err.message : 'Verification failed');
+      setStatus(toUserMessage(err, 'Could not verify that code. Please try again.'));
     } finally {
       setVerifying(false);
     }
@@ -89,7 +89,7 @@ export default function ScholarsPage() {
       await load(tab);
     } catch (err) {
       setError(true);
-      setStatus(err instanceof Error ? err.message : 'Revoke failed');
+      setStatus(toUserMessage(err, 'Could not revoke access. Please try again.'));
     } finally {
       setBusy(null);
     }

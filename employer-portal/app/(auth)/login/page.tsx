@@ -4,6 +4,7 @@ import { FormEvent, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { toUserMessage } from '@/lib/api/client';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -25,7 +26,7 @@ export default function LoginPage() {
       if (signInError) throw signInError;
       router.replace('/dashboard');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Sign-in failed');
+      setError(toUserMessage(err, 'Could not sign you in. Please check your details and try again.'));
     } finally {
       setLoading(false);
     }

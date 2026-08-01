@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
+import pytest
+
 from app.shared import supabase_admin
 
 
@@ -133,6 +135,42 @@ def test_request_password_reset_uses_recovery_type_and_sends_own_email(monkeypat
     assert sent == [
         {'to_email': 'a@b.com', 'action_link': 'https://supabase.example/verify?token=abc', 'code': '12345678'}
     ]
+
+
+def test_invite_raises_already_registered_for_existing_signup(monkeypatch):
+    """Supabase refuses to invite an email that already completed sign-up. That must surface as a
+    distinct, catchable signal — not a generic None — because the remedy is a password reset, not
+    another invite. (Verified against the live Supabase API before writing this.)"""
+    fake = _install_fake_client(monkeypatch)
+    _mock_send_invite_email(monkeypatch)
+
+    def _already_registered(params):
+        raise RuntimeError('A user with this email address has already been registered')
+
+    fake.admin.generate_link = _already_registered
+    with pytest.raises(supabase_admin.AuthUserAlreadyRegistered):
+        supabase_admin.invite_auth_user('taken@b.com')
+
+
+def test_invite_still_returns_none_for_other_failures(monkeypatch):
+    """An outage must stay distinguishable from 'already registered'."""
+    fake = _install_fake_client(monkeypatch)
+    fake.admin.fail = True
+    assert supabase_admin.invite_auth_user('a@b.com') is None
+
+
+def test_get_auth_user_id_by_email_matches_case_insensitively(monkeypatch):
+    fake = _install_fake_client(monkeypatch)
+    fake.admin.list_users = lambda page=None, per_page=None: (
+        [SimpleNamespace(id='found-id', email='Person@B.com')] if page == 1 else []
+    )
+    assert supabase_admin.get_auth_user_id_by_email('person@b.com') == 'found-id'
+
+
+def test_get_auth_user_id_by_email_none_when_absent(monkeypatch):
+    fake = _install_fake_client(monkeypatch)
+    fake.admin.list_users = lambda page=None, per_page=None: []
+    assert supabase_admin.get_auth_user_id_by_email('nobody@b.com') is None
 
 
 def test_request_password_reset_false_when_unconfigured(monkeypatch):

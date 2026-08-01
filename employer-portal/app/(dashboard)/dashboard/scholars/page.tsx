@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { apiFetch } from '@/lib/api/client';
+import { apiFetch, toUserMessage } from '@/lib/api/client';
 import { getAccessToken } from '@/lib/auth/session';
 
 type ScholarView = {
@@ -37,7 +37,7 @@ export default function ScholarDirectoryPage() {
       setStatus(data.length ? `${data.length} scholar(s) available.` : 'No scholars available yet.');
     } catch (err) {
       setError(true);
-      setStatus(err instanceof Error ? err.message : 'Failed to load');
+      setStatus(toUserMessage(err, 'Could not load this page. Please refresh and try again.'));
     }
   }, []);
 

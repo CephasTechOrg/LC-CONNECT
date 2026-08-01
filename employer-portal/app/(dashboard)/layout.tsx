@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { ReactNode, useEffect, useState } from 'react';
-import { myEmployer, type MyEmployer } from '@/lib/api/client';
+import { myEmployer, type MyEmployer, toUserMessage } from '@/lib/api/client';
 import { createClient } from '@/lib/supabase/client';
 import { signOut } from '@/lib/auth/session';
 
@@ -44,7 +44,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         setEmployer(me);
         setReady(true);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Could not load your session');
+        setError(toUserMessage(err, 'Could not load your session'));
         setReady(true);
       }
     })();

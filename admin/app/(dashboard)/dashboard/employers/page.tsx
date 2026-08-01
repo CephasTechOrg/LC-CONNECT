@@ -2,7 +2,7 @@
 
 import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
-import { apiFetch } from '@/lib/api/client';
+import { apiFetch, toUserMessage } from '@/lib/api/client';
 import { getAccessToken } from '@/lib/auth/session';
 
 type EmployerOrganization = {
@@ -61,7 +61,7 @@ export default function EmployersPage() {
       setStatus(data.length ? `${data.length} ${which} organization(s).` : `No ${which} organizations.`);
     } catch (err) {
       setError(true);
-      setStatus(err instanceof Error ? err.message : 'Failed to load');
+      setStatus(toUserMessage(err, 'Could not load this page. Please refresh and try again.'));
     }
   }, []);
 
@@ -76,7 +76,7 @@ export default function EmployersPage() {
       setStatus(data.length ? `${data.length} ${which} submission(s).` : `No ${which} submissions.`);
     } catch (err) {
       setError(true);
-      setStatus(err instanceof Error ? err.message : 'Failed to load');
+      setStatus(toUserMessage(err, 'Could not load this page. Please refresh and try again.'));
     }
   }, []);
 
@@ -97,7 +97,7 @@ export default function EmployersPage() {
       await loadOrgs(orgTab);
     } catch (err) {
       setError(true);
-      setStatus(err instanceof Error ? err.message : `${action} failed`);
+      setStatus(toUserMessage(err, `Could not ${action} this item. Please try again.`));
     } finally {
       setBusy(null);
     }
@@ -113,7 +113,7 @@ export default function EmployersPage() {
       setStatus(`Resent invite to ${label}.`);
     } catch (err) {
       setError(true);
-      setStatus(err instanceof Error ? err.message : 'Resend failed');
+      setStatus(toUserMessage(err, 'Could not resend the invitation. Please try again.'));
     } finally {
       setBusy(null);
     }
@@ -136,7 +136,7 @@ export default function EmployersPage() {
       await loadOpps(oppTab);
     } catch (err) {
       setError(true);
-      setStatus(err instanceof Error ? err.message : `${action} failed`);
+      setStatus(toUserMessage(err, `Could not ${action} this item. Please try again.`));
     } finally {
       setBusy(null);
     }

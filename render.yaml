@@ -32,3 +32,36 @@ services:
         value: profile-images
       - key: MAX_PROFILE_IMAGE_MB
         value: "5"
+      # Required for verifying mobile JWTs if the Supabase project signs with HS256 — RS256
+      # projects can instead rely on JWKS from SUPABASE_URL alone (see app/config.py).
+      - key: SUPABASE_JWT_SECRET
+        sync: false
+      # Where a Supabase invite email's confirmation link sends the invitee — set these once
+      # admin/ and employer-portal/ are actually deployed (see docs/getting-started/deployment.md
+      # and the Blueprint Bond spec). Unset means invites fall back to Supabase's shared default
+      # Site URL, which can only be correct for one of the two portals.
+      - key: ADMIN_PORTAL_URL
+        sync: false
+      - key: EMPLOYER_PORTAL_URL
+        sync: false
+      # LC Connect's own branded emails (invites, password resets, signup confirmation) — every
+      # Supabase auth email is routed through these instead of Supabase's own mailer. See
+      # docs/getting-started/resend.md and docs/getting-started/send_email_hook.md. Without these,
+      # email sending silently falls back to console logging (see app/email.py's _active_provider).
+      - key: EMAIL_PROVIDER
+        value: auto
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_FROM_EMAIL
+        sync: false
+      - key: RESEND_REPLY_TO
+        sync: false
+      # Supabase "Send Email" Auth Hook secret — see docs/getting-started/send_email_hook.md.
+      # Without this the hook endpoint refuses every request (503) rather than processing an
+      # unverifiable webhook.
+      - key: SUPABASE_SEND_EMAIL_HOOK_SECRET
+        sync: false
+      # Firebase Cloud Messaging service account JSON — push notifications are cleanly disabled
+      # (not an error) if this is unset.
+      - key: FIREBASE_CREDENTIALS_JSON
+        sync: false

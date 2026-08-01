@@ -1,7 +1,7 @@
 'use client';
 
 import { FormEvent, useCallback, useEffect, useState } from 'react';
-import { apiFetch } from '@/lib/api/client';
+import { apiFetch, toUserMessage } from '@/lib/api/client';
 import { getAccessToken } from '@/lib/auth/session';
 
 type Resource = {
@@ -77,7 +77,7 @@ export default function ResourcesPanel() {
       setStatus(`${data.length} resource(s).`);
     } catch (err) {
       setError(true);
-      setStatus(err instanceof Error ? err.message : 'Failed to load');
+      setStatus(toUserMessage(err, 'Could not load this page. Please refresh and try again.'));
     }
   }, []);
 
@@ -117,7 +117,7 @@ export default function ResourcesPanel() {
       await load();
     } catch (err) {
       setError(true);
-      setStatus(err instanceof Error ? err.message : 'Could not save resource');
+      setStatus(toUserMessage(err, 'Could not save resource'));
     } finally {
       setSaving(false);
     }
@@ -137,7 +137,7 @@ export default function ResourcesPanel() {
       await load();
     } catch (err) {
       setError(true);
-      setStatus(err instanceof Error ? err.message : 'Action failed');
+      setStatus(toUserMessage(err, 'Could not complete that action. Please try again.'));
     } finally {
       setBusy(null);
     }

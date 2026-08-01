@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { apiFetch } from '@/lib/api/client';
+import { apiFetch, toUserMessage } from '@/lib/api/client';
 import { getAccessToken } from '@/lib/auth/session';
 
 type AdminUser = {
@@ -31,7 +31,7 @@ export default function UsersPage() {
       setStatus(`${data.length} user(s).`);
     } catch (err) {
       setError(true);
-      setStatus(err instanceof Error ? err.message : 'Failed to load');
+      setStatus(toUserMessage(err, 'Could not load this page. Please refresh and try again.'));
     }
   }, []);
 
@@ -54,7 +54,7 @@ export default function UsersPage() {
       await load();
     } catch (err) {
       setError(true);
-      setStatus(err instanceof Error ? err.message : 'Suspend failed');
+      setStatus(toUserMessage(err, 'Could not suspend this account. Please try again.'));
     }
   }
 
@@ -68,7 +68,7 @@ export default function UsersPage() {
       await load();
     } catch (err) {
       setError(true);
-      setStatus(err instanceof Error ? err.message : 'Reactivate failed');
+      setStatus(toUserMessage(err, 'Could not reactivate this account. Please try again.'));
     }
   }
 

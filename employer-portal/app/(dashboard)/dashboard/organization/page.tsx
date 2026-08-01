@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { myEmployer, type MyEmployer } from '@/lib/api/client';
+import { myEmployer, type MyEmployer, toUserMessage } from '@/lib/api/client';
 import { getAccessToken } from '@/lib/auth/session';
 
 function statusBadgeClass(status: MyEmployer['organization_status']): string {
@@ -26,7 +26,7 @@ export default function OrganizationPage() {
       setStatus('');
     } catch (err) {
       setError(true);
-      setStatus(err instanceof Error ? err.message : 'Failed to load organization');
+      setStatus(toUserMessage(err, 'Failed to load organization'));
     }
   }, []);
 

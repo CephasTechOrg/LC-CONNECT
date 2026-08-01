@@ -8,7 +8,9 @@ export default function SettingsPage() {
         </div>
       </header>
       <div className="content">
-        <div className="panel empty">Coming soon — platform settings are not built yet.</div>
+        <div className="panel empty">
+          Platform configuration options are coming in a future release.
+        </div>
       </div>
     </>
   );

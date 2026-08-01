@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { toUserMessage } from '@/lib/api/client';
 
 type Mode = 'checking' | 'code' | 'password';
 
@@ -45,7 +46,7 @@ export default function ResetPasswordPage() {
       if (verifyError) throw verifyError;
       setMode('password');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'That code is invalid or has expired.');
+      setError(toUserMessage(err, 'That code is invalid or has expired.'));
     } finally {
       setVerifying(false);
     }
@@ -69,7 +70,7 @@ export default function ResetPasswordPage() {
       if (updateError) throw updateError;
       router.replace('/dashboard');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not set your password');
+      setError(toUserMessage(err, 'Could not set your password'));
     } finally {
       setSaving(false);
     }

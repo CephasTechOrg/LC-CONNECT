@@ -20,7 +20,11 @@ from app.features.campus_hub.schema import CampusPostCreate
 from app.models import CampusPost, EmployerAccount, EmployerOpportunitySubmission, EmployerOrganization, User
 from app.shared.audit import record_audit
 from app.shared.programs import PRESIDENTIAL_SCHOLARS_SLUG
-from app.shared.supabase_admin import invite_auth_user
+from app.shared.supabase_admin import (
+    AuthUserAlreadyRegistered,
+    get_auth_user_id_by_email,
+    invite_auth_user,
+)
 
 
 def _org_snapshot(org: EmployerOrganization) -> dict[str, str | None]:
@@ -67,10 +71,17 @@ async def approve_organization(
     # Auth-side invite FIRST — if this fails, the org stays pending rather than being marked
     # approved with no matching Supabase identity for its contact.
     redirect_to = f'{settings.employer_portal_url}/accept-invite' if settings.employer_portal_url else None
-    auth_user_id = invite_auth_user(account.email, redirect_to=redirect_to, context='employer')
+    try:
+        auth_user_id = invite_auth_user(account.email, redirect_to=redirect_to, context='employer')
+    except AuthUserAlreadyRegistered:
+        # The contact already has an LC Connect account (e.g. they're also a student). Link that
+        # identity so approval still succeeds — they sign in with their existing password. A
+        # legitimate business decision must not be blocked by an email-reuse edge case.
+        auth_user_id = get_auth_user_id_by_email(account.email)
     if auth_user_id is None:
         raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='Could not send the invite — try again later'
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail='Could not send the invite because the email service is unavailable. Please try again shortly.',
         )
     account.auth_user_id = auth_user_id
 
@@ -109,12 +120,18 @@ async def resend_organization_invite(db: AsyncSession, *, actor: User, org_id: U
     account = await get_account_for_org(db, org.id)
 
     redirect_to = f'{settings.employer_portal_url}/accept-invite' if settings.employer_portal_url else None
-    auth_user_id = invite_auth_user(account.email, redirect_to=redirect_to, context='employer')
+    try:
+        auth_user_id = invite_auth_user(account.email, redirect_to=redirect_to, context='employer')
+    except AuthUserAlreadyRegistered as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail='This contact has already completed sign-up, so a new invite cannot be sent. '
+            "Ask them to use 'Forgot your password?' on the employer portal sign-in page instead.",
+        ) from exc
     if auth_user_id is None:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail='Could not resend the invite — the contact may have already finished signing up, '
-            'or the email service is temporarily unavailable',
+            detail='Could not resend the invite because the email service is unavailable. Please try again shortly.',
         )
 
     await record_audit(

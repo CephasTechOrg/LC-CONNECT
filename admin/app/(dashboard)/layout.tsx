@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { ReactNode, useEffect, useState } from 'react';
-import { apiFetch, bootstrapUser, type BootstrapUser } from '@/lib/api/client';
+import { apiFetch, bootstrapUser, type BootstrapUser, toUserMessage } from '@/lib/api/client';
 import { createClient } from '@/lib/supabase/client';
 import { signOut } from '@/lib/auth/session';
 
@@ -99,7 +99,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         }
         setReady(true);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Could not load admin session');
+        setError(toUserMessage(err, 'Could not load admin session'));
         setReady(true);
       }
     })();

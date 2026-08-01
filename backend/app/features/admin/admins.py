@@ -23,7 +23,11 @@ from app.dependencies import require_admin_aal2
 from app.models import AdminMembership, Profile, User
 from app.shared.audit import record_audit
 from app.shared.email_roles import normalize_campus_email
-from app.shared.supabase_admin import invite_auth_user
+from app.shared.supabase_admin import (
+    AuthUserAlreadyRegistered,
+    get_auth_user_id_by_email,
+    invite_auth_user,
+)
 
 ADMIN_ROLES: tuple[str, ...] = ('super_admin', 'school_admin', 'honors_admin', 'content_admin', 'auditor')
 
@@ -126,10 +130,18 @@ async def invite_admin(
         # Auth-side invite FIRST — if this fails, nothing local has been created or changed yet, so
         # there's never a half-created admin row with no matching Supabase invite.
         redirect_to = f'{settings.admin_portal_url}/accept-invite' if settings.admin_portal_url else None
-        auth_user_id = invite_auth_user(normalized, redirect_to=redirect_to)
+        try:
+            auth_user_id = invite_auth_user(normalized, redirect_to=redirect_to)
+        except AuthUserAlreadyRegistered:
+            # They already have an LC Connect account (e.g. signed up in the mobile app but never
+            # bootstrapped a local row). Link that identity and grant the role — they sign in with
+            # their existing password, and the in-app notification tells them. Blocking here would
+            # make a legitimate promotion impossible.
+            auth_user_id = get_auth_user_id_by_email(normalized)
         if auth_user_id is None:
             raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='Could not send the invite — try again later'
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail='Could not send the invite because the email service is unavailable. Please try again shortly.',
             )
 
     if target is None:
@@ -218,12 +230,18 @@ async def resend_admin_invite(db: AsyncSession, *, actor: User, membership_id: U
 
     target = await db.get(User, membership.user_id)
     redirect_to = f'{settings.admin_portal_url}/accept-invite' if settings.admin_portal_url else None
-    auth_user_id = invite_auth_user(target.email, redirect_to=redirect_to)
+    try:
+        auth_user_id = invite_auth_user(target.email, redirect_to=redirect_to)
+    except AuthUserAlreadyRegistered as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail='This person has already completed sign-up, so a new invite cannot be sent. '
+            "Ask them to use 'Forgot your password?' on the sign-in page instead.",
+        ) from exc
     if auth_user_id is None:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail='Could not resend the invite — this person may have already finished signing up, '
-            'or the email service is temporarily unavailable',
+            detail='Could not resend the invite because the email service is unavailable. Please try again shortly.',
         )
 
     await record_audit(

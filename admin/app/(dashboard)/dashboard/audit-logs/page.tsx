@@ -9,8 +9,8 @@ export default function AuditLogsPage() {
       </header>
       <div className="content">
         <div className="panel empty">
-          Coming soon — admin actions are already recorded internally (`AdminAuditLog`), but there
-          is no browsable log viewer yet.
+          Administrator actions are being securely recorded. A searchable log viewer is coming in
+          a future release.
         </div>
       </div>
     </>

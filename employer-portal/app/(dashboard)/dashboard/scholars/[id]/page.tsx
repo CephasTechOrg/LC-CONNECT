@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { apiFetch } from '@/lib/api/client';
+import { apiFetch, toUserMessage } from '@/lib/api/client';
 import { getAccessToken } from '@/lib/auth/session';
 
 type ScholarView = {
@@ -46,7 +46,7 @@ export default function ScholarDetailPage() {
       setStatus('');
     } catch (err) {
       setError(true);
-      setStatus(err instanceof Error ? err.message : 'Could not load this scholar');
+      setStatus(toUserMessage(err, 'Could not load this scholar'));
     }
   }, [params.id]);
 
@@ -63,7 +63,7 @@ export default function ScholarDetailPage() {
       window.open(signed.url, '_blank', 'noopener,noreferrer');
     } catch (err) {
       setError(true);
-      setStatus(err instanceof Error ? err.message : `Could not open ${kind}`);
+      setStatus(toUserMessage(err, `Could not open ${kind}`));
     } finally {
       setBusyDocument(null);
     }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { apiFetch } from '@/lib/api/client';
+import { apiFetch, toUserMessage } from '@/lib/api/client';
 import { getAccessToken } from '@/lib/auth/session';
 
 type AdminMembership = {
@@ -57,7 +57,7 @@ export default function AdminsPage() {
       setStatus(roster.length ? `${roster.length} admin(s).` : 'No admins yet.');
     } catch (err) {
       setError(true);
-      setStatus(err instanceof Error ? err.message : 'Failed to load');
+      setStatus(toUserMessage(err, 'Could not load this page. Please refresh and try again.'));
     }
   }, []);
 
@@ -89,7 +89,7 @@ export default function AdminsPage() {
       await load();
     } catch (err) {
       setError(true);
-      setStatus(err instanceof Error ? err.message : 'Invite failed');
+      setStatus(toUserMessage(err, 'Could not send the invitation. Please try again.'));
     } finally {
       setInviting(false);
     }
@@ -108,7 +108,7 @@ export default function AdminsPage() {
       await load();
     } catch (err) {
       setError(true);
-      setStatus(err instanceof Error ? err.message : 'Revoke failed');
+      setStatus(toUserMessage(err, 'Could not revoke access. Please try again.'));
     } finally {
       setBusy(null);
     }
@@ -125,7 +125,7 @@ export default function AdminsPage() {
       setStatus(`Resent invite to ${label}.`);
     } catch (err) {
       setError(true);
-      setStatus(err instanceof Error ? err.message : 'Resend failed');
+      setStatus(toUserMessage(err, 'Could not resend the invitation. Please try again.'));
     } finally {
       setBusy(null);
     }
