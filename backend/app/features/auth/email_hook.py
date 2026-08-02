@@ -20,7 +20,6 @@ from __future__ import annotations
 
 import logging
 from typing import Any
-from urllib.parse import quote
 
 from fastapi import HTTPException, Request, status
 from standardwebhooks.webhooks import Webhook, WebhookVerificationError
@@ -49,17 +48,6 @@ async def verify_and_parse(request: Request) -> dict[str, Any]:
     return payload
 
 
-def _action_link(email_data: dict[str, Any]) -> str:
-    """Supabase's hook payload gives the raw pieces, not a ready-made link (unlike `generate_link`'s
-    admin-API response) — same URL shape Supabase's own emails use:
-    `{SUPABASE_URL}/auth/v1/verify?token={token_hash}&type={action_type}&redirect_to={redirect_to}`."""
-    base = (settings.supabase_url or '').rstrip('/')
-    token_hash = quote(email_data.get('token_hash', ''))
-    action_type = quote(email_data.get('email_action_type', ''))
-    redirect_to = quote(email_data.get('redirect_to', ''), safe='')
-    return f'{base}/auth/v1/verify?token={token_hash}&type={action_type}&redirect_to={redirect_to}'
-
-
 def send_for_payload(payload: dict[str, Any]) -> None:
     """Always raises HTTPException on failure (400 for a malformed payload, 500 for a send
     failure) — never a bare exception — so the caller (the webhook endpoint) can uniformly turn
@@ -74,18 +62,20 @@ def send_for_payload(payload: dict[str, Any]) -> None:
 
     action_type = email_data.get('email_action_type')
     code = email_data.get('token', '')
-    action_link = _action_link(email_data)
+    # The plain destination page Supabase was told to return to — deliberately NOT the
+    # `/auth/v1/verify?token=...` magic link, which encodes the same single-use token as `code`
+    # and would consume it on click, invalidating the code the user is about to type.
+    page_url = email_data.get('redirect_to') or None
 
     try:
         if action_type == 'recovery':
-            email_service.send_password_reset_email(to_email, action_link=action_link, code=code)
+            email_service.send_password_reset_email(to_email, page_url=page_url, code=code)
         elif action_type == 'invite':
-            email_service.send_invite_email(to_email, action_link=action_link, code=code, context='admin')
+            email_service.send_invite_email(to_email, page_url=page_url, code=code, context='admin')
         else:
             # 'signup', 'magiclink', 'email_change', or anything Supabase adds later — all of
-            # these are "confirm this address / link" in spirit, so the signup-confirmation copy
-            # fits.
-            email_service.send_signup_confirmation_email(to_email, action_link=action_link, code=code)
+            # these are "confirm this address" in spirit, so the signup-confirmation copy fits.
+            email_service.send_signup_confirmation_email(to_email, code=code)
     except HTTPException:
         raise
     except Exception as exc:  # noqa: BLE001 — any send failure (Resend down, etc.) must still

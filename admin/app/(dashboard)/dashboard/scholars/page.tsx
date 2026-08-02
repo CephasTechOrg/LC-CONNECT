@@ -14,6 +14,13 @@ type ProgramMembership = {
   display_name: string | null;
 };
 
+type StudentResult = {
+  id: string;
+  email: string;
+  display_name: string | null;
+  status: string;
+};
+
 type Tab = 'active' | 'revoked';
 
 const PROGRAM_SLUG = 'presidential_scholars';
@@ -25,8 +32,11 @@ export default function ScholarsPage() {
   const [error, setError] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
 
-  const [verifyEmail, setVerifyEmail] = useState('');
-  const [verifying, setVerifying] = useState(false);
+  const [query, setQuery] = useState('');
+  const [candidates, setCandidates] = useState<StudentResult[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [searchNote, setSearchNote] = useState('');
+  const [verifying, setVerifying] = useState<string | null>(null);
 
   const load = useCallback(async (which: Tab) => {
     setError(false);
@@ -50,26 +60,63 @@ export default function ScholarsPage() {
     void load(tab);
   }, [load, tab]);
 
-  async function onVerify(e: React.FormEvent) {
-    e.preventDefault();
-    if (!verifyEmail.trim()) return;
-    setVerifying(true);
+  // Search server-side (the endpoint is capped, so filtering in the browser would silently hide
+  // anyone past the cap), debounced so typing a name doesn't fire a request per keystroke.
+  useEffect(() => {
+    const term = query.trim();
+    if (!term) {
+      setCandidates([]);
+      setSearchNote('');
+      return;
+    }
+    let cancelled = false;
+    setSearching(true);
+    const timer = setTimeout(() => {
+      void (async () => {
+        try {
+          const token = await getAccessToken();
+          if (!token) return;
+          const data = await apiFetch<StudentResult[]>(
+            `/admin/users?role=student&q=${encodeURIComponent(term)}`,
+            token,
+          );
+          if (cancelled) return;
+          setCandidates(data);
+          setSearchNote(data.length ? '' : 'No students match that name or email.');
+        } catch (err) {
+          if (!cancelled) setSearchNote(toUserMessage(err, 'Could not search students.'));
+        } finally {
+          if (!cancelled) setSearching(false);
+        }
+      })();
+    }, 300);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [query]);
+
+  const activeScholarIds = new Set(items.filter((i) => i.status === 'active').map((i) => i.user_id));
+
+  async function onVerify(student: StudentResult) {
+    setVerifying(student.id);
     setError(false);
     try {
       const token = await getAccessToken();
       if (!token) throw new Error('Not signed in');
       await apiFetch(`/admin/programs/${PROGRAM_SLUG}/members`, token, {
         method: 'POST',
-        body: JSON.stringify({ email: verifyEmail.trim().toLowerCase() }),
+        body: JSON.stringify({ email: student.email }),
       });
-      setStatus(`Verified ${verifyEmail.trim()} as a Presidential Scholar.`);
-      setVerifyEmail('');
+      setStatus(`Verified ${student.display_name || student.email} as a Presidential Scholar.`);
+      setQuery('');
+      setCandidates([]);
       await load(tab);
     } catch (err) {
       setError(true);
-      setStatus(toUserMessage(err, 'Could not verify that code. Please try again.'));
+      setStatus(toUserMessage(err, 'Could not verify that student. Please try again.'));
     } finally {
-      setVerifying(false);
+      setVerifying(null);
     }
   }
 
@@ -118,26 +165,64 @@ export default function ScholarsPage() {
       <div className="content">
         <div className="panel">
           <h2>Verify a scholar</h2>
-          <p className="hint">
-            Students never self-declare — enter the email of a student on the official
-            Presidential Scholars roster.
+          <p className="hint" style={{ marginTop: 0 }}>
+            Students never self-declare. Search the student directory by name or email, then
+            verify anyone on the official Presidential Scholars roster.
           </p>
-          <form onSubmit={onVerify}>
-            <div className="field">
-              <label htmlFor="verify-email">Student email</label>
-              <input
-                id="verify-email"
-                type="email"
-                value={verifyEmail}
-                onChange={(e) => setVerifyEmail(e.target.value)}
-                placeholder="name@students.livingstone.edu"
-                required
-              />
+          <div className="field" style={{ marginBottom: 0 }}>
+            <label htmlFor="student-search">Search students</label>
+            <input
+              id="student-search"
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Start typing a name or email…"
+              autoComplete="off"
+            />
+          </div>
+
+          {searching ? <p className="status">Searching…</p> : null}
+          {!searching && searchNote ? <p className="status">{searchNote}</p> : null}
+
+          {candidates.length > 0 ? (
+            <div className="table-scroll" style={{ marginTop: 12 }}>
+              <table className="rows">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th />
+                  </tr>
+                </thead>
+                <tbody>
+                  {candidates.map((s) => {
+                    const alreadyScholar = activeScholarIds.has(s.id);
+                    return (
+                      <tr key={s.id}>
+                        <td>{s.display_name || '—'}</td>
+                        <td>{s.email}</td>
+                        <td style={{ textAlign: 'right' }}>
+                          {alreadyScholar ? (
+                            <span className="badge success">Already a scholar</span>
+                          ) : (
+                            <button
+                              className="btn"
+                              type="button"
+                              style={{ width: 'auto', minHeight: 34, padding: '6px 12px', fontSize: 13 }}
+                              disabled={verifying === s.id}
+                              onClick={() => void onVerify(s)}
+                            >
+                              {verifying === s.id ? 'Verifying…' : 'Verify'}
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
-            <button className="btn" type="submit" disabled={verifying}>
-              {verifying ? 'Verifying…' : 'Verify scholar'}
-            </button>
-          </form>
+          ) : null}
         </div>
 
         <div className="actions" style={{ justifyContent: 'space-between', alignItems: 'center' }}>

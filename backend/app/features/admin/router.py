@@ -1,7 +1,7 @@
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -97,13 +97,30 @@ async def get_system_status(
 
 
 @router.get('/users', response_model=list[AdminUserRead])
-async def list_users(_: User = Depends(require_admin_aal2), db: AsyncSession = Depends(get_db)):
-    result = await db.execute(
-        select(User, Profile)
-        .join(Profile, Profile.user_id == User.id)
-        .order_by(User.created_at.desc())
-        .limit(200)
-    )
+async def list_users(
+    q: str | None = None,
+    role: str | None = None,
+    _: User = Depends(require_admin_aal2),
+    db: AsyncSession = Depends(get_db),
+):
+    """`q` searches display name OR email; `role` narrows to a single role (e.g. 'student').
+
+    Search is server-side on purpose: this list is capped, so filtering client-side would
+    silently hide anyone past the cap — fine for a demo, wrong for a real campus roster where
+    the person you're looking for is usually *not* in the most recent 200 signups.
+    """
+    stmt = select(User, Profile).join(Profile, Profile.user_id == User.id)
+    if role:
+        stmt = stmt.where(User.role == role)
+    if q and q.strip():
+        # `ilike` is case-insensitive; escape the LIKE wildcards so a literal % or _ in someone's
+        # name searches for that character instead of matching everything.
+        term = q.strip().replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')
+        pattern = f'%{term}%'
+        stmt = stmt.where(
+            or_(Profile.display_name.ilike(pattern), User.email.ilike(pattern))
+        )
+    result = await db.execute(stmt.order_by(User.created_at.desc()).limit(200))
     return [
         AdminUserRead(
             id=user.id,

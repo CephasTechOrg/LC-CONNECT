@@ -93,8 +93,7 @@ export default function AcceptInvitePage() {
           <h1>Enter your invite code</h1>
           <p className="subtitle">
             Your organization has been approved. Enter the email address you registered with and
-            the code from your invite email (some mail clients don&rsquo;t open the link
-            directly, so we accept the code too).
+            the code from your invite email.
           </p>
           {error ? <div className="error-banner">{error}</div> : null}
           <div className="field">

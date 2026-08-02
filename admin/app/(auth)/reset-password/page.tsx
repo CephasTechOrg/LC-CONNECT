@@ -91,8 +91,7 @@ export default function ResetPasswordPage() {
           <p className="eyebrow">LC Connect</p>
           <h1>Enter your reset code</h1>
           <p className="subtitle">
-            Enter your email and the code from your password reset email (some mail clients
-            don&rsquo;t open the link directly, so we accept the code too).
+            Enter your email and the code from your password reset email.
           </p>
           {error ? <div className="error-banner">{error}</div> : null}
           <div className="field">

@@ -62,8 +62,8 @@ def _mock_send_invite_email(monkeypatch) -> list[dict]:
     actually hit that; capture the call instead so we can assert on what would have been sent."""
     calls: list[dict] = []
 
-    def _fake(to_email, *, action_link, code, context='admin'):
-        calls.append({'to_email': to_email, 'action_link': action_link, 'code': code, 'context': context})
+    def _fake(to_email, *, page_url, code, context='admin'):
+        calls.append({'to_email': to_email, 'page_url': page_url, 'code': code, 'context': context})
 
     monkeypatch.setattr(supabase_admin.email_service, 'send_invite_email', _fake)
     return calls
@@ -95,7 +95,7 @@ def test_invite_auth_user_sends_own_branded_email_never_supabases(monkeypatch):
     assert sent == [
         {
             'to_email': 'a@b.com',
-            'action_link': 'https://supabase.example/verify?token=abc',
+            'page_url': None,
             'code': '12345678',
             'context': 'employer',
         }
@@ -116,8 +116,8 @@ def test_invite_auth_user_returns_none_on_exception(monkeypatch):
 def _mock_send_password_reset_email(monkeypatch) -> list[dict]:
     calls: list[dict] = []
 
-    def _fake(to_email, *, action_link, code):
-        calls.append({'to_email': to_email, 'action_link': action_link, 'code': code})
+    def _fake(to_email, *, page_url, code):
+        calls.append({'to_email': to_email, 'page_url': page_url, 'code': code})
 
     monkeypatch.setattr(supabase_admin.email_service, 'send_password_reset_email', _fake)
     return calls
@@ -133,7 +133,7 @@ def test_request_password_reset_uses_recovery_type_and_sends_own_email(monkeypat
         {'type': 'recovery', 'email': 'a@b.com', 'options': {'redirect_to': 'https://x.com/reset-password'}}
     ]
     assert sent == [
-        {'to_email': 'a@b.com', 'action_link': 'https://supabase.example/verify?token=abc', 'code': '12345678'}
+        {'to_email': 'a@b.com', 'page_url': 'https://x.com/reset-password', 'code': '12345678'}
     ]
 
 

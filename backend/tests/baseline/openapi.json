@@ -8111,7 +8111,42 @@
     },
     "/api/v1/admin/users": {
       "get": {
+        "description": "`q` searches display name OR email; `role` narrows to a single role (e.g. 'student').\n\nSearch is server-side on purpose: this list is capped, so filtering client-side would\nsilently hide anyone past the cap \u2014 fine for a demo, wrong for a real campus roster where\nthe person you're looking for is usually *not* in the most recent 200 signups.",
         "operationId": "list_users_api_v1_admin_users_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "in": "query",
+            "name": "role",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Role"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -8126,6 +8161,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "security": [

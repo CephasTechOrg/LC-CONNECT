@@ -81,27 +81,14 @@ async def test_verify_and_parse_503_when_unconfigured(monkeypatch):
     assert exc.value.status_code == 503
 
 
-# ── _action_link ──────────────────────────────────────────────────────────────
-
-
-def test_action_link_builds_verify_url(monkeypatch):
-    monkeypatch.setattr(email_hook.settings, 'supabase_url', 'https://proj.supabase.co')
-    link = email_hook._action_link(
-        {'token_hash': 'abc123', 'email_action_type': 'recovery', 'redirect_to': 'https://x.com/reset'}
-    )
-    assert link.startswith('https://proj.supabase.co/auth/v1/verify?')
-    assert 'token=abc123' in link
-    assert 'type=recovery' in link
-
-
 # ── send_for_payload routing ────────────────────────────────────────────────────
 
 
 def _capture(monkeypatch, fn_name: str) -> list[dict]:
     calls: list[dict] = []
 
-    def _fake(to_email, *, action_link, code, **kwargs):
-        calls.append({'to_email': to_email, 'action_link': action_link, 'code': code, **kwargs})
+    def _fake(to_email, *, code, page_url=None, **kwargs):
+        calls.append({'to_email': to_email, 'page_url': page_url, 'code': code, **kwargs})
 
     monkeypatch.setattr(email_hook.email_service, fn_name, _fake)
     return calls

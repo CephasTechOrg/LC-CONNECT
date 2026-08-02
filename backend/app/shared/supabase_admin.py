@@ -86,9 +86,11 @@ def invite_auth_user(email: str, *, redirect_to: str | None = None, context: str
     try:
         options = {'redirect_to': redirect_to} if redirect_to else {}
         response = _client.auth.admin.generate_link({'type': 'invite', 'email': email, 'options': options})
+        # Pass the plain destination page (no token) — never `response.properties.action_link`,
+        # which embeds the same single-use token as `email_otp` and would burn it on click.
         email_service.send_invite_email(
             email,
-            action_link=response.properties.action_link,
+            page_url=redirect_to,
             code=response.properties.email_otp,
             context=context,
         )
@@ -143,7 +145,7 @@ def request_password_reset(email: str, *, redirect_to: str | None = None) -> boo
         options = {'redirect_to': redirect_to} if redirect_to else {}
         response = _client.auth.admin.generate_link({'type': 'recovery', 'email': email, 'options': options})
         email_service.send_password_reset_email(
-            email, action_link=response.properties.action_link, code=response.properties.email_otp
+            email, page_url=redirect_to, code=response.properties.email_otp
         )
         return True
     except Exception:  # noqa: BLE001 — best-effort; the caller never surfaces this to the client
