@@ -62,13 +62,10 @@ export default function ScholarsPage() {
 
   // Search server-side (the endpoint is capped, so filtering in the browser would silently hide
   // anyone past the cap), debounced so typing a name doesn't fire a request per keystroke.
+  // An empty query intentionally still queries — the directory should be browsable on arrival,
+  // not a blank box that only reveals students once you already know who you're looking for.
   useEffect(() => {
     const term = query.trim();
-    if (!term) {
-      setCandidates([]);
-      setSearchNote('');
-      return;
-    }
     let cancelled = false;
     setSearching(true);
     const timer = setTimeout(() => {
@@ -82,7 +79,13 @@ export default function ScholarsPage() {
           );
           if (cancelled) return;
           setCandidates(data);
-          setSearchNote(data.length ? '' : 'No students match that name or email.');
+          setSearchNote(
+            data.length
+              ? ''
+              : term
+                ? 'No students match that name or email.'
+                : 'No students have signed in yet.',
+          );
         } catch (err) {
           if (!cancelled) setSearchNote(toUserMessage(err, 'Could not search students.'));
         } finally {
@@ -164,10 +167,10 @@ export default function ScholarsPage() {
       </header>
       <div className="content">
         <div className="panel">
-          <h2>Verify a scholar</h2>
+          <h2>Student directory</h2>
           <p className="hint" style={{ marginTop: 0 }}>
-            Students never self-declare. Search the student directory by name or email, then
-            verify anyone on the official Presidential Scholars roster.
+            Students never self-declare. Verify anyone on the official Presidential Scholars
+            roster — search by name or email to narrow the list.
           </p>
           <div className="field" style={{ marginBottom: 0 }}>
             <label htmlFor="student-search">Search students</label>
@@ -176,7 +179,7 @@ export default function ScholarsPage() {
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Start typing a name or email…"
+              placeholder="Filter by name or email…"
               autoComplete="off"
             />
           </div>

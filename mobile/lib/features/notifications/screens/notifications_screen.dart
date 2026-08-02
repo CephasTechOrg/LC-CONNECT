@@ -160,6 +160,7 @@ IconData _iconFor(String type) => switch (type) {
       'connection_request' => Icons.person_add_alt_1_outlined,
       'connection_accepted' => Icons.how_to_reg_outlined,
       'admin_membership_invited' => Icons.admin_panel_settings_outlined,
+      'program_membership_verified' => Icons.workspace_premium_outlined,
       _ => Icons.notifications_outlined,
     };
 

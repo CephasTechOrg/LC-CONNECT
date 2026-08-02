@@ -51,13 +51,18 @@ class AppNotification {
         'connection_request' => '$_actor sent you a connection request',
         'connection_accepted' => '$_actor accepted your connection request',
         'admin_membership_invited' => "You've been granted admin access — sign in to the Admin Portal",
+        'program_membership_verified' =>
+          "You're a verified Presidential Scholar — complete your professional profile",
         _ => 'You have a new notification',
       };
 
   /// Where tapping the notification navigates: the group for group events, the connections
-  /// screen for connection events, or nowhere.
+  /// screen for connection events, the professional profile for scholar verification, or nowhere.
   String? get route {
     if (type.startsWith('connection_')) return '/connections';
+    // Verification is only useful if it takes them to the thing it unlocked — the professional
+    // extension they can now fill in.
+    if (type == 'program_membership_verified') return '/profile/blueprint-bond';
     if (groupId != null) return '/groups/$groupId';
     return null;
   }

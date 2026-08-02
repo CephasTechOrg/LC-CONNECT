@@ -61,6 +61,41 @@ void main() {
         "You've been granted admin access — sign in to the Admin Portal",
       );
     });
+    test('program membership verified', () {
+      expect(
+        make('program_membership_verified').message,
+        "You're a verified Presidential Scholar — complete your professional profile",
+      );
+    });
+    test('program membership verified routes to the professional profile', () {
+      expect(make('program_membership_verified').route, '/profile/blueprint-bond');
+    });
+
+    /// The backend can push a type the app has never heard of, and the fallback silently renders
+    /// "You have a new notification" — which reads as an empty, useless alert. This locks every
+    /// type the backend actually emits to a real sentence so that gap can't reappear.
+    test('every backend-emitted type has real copy, not the generic fallback', () {
+      const emittedByBackend = [
+        'connection_request',
+        'connection_accepted',
+        'group_invite',
+        'group_join_request',
+        'group_request_approved',
+        'group_request_rejected',
+        'group_made_admin',
+        'group_removed_admin',
+        'group_removed',
+        'program_membership_verified',
+        'admin_membership_invited',
+      ];
+      for (final type in emittedByBackend) {
+        expect(
+          make(type).message,
+          isNot('You have a new notification'),
+          reason: '$type falls through to the generic fallback — add real copy for it',
+        );
+      }
+    });
 
     test('route: group events → group, connection events → /connections', () {
       expect(make('group_invite').route, '/groups/g1');
