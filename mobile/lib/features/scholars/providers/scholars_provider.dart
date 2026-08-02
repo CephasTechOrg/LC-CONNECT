@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/api/api_client.dart';
+import '../../../core/constants/app_constants.dart';
 import '../../auth/providers/auth_provider.dart';
 
 class ScholarProfile {
@@ -88,7 +89,16 @@ class ScholarProfileNotifier extends AsyncNotifier<ScholarProfile> {
     final formData = FormData.fromMap({
       'file': await MultipartFile.fromFile(path, filename: filename, contentType: DioMediaType.parse(mimeType)),
     });
-    final response = await client.dio.post('/scholars/me/headshot', data: formData);
+    final response = await client.dio.post(
+      '/scholars/me/headshot',
+      data: formData,
+      // Uploads need far longer than the default: a multi-MB body over mobile data, then
+      // server-side image sanitising and an object-storage round trip before any response.
+      options: Options(
+        sendTimeout: AppConstants.uploadTimeout,
+        receiveTimeout: AppConstants.uploadTimeout,
+      ),
+    );
     state = AsyncData(ScholarProfile.fromJson(response.data as Map<String, dynamic>));
   }
 
@@ -101,7 +111,14 @@ class ScholarProfileNotifier extends AsyncNotifier<ScholarProfile> {
     final formData = FormData.fromMap({
       'file': await MultipartFile.fromFile(path, filename: filename, contentType: DioMediaType.parse(mimeType)),
     });
-    final response = await client.dio.post('/scholars/me/resume', data: formData);
+    final response = await client.dio.post(
+      '/scholars/me/resume',
+      data: formData,
+      options: Options(
+        sendTimeout: AppConstants.uploadTimeout,
+        receiveTimeout: AppConstants.uploadTimeout,
+      ),
+    );
     state = AsyncData(ScholarProfile.fromJson(response.data as Map<String, dynamic>));
   }
 

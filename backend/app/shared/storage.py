@@ -95,7 +95,20 @@ class SupabaseStorageService:
             except Exception:
                 pass
         path = self._scholar_path(user_id, kind, ext)
-        bucket.upload(path=path, file=data, file_options={'content-type': content_type})
+        try:
+            bucket.upload(path=path, file=data, file_options={'content-type': content_type})
+        except HTTPException:
+            raise
+        except Exception as exc:  # noqa: BLE001 — storage-side failures (missing bucket, outage,
+            # quota) must never reach a student as a raw 500 with a vendor stack trace.
+            logger.exception(
+                'storage: failed to upload %s for %s to bucket %r',
+                kind, user_id, settings.supabase_scholar_bucket,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail='Could not save your file right now. Please try again in a moment.',
+            ) from exc
         return path
 
     def scholar_signed_url(self, path: str, *, expires_in: int) -> str:
@@ -103,7 +116,17 @@ class SupabaseStorageService:
         if self.client is None:
             raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='Supabase Storage is not configured')
         bucket = self.client.storage.from_(settings.supabase_scholar_bucket)
-        result = bucket.create_signed_url(path, expires_in)
+        try:
+            result = bucket.create_signed_url(path, expires_in)
+        except HTTPException:
+            raise
+        except Exception as exc:  # noqa: BLE001 — same reasoning as `upload_scholar_file`: a
+            # storage outage must surface as a clean, retryable message, never a vendor error.
+            logger.exception('storage: failed to sign %r in bucket %r', path, settings.supabase_scholar_bucket)
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail='Could not open that file right now. Please try again in a moment.',
+            ) from exc
         url = result.get('signedURL') or result.get('signedUrl')
         if not url:
             raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='Could not generate a signed URL')

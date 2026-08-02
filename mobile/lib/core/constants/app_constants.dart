@@ -21,8 +21,15 @@ class AppConstants {
 
   static bool get isDev => env == 'development';
 
-  static const Duration connectTimeout = Duration(seconds: 10);
-  static const Duration receiveTimeout = Duration(seconds: 15);
+  // Generous on purpose. The API runs on a plan that suspends after idle, so the FIRST request
+  // after a quiet period waits on a 30–60s cold start — a 10s connect timeout failed those
+  // outright. Uploads compound it: a multi-MB résumé must transfer, then the server sanitizes
+  // the image and round-trips to object storage before responding.
+  static const Duration connectTimeout = Duration(seconds: 30);
+  static const Duration receiveTimeout = Duration(seconds: 60);
+
+  /// Applied per-request to file uploads, which send a multi-MB body over mobile data.
+  static const Duration uploadTimeout = Duration(seconds: 120);
 
   static const String tokenKey = 'lc_connect_access_token';
 }
