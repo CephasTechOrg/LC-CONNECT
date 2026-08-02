@@ -82,3 +82,9 @@ class EmployerScholarView(BaseModel):
     career_interests: list[str]
     has_headshot: bool
     has_resume: bool
+    # A short-lived signed URL for the headshot, so the portal can render the face inline instead
+    # of making the employer click through to a separate tab. Deliberate, reviewed addition to
+    # this allowlist: it exposes nothing an approved employer couldn't already fetch via
+    # `GET /employers/scholars/{id}/headshot-url` — it just saves a round trip. Null when there
+    # is no headshot, or when signing failed (the card falls back to initials).
+    headshot_url: str | None = None

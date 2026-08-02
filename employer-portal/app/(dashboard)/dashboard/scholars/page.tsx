@@ -11,6 +11,7 @@ type ScholarView = {
   summary: string | null;
   skills: string[];
   career_interests: string[];
+  headshot_url: string | null;
 };
 
 function initials(name: string | null): string {
@@ -71,7 +72,19 @@ export default function ScholarDirectoryPage() {
             const tags = [...scholar.skills, ...scholar.career_interests].slice(0, 4);
             return (
               <div className="scholar-card" key={scholar.user_id}>
-                <div className="scholar-avatar">{initials(scholar.display_name)}</div>
+                {scholar.headshot_url ? (
+                  /* Short-lived signed URL, not a static asset — next/image would need
+                     remote-host config for a URL that expires in minutes. */
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={scholar.headshot_url}
+                    alt={scholar.display_name || 'Scholar headshot'}
+                    className="scholar-avatar"
+                    style={{ objectFit: 'cover' }}
+                  />
+                ) : (
+                  <div className="scholar-avatar">{initials(scholar.display_name)}</div>
+                )}
                 <div className="scholar-name">{scholar.display_name || 'Presidential Scholar'}</div>
                 {scholar.summary ? <div className="scholar-meta">{scholar.summary}</div> : null}
                 {tags.length > 0 ? (

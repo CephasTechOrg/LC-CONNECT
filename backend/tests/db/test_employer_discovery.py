@@ -231,6 +231,10 @@ def test_employer_scholar_view_field_allowlist():
         'career_interests',
         'has_headshot',
         'has_resume',
+        # Reviewed addition: a short-lived signed headshot URL so the portal renders the face
+        # inline. Exposes nothing an approved employer couldn't already fetch via the dedicated
+        # headshot-url endpoint — it only saves a round trip.
+        'headshot_url',
     }
     forbidden = {'bio', 'major', 'class_year', 'avatar_url', 'interests', 'pronouns', 'country_state', 'campus'}
     assert forbidden.isdisjoint(EmployerScholarView.model_fields.keys())

@@ -17,11 +17,12 @@ from app.features.employers.schema import (
     OpportunitySubmissionRead,
 )
 from app.features.scholars.schema import SignedUrlRead
+from app.shared.storage import storage_service
 
 router = APIRouter(prefix='/employers', tags=['employers'])
 
 
-def _scholar_view(profile, social_profile) -> EmployerScholarView:
+def _scholar_view(profile, social_profile, *, headshot_url: str | None = None) -> EmployerScholarView:
     return EmployerScholarView(
         user_id=profile.user_id,
         display_name=social_profile.display_name,
@@ -32,6 +33,7 @@ def _scholar_view(profile, social_profile) -> EmployerScholarView:
         career_interests=profile.career_interests,
         has_headshot=profile.headshot_path is not None,
         has_resume=profile.resume_path is not None,
+        headshot_url=headshot_url,
     )
 
 
@@ -98,7 +100,15 @@ async def list_eligible_scholars(
     """Only scholars with active Presidential Scholars membership **and** current
     employer-visibility consent — re-evaluated on every call, never cached."""
     rows = await discovery.list_eligible_scholars(db)
-    return [_scholar_view(profile, social_profile) for profile, social_profile in rows]
+    # Sign every headshot in ONE call so the directory can show faces without N round trips.
+    signed = storage_service.scholar_signed_urls(
+        [p.headshot_path for p, _ in rows if p.headshot_path],
+        expires_in=settings.scholar_signed_url_expires_seconds,
+    )
+    return [
+        _scholar_view(profile, social_profile, headshot_url=signed.get(profile.headshot_path or ''))
+        for profile, social_profile in rows
+    ]
 
 
 @router.get('/scholars/{user_id}', response_model=EmployerScholarView)
@@ -109,7 +119,15 @@ async def get_eligible_scholar(
 ) -> EmployerScholarView:
     profile, social_profile = await discovery.get_eligible_scholar_or_404(db, user_id)
     await discovery.record_view(db, employer_account_id=ctx.account.id, scholar_user_id=user_id)
-    return _scholar_view(profile, social_profile)
+    # Signed inline so the profile renders the face immediately — best-effort, since a signing
+    # hiccup should degrade to initials, never 500 a profile the employer is allowed to see.
+    headshot_url = None
+    if profile.headshot_path:
+        signed = storage_service.scholar_signed_urls(
+            [profile.headshot_path], expires_in=settings.scholar_signed_url_expires_seconds
+        )
+        headshot_url = signed.get(profile.headshot_path)
+    return _scholar_view(profile, social_profile, headshot_url=headshot_url)
 
 
 @router.get('/scholars/{user_id}/headshot-url', response_model=SignedUrlRead)

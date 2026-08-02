@@ -3083,6 +3083,17 @@
             "title": "Has Resume",
             "type": "boolean"
           },
+          "headshot_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Headshot Url"
+          },
           "linkedin_url": {
             "anyOf": [
               {

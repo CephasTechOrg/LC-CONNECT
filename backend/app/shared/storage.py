@@ -132,6 +132,32 @@ class SupabaseStorageService:
             raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='Could not generate a signed URL')
         return url
 
+    def scholar_signed_urls(self, paths: list[str], *, expires_in: int) -> dict[str, str]:
+        """Sign many object paths in ONE Supabase call — `{path: url}`, missing entries omitted.
+
+        Used by the employer scholar directory so showing N faces costs one round trip instead of
+        N. Best-effort by design: a signing failure degrades that card to initials rather than
+        failing the whole directory listing.
+        """
+        if self.client is None or not paths:
+            return {}
+        try:
+            results = self.client.storage.from_(settings.supabase_scholar_bucket).create_signed_urls(
+                paths, expires_in
+            )
+        except Exception:  # noqa: BLE001 — a thumbnail is cosmetic; never break the listing for it
+            logger.exception('storage: batch signing failed for %d path(s)', len(paths))
+            return {}
+        signed: dict[str, str] = {}
+        for item in results:
+            url = item.get('signedURL') or item.get('signedUrl')
+            # Supabase returns the path with a leading slash on some versions; normalise so the
+            # caller can look up by the exact path it passed in.
+            raw_path = (item.get('path') or '').lstrip('/')
+            if url and raw_path:
+                signed[raw_path] = url
+        return signed
+
     def ping(self) -> bool:
         """A cheap, real reachability check for the admin dashboard's System Status strip — lists
         buckets (no path/bucket-name assumptions needed), never a cached/assumed value."""
