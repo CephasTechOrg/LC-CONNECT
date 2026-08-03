@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { OpsEmpty, OpsLoading } from '@/components/ops-states';
 import { apiFetch, toUserMessage } from '@/lib/api/client';
 import { getAccessToken } from '@/lib/auth/session';
 
@@ -29,8 +30,10 @@ function initials(name: string | null, email: string): string {
 export default function PositionsPage() {
   const [tab, setTab] = useState<Tab>('pending');
   const [items, setItems] = useState<Position[]>([]);
-  const [status, setStatus] = useState('Loading…');
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [status, setStatus] = useState('');
+  const [flash, setFlash] = useState<string | null>(null);
   const [q, setQ] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [drawer, setDrawer] = useState<Position | null>(null);
@@ -38,8 +41,8 @@ export default function PositionsPage() {
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async (which: Tab) => {
+    setLoading(true);
     setError(false);
-    setStatus('Loading…');
     try {
       const token = await getAccessToken();
       if (!token) throw new Error('Not signed in');
@@ -49,16 +52,11 @@ export default function PositionsPage() {
           : '/admin/campus-positions?status=verified';
       const data = await apiFetch<Position[]>(path, token);
       setItems(data);
-      setStatus(
-        data.length
-          ? `${data.length} ${which}`
-          : which === 'pending'
-            ? 'No positions waiting for review.'
-            : 'No verified positions.',
-      );
     } catch (err) {
       setError(true);
       setStatus(toUserMessage(err, 'Could not load this page. Please refresh and try again.'));
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -103,7 +101,7 @@ export default function PositionsPage() {
             : JSON.stringify({ review_note: note.trim() || null, archive_posts: false });
       await apiFetch(`/admin/campus-positions/${item.id}/${action}`, token, { method: 'POST', body });
       setError(false);
-      setStatus(`${action[0].toUpperCase() + action.slice(1)}d ${label}.`);
+      setFlash(`${action[0].toUpperCase() + action.slice(1)}d ${label}.`);
       setDrawer(null);
       setNote('');
       await load(tab);
@@ -158,14 +156,30 @@ export default function PositionsPage() {
           <span className="ops-count">
             {tab === 'pending' ? `${filtered.length} pending` : `${filtered.length} verified`}
           </span>
-          <button className="ops-btn" type="button" onClick={() => void load(tab)}>Refresh</button>
+          <button className="ops-btn" type="button" disabled={loading} onClick={() => void load(tab)}>Refresh</button>
         </div>
 
+        {flash ? <p className="ops-flash">{flash}</p> : null}
+
         <div className="ops-table-wrap table-scroll">
-          {filtered.length === 0 ? (
-            <div className="ops-empty">
-              {tab === 'pending' ? 'Nothing to review.' : 'No verified positions.'}
-            </div>
+          {loading ? (
+            <OpsLoading label="Loading positions…" />
+          ) : filtered.length === 0 ? (
+            <OpsEmpty
+              title={
+                items.length === 0
+                  ? tab === 'pending'
+                    ? 'Nothing to review'
+                    : 'No verified positions'
+                  : 'No matches'
+              }
+            >
+              {items.length === 0
+                ? tab === 'pending'
+                  ? 'No positions are waiting for review.'
+                  : 'No verified positions yet.'
+                : 'Try adjusting your search or category filter.'}
+            </OpsEmpty>
           ) : (
             <table className="ops-table">
               <thead>
@@ -237,7 +251,6 @@ export default function PositionsPage() {
             </table>
           )}
         </div>
-        {!error ? <p className="status" style={{ marginTop: 12 }}>{status}</p> : null}
       </div>
 
       {drawer ? (

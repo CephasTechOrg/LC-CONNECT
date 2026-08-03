@@ -1116,20 +1116,23 @@ table.rows tr:last-child td {
 }
 
 .coming-soon {
-  display: grid;
-  place-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   text-align: center;
-  gap: 8px;
-  min-height: 280px;
-  padding: 40px 24px;
+  gap: 10px;
+  min-height: min(420px, 70vh);
+  padding: 64px 40px;
   background: var(--surface);
-  border: 1px dashed var(--border);
+  border: 1px solid #eeebf3;
   border-radius: 20px;
+  box-shadow: 0 14px 34px -26px rgba(52, 38, 104, 0.5);
 }
 
 .coming-soon-badge {
   display: inline-flex;
-  padding: 4px 10px;
+  padding: 5px 12px;
   border-radius: 999px;
   background: var(--primary-soft);
   color: var(--primary);
@@ -1141,17 +1144,25 @@ table.rows tr:last-child td {
 
 .coming-soon h2 {
   margin: 0;
-  font-size: 18px;
-  font-weight: 700;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
   color: var(--text);
 }
 
 .coming-soon p {
   margin: 0;
-  max-width: 360px;
+  max-width: 440px;
   color: var(--muted);
   font-size: 14px;
   line-height: 1.5;
+}
+
+@media (max-width: 560px) {
+  .coming-soon {
+    min-height: 280px;
+    padding: 40px 20px;
+  }
 }
 
 .drawer-backdrop {

@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { OpsEmpty, OpsLoading } from '@/components/ops-states';
 import { apiFetch, toUserMessage } from '@/lib/api/client';
 import { getAccessToken } from '@/lib/auth/session';
 
@@ -45,8 +46,10 @@ export default function ScholarsPage() {
   const [items, setItems] = useState<ProgramMembership[]>([]);
   const [activeCount, setActiveCount] = useState(0);
   const [revokedCount, setRevokedCount] = useState(0);
-  const [status, setStatus] = useState('Loading…');
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [status, setStatus] = useState('');
+  const [flash, setFlash] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
   const [query, setQuery] = useState('');
@@ -66,8 +69,8 @@ export default function ScholarsPage() {
   }, []);
 
   const load = useCallback(async (which: Tab) => {
+    setLoading(true);
     setError(false);
-    setStatus('Loading…');
     try {
       const token = await getAccessToken();
       if (!token) throw new Error('Not signed in');
@@ -77,10 +80,11 @@ export default function ScholarsPage() {
       );
       setItems(data);
       await loadCounts(token);
-      setStatus(data.length ? `${data.length} ${which} scholar(s)` : `No ${which} scholars.`);
     } catch (err) {
       setError(true);
       setStatus(toUserMessage(err, 'Could not load this page. Please refresh and try again.'));
+    } finally {
+      setLoading(false);
     }
   }, [loadCounts]);
 
@@ -133,7 +137,7 @@ export default function ScholarsPage() {
         method: 'POST',
         body: JSON.stringify({ email: student.email }),
       });
-      setStatus(`Verified ${student.display_name || student.email} as a Presidential Scholar.`);
+      setFlash(`Verified ${student.display_name || student.email} as a Presidential Scholar.`);
       setQuery('');
       await load(tab);
     } catch (err) {
@@ -156,7 +160,7 @@ export default function ScholarsPage() {
         body: JSON.stringify({ reason: null }),
       });
       setError(false);
-      setStatus(`Revoked ${label}.`);
+      setFlash(`Revoked ${label}.`);
       await load(tab);
     } catch (err) {
       setError(true);
@@ -226,7 +230,11 @@ export default function ScholarsPage() {
             <span className="ops-count">{searching ? 'Searching…' : `${candidates.length} students`}</span>
           </div>
           {searchNote ? <p className="status">{searchNote}</p> : null}
-          {candidates.length > 0 ? (
+          {searching ? (
+            <div className="ops-table-wrap table-scroll">
+              <OpsLoading label="Searching students…" />
+            </div>
+          ) : candidates.length > 0 ? (
             <div className="ops-table-wrap table-scroll">
               <table className="ops-table">
                 <thead>
@@ -292,12 +300,20 @@ export default function ScholarsPage() {
               Revoked{revokedCount ? ` · ${revokedCount}` : ''}
             </button>
           </div>
-          <button className="ops-btn" type="button" onClick={() => void load(tab)}>Refresh</button>
+          <button className="ops-btn" type="button" disabled={loading} onClick={() => void load(tab)}>Refresh</button>
         </div>
 
+        {flash ? <p className="ops-flash">{flash}</p> : null}
+
         <div className="ops-table-wrap table-scroll">
-          {items.length === 0 ? (
-            <div className="ops-empty">{tab === 'active' ? 'No active scholars.' : 'No revoked scholars.'}</div>
+          {loading ? (
+            <OpsLoading label="Loading scholars…" />
+          ) : items.length === 0 ? (
+            <OpsEmpty title={tab === 'active' ? 'No active scholars' : 'No revoked scholars'}>
+              {tab === 'active'
+                ? 'No students have been verified as Presidential Scholars yet.'
+                : 'No revoked scholar memberships.'}
+            </OpsEmpty>
           ) : (
             <table className="ops-table">
               <thead>
@@ -348,7 +364,6 @@ export default function ScholarsPage() {
             </table>
           )}
         </div>
-        {!error ? <p className="status" style={{ marginTop: 12 }}>{status}</p> : null}
       </div>
     </>
   );

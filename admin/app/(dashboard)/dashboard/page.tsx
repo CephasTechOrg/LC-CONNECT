@@ -84,7 +84,7 @@ export default function OverviewPage() {
     status.api_gateway === 'operational';
 
   return (
-    <div className="dash">
+    <div className="dash" aria-busy={loading}>
       {error ? <div className="error-banner">{error}</div> : null}
 
       <div className="dash-layout">

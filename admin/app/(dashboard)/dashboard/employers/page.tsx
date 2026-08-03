@@ -2,6 +2,7 @@
 
 import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
+import { OpsEmpty, OpsLoading } from '@/components/ops-states';
 import { apiFetch, toUserMessage } from '@/lib/api/client';
 import { getAccessToken } from '@/lib/auth/session';
 
@@ -44,40 +45,45 @@ export default function EmployersPage() {
   const [oppTab, setOppTab] = useState<StatusTab>('pending');
   const [orgs, setOrgs] = useState<EmployerOrganization[]>([]);
   const [opps, setOpps] = useState<OpportunitySubmission[]>([]);
-  const [status, setStatus] = useState('Loading…');
+  const [orgLoading, setOrgLoading] = useState(true);
+  const [oppLoading, setOppLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [status, setStatus] = useState('');
+  const [flash, setFlash] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [orgDrawer, setOrgDrawer] = useState<EmployerOrganization | null>(null);
   const [oppDrawer, setOppDrawer] = useState<OpportunitySubmission | null>(null);
   const [note, setNote] = useState('');
 
   const loadOrgs = useCallback(async (which: StatusTab) => {
+    setOrgLoading(true);
     setError(false);
-    setStatus('Loading…');
     try {
       const token = await getAccessToken();
       if (!token) throw new Error('Not signed in');
       const data = await apiFetch<EmployerOrganization[]>(`/admin/employers?status=${which}`, token);
       setOrgs(data);
-      setStatus(data.length ? `${data.length} ${which} organization(s)` : `No ${which} organizations.`);
     } catch (err) {
       setError(true);
       setStatus(toUserMessage(err, 'Could not load this page. Please refresh and try again.'));
+    } finally {
+      setOrgLoading(false);
     }
   }, []);
 
   const loadOpps = useCallback(async (which: StatusTab) => {
+    setOppLoading(true);
     setError(false);
-    setStatus('Loading…');
     try {
       const token = await getAccessToken();
       if (!token) throw new Error('Not signed in');
       const data = await apiFetch<OpportunitySubmission[]>(`/admin/employers/opportunities?status=${which}`, token);
       setOpps(data);
-      setStatus(data.length ? `${data.length} ${which} submission(s)` : `No ${which} submissions.`);
     } catch (err) {
       setError(true);
       setStatus(toUserMessage(err, 'Could not load this page. Please refresh and try again.'));
+    } finally {
+      setOppLoading(false);
     }
   }, []);
 
@@ -100,7 +106,7 @@ export default function EmployersPage() {
       const body = action === 'reject' ? JSON.stringify({ reason: note.trim() || null }) : undefined;
       await apiFetch(`/admin/employers/${item.id}/${action}`, token, { method: 'POST', body });
       setError(false);
-      setStatus(`${action[0].toUpperCase() + action.slice(1)}d ${item.name}.`);
+      setFlash(`${action[0].toUpperCase() + action.slice(1)}d ${item.name}.`);
       setOrgDrawer(null);
       setNote('');
       await loadOrgs(orgTab);
@@ -119,7 +125,7 @@ export default function EmployersPage() {
       if (!token) return;
       await apiFetch(`/admin/employers/${item.id}/resend-invite`, token, { method: 'POST' });
       setError(false);
-      setStatus(`Resent invite to ${item.name}.`);
+      setFlash(`Resent invite to ${item.name}.`);
     } catch (err) {
       setError(true);
       setStatus(toUserMessage(err, 'Could not resend the invitation. Please try again.'));
@@ -141,7 +147,7 @@ export default function EmployersPage() {
       const body = action === 'reject' ? JSON.stringify({ reason: note.trim() }) : undefined;
       await apiFetch(`/admin/employers/opportunities/${item.id}/${action}`, token, { method: 'POST', body });
       setError(false);
-      setStatus(`${action[0].toUpperCase() + action.slice(1)}d ${item.title}.`);
+      setFlash(`${action[0].toUpperCase() + action.slice(1)}d ${item.title}.`);
       setOppDrawer(null);
       setNote('');
       await loadOpps(oppTab);
@@ -152,6 +158,8 @@ export default function EmployersPage() {
       setBusy(null);
     }
   }
+
+  const tableLoading = mainTab === 'organizations' ? orgLoading : oppLoading;
 
   return (
     <>
@@ -200,16 +208,23 @@ export default function EmployersPage() {
           <button
             className="ops-btn"
             type="button"
+            disabled={tableLoading}
             onClick={() => (mainTab === 'organizations' ? void loadOrgs(orgTab) : void loadOpps(oppTab))}
           >
             Refresh
           </button>
         </div>
 
+        {flash ? <p className="ops-flash">{flash}</p> : null}
+
         {mainTab === 'organizations' ? (
           <div className="ops-table-wrap table-scroll">
-            {orgs.length === 0 ? (
-              <div className="ops-empty">{`No ${orgTab} organizations.`}</div>
+            {orgLoading ? (
+              <OpsLoading label="Loading organizations…" />
+            ) : orgs.length === 0 ? (
+              <OpsEmpty title={`No ${orgTab} organizations`}>
+                {`No ${orgTab} employer organizations.`}
+              </OpsEmpty>
             ) : (
               <table className="ops-table">
                 <thead>
@@ -273,8 +288,12 @@ export default function EmployersPage() {
           </div>
         ) : (
           <div className="ops-table-wrap table-scroll">
-            {opps.length === 0 ? (
-              <div className="ops-empty">{`No ${oppTab} submissions.`}</div>
+            {oppLoading ? (
+              <OpsLoading label="Loading opportunities…" />
+            ) : opps.length === 0 ? (
+              <OpsEmpty title={`No ${oppTab} submissions`}>
+                {`No ${oppTab} opportunity submissions.`}
+              </OpsEmpty>
             ) : (
               <table className="ops-table">
                 <thead>
@@ -333,7 +352,6 @@ export default function EmployersPage() {
             )}
           </div>
         )}
-        {!error ? <p className="status" style={{ marginTop: 12 }}>{status}</p> : null}
       </div>
 
       {orgDrawer ? (

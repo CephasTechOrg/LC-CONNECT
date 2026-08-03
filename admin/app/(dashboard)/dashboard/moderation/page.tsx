@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { OpsEmpty, OpsLoading } from '@/components/ops-states';
 import { apiFetch, toUserMessage } from '@/lib/api/client';
 import { getAccessToken } from '@/lib/auth/session';
 
@@ -60,16 +61,18 @@ function relativeWhen(iso: string): string {
 export default function ModerationPage() {
   const [reports, setReports] = useState<Report[]>([]);
   const [users, setUsers] = useState<AdminUser[]>([]);
-  const [status, setStatus] = useState('Loading…');
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [status, setStatus] = useState('');
+  const [flash, setFlash] = useState<string | null>(null);
   const [q, setQ] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
   const [selected, setSelected] = useState<Report | null>(null);
 
   const load = useCallback(async () => {
+    setLoading(true);
     setError(false);
-    setStatus('Loading…');
     try {
       const token = await getAccessToken();
       if (!token) throw new Error('Not signed in');
@@ -79,11 +82,11 @@ export default function ModerationPage() {
       ]);
       setReports(r);
       setUsers(u);
-      const open = r.filter((x) => x.status === 'open').length;
-      setStatus(`${open} open report${open === 1 ? '' : 's'}`);
     } catch (err) {
       setError(true);
       setStatus(toUserMessage(err, 'Could not load this page. Please refresh and try again.'));
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -129,7 +132,7 @@ export default function ModerationPage() {
         body: JSON.stringify({ reason: reason?.trim() || null }),
       });
       setError(false);
-      setStatus(`Suspended ${label}.`);
+      setFlash(`Suspended ${label}.`);
       setSelected(null);
       await load();
     } catch (err) {
@@ -145,7 +148,7 @@ export default function ModerationPage() {
       if (!token) return;
       await apiFetch(`/admin/activities/${activityId}/remove`, token, { method: 'POST' });
       setError(false);
-      setStatus('Activity taken down.');
+      setFlash('Activity taken down.');
       setSelected(null);
       await load();
     } catch (err) {
@@ -193,12 +196,20 @@ export default function ModerationPage() {
             <option value="Group">Group</option>
           </select>
           <span className="ops-count">{filtered.length} shown</span>
-          <button className="ops-btn" type="button" onClick={() => void load()}>Refresh</button>
+          <button className="ops-btn" type="button" disabled={loading} onClick={() => void load()}>Refresh</button>
         </div>
 
+        {flash ? <p className="ops-flash">{flash}</p> : null}
+
         <div className="ops-table-wrap table-scroll">
-          {filtered.length === 0 ? (
-            <div className="ops-empty">No reports.</div>
+          {loading ? (
+            <OpsLoading label="Loading reports…" />
+          ) : filtered.length === 0 ? (
+            <OpsEmpty title={reports.length === 0 ? 'No reports' : 'No matches'}>
+              {reports.length === 0
+                ? 'No moderation reports have been submitted yet.'
+                : 'Try adjusting your search or filters.'}
+            </OpsEmpty>
           ) : (
             <table className="ops-table">
               <thead>
@@ -244,7 +255,6 @@ export default function ModerationPage() {
             </table>
           )}
         </div>
-        {!error ? <p className="status" style={{ marginTop: 12 }}>{status}</p> : null}
       </div>
 
       {selected ? (

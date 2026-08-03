@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
+import { OpsEmpty, OpsLoading } from '@/components/ops-states';
 import { apiFetch, toUserMessage } from '@/lib/api/client';
 import { getAccessToken } from '@/lib/auth/session';
 
@@ -52,8 +53,10 @@ function when(iso: string): string {
 export default function AdminsPage() {
   const [items, setItems] = useState<AdminMembership[]>([]);
   const [myScopes, setMyScopes] = useState<string[]>([]);
-  const [status, setStatus] = useState('Loading…');
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [status, setStatus] = useState('');
+  const [flash, setFlash] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [showInvite, setShowInvite] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
@@ -61,8 +64,8 @@ export default function AdminsPage() {
   const [inviting, setInviting] = useState(false);
 
   const load = useCallback(async () => {
+    setLoading(true);
     setError(false);
-    setStatus('Loading…');
     try {
       const token = await getAccessToken();
       if (!token) throw new Error('Not signed in');
@@ -72,10 +75,11 @@ export default function AdminsPage() {
       ]);
       setItems(roster);
       setMyScopes(scopes.scopes);
-      setStatus(roster.length ? `${roster.length} admin(s)` : 'No admins yet.');
     } catch (err) {
       setError(true);
       setStatus(toUserMessage(err, 'Could not load this page. Please refresh and try again.'));
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -103,7 +107,7 @@ export default function AdminsPage() {
         method: 'POST',
         body: JSON.stringify({ email: inviteEmail.trim().toLowerCase(), role: inviteRole }),
       });
-      setStatus(`Invited ${inviteEmail.trim()}.`);
+      setFlash(`Invited ${inviteEmail.trim()}.`);
       setInviteEmail('');
       setInviteRole('');
       setShowInvite(false);
@@ -125,7 +129,7 @@ export default function AdminsPage() {
       if (!token) return;
       await apiFetch(`/admin/admins/${item.id}/revoke`, token, { method: 'POST' });
       setError(false);
-      setStatus(`Revoked ${label}.`);
+      setFlash(`Revoked ${label}.`);
       await load();
     } catch (err) {
       setError(true);
@@ -143,7 +147,7 @@ export default function AdminsPage() {
       if (!token) return;
       await apiFetch(`/admin/admins/${item.id}/resend-invite`, token, { method: 'POST' });
       setError(false);
-      setStatus(`Resent invite to ${label}.`);
+      setFlash(`Resent invite to ${label}.`);
     } catch (err) {
       setError(true);
       setStatus(toUserMessage(err, 'Could not resend the invitation. Please try again.'));
@@ -239,11 +243,14 @@ export default function AdminsPage() {
 
         <div className="ops-toolbar" style={{ marginTop: 0 }}>
           <span className="ops-count" style={{ marginLeft: 0 }}>Admin roster</span>
-          <button className="ops-btn" type="button" onClick={() => void load()}>Refresh</button>
+          <button className="ops-btn" type="button" disabled={loading} onClick={() => void load()}>Refresh</button>
         </div>
+        {flash ? <p className="ops-flash">{flash}</p> : null}
         <div className="ops-table-wrap table-scroll">
-          {items.length === 0 ? (
-            <div className="ops-empty">No admins yet.</div>
+          {loading ? (
+            <OpsLoading label="Loading admins…" />
+          ) : items.length === 0 ? (
+            <OpsEmpty title="No admins yet">Invite an administrator to get started.</OpsEmpty>
           ) : (
             <table className="ops-table">
               <thead>
@@ -328,8 +335,6 @@ export default function AdminsPage() {
             ))}
           </div>
         </section>
-
-        {!error ? <p className="status" style={{ marginTop: 12 }}>{status}</p> : null}
       </div>
     </>
   );

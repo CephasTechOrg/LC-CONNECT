@@ -1,6 +1,7 @@
 'use client';
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { OpsEmpty, OpsLoading } from '@/components/ops-states';
 import { apiFetch, toUserMessage } from '@/lib/api/client';
 import { getAccessToken } from '@/lib/auth/session';
 
@@ -34,8 +35,10 @@ function labelCat(c: string): string {
 
 export default function ResourcesPanel() {
   const [items, setItems] = useState<Resource[]>([]);
-  const [status, setStatus] = useState('Loading resources…');
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [status, setStatus] = useState('');
+  const [flash, setFlash] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [category, setCategory] = useState('advising');
@@ -76,17 +79,18 @@ export default function ResourcesPanel() {
   }
 
   const load = useCallback(async () => {
+    setLoading(true);
     setError(false);
-    setStatus('Loading resources…');
     try {
       const token = await getAccessToken();
       if (!token) throw new Error('Not signed in');
       const data = await apiFetch<Resource[]>('/admin/campus-resources', token);
       setItems(data);
-      setStatus(`${data.filter((r) => r.is_active).length} active resources`);
     } catch (err) {
       setError(true);
       setStatus(toUserMessage(err, 'Could not load this page. Please refresh and try again.'));
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -129,13 +133,13 @@ export default function ResourcesPanel() {
           method: 'PATCH',
           body: JSON.stringify(fields),
         });
-        setStatus('Changes saved.');
+        setFlash('Changes saved.');
       } else {
         await apiFetch('/admin/campus-resources', token, {
           method: 'POST',
           body: JSON.stringify({ ...fields, sort_order: 0, is_active: true }),
         });
-        setStatus('Resource created.');
+        setFlash('Resource created.');
       }
       resetForm();
       await load();
@@ -155,7 +159,7 @@ export default function ResourcesPanel() {
       const token = await getAccessToken();
       if (!token) throw new Error('Not signed in');
       await doIt(token);
-      setStatus(label);
+      setFlash(label);
       if (editingId === id) resetForm();
       await load();
     } catch (err) {
@@ -205,7 +209,7 @@ export default function ResourcesPanel() {
           <option value="inactive">Inactive</option>
         </select>
         <span className="ops-count">{filtered.length} shown</span>
-        <button className="ops-btn" type="button" onClick={() => void load()}>Refresh</button>
+        <button className="ops-btn" type="button" disabled={loading} onClick={() => void load()}>Refresh</button>
         <button
           className="ops-btn primary"
           type="button"
@@ -219,6 +223,8 @@ export default function ResourcesPanel() {
       </div>
 
       {error ? <div className="error-banner">{status}</div> : null}
+
+      {flash ? <p className="ops-flash">{flash}</p> : null}
 
       {showForm ? (
         <form className="ops-form" onSubmit={submitForm}>
@@ -271,8 +277,14 @@ export default function ResourcesPanel() {
       ) : null}
 
       <div className="ops-table-wrap table-scroll">
-        {filtered.length === 0 ? (
-          <div className="ops-empty">No resources match these filters.</div>
+        {loading ? (
+          <OpsLoading label="Loading resources…" />
+        ) : filtered.length === 0 ? (
+          <OpsEmpty title={items.length === 0 ? 'No resources' : 'No matches'}>
+            {items.length === 0
+              ? 'Add campus resources for students to find in Campus Hub.'
+              : 'No resources match these filters.'}
+          </OpsEmpty>
         ) : (
           <table className="ops-table">
             <thead>
@@ -317,7 +329,6 @@ export default function ResourcesPanel() {
           </table>
         )}
       </div>
-      {!error ? <p className="status" style={{ marginTop: 12 }}>{status}</p> : null}
     </>
   );
 }

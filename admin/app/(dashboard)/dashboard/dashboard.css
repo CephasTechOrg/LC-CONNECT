@@ -4,6 +4,12 @@
   padding-bottom: 8px;
 }
 
+.dash[aria-busy='true'] .dash-kpi-value,
+.dash[aria-busy='true'] .dash-approval-count,
+.dash[aria-busy='true'] .dash-attention-value {
+  opacity: 0.45;
+}
+
 .dash-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 424px;

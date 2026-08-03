@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { OpsEmpty, OpsLoading } from '@/components/ops-states';
 import { apiFetch, toUserMessage } from '@/lib/api/client';
 import { getAccessToken } from '@/lib/auth/session';
 
@@ -28,21 +29,22 @@ export default function UsersPage() {
   const [roleFilter, setRoleFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [verifyFilter, setVerifyFilter] = useState('all');
-  const [status, setStatus] = useState('Loading…');
-  const [error, setError] = useState(false);
+  const [flash, setFlash] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    setError(false);
-    setStatus('Loading…');
+    setError(null);
+    setLoading(true);
     try {
       const token = await getAccessToken();
       if (!token) throw new Error('Not signed in');
       const data = await apiFetch<AdminUser[]>('/admin/users', token);
       setUsers(data);
-      setStatus(`${data.length.toLocaleString()} users`);
     } catch (err) {
-      setError(true);
-      setStatus(toUserMessage(err, 'Could not load this page. Please refresh and try again.'));
+      setError(toUserMessage(err, 'Could not load this page. Please refresh and try again.'));
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -59,12 +61,11 @@ export default function UsersPage() {
         method: 'POST',
         body: JSON.stringify({ reason: null }),
       });
-      setError(false);
-      setStatus(`Suspended ${label}.`);
+      setError(null);
+      setFlash(`Suspended ${label}.`);
       await load();
     } catch (err) {
-      setError(true);
-      setStatus(toUserMessage(err, 'Could not suspend this account. Please try again.'));
+      setError(toUserMessage(err, 'Could not suspend this account. Please try again.'));
     }
   }
 
@@ -73,12 +74,11 @@ export default function UsersPage() {
       const token = await getAccessToken();
       if (!token) return;
       await apiFetch(`/admin/users/${userId}/reactivate`, token, { method: 'POST' });
-      setError(false);
-      setStatus(`Reactivated ${label}.`);
+      setError(null);
+      setFlash(`Reactivated ${label}.`);
       await load();
     } catch (err) {
-      setError(true);
-      setStatus(toUserMessage(err, 'Could not reactivate this account. Please try again.'));
+      setError(toUserMessage(err, 'Could not reactivate this account. Please try again.'));
     }
   }
 
@@ -105,7 +105,7 @@ export default function UsersPage() {
         </div>
       </header>
       <div className="content" style={{ paddingTop: 8 }}>
-        {error ? <div className="error-banner">{status}</div> : null}
+        {error ? <div className="error-banner">{error}</div> : null}
 
         <div className="ops-toolbar">
           <div className="ops-search">
@@ -132,13 +132,23 @@ export default function UsersPage() {
             <option value="verified">Verified</option>
             <option value="unverified">Unverified</option>
           </select>
-          <span className="ops-count">{filtered.length.toLocaleString()} of {users.length.toLocaleString()} users</span>
-          <button className="ops-btn" type="button" onClick={() => void load()}>Refresh</button>
+          <span className="ops-count">
+            {loading ? '…' : `${filtered.length.toLocaleString()} of ${users.length.toLocaleString()} users`}
+          </span>
+          <button className="ops-btn" type="button" disabled={loading} onClick={() => void load()}>
+            Refresh
+          </button>
         </div>
 
         <div className="ops-table-wrap table-scroll">
-          {filtered.length === 0 ? (
-            <div className="ops-empty">No users match these filters.</div>
+          {loading ? (
+            <OpsLoading label="Loading users…" />
+          ) : filtered.length === 0 ? (
+            <OpsEmpty title="No users found">
+              {users.length === 0
+                ? 'No accounts have signed in yet.'
+                : 'Try clearing filters or searching a different name or email.'}
+            </OpsEmpty>
           ) : (
             <table className="ops-table">
               <thead>
@@ -214,7 +224,7 @@ export default function UsersPage() {
             </table>
           )}
         </div>
-        {!error ? <p className="status" style={{ marginTop: 12 }}>{status}</p> : null}
+        {flash && !error ? <p className="ops-flash">{flash}</p> : null}
       </div>
     </>
   );
