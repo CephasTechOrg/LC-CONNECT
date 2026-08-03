@@ -66,7 +66,7 @@ class CampusHubScreen extends ConsumerWidget {
             children: [
               _HomeGreetingHeader(greeting: greeting),
               const SizedBox(height: 8),
-              const BlueprintBondCard(),
+              const BlueprintBondCard(style: BlueprintBondStyle.prompt),
               const _SpotlightCarousel(),
               const _QuickActionsRow(),
               const _PublisherCta(),

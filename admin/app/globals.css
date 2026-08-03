@@ -496,29 +496,7 @@ button {
   min-width: 0;
 }
 
-/* Page title blocks use .ops-top (see dashboard/ops.css). Legacy .topbar kept for any holdovers. */
-.topbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 16px;
-  padding: 8px 0 0;
-}
-
-.topbar h1 {
-  margin: 0;
-  font-size: 25px;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  color: var(--text);
-}
-
-.topbar p {
-  margin: 4px 0 0;
-  color: var(--muted);
-  font-size: 14px;
-}
-
+/* Page title blocks use .ops-top (see dashboard/ops.css). */
 .content {
   padding: 22px 0 28px;
 }

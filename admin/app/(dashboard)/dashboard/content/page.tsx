@@ -1,15 +1,23 @@
 'use client';
 
 import { useSearchParams } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import PostsPanel from './PostsPanel';
 import ResourcesPanel from './ResourcesPanel';
 
 type Tab = 'posts' | 'resources';
 
+function tabFromParams(value: string | null): Tab {
+  return value === 'resources' ? 'resources' : 'posts';
+}
+
 export default function ContentPage() {
   const searchParams = useSearchParams();
-  const [tab, setTab] = useState<Tab>(searchParams.get('tab') === 'resources' ? 'resources' : 'posts');
+  const [tab, setTab] = useState<Tab>(() => tabFromParams(searchParams.get('tab')));
+
+  useEffect(() => {
+    setTab(tabFromParams(searchParams.get('tab')));
+  }, [searchParams]);
 
   return (
     <>

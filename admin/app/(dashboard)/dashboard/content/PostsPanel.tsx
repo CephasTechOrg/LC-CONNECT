@@ -226,7 +226,9 @@ export default function PostsPanel() {
           <option value="published">Published</option>
           <option value="archived">Archived</option>
         </select>
-        <span className="ops-count">{filtered.length} of {items.length} posts</span>
+        <span className="ops-count">
+          {loading ? '…' : `${filtered.length} of ${items.length} posts`}
+        </span>
         <button className="ops-btn" type="button" disabled={loading} onClick={() => void load()}>Refresh</button>
         <button
           className="ops-btn primary"

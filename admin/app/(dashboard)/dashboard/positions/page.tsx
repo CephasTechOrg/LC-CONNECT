@@ -154,7 +154,11 @@ export default function PositionsPage() {
             ))}
           </select>
           <span className="ops-count">
-            {tab === 'pending' ? `${filtered.length} pending` : `${filtered.length} verified`}
+            {loading
+              ? '…'
+              : tab === 'pending'
+                ? `${filtered.length} pending`
+                : `${filtered.length} verified`}
           </span>
           <button className="ops-btn" type="button" disabled={loading} onClick={() => void load(tab)}>Refresh</button>
         </div>

@@ -95,6 +95,11 @@ export default function EmployersPage() {
     else void loadOpps(oppTab);
   }, [mainTab, orgTab, oppTab, loadOrgs, loadOpps]);
 
+  useEffect(() => {
+    const next = searchParams.get('tab') === 'opportunities' ? 'opportunities' : 'organizations';
+    setMainTab(next);
+  }, [searchParams]);
+
   const statusTab = mainTab === 'organizations' ? orgTab : oppTab;
   const setStatusTab = mainTab === 'organizations' ? setOrgTab : setOppTab;
 
@@ -203,7 +208,11 @@ export default function EmployersPage() {
             ))}
           </div>
           <span className="ops-count">
-            {mainTab === 'organizations' ? `${orgs.length} organizations` : `${opps.length} submissions`}
+            {tableLoading
+              ? '…'
+              : mainTab === 'organizations'
+                ? `${orgs.length} organizations`
+                : `${opps.length} submissions`}
           </span>
           <button
             className="ops-btn"

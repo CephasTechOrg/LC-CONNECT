@@ -208,7 +208,7 @@ export default function ResourcesPanel() {
           <option value="active">Active</option>
           <option value="inactive">Inactive</option>
         </select>
-        <span className="ops-count">{filtered.length} shown</span>
+        <span className="ops-count">{loading ? '…' : `${filtered.length} shown`}</span>
         <button className="ops-btn" type="button" disabled={loading} onClick={() => void load()}>Refresh</button>
         <button
           className="ops-btn primary"

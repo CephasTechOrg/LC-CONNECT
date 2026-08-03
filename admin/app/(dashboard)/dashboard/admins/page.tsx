@@ -186,7 +186,7 @@ export default function AdminsPage() {
               </svg>
             </div>
             <div>
-              <div className="dash-kpi-value">{items.length}</div>
+              <div className="dash-kpi-value">{loading ? '—' : items.length}</div>
               <div className="dash-kpi-title">Total administrators</div>
               <div className="dash-kpi-sub">All seats on roster</div>
             </div>
@@ -198,7 +198,7 @@ export default function AdminsPage() {
               </svg>
             </div>
             <div>
-              <div className="dash-kpi-value">{activeCount}</div>
+              <div className="dash-kpi-value">{loading ? '—' : activeCount}</div>
               <div className="dash-kpi-title">Active memberships</div>
               <div className="dash-kpi-sub">Currently granted access</div>
             </div>

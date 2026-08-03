@@ -185,12 +185,10 @@ class _BlueprintBondScreenState extends ConsumerState<BlueprintBondScreen> {
           return ListView(
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
             children: [
-              Text(
-                'This professional extension is only ever shown to approved employers once you consent — '
-                'it never appears on your regular social profile.',
-                style: GoogleFonts.dmSans(fontSize: 12.5, color: AppColors.textMuted, height: 1.4),
-              ),
-              const SizedBox(height: 20),
+              const _PrivacyNote(),
+              const SizedBox(height: 22),
+              const _SectionLabel('Documents'),
+              const SizedBox(height: 10),
               _FileRow(
                 label: 'Professional headshot',
                 hasFile: profile.hasHeadshot,
@@ -205,13 +203,11 @@ class _BlueprintBondScreenState extends ConsumerState<BlueprintBondScreen> {
                 onUpload: _pickAndUploadResume,
                 onView: profile.hasResume ? _openResume : null,
               ),
-              const SizedBox(height: 20),
-              _Field(label: 'LinkedIn URL', controller: _linkedinCtrl),
-              const SizedBox(height: 14),
-              _Field(label: 'Handshake URL', controller: _handshakeCtrl),
-              const SizedBox(height: 14),
+              const SizedBox(height: 24),
+              const _SectionLabel('About you'),
+              const SizedBox(height: 12),
               _Field(label: 'Professional summary', controller: _summaryCtrl, maxLines: 4),
-              const SizedBox(height: 20),
+              const SizedBox(height: 18),
               _TagInput(
                 label: 'Skills',
                 controller: _skillCtrl,
@@ -219,7 +215,7 @@ class _BlueprintBondScreenState extends ConsumerState<BlueprintBondScreen> {
                 onAdd: () => _addTag(_skillCtrl, _skills),
                 onRemove: (t) => setState(() => _skills.remove(t)),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 18),
               _TagInput(
                 label: 'Career interests',
                 controller: _careerCtrl,
@@ -228,6 +224,12 @@ class _BlueprintBondScreenState extends ConsumerState<BlueprintBondScreen> {
                 onRemove: (t) => setState(() => _careerInterests.remove(t)),
               ),
               const SizedBox(height: 24),
+              const _SectionLabel('Links'),
+              const SizedBox(height: 12),
+              _Field(label: 'LinkedIn URL', controller: _linkedinCtrl),
+              const SizedBox(height: 14),
+              _Field(label: 'Handshake URL', controller: _handshakeCtrl),
+              const SizedBox(height: 26),
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
@@ -241,10 +243,10 @@ class _BlueprintBondScreenState extends ConsumerState<BlueprintBondScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Visible to approved employers', style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, color: AppColors.textDark)),
+                          Text('Visible to employers', style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, color: AppColors.textDark)),
                           const SizedBox(height: 2),
                           Text(
-                            "Turn this on once you're ready for employer partners to discover you.",
+                            'Let employer partners discover you.',
                             style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textMuted, height: 1.35),
                           ),
                         ],
@@ -261,6 +263,57 @@ class _BlueprintBondScreenState extends ConsumerState<BlueprintBondScreen> {
             ],
           );
         },
+      ),
+    );
+  }
+}
+
+/// One scannable line instead of a two-sentence paragraph. The privacy rule is the single most
+/// important thing on this screen, so it reads faster as an icon + short statement than as prose
+/// a student skims past.
+class _PrivacyNote extends StatelessWidget {
+  const _PrivacyNote();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.primaryPale,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.lock_outline_rounded, size: 16, color: AppColors.primary),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Only approved employers can see this — never your social profile.',
+              style: GoogleFonts.dmSans(fontSize: 12.5, color: AppColors.textMid, height: 1.35),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Groups the form into scannable sections so it reads as three short tasks rather than one
+/// long undifferentiated list of inputs.
+class _SectionLabel extends StatelessWidget {
+  final String text;
+  const _SectionLabel(this.text);
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text.toUpperCase(),
+      style: GoogleFonts.dmSans(
+        fontSize: 11,
+        fontWeight: FontWeight.w700,
+        color: AppColors.textMuted,
+        letterSpacing: 0.7,
       ),
     );
   }

@@ -191,7 +191,7 @@ export default function ScholarsPage() {
               </svg>
             </div>
             <div>
-              <div className="dash-kpi-value">{activeCount}</div>
+              <div className="dash-kpi-value">{loading ? '—' : activeCount}</div>
               <div className="dash-kpi-title">Active Scholars</div>
               <div className="dash-kpi-sub">Verified memberships</div>
             </div>
@@ -204,7 +204,7 @@ export default function ScholarsPage() {
               </svg>
             </div>
             <div>
-              <div className="dash-kpi-value">{revokedCount}</div>
+              <div className="dash-kpi-value">{loading ? '—' : revokedCount}</div>
               <div className="dash-kpi-title">Revoked</div>
               <div className="dash-kpi-sub">Former memberships</div>
             </div>

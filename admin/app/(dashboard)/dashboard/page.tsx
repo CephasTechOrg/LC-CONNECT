@@ -281,14 +281,38 @@ export default function OverviewPage() {
               </Link>
             </div>
             <div className="dash-attention-grid">
-              <AttentionCard href="/dashboard/positions" tone="fill-purple" value={pendingPositions} title="Campus Positions" sub={`${pendingPositions} pending review`} />
+              <AttentionCard
+                href="/dashboard/positions"
+                tone="fill-purple"
+                value={loading ? '—' : pendingPositions}
+                title="Campus Positions"
+                sub={loading ? 'Checking…' : `${pendingPositions} pending review`}
+              />
               {isHonors ? (
                 <>
-                  <AttentionCard href="/dashboard/employers" tone="fill-yellow" value={pendingEmployers} title="Employer Approvals" sub={`${pendingEmployers} pending approval`} />
-                  <AttentionCard href="/dashboard/employers?tab=opportunities" tone="fill-orange" value={pendingOpps} title="Opportunity Reviews" sub={`${pendingOpps} pending review`} />
+                  <AttentionCard
+                    href="/dashboard/employers"
+                    tone="fill-yellow"
+                    value={loading ? '—' : pendingEmployers}
+                    title="Employer Approvals"
+                    sub={loading ? 'Checking…' : `${pendingEmployers} pending approval`}
+                  />
+                  <AttentionCard
+                    href="/dashboard/employers?tab=opportunities"
+                    tone="fill-orange"
+                    value={loading ? '—' : pendingOpps}
+                    title="Opportunity Reviews"
+                    sub={loading ? 'Checking…' : `${pendingOpps} pending review`}
+                  />
                 </>
               ) : null}
-              <AttentionCard href="/dashboard/moderation" tone="fill-cyan" value={openReports} title="Moderation Reports" sub={`${openReports} open reports`} />
+              <AttentionCard
+                href="/dashboard/moderation"
+                tone="fill-cyan"
+                value={loading ? '—' : openReports}
+                title="Moderation Reports"
+                sub={loading ? 'Checking…' : `${openReports} open reports`}
+              />
             </div>
           </section>
 
@@ -299,7 +323,9 @@ export default function OverviewPage() {
                 <Chevron />
               </Link>
             </div>
-            {admins.length === 0 ? (
+            {loading ? (
+              <p className="status">Loading team…</p>
+            ) : admins.length === 0 ? (
               <p className="status">No admins to show yet.</p>
             ) : (
               <div className="dash-team-row">
@@ -442,7 +468,7 @@ function AttentionCard({
 }: {
   href: string;
   tone: string;
-  value: number;
+  value: number | string;
   title: string;
   sub: string;
 }) {

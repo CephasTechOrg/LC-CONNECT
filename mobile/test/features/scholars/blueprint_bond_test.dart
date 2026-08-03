@@ -4,6 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lc_connect/features/auth/providers/auth_provider.dart';
 import 'package:lc_connect/features/scholars/providers/scholars_provider.dart';
 import 'package:lc_connect/features/scholars/screens/blueprint_bond_screen.dart';
+import 'package:lc_connect/features/scholars/widgets/blueprint_bond_card.dart';
+import 'package:lc_connect/features/programs/providers/programs_provider.dart';
 
 class _MockScholarNotifier extends ScholarProfileNotifier {
   final ScholarProfile _fixed;
@@ -53,6 +55,7 @@ Widget _scope(ScholarProfile profile) {
 }
 
 void main() {
+  _cardTests();
   // The form is a long ListView (headshot/resume rows, three text fields, two tag inputs, a
   // consent switch) — give the test viewport enough height that everything is laid out without
   // needing to scroll, rather than fighting the sliver cache extent in every test.
@@ -100,5 +103,61 @@ void main() {
 
     final switchWidget = tester.widget<Switch>(find.byType(Switch));
     expect(switchWidget.value, isTrue);
+  });
+}
+
+// ── BlueprintBondCard: where it shows and where it disappears ────────────────────
+//
+// The prompt on Campus Hub is a call-to-action, so it must vanish once there's nothing left to
+// do — otherwise it becomes permanent clutter on a feed students scroll daily. The Profile entry
+// is the opposite: a permanent way in, present whether complete or not.
+
+Widget _card(BlueprintBondStyle style, {required bool scholar, ScholarProfile? profile}) {
+  return ProviderScope(
+    overrides: [
+      isVerifiedScholarProvider.overrideWithValue(scholar),
+      if (profile != null)
+        scholarProfileNotifierProvider.overrideWith(() => _MockScholarNotifier(profile)),
+    ],
+    child: MaterialApp(home: Scaffold(body: BlueprintBondCard(style: style))),
+  );
+}
+
+void _cardTests() {
+  group('BlueprintBondCard', () {
+    testWidgets('renders nothing at all for a non-scholar', (tester) async {
+      await tester.pumpWidget(_card(BlueprintBondStyle.entry, scholar: false));
+      await tester.pumpAndSettle();
+      expect(find.text('Blueprint Bond'), findsNothing);
+    });
+
+    testWidgets('Campus Hub prompt SHOWS while the profile is incomplete', (tester) async {
+      await tester.pumpWidget(_card(BlueprintBondStyle.prompt,
+          scholar: true, profile: _profile(summary: null)));
+      await tester.pumpAndSettle();
+      expect(find.text('Finish your Blueprint Bond profile'), findsOneWidget);
+    });
+
+    testWidgets('Campus Hub prompt DISAPPEARS once the profile is complete', (tester) async {
+      await tester.pumpWidget(_card(BlueprintBondStyle.prompt,
+          scholar: true, profile: _profile(summary: 'A summary', hasResume: true)));
+      await tester.pumpAndSettle();
+      expect(find.text('Finish your Blueprint Bond profile'), findsNothing);
+    });
+
+    testWidgets('Profile entry STAYS once complete, showing completed status', (tester) async {
+      await tester.pumpWidget(_card(BlueprintBondStyle.entry,
+          scholar: true, profile: _profile(summary: 'A summary', hasResume: true)));
+      await tester.pumpAndSettle();
+      expect(find.text('Blueprint Bond'), findsOneWidget);
+      expect(find.text('Professional profile complete'), findsOneWidget);
+    });
+
+    testWidgets('Profile entry shows incomplete status when unfinished', (tester) async {
+      await tester.pumpWidget(_card(BlueprintBondStyle.entry,
+          scholar: true, profile: _profile(summary: null)));
+      await tester.pumpAndSettle();
+      expect(find.text('Profile incomplete'), findsOneWidget);
+    });
   });
 }
