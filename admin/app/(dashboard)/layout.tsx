@@ -23,6 +23,8 @@ import {
   IconSignOut,
   IconUsers,
 } from '@/components/nav-icons';
+import './dashboard/ops.css';
+import './dashboard/dashboard.css';
 
 type NavIcon = ComponentType<{ stroke?: string; size?: number }>;
 type NavItem = { href: string; label: string; Icon: NavIcon };

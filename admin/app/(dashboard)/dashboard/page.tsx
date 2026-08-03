@@ -24,7 +24,6 @@ import {
   StatusRow,
   type AdminMembership,
 } from './dashboard-widgets';
-import './dashboard.css';
 
 export default function OverviewPage() {
   const [summary, setSummary] = useState<AdminDashboardSummary | null>(null);

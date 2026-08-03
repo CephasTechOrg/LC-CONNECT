@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { apiFetch, toUserMessage } from '@/lib/api/client';
 import { getAccessToken } from '@/lib/auth/session';
 
@@ -18,13 +18,24 @@ type Position = {
 
 type Tab = 'pending' | 'verified';
 
+function initials(name: string | null, email: string): string {
+  const source = (name || email.split('@')[0]).replace(/[._-]+/g, ' ').trim();
+  const parts = source.split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '?';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[1][0]).toUpperCase();
+}
+
 export default function PositionsPage() {
   const [tab, setTab] = useState<Tab>('pending');
   const [items, setItems] = useState<Position[]>([]);
   const [status, setStatus] = useState('Loading…');
   const [error, setError] = useState(false);
-  const [notes, setNotes] = useState<Record<string, string>>({});
-  const [busy, setBusy] = useState<string | null>(null);
+  const [q, setQ] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [drawer, setDrawer] = useState<Position | null>(null);
+  const [note, setNote] = useState('');
+  const [busy, setBusy] = useState(false);
 
   const load = useCallback(async (which: Tab) => {
     setError(false);
@@ -40,7 +51,7 @@ export default function PositionsPage() {
       setItems(data);
       setStatus(
         data.length
-          ? `${data.length} ${which} position(s).`
+          ? `${data.length} ${which}`
           : which === 'pending'
             ? 'No positions waiting for review.'
             : 'No verified positions.',
@@ -53,10 +64,34 @@ export default function PositionsPage() {
 
   useEffect(() => {
     void load(tab);
+    setDrawer(null);
+    setNote('');
+    setQ('');
+    setCategoryFilter('all');
   }, [load, tab]);
 
-  async function act(id: string, action: 'approve' | 'reject' | 'revoke', label: string) {
-    setBusy(id);
+  const categories = useMemo(
+    () => Array.from(new Set(items.map((i) => i.category))).sort(),
+    [items],
+  );
+
+  const filtered = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    return items.filter((item) => {
+      if (categoryFilter !== 'all' && item.category !== categoryFilter) return false;
+      if (!needle) return true;
+      return (
+        (item.display_name || '').toLowerCase().includes(needle) ||
+        item.user_email.toLowerCase().includes(needle) ||
+        item.official_title.toLowerCase().includes(needle) ||
+        item.department.toLowerCase().includes(needle)
+      );
+    });
+  }, [items, q, categoryFilter]);
+
+  async function act(action: 'approve' | 'reject' | 'revoke', item: Position) {
+    const label = item.display_name || item.user_email;
+    setBusy(true);
     try {
       const token = await getAccessToken();
       if (!token) return;
@@ -64,121 +99,225 @@ export default function PositionsPage() {
         action === 'approve'
           ? undefined
           : action === 'reject'
-            ? JSON.stringify({ review_note: notes[id]?.trim() || null })
-            : JSON.stringify({ review_note: notes[id]?.trim() || null, archive_posts: false });
-      await apiFetch(`/admin/campus-positions/${id}/${action}`, token, { method: 'POST', body });
+            ? JSON.stringify({ review_note: note.trim() || null })
+            : JSON.stringify({ review_note: note.trim() || null, archive_posts: false });
+      await apiFetch(`/admin/campus-positions/${item.id}/${action}`, token, { method: 'POST', body });
       setError(false);
       setStatus(`${action[0].toUpperCase() + action.slice(1)}d ${label}.`);
+      setDrawer(null);
+      setNote('');
       await load(tab);
     } catch (err) {
       setError(true);
       setStatus(toUserMessage(err, `Could not ${action} this item. Please try again.`));
     } finally {
-      setBusy(null);
+      setBusy(false);
     }
   }
 
   return (
     <>
-      <header className="topbar">
+      <header className="ops-top">
         <div>
-          <h1>Positions</h1>
-          <p>Approve verified campus roles for staff</p>
+          <h1>Campus Positions</h1>
+          <p>Review and manage verified campus roles for staff.</p>
         </div>
-        <div className="tabs">
-          <button type="button" className={`tab${tab === 'pending' ? ' active' : ''}`} onClick={() => setTab('pending')}>
-            Pending
+        <div className="seg-tabs">
+          <button type="button" className={`seg-tab${tab === 'pending' ? ' active' : ''}`} onClick={() => setTab('pending')}>
+            Pending{tab === 'pending' && items.length ? ` (${items.length})` : ''}
           </button>
-          <button type="button" className={`tab${tab === 'verified' ? ' active' : ''}`} onClick={() => setTab('verified')}>
+          <button type="button" className={`seg-tab${tab === 'verified' ? ' active' : ''}`} onClick={() => setTab('verified')}>
             Verified
           </button>
         </div>
       </header>
-      <div className="content">
-        <div className="actions" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
-          <p className={`status${error ? ' error' : ''}`} style={{ margin: 0 }}>
-            {status}
-          </p>
-          <button className="btn ghost" type="button" onClick={() => void load(tab)} style={{ width: 'auto' }}>
-            Refresh
-          </button>
+
+      <div className="content" style={{ paddingTop: 8 }}>
+        {error ? <div className="error-banner">{status}</div> : null}
+
+        <div className="ops-toolbar">
+          <div className="ops-search">
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search by person, title, department, or email"
+              aria-label="Search positions"
+            />
+          </div>
+          <select
+            className="ops-select"
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            aria-label="Category"
+          >
+            <option value="all">All categories</option>
+            {categories.map((c) => (
+              <option key={c} value={c}>{c.replaceAll('_', ' ')}</option>
+            ))}
+          </select>
+          <span className="ops-count">
+            {tab === 'pending' ? `${filtered.length} pending` : `${filtered.length} verified`}
+          </span>
+          <button className="ops-btn" type="button" onClick={() => void load(tab)}>Refresh</button>
         </div>
 
-        {items.length === 0 ? (
-          <div className="panel empty">{tab === 'pending' ? 'Nothing to review.' : 'No verified positions.'}</div>
-        ) : (
-          <div className="card-list">
-            {items.map((item) => {
-              const label = item.display_name || item.user_email;
-              return (
-                <article key={item.id} className="card">
-                  <div className="card-head">
-                    <div>
-                      <h3>{label}</h3>
-                      <p className="meta">
-                        {item.official_title} · {item.department} · {item.category.replaceAll('_', ' ')}
-                      </p>
-                      <p className="meta">
-                        {item.user_email} · {item.user_role}
-                      </p>
-                    </div>
-                    <span className={tab === 'verified' ? 'badge success' : 'badge'}>{item.status}</span>
-                  </div>
-
-                  <div className="field" style={{ marginTop: 12, marginBottom: 0 }}>
-                    <label htmlFor={`note-${item.id}`}>
-                      {tab === 'pending' ? 'Note (sent on reject)' : 'Note (sent on revoke)'}
-                    </label>
-                    <textarea
-                      id={`note-${item.id}`}
-                      rows={2}
-                      value={notes[item.id] || ''}
-                      onChange={(e) => setNotes((prev) => ({ ...prev, [item.id]: e.target.value }))}
-                      placeholder="Optional"
-                    />
-                  </div>
-
-                  <div className="actions">
-                    {tab === 'pending' ? (
-                      <>
-                        <button
-                          className="btn"
-                          type="button"
-                          disabled={busy === item.id}
-                          onClick={() => void act(item.id, 'approve', label)}
-                        >
-                          Approve
-                        </button>
-                        <button
-                          className="btn danger"
-                          type="button"
-                          disabled={busy === item.id}
-                          onClick={() => void act(item.id, 'reject', label)}
-                        >
-                          Reject
-                        </button>
-                      </>
-                    ) : (
-                      <button
-                        className="btn danger"
-                        type="button"
-                        disabled={busy === item.id}
-                        onClick={() => {
-                          if (window.confirm(`Revoke ${label}'s verified position?`)) {
-                            void act(item.id, 'revoke', label);
-                          }
-                        }}
-                      >
-                        Revoke
-                      </button>
-                    )}
-                  </div>
-                </article>
-              );
-            })}
-          </div>
-        )}
+        <div className="ops-table-wrap table-scroll">
+          {filtered.length === 0 ? (
+            <div className="ops-empty">
+              {tab === 'pending' ? 'Nothing to review.' : 'No verified positions.'}
+            </div>
+          ) : (
+            <table className="ops-table">
+              <thead>
+                <tr>
+                  <th>Person</th>
+                  <th>Official Position</th>
+                  <th>Department</th>
+                  <th>Category</th>
+                  {tab === 'pending' ? <th>Contact</th> : <th>Status</th>}
+                  <th>{tab === 'pending' ? 'Review' : 'Action'}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((item) => {
+                  const label = item.display_name || item.user_email;
+                  return (
+                    <tr key={item.id}>
+                      <td>
+                        <div className="ops-user-cell">
+                          <div className="ops-avatar">{initials(item.display_name, item.user_email)}</div>
+                          <div>
+                            <div className="ops-cell-title">{label}</div>
+                            <div className="ops-cell-sub">{item.user_email}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td>{item.official_title}</td>
+                      <td>{item.department}</td>
+                      <td style={{ textTransform: 'capitalize' }}>{item.category.replaceAll('_', ' ')}</td>
+                      <td>
+                        {tab === 'pending' ? (
+                          item.contact_email
+                        ) : (
+                          <span className="ops-chip success">{item.status}</span>
+                        )}
+                      </td>
+                      <td>
+                        <div className="ops-row-actions">
+                          {tab === 'pending' ? (
+                            <button
+                              className="ops-btn primary"
+                              type="button"
+                              onClick={() => {
+                                setDrawer(item);
+                                setNote('');
+                              }}
+                            >
+                              Review
+                            </button>
+                          ) : (
+                            <button
+                              className="ops-btn danger"
+                              type="button"
+                              onClick={() => {
+                                if (window.confirm(`Revoke ${label}'s verified position?`)) {
+                                  void act('revoke', item);
+                                }
+                              }}
+                            >
+                              Revoke
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+        {!error ? <p className="status" style={{ marginTop: 12 }}>{status}</p> : null}
       </div>
+
+      {drawer ? (
+        <>
+          <div className="ops-drawer-backdrop" onClick={() => setDrawer(null)} aria-hidden />
+          <aside className="ops-drawer" role="dialog" aria-label="Review campus position">
+            <div className="ops-drawer-head">
+              <div className="ops-avatar" style={{ width: 48, height: 48, fontSize: 15 }}>
+                {initials(drawer.display_name, drawer.user_email)}
+              </div>
+              <div>
+                <h2>{drawer.display_name || drawer.user_email}</h2>
+                <div className="ops-drawer-meta">
+                  <span className="ops-chip warn">Pending review</span>
+                </div>
+              </div>
+              <button className="ops-drawer-close" type="button" aria-label="Close" onClick={() => setDrawer(null)}>
+                ✕
+              </button>
+            </div>
+
+            <div className="ops-drawer-grid">
+              <div className="ops-drawer-field">
+                <label>User role</label>
+                <div style={{ textTransform: 'capitalize' }}>{drawer.user_role}</div>
+              </div>
+              <div className="ops-drawer-field">
+                <label>Category</label>
+                <div style={{ textTransform: 'capitalize' }}>{drawer.category.replaceAll('_', ' ')}</div>
+              </div>
+              <div className="ops-drawer-field">
+                <label>Official title</label>
+                <div>{drawer.official_title}</div>
+              </div>
+              <div className="ops-drawer-field">
+                <label>Department</label>
+                <div>{drawer.department}</div>
+              </div>
+            </div>
+
+            <div className="field">
+              <label>User email</label>
+              <div style={{ fontWeight: 600 }}>{drawer.user_email}</div>
+            </div>
+            <div className="field">
+              <label>Contact email</label>
+              <div style={{ fontWeight: 600 }}>{drawer.contact_email}</div>
+            </div>
+            <div className="field">
+              <label htmlFor="review-note">Review note</label>
+              <textarea
+                id="review-note"
+                rows={3}
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="Note sent if rejected"
+              />
+            </div>
+
+            <div className="ops-drawer-footer">
+              <button
+                className="btn danger"
+                type="button"
+                disabled={busy}
+                onClick={() => void act('reject', drawer)}
+              >
+                Reject
+              </button>
+              <button
+                className="btn"
+                type="button"
+                disabled={busy}
+                onClick={() => void act('approve', drawer)}
+              >
+                Approve position
+              </button>
+            </div>
+          </aside>
+        </>
+      ) : null}
     </>
   );
 }

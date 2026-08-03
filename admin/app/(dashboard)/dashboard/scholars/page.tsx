@@ -25,9 +25,26 @@ type Tab = 'active' | 'revoked';
 
 const PROGRAM_SLUG = 'presidential_scholars';
 
+function initials(name: string | null, email: string): string {
+  const source = (name || email.split('@')[0]).replace(/[._-]+/g, ' ').trim();
+  const parts = source.split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '?';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[1][0]).toUpperCase();
+}
+
+function when(iso: string | null): string {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString();
+}
+
 export default function ScholarsPage() {
   const [tab, setTab] = useState<Tab>('active');
+  const [activeIds, setActiveIds] = useState<Set<string>>(new Set());
   const [items, setItems] = useState<ProgramMembership[]>([]);
+  const [activeCount, setActiveCount] = useState(0);
+  const [revokedCount, setRevokedCount] = useState(0);
   const [status, setStatus] = useState('Loading…');
   const [error, setError] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
@@ -37,6 +54,16 @@ export default function ScholarsPage() {
   const [searching, setSearching] = useState(false);
   const [searchNote, setSearchNote] = useState('');
   const [verifying, setVerifying] = useState<string | null>(null);
+
+  const loadCounts = useCallback(async (token: string) => {
+    const [active, revoked] = await Promise.all([
+      apiFetch<ProgramMembership[]>(`/admin/programs/${PROGRAM_SLUG}/members?status=active`, token),
+      apiFetch<ProgramMembership[]>(`/admin/programs/${PROGRAM_SLUG}/members?status=revoked`, token),
+    ]);
+    setActiveCount(active.length);
+    setRevokedCount(revoked.length);
+    setActiveIds(new Set(active.map((m) => m.user_id)));
+  }, []);
 
   const load = useCallback(async (which: Tab) => {
     setError(false);
@@ -49,21 +76,18 @@ export default function ScholarsPage() {
         token,
       );
       setItems(data);
-      setStatus(data.length ? `${data.length} ${which} scholar(s).` : `No ${which} scholars.`);
+      await loadCounts(token);
+      setStatus(data.length ? `${data.length} ${which} scholar(s)` : `No ${which} scholars.`);
     } catch (err) {
       setError(true);
       setStatus(toUserMessage(err, 'Could not load this page. Please refresh and try again.'));
     }
-  }, []);
+  }, [loadCounts]);
 
   useEffect(() => {
     void load(tab);
   }, [load, tab]);
 
-  // Search server-side (the endpoint is capped, so filtering in the browser would silently hide
-  // anyone past the cap), debounced so typing a name doesn't fire a request per keystroke.
-  // An empty query intentionally still queries — the directory should be browsable on arrival,
-  // not a blank box that only reveals students once you already know who you're looking for.
   useEffect(() => {
     const term = query.trim();
     let cancelled = false;
@@ -99,8 +123,6 @@ export default function ScholarsPage() {
     };
   }, [query]);
 
-  const activeScholarIds = new Set(items.filter((i) => i.status === 'active').map((i) => i.user_id));
-
   async function onVerify(student: StudentResult) {
     setVerifying(student.id);
     setError(false);
@@ -113,7 +135,6 @@ export default function ScholarsPage() {
       });
       setStatus(`Verified ${student.display_name || student.email} as a Presidential Scholar.`);
       setQuery('');
-      setCandidates([]);
       await load(tab);
     } catch (err) {
       setError(true);
@@ -147,77 +168,111 @@ export default function ScholarsPage() {
 
   return (
     <>
-      <header className="topbar">
+      <header className="ops-top">
         <div>
           <h1>Presidential Scholars</h1>
-          <p>Verify scholars from the official roster — Blueprint Bond</p>
-        </div>
-        <div className="tabs">
-          <button type="button" className={`tab${tab === 'active' ? ' active' : ''}`} onClick={() => setTab('active')}>
-            Active
-          </button>
-          <button
-            type="button"
-            className={`tab${tab === 'revoked' ? ' active' : ''}`}
-            onClick={() => setTab('revoked')}
-          >
-            Revoked
-          </button>
+          <p>Verify students from the official Presidential Scholars roster — Blueprint Bond.</p>
         </div>
       </header>
-      <div className="content">
-        <div className="panel">
+
+      <div className="content" style={{ paddingTop: 8 }}>
+        {error ? <div className="error-banner">{status}</div> : null}
+
+        <div className="dash-kpi-grid" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', marginBottom: 18 }}>
+          <div className="dash-kpi">
+            <div className="dash-kpi-icon tone-green">
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#2DAA72" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <circle cx="12" cy="9" r="5" />
+                <path d="M8.5 13.2 7 21l5-2.6L17 21l-1.5-7.8" />
+              </svg>
+            </div>
+            <div>
+              <div className="dash-kpi-value">{activeCount}</div>
+              <div className="dash-kpi-title">Active Scholars</div>
+              <div className="dash-kpi-sub">Verified memberships</div>
+            </div>
+          </div>
+          <div className="dash-kpi">
+            <div className="dash-kpi-icon">
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#736E7D" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <circle cx="12" cy="12" r="9" />
+                <path d="M8 12h8" />
+              </svg>
+            </div>
+            <div>
+              <div className="dash-kpi-value">{revokedCount}</div>
+              <div className="dash-kpi-title">Revoked</div>
+              <div className="dash-kpi-sub">Former memberships</div>
+            </div>
+          </div>
+        </div>
+
+        <section className="ops-form">
           <h2>Student directory</h2>
           <p className="hint" style={{ marginTop: 0 }}>
-            Students never self-declare. Verify anyone on the official Presidential Scholars
-            roster — search by name or email to narrow the list.
+            Students never self-declare. Verify anyone on the official Presidential Scholars roster.
           </p>
-          <div className="field" style={{ marginBottom: 0 }}>
-            <label htmlFor="student-search">Search students</label>
-            <input
-              id="student-search"
-              type="search"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Filter by name or email…"
-              autoComplete="off"
-            />
+          <div className="ops-toolbar" style={{ marginTop: 0, marginBottom: 12 }}>
+            <div className="ops-search" style={{ maxWidth: 420 }}>
+              <input
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Filter by name or email…"
+                aria-label="Search students"
+                autoComplete="off"
+              />
+            </div>
+            <span className="ops-count">{searching ? 'Searching…' : `${candidates.length} students`}</span>
           </div>
-
-          {searching ? <p className="status">Searching…</p> : null}
-          {!searching && searchNote ? <p className="status">{searchNote}</p> : null}
-
+          {searchNote ? <p className="status">{searchNote}</p> : null}
           {candidates.length > 0 ? (
-            <div className="table-scroll" style={{ marginTop: 12 }}>
-              <table className="rows">
+            <div className="ops-table-wrap table-scroll">
+              <table className="ops-table">
                 <thead>
                   <tr>
-                    <th>Name</th>
+                    <th>Student</th>
                     <th>Email</th>
-                    <th />
+                    <th>Account Status</th>
+                    <th>Scholar Status</th>
+                    <th>Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   {candidates.map((s) => {
-                    const alreadyScholar = activeScholarIds.has(s.id);
+                    const alreadyScholar = activeIds.has(s.id);
                     return (
                       <tr key={s.id}>
-                        <td>{s.display_name || '—'}</td>
+                        <td>
+                          <div className="ops-user-cell">
+                            <div className="ops-avatar">{initials(s.display_name, s.email)}</div>
+                            <div className="ops-cell-title">{s.display_name || '—'}</div>
+                          </div>
+                        </td>
                         <td>{s.email}</td>
-                        <td style={{ textAlign: 'right' }}>
+                        <td>
+                          <span className={s.status === 'active' ? 'ops-chip success' : 'ops-chip muted'}>
+                            {s.status}
+                          </span>
+                        </td>
+                        <td>
                           {alreadyScholar ? (
-                            <span className="badge success">Already a scholar</span>
+                            <span className="ops-chip success">Already a scholar</span>
                           ) : (
+                            <span className="ops-cell-sub">Not verified</span>
+                          )}
+                        </td>
+                        <td>
+                          <div className="ops-row-actions">
                             <button
-                              className="btn"
+                              className="ops-btn primary"
                               type="button"
-                              style={{ width: 'auto', minHeight: 34, padding: '6px 12px', fontSize: 13 }}
-                              disabled={verifying === s.id}
+                              disabled={alreadyScholar || verifying === s.id}
                               onClick={() => void onVerify(s)}
                             >
                               {verifying === s.id ? 'Verifying…' : 'Verify'}
                             </button>
-                          )}
+                          </div>
                         </td>
                       </tr>
                     );
@@ -226,49 +281,74 @@ export default function ScholarsPage() {
               </table>
             </div>
           ) : null}
-        </div>
+        </section>
 
-        <div className="actions" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
-          <p className={`status${error ? ' error' : ''}`} style={{ margin: 0 }}>
-            {status}
-          </p>
-          <button className="btn ghost" type="button" onClick={() => void load(tab)} style={{ width: 'auto' }}>
-            Refresh
-          </button>
-        </div>
-
-        {items.length === 0 ? (
-          <div className="panel empty">{tab === 'active' ? 'No active scholars.' : 'No revoked scholars.'}</div>
-        ) : (
-          <div className="card-list">
-            {items.map((item) => {
-              const label = item.display_name || item.user_email;
-              return (
-                <article key={item.id} className="card">
-                  <div className="card-head">
-                    <div>
-                      <h3>{label}</h3>
-                      <p className="meta">{item.user_email}</p>
-                    </div>
-                    <span className={tab === 'active' ? 'badge success' : 'badge muted'}>{item.status}</span>
-                  </div>
-                  {tab === 'active' && (
-                    <div className="actions">
-                      <button
-                        className="btn danger"
-                        type="button"
-                        disabled={busy === item.user_id}
-                        onClick={() => void onRevoke(item)}
-                      >
-                        Revoke
-                      </button>
-                    </div>
-                  )}
-                </article>
-              );
-            })}
+        <div className="ops-toolbar">
+          <div className="seg-tabs">
+            <button type="button" className={`seg-tab${tab === 'active' ? ' active' : ''}`} onClick={() => setTab('active')}>
+              Active{activeCount ? ` · ${activeCount}` : ''}
+            </button>
+            <button type="button" className={`seg-tab${tab === 'revoked' ? ' active' : ''}`} onClick={() => setTab('revoked')}>
+              Revoked{revokedCount ? ` · ${revokedCount}` : ''}
+            </button>
           </div>
-        )}
+          <button className="ops-btn" type="button" onClick={() => void load(tab)}>Refresh</button>
+        </div>
+
+        <div className="ops-table-wrap table-scroll">
+          {items.length === 0 ? (
+            <div className="ops-empty">{tab === 'active' ? 'No active scholars.' : 'No revoked scholars.'}</div>
+          ) : (
+            <table className="ops-table">
+              <thead>
+                <tr>
+                  <th>Scholar</th>
+                  <th>Email</th>
+                  <th>{tab === 'active' ? 'Verified' : 'Revoked'}</th>
+                  <th>Status</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((item) => {
+                  const label = item.display_name || item.user_email;
+                  return (
+                    <tr key={item.id}>
+                      <td>
+                        <div className="ops-user-cell">
+                          <div className="ops-avatar">{initials(item.display_name, item.user_email)}</div>
+                          <div className="ops-cell-title">{label}</div>
+                        </div>
+                      </td>
+                      <td>{item.user_email}</td>
+                      <td>{when(tab === 'active' ? item.verified_at : item.revoked_at)}</td>
+                      <td>
+                        <span className={tab === 'active' ? 'ops-chip success' : 'ops-chip muted'}>
+                          {item.status}
+                        </span>
+                      </td>
+                      <td>
+                        {tab === 'active' ? (
+                          <div className="ops-row-actions">
+                            <button
+                              className="ops-btn danger"
+                              type="button"
+                              disabled={busy === item.user_id}
+                              onClick={() => void onRevoke(item)}
+                            >
+                              Revoke
+                            </button>
+                          </div>
+                        ) : null}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+        {!error ? <p className="status" style={{ marginTop: 12 }}>{status}</p> : null}
       </div>
     </>
   );

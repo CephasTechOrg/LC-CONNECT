@@ -1,13 +1,13 @@
 export default function SettingsPage() {
   return (
     <>
-      <header className="topbar">
+      <header className="ops-top">
         <div>
           <h1>Settings</h1>
-          <p>Platform-wide configuration for LC Connect</p>
+          <p>Platform-wide configuration for LC Connect.</p>
         </div>
       </header>
-      <div className="content">
+      <div className="content" style={{ paddingTop: 8 }}>
         <div className="coming-soon">
           <span className="coming-soon-badge">Planned</span>
           <h2>Platform configuration is coming soon</h2>

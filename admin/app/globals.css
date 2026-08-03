@@ -496,7 +496,7 @@ button {
   min-width: 0;
 }
 
-/* Each page renders its own <header className="topbar"> title block. */
+/* Page title blocks use .ops-top (see dashboard/ops.css). Legacy .topbar kept for any holdovers. */
 .topbar {
   display: flex;
   justify-content: space-between;

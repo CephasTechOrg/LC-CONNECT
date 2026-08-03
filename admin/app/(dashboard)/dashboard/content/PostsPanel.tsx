@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useCallback, useEffect, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { apiFetch, toUserMessage } from '@/lib/api/client';
 import { getAccessToken } from '@/lib/auth/session';
 
@@ -16,14 +16,6 @@ type Post = {
   status: string;
 };
 
-function statusClass(status: string): string {
-  if (status === 'published') return 'badge success';
-  if (status === 'archived') return 'badge muted';
-  return 'badge';
-}
-
-// `category` classifies a post within its kind — each kind has its own vocabulary (mirrors the
-// backend's `categories_for_kind`), so the picker only ever shows categories that apply.
 const ANNOUNCEMENT_CATEGORIES: Record<string, string> = {
   general: 'General',
   academic: 'Academic',
@@ -43,10 +35,23 @@ function categoriesForKind(kind: string): Record<string, string> {
   return kind === 'opportunity' ? OPPORTUNITY_CATEGORIES : ANNOUNCEMENT_CATEGORIES;
 }
 
+function priorityChip(priority: string): string {
+  if (priority === 'urgent') return 'ops-chip danger';
+  if (priority === 'important') return 'ops-chip warn';
+  return 'ops-chip muted';
+}
+
+function statusChip(status: string): string {
+  if (status === 'published') return 'ops-chip success';
+  if (status === 'archived') return 'ops-chip muted';
+  return 'ops-chip warn';
+}
+
 export default function PostsPanel() {
   const [items, setItems] = useState<Post[]>([]);
   const [status, setStatus] = useState('Loading posts…');
   const [error, setError] = useState(false);
+  const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [kind, setKind] = useState('announcement');
   const [category, setCategory] = useState(Object.keys(ANNOUNCEMENT_CATEGORIES)[0]);
@@ -57,6 +62,9 @@ export default function PostsPanel() {
   const [body, setBody] = useState('');
   const [saving, setSaving] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
+  const [q, setQ] = useState('');
+  const [filterKind, setFilterKind] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('all');
 
   function resetForm() {
     setEditingId(null);
@@ -67,10 +75,9 @@ export default function PostsPanel() {
     setTitle('');
     setSummary('');
     setBody('');
+    setShowForm(false);
   }
 
-  // Switching type changes the category vocabulary — reset to that vocabulary's first option so
-  // category is never a stale value from the other kind (e.g. "Internships" on an Announcement).
   function onKindChange(nextKind: string) {
     setKind(nextKind);
     setCategory(Object.keys(categoriesForKind(nextKind))[0]);
@@ -85,7 +92,7 @@ export default function PostsPanel() {
     setTitle(item.title);
     setSummary(item.summary ?? '');
     setBody(item.body);
-    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
+    setShowForm(true);
   }
 
   const load = useCallback(async () => {
@@ -96,7 +103,7 @@ export default function PostsPanel() {
       if (!token) throw new Error('Not signed in');
       const data = await apiFetch<Post[]>('/admin/campus-posts', token);
       setItems(data);
-      setStatus(`${data.length} post(s).`);
+      setStatus(`${data.length} post${data.length === 1 ? '' : 's'}`);
     } catch (err) {
       setError(true);
       setStatus(toUserMessage(err, 'Could not load this page. Please refresh and try again.'));
@@ -106,6 +113,20 @@ export default function PostsPanel() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  const filtered = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    return items.filter((item) => {
+      if (filterKind !== 'all' && item.kind !== filterKind) return false;
+      if (filterStatus !== 'all' && item.status !== filterStatus) return false;
+      if (!needle) return true;
+      return (
+        item.title.toLowerCase().includes(needle) ||
+        (item.summary || '').toLowerCase().includes(needle) ||
+        item.body.toLowerCase().includes(needle)
+      );
+    });
+  }, [items, q, filterKind, filterStatus]);
 
   async function submitForm(event: FormEvent) {
     event.preventDefault();
@@ -142,8 +163,6 @@ export default function PostsPanel() {
     }
   }
 
-  // One hardened runner for every per-item action: guards double-clicks (busy), always catches
-  // errors and surfaces them, and reloads on success.
   async function run(id: string, label: string, doIt: (token: string) => Promise<void>) {
     if (busy) return;
     setBusy(id);
@@ -188,130 +207,139 @@ export default function PostsPanel() {
 
   return (
     <>
-      <form className="panel" onSubmit={submitForm}>
-        <h2>{editingId ? 'Edit post' : 'Create draft'}</h2>
-        <div className="grid-2">
-          <div className="field">
-            <label htmlFor="kind">Kind</label>
-            <select id="kind" value={kind} onChange={(e) => onKindChange(e.target.value)}>
-              <option value="announcement">Announcement</option>
-              <option value="opportunity">Opportunity</option>
-            </select>
-          </div>
-          <div className="field">
-            <label htmlFor="category">Category</label>
-            <select id="category" value={category} onChange={(e) => setCategory(e.target.value)}>
-              {Object.entries(categoriesForKind(kind)).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="field">
-            <label htmlFor="priority">Priority</label>
-            <select id="priority" value={priority} onChange={(e) => setPriority(e.target.value)}>
-              <option value="normal">Normal</option>
-              <option value="important">Important</option>
-              <option value="urgent">Urgent</option>
-            </select>
-          </div>
-          <div className="field">
-            <label htmlFor="audience">Audience</label>
-            <select id="audience" value={audience} onChange={(e) => setAudience(e.target.value)}>
-              <option value="all">All</option>
-              <option value="students">Students</option>
-              <option value="staff">Staff</option>
-            </select>
-          </div>
-          <div className="field">
-            <label htmlFor="title">Title</label>
-            <input id="title" value={title} onChange={(e) => setTitle(e.target.value)} required maxLength={200} />
-          </div>
+      <div className="ops-toolbar">
+        <div className="ops-search">
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search posts" aria-label="Search posts" />
         </div>
-        <div className="field">
-          <label htmlFor="summary">Summary</label>
-          <input id="summary" value={summary} onChange={(e) => setSummary(e.target.value)} maxLength={400} />
-        </div>
-        <div className="field">
-          <label htmlFor="body">Body</label>
-          <textarea id="body" rows={4} value={body} onChange={(e) => setBody(e.target.value)} required />
-        </div>
-        <div className="actions">
-          <button className="btn" type="submit" disabled={saving} style={{ width: 'auto' }}>
-            {saving ? 'Saving…' : editingId ? 'Save changes' : 'Save draft'}
-          </button>
-          {editingId ? (
+        <select className="ops-select" value={filterKind} onChange={(e) => setFilterKind(e.target.value)} aria-label="Kind">
+          <option value="all">All kinds</option>
+          <option value="announcement">Announcement</option>
+          <option value="opportunity">Opportunity</option>
+        </select>
+        <select className="ops-select" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} aria-label="Status">
+          <option value="all">All statuses</option>
+          <option value="draft">Draft</option>
+          <option value="published">Published</option>
+          <option value="archived">Archived</option>
+        </select>
+        <span className="ops-count">{filtered.length} of {items.length} posts</span>
+        <button className="ops-btn" type="button" onClick={() => void load()}>Refresh</button>
+        <button
+          className="ops-btn primary"
+          type="button"
+          onClick={() => {
+            resetForm();
+            setShowForm(true);
+          }}
+        >
+          Create post
+        </button>
+      </div>
+
+      {error ? <div className="error-banner">{status}</div> : null}
+
+      {showForm ? (
+        <form className="ops-form" onSubmit={submitForm}>
+          <h2>{editingId ? 'Edit post' : 'Create draft'}</h2>
+          <div className="grid-2">
+            <div className="field">
+              <label htmlFor="kind">Kind</label>
+              <select id="kind" value={kind} onChange={(e) => onKindChange(e.target.value)}>
+                <option value="announcement">Announcement</option>
+                <option value="opportunity">Opportunity</option>
+              </select>
+            </div>
+            <div className="field">
+              <label htmlFor="category">Category</label>
+              <select id="category" value={category} onChange={(e) => setCategory(e.target.value)}>
+                {Object.entries(categoriesForKind(kind)).map(([value, label]) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
+              </select>
+            </div>
+            <div className="field">
+              <label htmlFor="priority">Priority</label>
+              <select id="priority" value={priority} onChange={(e) => setPriority(e.target.value)}>
+                <option value="normal">Normal</option>
+                <option value="important">Important</option>
+                <option value="urgent">Urgent</option>
+              </select>
+            </div>
+            <div className="field">
+              <label htmlFor="audience">Audience</label>
+              <select id="audience" value={audience} onChange={(e) => setAudience(e.target.value)}>
+                <option value="all">All</option>
+                <option value="students">Students</option>
+                <option value="staff">Staff</option>
+              </select>
+            </div>
+            <div className="field">
+              <label htmlFor="title">Title</label>
+              <input id="title" value={title} onChange={(e) => setTitle(e.target.value)} required maxLength={200} />
+            </div>
+          </div>
+          <div className="field">
+            <label htmlFor="summary">Summary</label>
+            <input id="summary" value={summary} onChange={(e) => setSummary(e.target.value)} maxLength={400} />
+          </div>
+          <div className="field">
+            <label htmlFor="body">Body</label>
+            <textarea id="body" rows={4} value={body} onChange={(e) => setBody(e.target.value)} required />
+          </div>
+          <div className="actions">
+            <button className="btn" type="submit" disabled={saving} style={{ width: 'auto' }}>
+              {saving ? 'Saving…' : editingId ? 'Save changes' : 'Save draft'}
+            </button>
             <button className="btn ghost" type="button" onClick={resetForm} style={{ width: 'auto' }}>
               Cancel
             </button>
-          ) : null}
-        </div>
-      </form>
+          </div>
+        </form>
+      ) : null}
 
-      <div className="actions" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
-        <p className={`status${error ? ' error' : ''}`} style={{ margin: 0 }}>
-          {status}
-        </p>
-        <button className="btn ghost" type="button" onClick={() => void load()} style={{ width: 'auto' }}>
-          Refresh
-        </button>
+      <div className="ops-table-wrap table-scroll">
+        {filtered.length === 0 ? (
+          <div className="ops-empty">No posts match these filters.</div>
+        ) : (
+          <table className="ops-table">
+            <thead>
+              <tr>
+                <th>Title</th>
+                <th>Kind</th>
+                <th>Category</th>
+                <th>Audience</th>
+                <th>Priority</th>
+                <th>Status</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((item) => (
+                <tr key={item.id}>
+                  <td>
+                    <div className="ops-cell-title">{item.title}</div>
+                    <div className="ops-cell-sub">{item.summary || item.body.slice(0, 80)}</div>
+                  </td>
+                  <td style={{ textTransform: 'capitalize' }}>{item.kind}</td>
+                  <td>{categoriesForKind(item.kind)[item.category ?? ''] ?? '—'}</td>
+                  <td style={{ textTransform: 'capitalize' }}>{item.audience}</td>
+                  <td><span className={priorityChip(item.priority)}>{item.priority}</span></td>
+                  <td><span className={statusChip(item.status)}>{item.status}</span></td>
+                  <td>
+                    <div className="ops-row-actions">
+                      <button className="ops-btn primary" type="button" disabled={busy === item.id || item.status === 'published'} onClick={() => publish(item)}>Publish</button>
+                      <button className="ops-btn" type="button" disabled={busy === item.id || item.status === 'archived'} onClick={() => startEdit(item)}>Edit</button>
+                      <button className="ops-btn" type="button" disabled={busy === item.id || item.status === 'archived'} onClick={() => archive(item)}>Archive</button>
+                      <button className="ops-btn danger" type="button" disabled={busy === item.id} onClick={() => remove(item)}>Delete</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
-      <div className="card-list">
-        {items.map((item) => (
-          <article key={item.id} className="card">
-            <div className="card-head">
-              <div>
-                <h3>{item.title}</h3>
-                <p className="meta" style={{ textTransform: 'capitalize' }}>
-                  {item.kind} · {categoriesForKind(item.kind)[item.category ?? ''] ?? 'No category'} · {item.audience}
-                </p>
-              </div>
-              <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                {item.priority !== 'normal' ? (
-                  <span className={item.priority === 'urgent' ? 'badge danger' : 'badge'}>{item.priority}</span>
-                ) : null}
-                <span className={statusClass(item.status)}>{item.status}</span>
-              </div>
-            </div>
-            <p className="meta">{item.summary || item.body.slice(0, 160)}</p>
-            <div className="actions">
-              <button
-                className="btn"
-                type="button"
-                disabled={busy === item.id || item.status === 'published'}
-                onClick={() => publish(item)}
-              >
-                Publish
-              </button>
-              <button
-                className="btn ghost"
-                type="button"
-                disabled={busy === item.id || item.status === 'archived'}
-                onClick={() => startEdit(item)}
-              >
-                Edit
-              </button>
-              <button
-                className="btn ghost"
-                type="button"
-                disabled={busy === item.id || item.status === 'archived'}
-                onClick={() => archive(item)}
-              >
-                Archive
-              </button>
-              <button
-                className="btn danger"
-                type="button"
-                disabled={busy === item.id}
-                onClick={() => remove(item)}
-              >
-                Delete
-              </button>
-            </div>
-          </article>
-        ))}
-      </div>
+      {!error ? <p className="status" style={{ marginTop: 12 }}>{status}</p> : null}
     </>
   );
 }

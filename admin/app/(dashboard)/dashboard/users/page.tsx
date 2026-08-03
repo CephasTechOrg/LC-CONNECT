@@ -14,9 +14,20 @@ type AdminUser = {
   display_name: string | null;
 };
 
+function initials(name: string | null, email: string): string {
+  const source = (name || email.split('@')[0]).replace(/[._-]+/g, ' ').trim();
+  const parts = source.split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '?';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[1][0]).toUpperCase();
+}
+
 export default function UsersPage() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [query, setQuery] = useState('');
+  const [roleFilter, setRoleFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [verifyFilter, setVerifyFilter] = useState('all');
   const [status, setStatus] = useState('Loading…');
   const [error, setError] = useState(false);
 
@@ -28,7 +39,7 @@ export default function UsersPage() {
       if (!token) throw new Error('Not signed in');
       const data = await apiFetch<AdminUser[]>('/admin/users', token);
       setUsers(data);
-      setStatus(`${data.length} user(s).`);
+      setStatus(`${data.length.toLocaleString()} users`);
     } catch (err) {
       setError(true);
       setStatus(toUserMessage(err, 'Could not load this page. Please refresh and try again.'));
@@ -40,8 +51,7 @@ export default function UsersPage() {
   }, [load]);
 
   async function suspend(userId: string, label: string) {
-    const ok = window.confirm(`Suspend ${label}? They will be signed out and blocked from the app.`);
-    if (!ok) return;
+    if (!window.confirm(`Suspend ${label}? They will be signed out and blocked from the app.`)) return;
     try {
       const token = await getAccessToken();
       if (!token) return;
@@ -74,90 +84,137 @@ export default function UsersPage() {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return users;
-    return users.filter((u) => u.email.toLowerCase().includes(q) || (u.display_name || '').toLowerCase().includes(q));
-  }, [users, query]);
+    return users.filter((u) => {
+      if (roleFilter !== 'all' && u.role !== roleFilter) return false;
+      if (statusFilter !== 'all' && u.status !== statusFilter) return false;
+      if (verifyFilter === 'verified' && !u.is_verified) return false;
+      if (verifyFilter === 'unverified' && u.is_verified) return false;
+      if (!q) return true;
+      return u.email.toLowerCase().includes(q) || (u.display_name || '').toLowerCase().includes(q);
+    });
+  }, [users, query, roleFilter, statusFilter, verifyFilter]);
+
+  const roles = useMemo(() => Array.from(new Set(users.map((u) => u.role))).sort(), [users]);
 
   return (
     <>
-      <header className="topbar">
+      <header className="ops-top">
         <div>
           <h1>Users</h1>
-          <p>Search every account on LC Connect and act on abusive ones</p>
+          <p>Search every account on LC Connect and manage account access.</p>
         </div>
       </header>
-      <div className="content">
-        <div className="actions" style={{ justifyContent: 'space-between', alignItems: 'center', marginTop: 0 }}>
-          <p className={`status${error ? ' error' : ''}`} style={{ margin: 0 }}>
-            {status}
-          </p>
-          <button className="btn ghost" type="button" onClick={() => void load()} style={{ width: 'auto' }}>
-            Refresh
-          </button>
+      <div className="content" style={{ paddingTop: 8 }}>
+        {error ? <div className="error-banner">{status}</div> : null}
+
+        <div className="ops-toolbar">
+          <div className="ops-search">
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search by name or email"
+              aria-label="Search users"
+            />
+          </div>
+          <select className="ops-select" value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} aria-label="Role">
+            <option value="all">All roles</option>
+            {roles.map((role) => (
+              <option key={role} value={role}>{role}</option>
+            ))}
+          </select>
+          <select className="ops-select" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} aria-label="Status">
+            <option value="all">All statuses</option>
+            <option value="active">Active</option>
+            <option value="suspended">Suspended</option>
+          </select>
+          <select className="ops-select" value={verifyFilter} onChange={(e) => setVerifyFilter(e.target.value)} aria-label="Verification">
+            <option value="all">All verification</option>
+            <option value="verified">Verified</option>
+            <option value="unverified">Unverified</option>
+          </select>
+          <span className="ops-count">{filtered.length.toLocaleString()} of {users.length.toLocaleString()} users</span>
+          <button className="ops-btn" type="button" onClick={() => void load()}>Refresh</button>
         </div>
 
-        <div className="field" style={{ maxWidth: 360 }}>
-          <label htmlFor="user-search">Search users</label>
-          <input
-            id="user-search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Name or email"
-          />
-        </div>
-
-        <div className="panel table-scroll">
-          <table className="rows">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Role</th>
-                <th>Status</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((u) => (
-                <tr key={u.id}>
-                  <td>{u.display_name || '—'}</td>
-                  <td>{u.email}</td>
-                  <td style={{ textTransform: 'capitalize' }}>{u.role}</td>
-                  <td>
-                    <span
-                      className={
-                        u.status === 'active' ? 'badge success' : u.status === 'suspended' ? 'badge danger' : 'badge muted'
-                      }
-                    >
-                      {u.status}
-                    </span>
-                  </td>
-                  <td style={{ textAlign: 'right' }}>
-                    {u.status === 'active' && u.role !== 'admin' ? (
-                      <button
-                        className="btn danger"
-                        type="button"
-                        style={{ width: 'auto', minHeight: 34, padding: '6px 12px', fontSize: 13 }}
-                        onClick={() => void suspend(u.id, u.display_name || u.email)}
-                      >
-                        Suspend
-                      </button>
-                    ) : u.status === 'suspended' ? (
-                      <button
-                        className="btn ghost"
-                        type="button"
-                        style={{ width: 'auto', minHeight: 34, padding: '6px 12px', fontSize: 13 }}
-                        onClick={() => void reactivate(u.id, u.display_name || u.email)}
-                      >
-                        Reactivate
-                      </button>
-                    ) : null}
-                  </td>
+        <div className="ops-table-wrap table-scroll">
+          {filtered.length === 0 ? (
+            <div className="ops-empty">No users match these filters.</div>
+          ) : (
+            <table className="ops-table">
+              <thead>
+                <tr>
+                  <th>User</th>
+                  <th>Email</th>
+                  <th>Role</th>
+                  <th>Verification</th>
+                  <th>Account Status</th>
+                  <th>Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {filtered.map((u) => {
+                  const label = u.display_name || u.email;
+                  return (
+                    <tr key={u.id}>
+                      <td>
+                        <div className="ops-user-cell">
+                          <div className="ops-avatar">{initials(u.display_name, u.email)}</div>
+                          <div className="ops-cell-title">{u.display_name || '—'}</div>
+                        </div>
+                      </td>
+                      <td>{u.email}</td>
+                      <td style={{ textTransform: 'capitalize' }}>{u.role}</td>
+                      <td>
+                        <span className={u.is_verified ? 'ops-chip success' : 'ops-chip muted'}>
+                          {u.is_verified ? 'Verified' : 'Unverified'}
+                        </span>
+                      </td>
+                      <td>
+                        <span
+                          className={
+                            u.status === 'active'
+                              ? 'ops-chip success'
+                              : u.status === 'suspended'
+                                ? 'ops-chip danger'
+                                : 'ops-chip muted'
+                          }
+                        >
+                          {u.status}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="ops-row-actions">
+                          {u.role === 'admin' ? (
+                            <span className="ops-cell-sub" style={{ fontStyle: 'italic' }}>
+                              Managed in Admins &amp; Roles
+                            </span>
+                          ) : u.status === 'active' ? (
+                            <button
+                              className="ops-btn danger"
+                              type="button"
+                              onClick={() => void suspend(u.id, label)}
+                            >
+                              Suspend
+                            </button>
+                          ) : u.status === 'suspended' ? (
+                            <button
+                              className="ops-btn"
+                              type="button"
+                              onClick={() => void reactivate(u.id, label)}
+                            >
+                              Reactivate
+                            </button>
+                          ) : null}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
         </div>
+        {!error ? <p className="status" style={{ marginTop: 12 }}>{status}</p> : null}
       </div>
     </>
   );

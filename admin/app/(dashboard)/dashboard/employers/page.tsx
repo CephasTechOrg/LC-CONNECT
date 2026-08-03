@@ -29,10 +29,10 @@ type OpportunitySubmission = {
 type MainTab = 'organizations' | 'opportunities';
 type StatusTab = 'pending' | 'approved' | 'rejected';
 
-function badgeClass(tab: StatusTab): string {
-  if (tab === 'approved') return 'badge success';
-  if (tab === 'rejected') return 'badge danger';
-  return 'badge';
+function statusChip(tab: StatusTab): string {
+  if (tab === 'approved') return 'ops-chip success';
+  if (tab === 'rejected') return 'ops-chip danger';
+  return 'ops-chip warn';
 }
 
 export default function EmployersPage() {
@@ -42,13 +42,14 @@ export default function EmployersPage() {
   );
   const [orgTab, setOrgTab] = useState<StatusTab>('pending');
   const [oppTab, setOppTab] = useState<StatusTab>('pending');
-
   const [orgs, setOrgs] = useState<EmployerOrganization[]>([]);
   const [opps, setOpps] = useState<OpportunitySubmission[]>([]);
   const [status, setStatus] = useState('Loading…');
   const [error, setError] = useState(false);
-  const [notes, setNotes] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<string | null>(null);
+  const [orgDrawer, setOrgDrawer] = useState<EmployerOrganization | null>(null);
+  const [oppDrawer, setOppDrawer] = useState<OpportunitySubmission | null>(null);
+  const [note, setNote] = useState('');
 
   const loadOrgs = useCallback(async (which: StatusTab) => {
     setError(false);
@@ -58,7 +59,7 @@ export default function EmployersPage() {
       if (!token) throw new Error('Not signed in');
       const data = await apiFetch<EmployerOrganization[]>(`/admin/employers?status=${which}`, token);
       setOrgs(data);
-      setStatus(data.length ? `${data.length} ${which} organization(s).` : `No ${which} organizations.`);
+      setStatus(data.length ? `${data.length} ${which} organization(s)` : `No ${which} organizations.`);
     } catch (err) {
       setError(true);
       setStatus(toUserMessage(err, 'Could not load this page. Please refresh and try again.'));
@@ -73,7 +74,7 @@ export default function EmployersPage() {
       if (!token) throw new Error('Not signed in');
       const data = await apiFetch<OpportunitySubmission[]>(`/admin/employers/opportunities?status=${which}`, token);
       setOpps(data);
-      setStatus(data.length ? `${data.length} ${which} submission(s).` : `No ${which} submissions.`);
+      setStatus(data.length ? `${data.length} ${which} submission(s)` : `No ${which} submissions.`);
     } catch (err) {
       setError(true);
       setStatus(toUserMessage(err, 'Could not load this page. Please refresh and try again.'));
@@ -81,19 +82,27 @@ export default function EmployersPage() {
   }, []);
 
   useEffect(() => {
+    setOrgDrawer(null);
+    setOppDrawer(null);
+    setNote('');
     if (mainTab === 'organizations') void loadOrgs(orgTab);
     else void loadOpps(oppTab);
   }, [mainTab, orgTab, oppTab, loadOrgs, loadOpps]);
 
-  async function actOrg(id: string, action: 'approve' | 'reject', label: string) {
-    setBusy(id);
+  const statusTab = mainTab === 'organizations' ? orgTab : oppTab;
+  const setStatusTab = mainTab === 'organizations' ? setOrgTab : setOppTab;
+
+  async function actOrg(action: 'approve' | 'reject', item: EmployerOrganization) {
+    setBusy(item.id);
     try {
       const token = await getAccessToken();
       if (!token) return;
-      const body = action === 'reject' ? JSON.stringify({ reason: notes[id]?.trim() || null }) : undefined;
-      await apiFetch(`/admin/employers/${id}/${action}`, token, { method: 'POST', body });
+      const body = action === 'reject' ? JSON.stringify({ reason: note.trim() || null }) : undefined;
+      await apiFetch(`/admin/employers/${item.id}/${action}`, token, { method: 'POST', body });
       setError(false);
-      setStatus(`${action[0].toUpperCase() + action.slice(1)}d ${label}.`);
+      setStatus(`${action[0].toUpperCase() + action.slice(1)}d ${item.name}.`);
+      setOrgDrawer(null);
+      setNote('');
       await loadOrgs(orgTab);
     } catch (err) {
       setError(true);
@@ -103,14 +112,14 @@ export default function EmployersPage() {
     }
   }
 
-  async function onResendOrgInvite(id: string, label: string) {
-    setBusy(id);
+  async function onResendOrgInvite(item: EmployerOrganization) {
+    setBusy(item.id);
     try {
       const token = await getAccessToken();
       if (!token) return;
-      await apiFetch(`/admin/employers/${id}/resend-invite`, token, { method: 'POST' });
+      await apiFetch(`/admin/employers/${item.id}/resend-invite`, token, { method: 'POST' });
       setError(false);
-      setStatus(`Resent invite to ${label}.`);
+      setStatus(`Resent invite to ${item.name}.`);
     } catch (err) {
       setError(true);
       setStatus(toUserMessage(err, 'Could not resend the invitation. Please try again.'));
@@ -119,20 +128,22 @@ export default function EmployersPage() {
     }
   }
 
-  async function actOpp(id: string, action: 'approve' | 'reject', label: string) {
-    if (action === 'reject' && !notes[id]?.trim()) {
+  async function actOpp(action: 'approve' | 'reject', item: OpportunitySubmission) {
+    if (action === 'reject' && !note.trim()) {
       setError(true);
       setStatus('A reason is required to reject a submission.');
       return;
     }
-    setBusy(id);
+    setBusy(item.id);
     try {
       const token = await getAccessToken();
       if (!token) return;
-      const body = action === 'reject' ? JSON.stringify({ reason: notes[id]?.trim() }) : undefined;
-      await apiFetch(`/admin/employers/opportunities/${id}/${action}`, token, { method: 'POST', body });
+      const body = action === 'reject' ? JSON.stringify({ reason: note.trim() }) : undefined;
+      await apiFetch(`/admin/employers/opportunities/${item.id}/${action}`, token, { method: 'POST', body });
       setError(false);
-      setStatus(`${action[0].toUpperCase() + action.slice(1)}d ${label}.`);
+      setStatus(`${action[0].toUpperCase() + action.slice(1)}d ${item.title}.`);
+      setOppDrawer(null);
+      setNote('');
       await loadOpps(oppTab);
     } catch (err) {
       setError(true);
@@ -142,197 +153,298 @@ export default function EmployersPage() {
     }
   }
 
-  const statusTab = mainTab === 'organizations' ? orgTab : oppTab;
-  const setStatusTab = mainTab === 'organizations' ? setOrgTab : setOppTab;
-
   return (
     <>
-      <header className="topbar">
+      <header className="ops-top">
         <div>
           <h1>Employer Partners</h1>
-          <p>Review employer organizations and their opportunity submissions — Blueprint Bond</p>
+          <p>Review employer organizations and their opportunity submissions — Blueprint Bond.</p>
         </div>
-      </header>
-      <div className="content">
-        <div className="tabs" style={{ marginBottom: 16 }}>
+        <div className="seg-tabs">
           <button
             type="button"
-            className={`tab${mainTab === 'organizations' ? ' active' : ''}`}
+            className={`seg-tab${mainTab === 'organizations' ? ' active' : ''}`}
             onClick={() => setMainTab('organizations')}
           >
             Organizations
           </button>
           <button
             type="button"
-            className={`tab${mainTab === 'opportunities' ? ' active' : ''}`}
+            className={`seg-tab${mainTab === 'opportunities' ? ' active' : ''}`}
             onClick={() => setMainTab('opportunities')}
           >
             Opportunities
           </button>
         </div>
+      </header>
 
-        <div className="actions" style={{ justifyContent: 'space-between', alignItems: 'center', marginTop: 0 }}>
-          <div className="tabs">
+      <div className="content" style={{ paddingTop: 8 }}>
+        {error ? <div className="error-banner">{status}</div> : null}
+
+        <div className="ops-toolbar">
+          <div className="seg-tabs">
             {(['pending', 'approved', 'rejected'] as StatusTab[]).map((t) => (
               <button
                 key={t}
                 type="button"
-                className={`tab${statusTab === t ? ' active' : ''}`}
+                className={`seg-tab${statusTab === t ? ' active' : ''}`}
                 onClick={() => setStatusTab(t)}
               >
                 {t[0].toUpperCase() + t.slice(1)}
               </button>
             ))}
           </div>
+          <span className="ops-count">
+            {mainTab === 'organizations' ? `${orgs.length} organizations` : `${opps.length} submissions`}
+          </span>
           <button
-            className="btn ghost"
+            className="ops-btn"
             type="button"
             onClick={() => (mainTab === 'organizations' ? void loadOrgs(orgTab) : void loadOpps(oppTab))}
-            style={{ width: 'auto' }}
           >
             Refresh
           </button>
         </div>
 
-        <p className={`status${error ? ' error' : ''}`}>{status}</p>
-
         {mainTab === 'organizations' ? (
-          orgs.length === 0 ? (
-            <div className="panel empty">{`No ${orgTab} organizations.`}</div>
-          ) : (
-            <div className="card-list">
-              {orgs.map((item) => {
-                const label = item.name;
-                return (
-                  <article key={item.id} className="card">
-                    <div className="card-head">
-                      <div>
-                        <h3>{label}</h3>
-                        <p className="meta">
-                          {item.contact_name ? `${item.contact_name} · ` : ''}
-                          {item.contact_email}
-                        </p>
-                        {item.review_note && <p className="meta">Note: {item.review_note}</p>}
-                      </div>
-                      <span className={badgeClass(orgTab)}>{item.status}</span>
-                    </div>
-
-                    {orgTab === 'pending' && (
-                      <>
-                        <div className="field" style={{ marginTop: 12, marginBottom: 0 }}>
-                          <label htmlFor={`org-note-${item.id}`}>Note (sent on reject)</label>
-                          <textarea
-                            id={`org-note-${item.id}`}
-                            rows={2}
-                            value={notes[item.id] || ''}
-                            onChange={(e) => setNotes((prev) => ({ ...prev, [item.id]: e.target.value }))}
-                            placeholder="Optional"
-                          />
+          <div className="ops-table-wrap table-scroll">
+            {orgs.length === 0 ? (
+              <div className="ops-empty">{`No ${orgTab} organizations.`}</div>
+            ) : (
+              <table className="ops-table">
+                <thead>
+                  <tr>
+                    <th>Organization</th>
+                    <th>Contact</th>
+                    <th>Email</th>
+                    <th>Status</th>
+                    <th>Review Note</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {orgs.map((item) => (
+                    <tr key={item.id}>
+                      <td><div className="ops-cell-title">{item.name}</div></td>
+                      <td>{item.contact_name || '—'}</td>
+                      <td>{item.contact_email}</td>
+                      <td><span className={statusChip(orgTab)}>{item.status}</span></td>
+                      <td>
+                        {item.review_note ? (
+                          <span className="ops-cell-sub">{item.review_note}</span>
+                        ) : (
+                          <span className="ops-cell-sub">—</span>
+                        )}
+                      </td>
+                      <td>
+                        <div className="ops-row-actions">
+                          {orgTab === 'pending' ? (
+                            <button
+                              className="ops-btn primary"
+                              type="button"
+                              onClick={() => {
+                                setOrgDrawer(item);
+                                setNote('');
+                              }}
+                            >
+                              Review
+                            </button>
+                          ) : null}
+                          {orgTab === 'approved' ? (
+                            <button
+                              className="ops-btn"
+                              type="button"
+                              disabled={busy === item.id}
+                              onClick={() => void onResendOrgInvite(item)}
+                            >
+                              Resend invite
+                            </button>
+                          ) : null}
+                          {orgTab === 'rejected' ? (
+                            <span className="ops-cell-sub">Read-only</span>
+                          ) : null}
                         </div>
-                        <div className="actions">
-                          <button
-                            className="btn"
-                            type="button"
-                            disabled={busy === item.id}
-                            onClick={() => void actOrg(item.id, 'approve', label)}
-                          >
-                            Approve
-                          </button>
-                          <button
-                            className="btn danger"
-                            type="button"
-                            disabled={busy === item.id}
-                            onClick={() => void actOrg(item.id, 'reject', label)}
-                          >
-                            Reject
-                          </button>
-                        </div>
-                      </>
-                    )}
-
-                    {orgTab === 'approved' && (
-                      <div className="actions">
-                        <button
-                          className="btn ghost"
-                          type="button"
-                          disabled={busy === item.id}
-                          onClick={() => void onResendOrgInvite(item.id, label)}
-                        >
-                          Resend invite
-                        </button>
-                      </div>
-                    )}
-                  </article>
-                );
-              })}
-            </div>
-          )
-        ) : opps.length === 0 ? (
-          <div className="panel empty">{`No ${oppTab} submissions.`}</div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
         ) : (
-          <div className="card-list">
-            {opps.map((item) => {
-              const label = item.title;
-              return (
-                <article key={item.id} className="card">
-                  <div className="card-head">
-                    <div>
-                      <h3>{label}</h3>
-                      <p className="meta">
-                        {item.organization_name} · {item.category}
+          <div className="ops-table-wrap table-scroll">
+            {opps.length === 0 ? (
+              <div className="ops-empty">{`No ${oppTab} submissions.`}</div>
+            ) : (
+              <table className="ops-table">
+                <thead>
+                  <tr>
+                    <th>Opportunity</th>
+                    <th>Organization</th>
+                    <th>Category</th>
+                    <th>Link</th>
+                    <th>Status</th>
+                    <th>Review</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {opps.map((item) => (
+                    <tr key={item.id}>
+                      <td>
+                        <div className="ops-cell-title">{item.title}</div>
+                        <div className="ops-cell-sub">{item.description.slice(0, 90)}</div>
+                      </td>
+                      <td>{item.organization_name}</td>
+                      <td style={{ textTransform: 'capitalize' }}>{item.category}</td>
+                      <td>
                         {item.external_url ? (
-                          <>
-                            {' · '}
-                            <a href={item.external_url} target="_blank" rel="noopener noreferrer">
-                              link
-                            </a>
-                          </>
-                        ) : null}
-                      </p>
-                      <p className="meta">{item.description}</p>
-                      {item.review_note && <p className="meta">Note: {item.review_note}</p>}
-                    </div>
-                    <span className={badgeClass(oppTab)}>{item.status}</span>
-                  </div>
-
-                  {oppTab === 'pending' && (
-                    <>
-                      <div className="field" style={{ marginTop: 12, marginBottom: 0 }}>
-                        <label htmlFor={`opp-note-${item.id}`}>Reason (required to reject)</label>
-                        <textarea
-                          id={`opp-note-${item.id}`}
-                          rows={2}
-                          value={notes[item.id] || ''}
-                          onChange={(e) => setNotes((prev) => ({ ...prev, [item.id]: e.target.value }))}
-                          placeholder="Required only if rejecting"
-                        />
-                      </div>
-                      <div className="actions">
-                        <button
-                          className="btn"
-                          type="button"
-                          disabled={busy === item.id}
-                          onClick={() => void actOpp(item.id, 'approve', label)}
-                        >
-                          Approve &amp; Publish
-                        </button>
-                        <button
-                          className="btn danger"
-                          type="button"
-                          disabled={busy === item.id}
-                          onClick={() => void actOpp(item.id, 'reject', label)}
-                        >
-                          Reject
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </article>
-              );
-            })}
+                          <a href={item.external_url} target="_blank" rel="noopener noreferrer">
+                            Link
+                          </a>
+                        ) : (
+                          <span className="ops-cell-sub">—</span>
+                        )}
+                      </td>
+                      <td><span className={statusChip(oppTab)}>{item.status}</span></td>
+                      <td>
+                        <div className="ops-row-actions">
+                          {oppTab === 'pending' ? (
+                            <button
+                              className="ops-btn primary"
+                              type="button"
+                              onClick={() => {
+                                setOppDrawer(item);
+                                setNote('');
+                              }}
+                            >
+                              Review
+                            </button>
+                          ) : (
+                            <span className="ops-cell-sub">
+                              {item.review_note ? `Note: ${item.review_note}` : 'Read-only'}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         )}
+        {!error ? <p className="status" style={{ marginTop: 12 }}>{status}</p> : null}
       </div>
+
+      {orgDrawer ? (
+        <>
+          <div className="ops-drawer-backdrop" onClick={() => setOrgDrawer(null)} aria-hidden />
+          <aside className="ops-drawer" role="dialog" aria-label="Review employer organization">
+            <div className="ops-drawer-head">
+              <div>
+                <h2>{orgDrawer.name}</h2>
+                <div className="ops-drawer-meta"><span className="ops-chip warn">Pending review</span></div>
+              </div>
+              <button className="ops-drawer-close" type="button" aria-label="Close" onClick={() => setOrgDrawer(null)}>✕</button>
+            </div>
+            <div className="ops-drawer-grid">
+              <div className="ops-drawer-field">
+                <label>Contact name</label>
+                <div>{orgDrawer.contact_name || '—'}</div>
+              </div>
+              <div className="ops-drawer-field">
+                <label>Contact email</label>
+                <div>{orgDrawer.contact_email}</div>
+              </div>
+            </div>
+            <div className="field">
+              <label htmlFor="org-note">Review note</label>
+              <textarea
+                id="org-note"
+                rows={3}
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="Optional note sent if rejected"
+              />
+            </div>
+            <div className="ops-drawer-footer">
+              <button className="btn danger" type="button" disabled={busy === orgDrawer.id} onClick={() => void actOrg('reject', orgDrawer)}>
+                Reject
+              </button>
+              <button className="btn" type="button" disabled={busy === orgDrawer.id} onClick={() => void actOrg('approve', orgDrawer)}>
+                Approve
+              </button>
+            </div>
+          </aside>
+        </>
+      ) : null}
+
+      {oppDrawer ? (
+        <>
+          <div className="ops-drawer-backdrop" onClick={() => setOppDrawer(null)} aria-hidden />
+          <aside className="ops-drawer" role="dialog" aria-label="Review opportunity submission">
+            <div className="ops-drawer-head">
+              <div>
+                <h2>{oppDrawer.title}</h2>
+                <div className="ops-drawer-meta">
+                  <span className="ops-chip warn">Pending review</span>
+                </div>
+              </div>
+              <button className="ops-drawer-close" type="button" aria-label="Close" onClick={() => setOppDrawer(null)}>✕</button>
+            </div>
+            <div className="ops-drawer-grid">
+              <div className="ops-drawer-field">
+                <label>Organization</label>
+                <div>{oppDrawer.organization_name}</div>
+              </div>
+              <div className="ops-drawer-field">
+                <label>Category</label>
+                <div style={{ textTransform: 'capitalize' }}>{oppDrawer.category}</div>
+              </div>
+            </div>
+            <div className="field">
+              <label>Description</label>
+              <p className="meta" style={{ margin: 0 }}>{oppDrawer.description}</p>
+            </div>
+            {oppDrawer.external_url ? (
+              <div className="field">
+                <label>External link</label>
+                <a href={oppDrawer.external_url} target="_blank" rel="noopener noreferrer">
+                  {oppDrawer.external_url}
+                </a>
+              </div>
+            ) : null}
+            <div className="field">
+              <label htmlFor="opp-note">Reject reason (required to reject)</label>
+              <textarea
+                id="opp-note"
+                rows={3}
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="Required if rejecting"
+              />
+            </div>
+            <div className="ops-drawer-footer">
+              <button
+                className="btn danger"
+                type="button"
+                disabled={busy === oppDrawer.id || !note.trim()}
+                onClick={() => void actOpp('reject', oppDrawer)}
+              >
+                Reject
+              </button>
+              <button
+                className="btn"
+                type="button"
+                disabled={busy === oppDrawer.id}
+                onClick={() => void actOpp('approve', oppDrawer)}
+              >
+                Approve &amp; Publish
+              </button>
+            </div>
+          </aside>
+        </>
+      ) : null}
     </>
   );
 }

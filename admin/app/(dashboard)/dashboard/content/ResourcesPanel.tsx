@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useCallback, useEffect, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { apiFetch, toUserMessage } from '@/lib/api/client';
 import { getAccessToken } from '@/lib/auth/session';
 
@@ -28,10 +28,15 @@ const CATEGORIES = [
   'other',
 ];
 
+function labelCat(c: string): string {
+  return c.replaceAll('_', ' ');
+}
+
 export default function ResourcesPanel() {
   const [items, setItems] = useState<Resource[]>([]);
   const [status, setStatus] = useState('Loading resources…');
   const [error, setError] = useState(false);
+  const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [category, setCategory] = useState('advising');
   const [title, setTitle] = useState('');
@@ -42,6 +47,9 @@ export default function ResourcesPanel() {
   const [phone, setPhone] = useState('');
   const [saving, setSaving] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
+  const [q, setQ] = useState('');
+  const [filterCat, setFilterCat] = useState('all');
+  const [filterActive, setFilterActive] = useState<'all' | 'active' | 'inactive'>('all');
 
   function resetForm() {
     setEditingId(null);
@@ -52,6 +60,7 @@ export default function ResourcesPanel() {
     setHours('');
     setContactEmail('');
     setPhone('');
+    setShowForm(false);
   }
 
   function startEdit(item: Resource) {
@@ -63,7 +72,7 @@ export default function ResourcesPanel() {
     setHours(item.hours ?? '');
     setContactEmail(item.contact_email ?? '');
     setPhone(item.phone ?? '');
-    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
+    setShowForm(true);
   }
 
   const load = useCallback(async () => {
@@ -74,7 +83,7 @@ export default function ResourcesPanel() {
       if (!token) throw new Error('Not signed in');
       const data = await apiFetch<Resource[]>('/admin/campus-resources', token);
       setItems(data);
-      setStatus(`${data.length} resource(s).`);
+      setStatus(`${data.filter((r) => r.is_active).length} active resources`);
     } catch (err) {
       setError(true);
       setStatus(toUserMessage(err, 'Could not load this page. Please refresh and try again.'));
@@ -84,6 +93,21 @@ export default function ResourcesPanel() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  const filtered = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    return items.filter((item) => {
+      if (filterCat !== 'all' && item.category !== filterCat) return false;
+      if (filterActive === 'active' && !item.is_active) return false;
+      if (filterActive === 'inactive' && item.is_active) return false;
+      if (!needle) return true;
+      return (
+        item.title.toLowerCase().includes(needle) ||
+        item.description.toLowerCase().includes(needle) ||
+        (item.location || '').toLowerCase().includes(needle)
+      );
+    });
+  }, [items, q, filterCat, filterActive]);
 
   async function submitForm(event: FormEvent) {
     event.preventDefault();
@@ -123,7 +147,6 @@ export default function ResourcesPanel() {
     }
   }
 
-  // Hardened per-item runner: blocks double-clicks, always catches + surfaces errors, reloads.
   async function run(id: string, label: string, doIt: (token: string) => Promise<void>) {
     if (busy) return;
     setBusy(id);
@@ -161,112 +184,140 @@ export default function ResourcesPanel() {
 
   return (
     <>
-      <form className="panel" onSubmit={submitForm}>
-        <h2>{editingId ? 'Edit resource' : 'Add resource'}</h2>
-        <div className="grid-2">
-          <div className="field">
-            <label htmlFor="category">Category</label>
-            <select id="category" value={category} onChange={(e) => setCategory(e.target.value)}>
-              {CATEGORIES.map((c) => (
-                <option key={c} value={c}>
-                  {c.replaceAll('_', ' ')}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="field">
-            <label htmlFor="res-title">Title</label>
-            <input id="res-title" value={title} onChange={(e) => setTitle(e.target.value)} required />
-          </div>
+      <div className="ops-toolbar">
+        <div className="ops-search">
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search resources" aria-label="Search resources" />
         </div>
-        <div className="field">
-          <label htmlFor="description">Description</label>
-          <textarea
-            id="description"
-            rows={3}
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            required
-          />
-        </div>
-        <div className="grid-2">
-          <div className="field">
-            <label htmlFor="location">Location</label>
-            <input id="location" value={location} onChange={(e) => setLocation(e.target.value)} />
+        <select className="ops-select" value={filterCat} onChange={(e) => setFilterCat(e.target.value)} aria-label="Category">
+          <option value="all">All categories</option>
+          {CATEGORIES.map((c) => (
+            <option key={c} value={c}>{labelCat(c)}</option>
+          ))}
+        </select>
+        <select
+          className="ops-select"
+          value={filterActive}
+          onChange={(e) => setFilterActive(e.target.value as 'all' | 'active' | 'inactive')}
+          aria-label="Active filter"
+        >
+          <option value="all">All</option>
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+        </select>
+        <span className="ops-count">{filtered.length} shown</span>
+        <button className="ops-btn" type="button" onClick={() => void load()}>Refresh</button>
+        <button
+          className="ops-btn primary"
+          type="button"
+          onClick={() => {
+            resetForm();
+            setShowForm(true);
+          }}
+        >
+          Add resource
+        </button>
+      </div>
+
+      {error ? <div className="error-banner">{status}</div> : null}
+
+      {showForm ? (
+        <form className="ops-form" onSubmit={submitForm}>
+          <h2>{editingId ? 'Edit resource' : 'Add resource'}</h2>
+          <div className="grid-2">
+            <div className="field">
+              <label htmlFor="category">Category</label>
+              <select id="category" value={category} onChange={(e) => setCategory(e.target.value)}>
+                {CATEGORIES.map((c) => (
+                  <option key={c} value={c}>{labelCat(c)}</option>
+                ))}
+              </select>
+            </div>
+            <div className="field">
+              <label htmlFor="res-title">Title</label>
+              <input id="res-title" value={title} onChange={(e) => setTitle(e.target.value)} required />
+            </div>
           </div>
           <div className="field">
-            <label htmlFor="hours">Hours</label>
-            <input id="hours" value={hours} onChange={(e) => setHours(e.target.value)} />
+            <label htmlFor="description">Description</label>
+            <textarea id="description" rows={3} value={description} onChange={(e) => setDescription(e.target.value)} required />
           </div>
-          <div className="field">
-            <label htmlFor="res-email">Contact email</label>
-            <input
-              id="res-email"
-              type="email"
-              value={contactEmail}
-              onChange={(e) => setContactEmail(e.target.value)}
-            />
+          <div className="grid-2">
+            <div className="field">
+              <label htmlFor="location">Location</label>
+              <input id="location" value={location} onChange={(e) => setLocation(e.target.value)} />
+            </div>
+            <div className="field">
+              <label htmlFor="hours">Hours</label>
+              <input id="hours" value={hours} onChange={(e) => setHours(e.target.value)} />
+            </div>
+            <div className="field">
+              <label htmlFor="res-email">Contact email</label>
+              <input id="res-email" type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} />
+            </div>
+            <div className="field">
+              <label htmlFor="phone">Phone</label>
+              <input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
+            </div>
           </div>
-          <div className="field">
-            <label htmlFor="phone">Phone</label>
-            <input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
-          </div>
-        </div>
-        <div className="actions">
-          <button className="btn" type="submit" disabled={saving} style={{ width: 'auto' }}>
-            {saving ? 'Saving…' : editingId ? 'Save changes' : 'Create resource'}
-          </button>
-          {editingId ? (
+          <div className="actions">
+            <button className="btn" type="submit" disabled={saving} style={{ width: 'auto' }}>
+              {saving ? 'Saving…' : editingId ? 'Save changes' : 'Create resource'}
+            </button>
             <button className="btn ghost" type="button" onClick={resetForm} style={{ width: 'auto' }}>
               Cancel
             </button>
-          ) : null}
-        </div>
-      </form>
+          </div>
+        </form>
+      ) : null}
 
-      <div className="actions" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
-        <p className={`status${error ? ' error' : ''}`} style={{ margin: 0 }}>
-          {status}
-        </p>
-        <button className="btn ghost" type="button" onClick={() => void load()} style={{ width: 'auto' }}>
-          Refresh
-        </button>
+      <div className="ops-table-wrap table-scroll">
+        {filtered.length === 0 ? (
+          <div className="ops-empty">No resources match these filters.</div>
+        ) : (
+          <table className="ops-table">
+            <thead>
+              <tr>
+                <th>Resource</th>
+                <th>Category</th>
+                <th>Location</th>
+                <th>Contact</th>
+                <th>Status</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((item) => (
+                <tr key={item.id}>
+                  <td>
+                    <div className="ops-cell-title">{item.title}</div>
+                    <div className="ops-cell-sub">{item.description.slice(0, 90)}</div>
+                  </td>
+                  <td style={{ textTransform: 'capitalize' }}>{labelCat(item.category)}</td>
+                  <td>{item.location || '—'}</td>
+                  <td>{item.contact_email || item.phone || '—'}</td>
+                  <td>
+                    <span className={item.is_active ? 'ops-chip success' : 'ops-chip muted'}>
+                      {item.is_active ? 'Active' : 'Inactive'}
+                    </span>
+                  </td>
+                  <td>
+                    <div className="ops-row-actions">
+                      <button className="ops-btn" type="button" disabled={busy === item.id} onClick={() => startEdit(item)}>Edit</button>
+                      {item.is_active ? (
+                        <button className="ops-btn" type="button" disabled={busy === item.id} onClick={() => setActive(item, false)}>Deactivate</button>
+                      ) : (
+                        <button className="ops-btn primary" type="button" disabled={busy === item.id} onClick={() => setActive(item, true)}>Restore</button>
+                      )}
+                      <button className="ops-btn danger" type="button" disabled={busy === item.id} onClick={() => remove(item)}>Delete</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
-      <div className="card-list">
-        {items.map((item) => (
-          <article key={item.id} className="card">
-            <div className="card-head">
-              <div>
-                <h3>{item.title}</h3>
-                <p className="meta">{item.category.replaceAll('_', ' ')}</p>
-              </div>
-              <span className={item.is_active ? 'badge success' : 'badge muted'}>
-                {item.is_active ? 'active' : 'inactive'}
-              </span>
-            </div>
-            <p className="meta">{item.description}</p>
-            {item.location ? <p className="meta">Location: {item.location}</p> : null}
-            {item.hours ? <p className="meta">Hours: {item.hours}</p> : null}
-            <div className="actions">
-              <button className="btn ghost" type="button" disabled={busy === item.id} onClick={() => startEdit(item)}>
-                Edit
-              </button>
-              {item.is_active ? (
-                <button className="btn ghost" type="button" disabled={busy === item.id} onClick={() => setActive(item, false)}>
-                  Deactivate
-                </button>
-              ) : (
-                <button className="btn secondary" type="button" disabled={busy === item.id} onClick={() => setActive(item, true)}>
-                  Restore
-                </button>
-              )}
-              <button className="btn danger" type="button" disabled={busy === item.id} onClick={() => remove(item)}>
-                Delete
-              </button>
-            </div>
-          </article>
-        ))}
-      </div>
+      {!error ? <p className="status" style={{ marginTop: 12 }}>{status}</p> : null}
     </>
   );
 }

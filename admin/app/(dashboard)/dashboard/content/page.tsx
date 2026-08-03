@@ -13,29 +13,27 @@ export default function ContentPage() {
 
   return (
     <>
-      <header className="topbar">
+      <header className="ops-top">
         <div>
           <h1>Campus Hub</h1>
-          <p>Publish campus posts and maintain the resource directory</p>
+          <p>Publish campus posts and maintain the resource directory.</p>
         </div>
-        <div className="tabs">
-          <button
-            type="button"
-            className={`tab${tab === 'posts' ? ' active' : ''}`}
-            onClick={() => setTab('posts')}
-          >
+        <div className="seg-tabs">
+          <button type="button" className={`seg-tab${tab === 'posts' ? ' active' : ''}`} onClick={() => setTab('posts')}>
             Posts
           </button>
           <button
             type="button"
-            className={`tab${tab === 'resources' ? ' active' : ''}`}
+            className={`seg-tab${tab === 'resources' ? ' active' : ''}`}
             onClick={() => setTab('resources')}
           >
             Resources
           </button>
         </div>
       </header>
-      <div className="content">{tab === 'posts' ? <PostsPanel /> : <ResourcesPanel />}</div>
+      <div className="content" style={{ paddingTop: 8 }}>
+        {tab === 'posts' ? <PostsPanel /> : <ResourcesPanel />}
+      </div>
     </>
   );
 }
