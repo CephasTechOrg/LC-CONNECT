@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box}
+  a{color:#6F42E8;text-decoration:none}
+  a:hover{color:#5730C7}
+  ::placeholder{color:#A39EAE}
+</style>
+</helmet>
+<div style="width:1440px;font-family:'Inter',system-ui,-apple-system,sans-serif;color:#1C1924;background:#FFFFFF;border-radius:28px;box-shadow:0 30px 80px -30px rgba(52,38,104,.28),0 4px 14px rgba(52,38,104,.06);display:flex;overflow:hidden;min-height:940px;-webkit-font-smoothing:antialiased;">
+
+  <!-- SIDEBAR -->
+  <aside style="flex:0 0 96px;margin:16px 0 16px 16px;border-radius:26px;background:linear-gradient(180deg,#7546EC 0%,#6337DD 60%,#5A31CF 100%);display:flex;flex-direction:column;align-items:center;padding:22px 0 24px;box-shadow:0 18px 40px -14px rgba(87,48,199,.55);">
+    <div style="width:52px;height:52px;border-radius:16px;background:#FFFFFF;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 16px rgba(30,20,60,.22);overflow:hidden;">
+      <img src="assets/lclogo.png" alt="Livingstone College" style="width:44px;height:44px;object-fit:contain;" />
+    </div>
+    <div style="font-size:10px;font-weight:700;letter-spacing:.14em;color:rgba(255,255,255,.85);margin-top:9px;">LC</div>
+
+    <nav style="display:flex;flex-direction:column;align-items:center;gap:6px;margin-top:26px;width:100%;">
+      <div title="Dashboard" onClick="{{ nav.dashboard.click }}" style="width:52px;height:52px;border-radius:16px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:{{ nav.dashboard.bg }};box-shadow:{{ nav.dashboard.shadow }};">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="{{ nav.dashboard.stroke }}" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/></svg>
+      </div>
+      <div title="Campus Hub" onClick="{{ nav.hub.click }}" style="width:52px;height:52px;border-radius:16px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:{{ nav.hub.bg }};box-shadow:{{ nav.hub.shadow }};">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="{{ nav.hub.stroke }}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M12 3 4 8v13h16V8z"/><path d="M9 21v-6h6v6"/></svg>
+      </div>
+      <div title="Users" onClick="{{ nav.users.click }}" style="width:52px;height:52px;border-radius:16px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:{{ nav.users.bg }};box-shadow:{{ nav.users.shadow }};">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="{{ nav.users.stroke }}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19.5c.6-3.2 2.9-5 5.5-5s4.9 1.8 5.5 5"/><path d="M16 5.2a3 3 0 0 1 0 5.6"/><path d="M17.5 14.6c2 .6 3.4 2.2 3.9 4.9"/></svg>
+      </div>
+      <div title="Campus Positions" onClick="{{ nav.positions.click }}" style="width:52px;height:52px;border-radius:16px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:{{ nav.positions.bg }};box-shadow:{{ nav.positions.shadow }};">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="{{ nav.positions.stroke }}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7.5" width="18" height="12.5" rx="2.5"/><path d="M8.5 7.5V6a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v1.5"/><path d="M3 12.5h18"/></svg>
+      </div>
+      <div title="Moderation" onClick="{{ nav.moderation.click }}" style="width:52px;height:52px;border-radius:16px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:{{ nav.moderation.bg }};box-shadow:{{ nav.moderation.shadow }};">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="{{ nav.moderation.stroke }}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 5 5.8v5.4c0 4.2 3 7.2 7 9 4-1.8 7-4.8 7-9V5.8z"/><path d="M12 8.5v3.5"/><path d="M12 15h.01"/></svg>
+      </div>
+
+      <div style="width:44px;height:1px;background:rgba(255,255,255,.18);margin:8px 0;"></div>
+
+      <div title="Presidential Scholars" onClick="{{ nav.scholars.click }}" style="width:52px;height:52px;border-radius:16px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:{{ nav.scholars.bg }};box-shadow:{{ nav.scholars.shadow }};">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="{{ nav.scholars.stroke }}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="9" r="5"/><path d="M8.5 13.2 7 21l5-2.6L17 21l-1.5-7.8"/></svg>
+      </div>
+      <div title="Employer Partners" onClick="{{ nav.employers.click }}" style="width:52px;height:52px;border-radius:16px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:{{ nav.employers.bg }};box-shadow:{{ nav.employers.shadow }};">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="{{ nav.employers.stroke }}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M9 8V5.5a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 5.5V8"/><path d="M9 13h6"/></svg>
+      </div>
+
+      <div style="width:44px;height:1px;background:rgba(255,255,255,.18);margin:8px 0;"></div>
+
+      <div title="Admins &amp; Roles" onClick="{{ nav.admins.click }}" style="width:52px;height:52px;border-radius:16px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:{{ nav.admins.bg }};box-shadow:{{ nav.admins.shadow }};">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="{{ nav.admins.stroke }}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="8" r="3"/><path d="M4 19.5c.5-3 2.9-4.8 6-4.8"/><circle cx="17.5" cy="16.5" r="2.6"/><path d="M17.5 12.4v1.2M17.5 19.4v1.2M21 16.5h-1.2M15.2 16.5H14"/></svg>
+      </div>
+      <div title="Settings" onClick="{{ nav.settings.click }}" style="width:52px;height:52px;border-radius:16px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:{{ nav.settings.bg }};box-shadow:{{ nav.settings.shadow }};">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="{{ nav.settings.stroke }}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v2.2M12 19.3v2.2M4.2 7l1.9 1.1M17.9 15.9l1.9 1.1M4.2 17l1.9-1.1M17.9 8.1l1.9-1.1"/></svg>
+      </div>
+      <div title="Audit Logs" onClick="{{ nav.audit.click }}" style="width:52px;height:52px;border-radius:16px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:{{ nav.audit.bg }};box-shadow:{{ nav.audit.shadow }};">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="{{ nav.audit.stroke }}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l3 3v15H6z"/><path d="M9 9h6M9 13h6M9 17h4"/></svg>
+      </div>
+    </nav>
+
+    <div style="flex:1;"></div>
+    <div title="Sign Out" style="width:52px;height:52px;border-radius:16px;display:flex;align-items:center;justify-content:center;cursor:pointer;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.9)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 12H3"/><path d="M6 8.5 2.5 12 6 15.5"/></svg>
+    </div>
+  </aside>
+
+  <!-- CONTENT -->
+  <div style="flex:1;min-width:0;padding:24px 30px 40px;display:flex;flex-direction:column;">
+    <!-- TOP HEADER -->
+    <header style="display:flex;align-items:center;gap:24px;flex:0 0 auto;">
+      <div style="position:relative;width:460px;max-width:46%;">
+        <svg style="position:absolute;left:18px;top:50%;transform:translateY(-50%);" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9B95A8" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/></svg>
+        <input type="text" placeholder="Search across LC Connect" style="width:100%;height:46px;border:1px solid #EAE7F0;background:#F7F6FB;border-radius:23px;padding:0 18px 0 46px;font-size:14px;color:#1C1924;font-family:inherit;outline:none;" />
+      </div>
+      <div style="flex:1;"></div>
+      <div style="display:flex;align-items:center;gap:16px;">
+        <div style="display:flex;align-items:center;gap:8px;padding:8px 14px;border:1px solid #EAE7F0;border-radius:22px;">
+          <span style="width:8px;height:8px;border-radius:50%;background:#6F42E8;"></span>
+          <span style="font-size:13px;font-weight:600;color:#403A4C;">Livingstone College</span>
+        </div>
+        <button style="width:42px;height:42px;border-radius:50%;border:1px solid #EAE7F0;background:#FFFFFF;display:flex;align-items:center;justify-content:center;cursor:pointer;">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#5A5464" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v2.2M12 19.3v2.2M4.2 7l1.9 1.1M17.9 15.9l1.9 1.1M4.2 17l1.9-1.1M17.9 8.1l1.9-1.1"/></svg>
+        </button>
+        <button style="position:relative;width:42px;height:42px;border-radius:50%;border:1px solid #EAE7F0;background:#FFFFFF;display:flex;align-items:center;justify-content:center;cursor:pointer;">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#5A5464" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8.5a6 6 0 0 0-12 0c0 6-2.5 7.5-2.5 7.5h17S18 14.5 18 8.5"/><path d="M13.7 20a2 2 0 0 1-3.4 0"/></svg>
+          <span style="position:absolute;top:9px;right:10px;width:8px;height:8px;border-radius:50%;background:#D95763;border:2px solid #fff;"></span>
+        </button>
+        <div style="display:flex;align-items:center;gap:11px;padding-left:4px;cursor:pointer;">
+          <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#7546EC,#5A31CF);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:15px;box-shadow:0 4px 10px rgba(87,48,199,.3);">DA</div>
+          <div style="line-height:1.25;">
+            <div style="font-size:14px;font-weight:700;color:#1C1924;">David</div>
+            <div style="font-size:11.5px;color:#8E8899;">Super Administrator</div>
+          </div>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8E8899" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+        </div>
+      </div>
+    </header>
+
+    <div style="margin-top:26px;flex:1;min-width:0;">{{ children }}</div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1440,&quot;height&quot;:940},&quot;active&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;dashboard&quot;,&quot;hub&quot;,&quot;users&quot;,&quot;positions&quot;,&quot;moderation&quot;,&quot;scholars&quot;,&quot;employers&quot;,&quot;admins&quot;,&quot;settings&quot;,&quot;audit&quot;],&quot;default&quot;:&quot;dashboard&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const active = this.props.active || 'dashboard';
+    const onNav = this.props.onNav || (() => {});
+    const mk = (k) => Object.assign(active === k
+      ? { bg: '#FFFFFF', stroke: '#6F42E8', shadow: '0 8px 18px rgba(30,20,60,.20)' }
+      : { bg: 'transparent', stroke: 'rgba(255,255,255,.9)', shadow: 'none' }, { click: () => onNav(k) });
+    const keys = ['dashboard','hub','users','positions','moderation','scholars','employers','admins','settings','audit'];
+    const nav = {};
+    keys.forEach(k => nav[k] = mk(k));
+    return { nav, children: this.props.children };
+  }
+}
+</script>
+</body>
+</html>

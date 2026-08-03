@@ -1,39 +1,57 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { ReactNode, useEffect, useState } from 'react';
+import { ComponentType, ReactNode, useEffect, useState } from 'react';
 import { apiFetch, bootstrapUser, type BootstrapUser, toUserMessage } from '@/lib/api/client';
 import { createClient } from '@/lib/supabase/client';
 import { signOut } from '@/lib/auth/session';
+import {
+  IconAdmins,
+  IconAudit,
+  IconBell,
+  IconCampusHub,
+  IconChevronDown,
+  IconDashboard,
+  IconEmployers,
+  IconModeration,
+  IconPositions,
+  IconScholars,
+  IconSearch,
+  IconSettings,
+  IconSignOut,
+  IconUsers,
+} from '@/components/nav-icons';
 
-type NavItem = { href: string; label: string; icon: string };
-type NavSection = { title?: string; honorsOnly?: boolean; items: NavItem[] };
+type NavIcon = ComponentType<{ stroke?: string; size?: number }>;
+type NavItem = { href: string; label: string; Icon: NavIcon };
+type NavSection = { honorsOnly?: boolean; dividerBefore?: boolean; items: NavItem[] };
 
 const NAV_SECTIONS: NavSection[] = [
   {
     items: [
-      { href: '/dashboard', label: 'Dashboard', icon: '▦' },
-      { href: '/dashboard/content', label: 'Campus Hub', icon: '▥' },
-      { href: '/dashboard/users', label: 'Users', icon: '◉' },
-      { href: '/dashboard/positions', label: 'Campus Positions', icon: '▧' },
-      { href: '/dashboard/moderation', label: 'Moderation', icon: '⚑' },
+      { href: '/dashboard', label: 'Dashboard', Icon: IconDashboard },
+      { href: '/dashboard/content', label: 'Campus Hub', Icon: IconCampusHub },
+      { href: '/dashboard/users', label: 'Users', Icon: IconUsers },
+      { href: '/dashboard/positions', label: 'Campus Positions', Icon: IconPositions },
+      { href: '/dashboard/moderation', label: 'Moderation', Icon: IconModeration },
     ],
   },
   {
-    title: 'Honors Program',
     honorsOnly: true,
+    dividerBefore: true,
     items: [
-      { href: '/dashboard/scholars', label: 'Presidential Scholars', icon: '◈' },
-      { href: '/dashboard/employers', label: 'Employer Partners', icon: '▣' },
+      { href: '/dashboard/scholars', label: 'Presidential Scholars', Icon: IconScholars },
+      { href: '/dashboard/employers', label: 'Employer Partners', Icon: IconEmployers },
     ],
   },
   {
-    title: 'Administration',
+    dividerBefore: true,
     items: [
-      { href: '/dashboard/admins', label: 'Admins & Roles', icon: '❖' },
-      { href: '/dashboard/settings', label: 'Settings', icon: '⚙' },
-      { href: '/dashboard/audit-logs', label: 'Audit Logs', icon: '▨' },
+      { href: '/dashboard/admins', label: 'Admins & Roles', Icon: IconAdmins },
+      { href: '/dashboard/settings', label: 'Settings', Icon: IconSettings },
+      { href: '/dashboard/audit-logs', label: 'Audit Logs', Icon: IconAudit },
     ],
   },
 ];
@@ -46,6 +64,15 @@ function initials(email: string): string {
   return (parts[0][0] + parts[1][0]).toUpperCase();
 }
 
+function displayName(email: string): string {
+  const raw = email.split('@')[0].replace(/[._-]+/g, ' ').trim();
+  if (!raw) return 'Admin';
+  return raw
+    .split(/\s+/)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
 function roleLabel(scopes: string[]): string {
   if (scopes.includes('super_admin')) return 'Super Administrator';
   if (scopes.includes('school_admin')) return 'School Administrator';
@@ -53,6 +80,11 @@ function roleLabel(scopes: string[]): string {
   if (scopes.includes('content_admin')) return 'Content Administrator';
   if (scopes.includes('auditor')) return 'Auditor';
   return 'Administrator';
+}
+
+function isActive(href: string, pathname: string): boolean {
+  if (href === '/dashboard') return pathname === '/dashboard';
+  return pathname === href || pathname.startsWith(`${href}/`);
 }
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
@@ -87,7 +119,6 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           return;
         }
         setUser(bootstrapped);
-        // Best-effort: an admin with no scope yet (e.g. legacy account) still sees the base nav.
         try {
           const scopesRes = await apiFetch<{ scopes: string[] }>(
             '/admin/admins/me/scopes',
@@ -137,45 +168,90 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="app-shell">
-      <aside className="sidebar">
+      <aside className="sidebar" aria-label="Admin navigation">
         <div className="sidebar-brand">
-          <div className="sidebar-brand-mark">LC</div>
-          <div>
-            <strong>LC Connect</strong>
-            <span>Campus Admin</span>
+          <div className="sidebar-brand-mark">
+            <Image src="/lclogo.png" alt="Livingstone College" width={44} height={44} priority />
           </div>
+          <div className="sidebar-brand-code">LC</div>
         </div>
-        {sections.map((section) => (
-          <div className="nav-section" key={section.title || 'base'}>
-            {section.title ? <div className="nav-section-title">{section.title}</div> : null}
-            {section.items.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`nav-link${pathname === item.href ? ' active' : ''}`}
-              >
-                <span className="nav-icon">{item.icon}</span>
-                {item.label}
-              </Link>
-            ))}
-          </div>
-        ))}
+
+        <nav className="sidebar-nav">
+          {sections.map((section, sectionIndex) => (
+            <div className="nav-section" key={sectionIndex}>
+              {section.dividerBefore ? <div className="nav-divider" aria-hidden /> : null}
+              {section.items.map((item) => {
+                const active = isActive(item.href, pathname);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    title={item.label}
+                    aria-label={item.label}
+                    aria-current={active ? 'page' : undefined}
+                    className={`nav-link${active ? ' active' : ''}`}
+                  >
+                    <item.Icon stroke={active ? '#6F42E8' : 'rgba(255,255,255,0.9)'} />
+                  </Link>
+                );
+              })}
+            </div>
+          ))}
+        </nav>
+
+        <button
+          className="nav-link nav-signout"
+          type="button"
+          title="Sign Out"
+          aria-label="Sign out"
+          onClick={() => void onLogout()}
+        >
+          <IconSignOut stroke="rgba(255,255,255,0.9)" />
+        </button>
       </aside>
+
       <div className="main">
         <header className="appbar">
-          <div className="appbar-org">Livingstone College</div>
-          <div className="appbar-user">
-            <div className="appbar-avatar">{initials(user.email)}</div>
-            <div>
-              <div className="appbar-user-name">{user.email}</div>
-              <div className="appbar-user-role">{roleLabel(scopes)}</div>
+          <div className="appbar-search">
+            <span className="appbar-search-icon" aria-hidden>
+              <IconSearch stroke="#9B95A8" />
+            </span>
+            {/* Visual chrome only — no global search API yet. */}
+            <input type="search" placeholder="Search across LC Connect" aria-label="Search across LC Connect" disabled />
+          </div>
+
+          <div className="appbar-actions">
+            <div className="org-chip">
+              <span className="org-chip-dot" aria-hidden />
+              <span>Livingstone College</span>
             </div>
-            <button className="btn ghost" type="button" onClick={() => void onLogout()} style={{ width: 'auto' }}>
-              Sign out
+
+            <Link
+              href="/dashboard/settings"
+              className="icon-btn"
+              title="Settings"
+              aria-label="Settings"
+            >
+              <IconSettings stroke="#5A5464" size={19} />
+            </Link>
+
+            {/* Bell is chrome only — no admin notification feed yet. */}
+            <button className="icon-btn" type="button" title="Notifications" aria-label="Notifications" disabled>
+              <IconBell stroke="#5A5464" />
             </button>
+
+            <div className="appbar-user">
+              <div className="appbar-avatar">{initials(user.email)}</div>
+              <div className="appbar-user-meta">
+                <div className="appbar-user-name">{displayName(user.email)}</div>
+                <div className="appbar-user-role">{roleLabel(scopes)}</div>
+              </div>
+              <IconChevronDown stroke="#8E8899" />
+            </div>
           </div>
         </header>
-        {children}
+
+        <div className="main-body">{children}</div>
       </div>
     </div>
   );

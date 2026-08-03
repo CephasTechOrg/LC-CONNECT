@@ -8,8 +8,13 @@ export default function SettingsPage() {
         </div>
       </header>
       <div className="content">
-        <div className="panel empty">
-          Platform configuration options are coming in a future release.
+        <div className="coming-soon">
+          <span className="coming-soon-badge">Planned</span>
+          <h2>Platform configuration is coming soon</h2>
+          <p>
+            Settings will live here once configuration endpoints are available. Nothing is invented
+            on this screen yet.
+          </p>
         </div>
       </div>
     </>

@@ -8,9 +8,13 @@ export default function AuditLogsPage() {
         </div>
       </header>
       <div className="content">
-        <div className="panel empty">
-          Administrator actions are being securely recorded. A searchable log viewer is coming in
-          a future release.
+        <div className="coming-soon">
+          <span className="coming-soon-badge">Recording active</span>
+          <h2>Searchable audit viewer coming soon</h2>
+          <p>
+            Admin actions are already being recorded securely. A searchable viewer will appear here
+            when the list API is ready.
+          </p>
         </div>
       </div>
     </>
