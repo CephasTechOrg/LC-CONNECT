@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { apiFetch, toUserMessage } from '@/lib/api/client';
+import { OpsEmpty, OpsLoading } from '@/components/ops-states';
+import { apiFetch, myEmployer, type MyEmployer, toUserMessage } from '@/lib/api/client';
 import { getAccessToken } from '@/lib/auth/session';
 
 type Scholar = { user_id: string };
@@ -24,28 +25,36 @@ function timeAgo(iso: string): string {
   return `${days}d ago`;
 }
 
+function formatCount(n: number | null): string {
+  if (n == null) return '—';
+  return n.toLocaleString();
+}
+
 export default function DashboardHomePage() {
+  const [employer, setEmployer] = useState<MyEmployer | null>(null);
   const [scholarCount, setScholarCount] = useState<number | null>(null);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
-  const [status, setStatus] = useState('Loading…');
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    setError(false);
-    setStatus('Loading…');
+    setError(null);
+    setLoading(true);
     try {
       const token = await getAccessToken();
       if (!token) throw new Error('Not signed in');
-      const [scholars, mySubmissions] = await Promise.all([
+      const [me, scholars, mySubmissions] = await Promise.all([
+        myEmployer(token),
         apiFetch<Scholar[]>('/employers/scholars', token),
         apiFetch<Submission[]>('/employers/opportunities/me', token),
       ]);
+      setEmployer(me);
       setScholarCount(scholars.length);
       setSubmissions(mySubmissions);
-      setStatus('');
     } catch (err) {
-      setError(true);
-      setStatus(toUserMessage(err, 'Could not load the dashboard. Please refresh and try again.'));
+      setError(toUserMessage(err, 'Could not load the dashboard. Please refresh and try again.'));
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -60,55 +69,107 @@ export default function DashboardHomePage() {
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     .slice(0, 5);
 
+  const orgName = employer?.organization_name || 'Partner';
+
   return (
-    <>
-      <div className="page-header">
-        <h1>Employer Partner Portal</h1>
-        <p>Blueprint Bond • Powered by LC Connect</p>
-      </div>
+    <div className="dash" aria-busy={loading}>
+      {error ? <div className="error-banner">{error}</div> : null}
 
-      {error ? <div className="error-banner">{status}</div> : null}
-
-      <div className="kpi-grid">
-        <div className="kpi-card">
-          <div className="kpi-icon">🎓</div>
-          <div className="kpi-value">{scholarCount ?? '—'}</div>
-          <div className="kpi-title">Total Scholars Available</div>
-          <div className="kpi-subtitle">Consenting Presidential Scholars</div>
-        </div>
-        <div className="kpi-card">
-          <div className="kpi-icon">💼</div>
-          <div className="kpi-value">{approved.length}</div>
-          <div className="kpi-title">Active Opportunities</div>
-          <div className="kpi-subtitle">Published to the Blueprint Bond feed</div>
-        </div>
-        <div className="kpi-card">
-          <div className="kpi-icon">🕐</div>
-          <div className="kpi-value">{pending.length}</div>
-          <div className="kpi-title">Pending Reviews</div>
-          <div className="kpi-subtitle">Awaiting Honors Program approval</div>
-        </div>
-        <div className="kpi-card">
-          <div className="kpi-icon">📋</div>
-          <div className="kpi-value">{submissions.length}</div>
-          <div className="kpi-title">Total Submissions</div>
-          <div className="kpi-subtitle">Across all statuses</div>
-        </div>
-      </div>
-
-      <div className="dashboard-grid">
-        <div className="panel">
-          <div className="panel-head">
-            <h2>Recent Submissions</h2>
-            <Link href="/dashboard/opportunities">View all</Link>
+      <section className="dash-welcome">
+        <div className="dash-welcome-copy">
+          <h1>Welcome back{employer?.display_name ? `, ${employer.display_name.split(' ')[0]}` : ''}.</h1>
+          <p>
+            Blueprint Bond partner portal for {orgName}. Browse consenting Presidential Scholars and
+            submit opportunities for Honors Program review.
+          </p>
+          <div className="dash-welcome-chips">
+            <div className="dash-chip dash-chip-primary">
+              {loading ? '…' : pending.length} pending review{pending.length === 1 ? '' : 's'}
+            </div>
+            <div className="dash-chip dash-chip-warn">
+              <span className="dash-chip-dot" aria-hidden />
+              {loading ? '…' : formatCount(scholarCount)} scholar{scholarCount === 1 ? '' : 's'} available
+            </div>
           </div>
-          {recent.length === 0 ? (
-            <div className="empty">No opportunities submitted yet.</div>
+        </div>
+      </section>
+
+      <div className="dash-kpi-grid">
+        <div className="dash-kpi dash-kpi-fill">
+          <div className="dash-kpi-icon">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <circle cx="12" cy="9" r="5" />
+              <path d="M8.5 13.2 7 21l5-2.6L17 21l-1.5-7.8" />
+            </svg>
+          </div>
+          <div>
+            <div className="dash-kpi-value">{formatCount(scholarCount)}</div>
+            <div className="dash-kpi-title">Scholars available</div>
+            <div className="dash-kpi-sub">Opted into employer visibility</div>
+          </div>
+        </div>
+        <div className="dash-kpi">
+          <div className="dash-kpi-icon tone-green">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#2DAA72" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M20 6 9 17l-5-5" />
+            </svg>
+          </div>
+          <div>
+            <div className="dash-kpi-value">{loading ? '—' : approved.length}</div>
+            <div className="dash-kpi-title">Active opportunities</div>
+            <div className="dash-kpi-sub">Published to scholars</div>
+          </div>
+        </div>
+        <div className="dash-kpi">
+          <div className="dash-kpi-icon tone-orange">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#D96B36" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <circle cx="12" cy="12" r="9" />
+              <path d="M12 7v5l3 2" />
+            </svg>
+          </div>
+          <div>
+            <div className="dash-kpi-value">{loading ? '—' : pending.length}</div>
+            <div className="dash-kpi-title">Pending reviews</div>
+            <div className="dash-kpi-sub">Awaiting Honors approval</div>
+          </div>
+        </div>
+        <div className="dash-kpi">
+          <div className="dash-kpi-icon tone-cyan">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#2F8EA3" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <rect x="3" y="7.5" width="18" height="12.5" rx="2.5" />
+              <path d="M8.5 7.5V6a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v1.5" />
+            </svg>
+          </div>
+          <div>
+            <div className="dash-kpi-value">{loading ? '—' : submissions.length}</div>
+            <div className="dash-kpi-title">Total submissions</div>
+            <div className="dash-kpi-sub">Across all statuses</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="dash-split">
+        <section className="dash-panel">
+          <div className="dash-panel-head">
+            <div className="dash-panel-title">Recent submissions</div>
+            <Link className="dash-panel-link" href="/dashboard/opportunities">View all</Link>
+          </div>
+          {loading ? (
+            <OpsLoading label="Loading submissions…" />
+          ) : recent.length === 0 ? (
+            <OpsEmpty title="No submissions yet">
+              Create an opportunity to start the Honors Program review process.
+            </OpsEmpty>
           ) : (
             recent.map((s) => (
               <div className="activity-row" key={s.id}>
-                <div className="activity-icon">
-                  {s.status === 'approved' ? '✓' : s.status === 'rejected' ? '✕' : '⏳'}
+                <div
+                  className={`activity-icon${
+                    s.status === 'approved' ? ' ok' : s.status === 'rejected' ? ' bad' : ' wait'
+                  }`}
+                  aria-hidden
+                >
+                  {s.status === 'approved' ? '✓' : s.status === 'rejected' ? '✕' : '·'}
                 </div>
                 <div>
                   <div className="activity-title">{s.title}</div>
@@ -124,73 +185,93 @@ export default function DashboardHomePage() {
               </div>
             ))
           )}
-        </div>
+        </section>
 
-        <div className="panel">
-          <div className="panel-head">
-            <h2>Quick Actions</h2>
+        <section className="dash-panel">
+          <div className="dash-panel-head">
+            <div className="dash-panel-title">Quick actions</div>
           </div>
-          <Link className="quick-action" href="/dashboard/opportunities">
-            <div className="quick-action-icon">+</div>
-            <div>
-              <div className="quick-action-title">Create Opportunity</div>
-              <div className="quick-action-desc">Post a new role for scholars</div>
-            </div>
-            <div className="quick-action-arrow">›</div>
-          </Link>
-          <Link className="quick-action" href="/dashboard/scholars">
-            <div className="quick-action-icon">◉</div>
-            <div>
-              <div className="quick-action-title">Browse Scholars</div>
-              <div className="quick-action-desc">Find and connect with talent</div>
-            </div>
-            <div className="quick-action-arrow">›</div>
-          </Link>
-          <Link className="quick-action" href="/dashboard/organization">
-            <div className="quick-action-icon">⌘</div>
-            <div>
-              <div className="quick-action-title">Organization Profile</div>
-              <div className="quick-action-desc">View your organization details</div>
-            </div>
-            <div className="quick-action-arrow">›</div>
-          </Link>
-        </div>
+          <div className="dash-actions">
+            <Link className="dash-action" href="/dashboard/opportunities">
+              <div className="dash-action-icon">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6F42E8" strokeWidth="2" strokeLinecap="round" aria-hidden>
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+              </div>
+              <div>
+                <div className="dash-action-title">Create opportunity</div>
+                <div className="dash-action-desc">Post a new role for scholars</div>
+              </div>
+              <div className="dash-action-arrow">›</div>
+            </Link>
+            <Link className="dash-action" href="/dashboard/scholars">
+              <div className="dash-action-icon">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6F42E8" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <circle cx="12" cy="9" r="5" />
+                  <path d="M8.5 13.2 7 21l5-2.6L17 21l-1.5-7.8" />
+                </svg>
+              </div>
+              <div>
+                <div className="dash-action-title">Browse scholars</div>
+                <div className="dash-action-desc">Find and connect with talent</div>
+              </div>
+              <div className="dash-action-arrow">›</div>
+            </Link>
+            <Link className="dash-action" href="/dashboard/organization">
+              <div className="dash-action-icon">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6F42E8" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <rect x="4" y="8" width="16" height="12" rx="2" />
+                  <path d="M9 8V5.5a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 5.5V8" />
+                </svg>
+              </div>
+              <div>
+                <div className="dash-action-title">Organization profile</div>
+                <div className="dash-action-desc">View your partner details</div>
+              </div>
+              <div className="dash-action-arrow">›</div>
+            </Link>
+          </div>
+        </section>
       </div>
 
-      <div className="panel">
-        <div className="panel-head">
-          <h2>Opportunity Status</h2>
-          <Link href="/dashboard/opportunities">View all opportunities</Link>
+      <section className="dash-panel">
+        <div className="dash-panel-head">
+          <div className="dash-panel-title">Opportunity status</div>
+          <Link className="dash-panel-link" href="/dashboard/opportunities">View all</Link>
         </div>
-        <div className="table-scroll">
-          <table className="rows">
-            <thead>
-              <tr>
-                <th>Status</th>
-                <th>Count</th>
-                <th>Description</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td><span className="badge">Pending</span></td>
-                <td>{pending.length}</td>
-                <td>Awaiting Honors Program review</td>
-              </tr>
-              <tr>
-                <td><span className="badge success">Approved</span></td>
-                <td>{approved.length}</td>
-                <td>Live to scholars in the Blueprint Bond feed</td>
-              </tr>
-              <tr>
-                <td><span className="badge danger">Rejected</span></td>
-                <td>{rejected.length}</td>
-                <td>Not approved by the Honors Program</td>
-              </tr>
-            </tbody>
-          </table>
+        <div className="ops-table-wrap table-scroll">
+          {loading ? (
+            <OpsLoading label="Loading status…" />
+          ) : (
+            <table className="ops-table">
+              <thead>
+                <tr>
+                  <th>Status</th>
+                  <th>Count</th>
+                  <th>Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><span className="ops-chip warn">Pending</span></td>
+                  <td>{pending.length}</td>
+                  <td>Awaiting Honors Program review</td>
+                </tr>
+                <tr>
+                  <td><span className="ops-chip success">Approved</span></td>
+                  <td>{approved.length}</td>
+                  <td>Live to scholars in the Blueprint Bond feed</td>
+                </tr>
+                <tr>
+                  <td><span className="ops-chip danger">Rejected</span></td>
+                  <td>{rejected.length}</td>
+                  <td>Not approved by the Honors Program</td>
+                </tr>
+              </tbody>
+            </table>
+          )}
         </div>
-      </div>
-    </>
+      </section>
+    </div>
   );
 }

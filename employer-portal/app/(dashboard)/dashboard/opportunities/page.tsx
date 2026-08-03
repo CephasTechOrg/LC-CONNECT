@@ -1,6 +1,7 @@
 'use client';
 
 import { FormEvent, useCallback, useEffect, useState } from 'react';
+import { OpsEmpty, OpsLoading } from '@/components/ops-states';
 import { apiFetch, toUserMessage } from '@/lib/api/client';
 import { getAccessToken } from '@/lib/auth/session';
 
@@ -18,37 +19,42 @@ type Submission = {
   created_at: string;
 };
 
-function badgeClass(status: Submission['status']): string {
-  if (status === 'approved') return 'badge success';
-  if (status === 'rejected') return 'badge danger';
-  return 'badge';
+function statusChip(status: Submission['status']): string {
+  if (status === 'approved') return 'ops-chip success';
+  if (status === 'rejected') return 'ops-chip danger';
+  return 'ops-chip warn';
+}
+
+function when(iso: string): string {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString();
 }
 
 export default function OpportunitiesPage() {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
-  const [status, setStatus] = useState('Loading…');
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState<Category>('internship');
   const [externalUrl, setExternalUrl] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
-  const [formSuccess, setFormSuccess] = useState<string | null>(null);
+  const [flash, setFlash] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    setError(false);
-    setStatus('Loading…');
+    setError(null);
+    setLoading(true);
     try {
       const token = await getAccessToken();
       if (!token) throw new Error('Not signed in');
       const data = await apiFetch<Submission[]>('/employers/opportunities/me', token);
       setSubmissions(data);
-      setStatus(data.length ? `${data.length} submission(s).` : 'No opportunities submitted yet.');
     } catch (err) {
-      setError(true);
-      setStatus(toUserMessage(err, 'Could not load this page. Please refresh and try again.'));
+      setError(toUserMessage(err, 'Could not load this page. Please refresh and try again.'));
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -58,8 +64,8 @@ export default function OpportunitiesPage() {
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
-    setFormError(null);
-    setFormSuccess(null);
+    setError(null);
+    setFlash(null);
     setSubmitting(true);
     try {
       const token = await getAccessToken();
@@ -73,14 +79,15 @@ export default function OpportunitiesPage() {
           external_url: externalUrl.trim() || null,
         }),
       });
-      setFormSuccess('Submitted for Honors Program review.');
+      setFlash('Submitted for Honors Program review.');
       setTitle('');
       setDescription('');
       setCategory('internship');
       setExternalUrl('');
+      setShowForm(false);
       await load();
     } catch (err) {
-      setFormError(toUserMessage(err, 'Could not submit opportunity'));
+      setError(toUserMessage(err, 'Could not submit opportunity'));
     } finally {
       setSubmitting(false);
     }
@@ -88,19 +95,27 @@ export default function OpportunitiesPage() {
 
   return (
     <>
-      <div className="page-header">
-        <h1>Opportunities</h1>
-        <p>Submit roles for Presidential Scholars — every submission is reviewed before it goes live</p>
-      </div>
+      <header className="ops-top">
+        <div>
+          <h1>Opportunities</h1>
+          <p>Submit roles for Presidential Scholars — every submission is reviewed before it goes live.</p>
+        </div>
+        <button
+          className="ops-btn primary"
+          type="button"
+          onClick={() => setShowForm((v) => !v)}
+        >
+          {showForm ? 'Close form' : 'New opportunity'}
+        </button>
+      </header>
 
-      <div className="dashboard-grid">
-        <div className="panel">
-          <div className="panel-head">
-            <h2>New Opportunity</h2>
-          </div>
-          <form onSubmit={onSubmit}>
-            {formError ? <div className="error-banner">{formError}</div> : null}
-            {formSuccess ? <div className="success-banner">{formSuccess}</div> : null}
+      <div style={{ paddingTop: 8 }}>
+        {error ? <div className="error-banner">{error}</div> : null}
+        {flash && !error ? <p className="ops-flash">{flash}</p> : null}
+
+        {showForm ? (
+          <form className="ops-form" onSubmit={onSubmit}>
+            <h2>New opportunity</h2>
             <div className="field">
               <label htmlFor="title">Title</label>
               <input
@@ -142,50 +157,75 @@ export default function OpportunitiesPage() {
                 placeholder="https://…"
               />
             </div>
-            <button className="btn" type="submit" disabled={submitting}>
-              {submitting ? 'Submitting…' : 'Submit for review'}
-            </button>
+            <div className="actions">
+              <button className="btn" type="submit" disabled={submitting}>
+                {submitting ? 'Submitting…' : 'Submit for review'}
+              </button>
+              <button className="btn ghost" type="button" onClick={() => setShowForm(false)}>
+                Cancel
+              </button>
+            </div>
           </form>
+        ) : null}
+
+        <div className="ops-toolbar">
+          <span className="ops-count" style={{ marginLeft: 0 }}>
+            {loading ? '…' : `${submissions.length} submission${submissions.length === 1 ? '' : 's'}`}
+          </span>
+          <button className="ops-btn" type="button" disabled={loading} onClick={() => void load()}>
+            Refresh
+          </button>
         </div>
 
-        <div className="panel">
-          <div className="panel-head">
-            <h2>Your Submissions</h2>
-            <button className="btn ghost" type="button" onClick={() => void load()} style={{ width: 'auto' }}>
-              Refresh
-            </button>
-          </div>
-          <p className={`status${error ? ' error' : ''}`}>{status}</p>
-          {submissions.length === 0 ? (
-            <div className="empty">Nothing submitted yet.</div>
+        <div className="ops-table-wrap table-scroll">
+          {loading ? (
+            <OpsLoading label="Loading opportunities…" />
+          ) : submissions.length === 0 ? (
+            <OpsEmpty title="Nothing submitted yet">
+              Use New opportunity to send a role for Honors Program review.
+            </OpsEmpty>
           ) : (
-            <div className="card-list">
-              {submissions.map((s) => (
-                <div className="card" key={s.id}>
-                  <div className="actions" style={{ justifyContent: 'space-between', marginTop: 0 }}>
-                    <strong>{s.title}</strong>
-                    <span className={badgeClass(s.status)}>{s.status}</span>
-                  </div>
-                  <p className="meta" style={{ margin: '4px 0' }}>
-                    {s.category}
-                    {s.external_url ? (
-                      <>
-                        {' • '}
+            <table className="ops-table">
+              <thead>
+                <tr>
+                  <th>Opportunity</th>
+                  <th>Category</th>
+                  <th>Link</th>
+                  <th>Submitted</th>
+                  <th>Status</th>
+                  <th>Review note</th>
+                </tr>
+              </thead>
+              <tbody>
+                {submissions.map((s) => (
+                  <tr key={s.id}>
+                    <td>
+                      <div className="ops-cell-title">{s.title}</div>
+                      <div className="ops-cell-sub">{s.description.slice(0, 90)}</div>
+                    </td>
+                    <td style={{ textTransform: 'capitalize' }}>{s.category}</td>
+                    <td>
+                      {s.external_url ? (
                         <a href={s.external_url} target="_blank" rel="noopener noreferrer">
-                          link
+                          Link
                         </a>
-                      </>
-                    ) : null}
-                  </p>
-                  <p style={{ fontSize: 13.5, margin: '4px 0' }}>{s.description}</p>
-                  {s.review_note ? (
-                    <p className="hint" style={{ margin: '4px 0 0' }}>
-                      Reviewer note: {s.review_note}
-                    </p>
-                  ) : null}
-                </div>
-              ))}
-            </div>
+                      ) : (
+                        <span className="ops-cell-sub">—</span>
+                      )}
+                    </td>
+                    <td>{when(s.created_at)}</td>
+                    <td><span className={statusChip(s.status)}>{s.status}</span></td>
+                    <td>
+                      {s.review_note ? (
+                        <span className="ops-cell-sub">{s.review_note}</span>
+                      ) : (
+                        <span className="ops-cell-sub">—</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           )}
         </div>
       </div>

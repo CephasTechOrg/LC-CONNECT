@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import { OpsEmpty, OpsLoading } from '@/components/ops-states';
 import { apiFetch, toUserMessage } from '@/lib/api/client';
 import { getAccessToken } from '@/lib/auth/session';
 
@@ -31,53 +32,59 @@ function initials(name: string | null): string {
 
 export default function ScholarDetailPage() {
   const params = useParams<{ id: string }>();
+  const id = params.id;
   const [scholar, setScholar] = useState<ScholarView | null>(null);
-  const [status, setStatus] = useState('Loading…');
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const [openingResume, setOpeningResume] = useState(false);
 
   const load = useCallback(async () => {
-    setError(false);
-    setStatus('Loading…');
+    setError(null);
+    setLoading(true);
     try {
       const token = await getAccessToken();
       if (!token) throw new Error('Not signed in');
-      const data = await apiFetch<ScholarView>(`/employers/scholars/${params.id}`, token);
+      const data = await apiFetch<ScholarView>(`/employers/scholars/${id}`, token);
       setScholar(data);
-      setStatus('');
     } catch (err) {
-      setError(true);
-      setStatus(toUserMessage(err, 'Could not load this scholar'));
+      setError(toUserMessage(err, 'Could not load this scholar'));
+    } finally {
+      setLoading(false);
     }
-  }, [params.id]);
+  }, [id]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
-  // The headshot renders inline from the signed URL on the profile payload; only the résumé
-  // still needs an on-demand fetch, since it opens as a document rather than displaying here.
   async function openResume() {
     setOpeningResume(true);
     try {
       const token = await getAccessToken();
       if (!token) return;
-      const signed = await apiFetch<SignedUrl>(`/employers/scholars/${params.id}/resume-url`, token);
+      const signed = await apiFetch<SignedUrl>(`/employers/scholars/${id}/resume-url`, token);
       window.open(signed.url, '_blank', 'noopener,noreferrer');
     } catch (err) {
-      setError(true);
-      setStatus(toUserMessage(err, 'Could not open the résumé. Please try again.'));
+      setError(toUserMessage(err, 'Could not open the résumé. Please try again.'));
     } finally {
       setOpeningResume(false);
     }
   }
 
+  if (loading) {
+    return (
+      <div className="ops-table-wrap">
+        <OpsLoading label="Loading scholar…" />
+      </div>
+    );
+  }
+
   if (error && !scholar) {
     return (
-      <div className="panel">
-        <div className="empty">{status}</div>
-        <div className="actions" style={{ justifyContent: 'center' }}>
-          <Link className="btn ghost" href="/dashboard/scholars" style={{ width: 'auto' }}>
+      <div className="ops-table-wrap">
+        <OpsEmpty title="Could not load profile">{error}</OpsEmpty>
+        <div className="actions" style={{ justifyContent: 'center', paddingBottom: 24 }}>
+          <Link className="btn ghost" href="/dashboard/scholars">
             Back to directory
           </Link>
         </div>
@@ -85,24 +92,27 @@ export default function ScholarDetailPage() {
     );
   }
 
-  if (!scholar) {
-    return <p className="status">{status}</p>;
-  }
+  if (!scholar) return null;
 
   return (
     <>
-      <div className="page-header">
-        <Link href="/dashboard/scholars" style={{ fontSize: 13, fontWeight: 600 }}>
-          ← Scholar Directory
-        </Link>
-      </div>
+      <header className="ops-top">
+        <div>
+          <Link href="/dashboard/scholars" style={{ fontSize: 13, fontWeight: 600 }}>
+            ← Scholar Directory
+          </Link>
+          <h1 style={{ marginTop: 8 }}>{scholar.display_name || 'Presidential Scholar'}</h1>
+          <p>Presidential Scholar • Blueprint Bond</p>
+        </div>
+      </header>
 
-      <div className="dashboard-grid">
+      {error ? <div className="error-banner">{error}</div> : null}
+
+      <div className="dashboard-grid" style={{ marginTop: 8 }}>
         <div className="panel">
           <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
             {scholar.headshot_url ? (
-              /* Short-lived signed Supabase URL, not a static asset — next/image would need
-                 remote-host config for a URL that expires in minutes. */
+              /* Short-lived signed Supabase URL — next/image needs remote-host config. */
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={scholar.headshot_url}
@@ -120,7 +130,7 @@ export default function ScholarDetailPage() {
                 {scholar.display_name || 'Presidential Scholar'}
               </h2>
               <p className="meta" style={{ margin: 0 }}>
-                Presidential Scholar • Blueprint Bond
+                Opted in to employer visibility
               </p>
             </div>
           </div>
@@ -139,9 +149,7 @@ export default function ScholarDetailPage() {
               <h3 style={{ fontSize: 13.5, marginTop: 20, marginBottom: 8, color: 'var(--text-mid)' }}>Skills</h3>
               <div className="tag-row" style={{ justifyContent: 'flex-start' }}>
                 {scholar.skills.map((s) => (
-                  <span className="tag" key={s}>
-                    {s}
-                  </span>
+                  <span className="tag" key={s}>{s}</span>
                 ))}
               </div>
             </>
@@ -150,13 +158,11 @@ export default function ScholarDetailPage() {
           {scholar.career_interests.length > 0 ? (
             <>
               <h3 style={{ fontSize: 13.5, marginTop: 20, marginBottom: 8, color: 'var(--text-mid)' }}>
-                Career Interests
+                Career interests
               </h3>
               <div className="tag-row" style={{ justifyContent: 'flex-start' }}>
                 {scholar.career_interests.map((s) => (
-                  <span className="tag" key={s}>
-                    {s}
-                  </span>
+                  <span className="tag" key={s}>{s}</span>
                 ))}
               </div>
             </>
@@ -165,7 +171,7 @@ export default function ScholarDetailPage() {
 
         <div className="panel">
           <div className="panel-head">
-            <h2>Contact &amp; Documents</h2>
+            <h2>Contact &amp; documents</h2>
           </div>
           {scholar.linkedin_url ? (
             <p style={{ fontSize: 13.5, marginBottom: 8 }}>
@@ -188,7 +194,6 @@ export default function ScholarDetailPage() {
                 type="button"
                 disabled={openingResume}
                 onClick={() => void openResume()}
-                style={{ width: 'auto' }}
               >
                 {openingResume ? 'Opening…' : 'View résumé'}
               </button>
