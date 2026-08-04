@@ -82,18 +82,30 @@ def _send_via_smtp(to_email: str, subject: str, text: str, html: str) -> None:
 
 
 def _send_via_console(to_email: str, subject: str, text: str, _html: str) -> None:
+    """Development only — deliberately prints the whole body (that's the point: it's how a dev
+    reads the OTP without a mail provider). `_active_provider` refuses to select this in
+    production precisely because the body contains invite and password-reset codes."""
     print(f'[EMAIL] To: {to_email} | Subject: {subject}\n{text}')
 
 
 def _active_provider() -> str:
     p = settings.email_provider.lower()
-    if p != 'auto':
-        return p
-    if settings.resend_api_key:
-        return 'resend'
-    if settings.smtp_username and settings.smtp_password:
-        return 'smtp'
-    return 'console'
+    if p == 'auto':
+        if settings.resend_api_key:
+            p = 'resend'
+        elif settings.smtp_username and settings.smtp_password:
+            p = 'smtp'
+        else:
+            p = 'console'
+    if p == 'console' and settings.is_production:
+        # Falling back to console in production would do two silently-bad things at once: print
+        # invite/reset codes into the log stream, and "send" mail that never reaches anyone —
+        # with no error to notice. Fail loudly instead; a caller turns this into a clean 503.
+        raise RuntimeError(
+            'Email is not configured in production (no RESEND_API_KEY or SMTP credentials). '
+            'Refusing to fall back to console, which would log auth codes and deliver nothing.'
+        )
+    return p
 
 
 def _send_email(to_email: str, subject: str, text: str, html: str) -> None:

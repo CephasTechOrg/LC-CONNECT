@@ -1,6 +1,19 @@
-from pydantic import BaseModel, Field
+from typing import Annotated
+
+from pydantic import BaseModel, Field, StringConstraints
 
 from app.shared.schemas import ProfilePublic
+
+# Interests/languages are *get-or-create*: an unrecognised name inserts a new row into the shared
+# `interests`/`languages` tables, which feed the PUBLIC `/lookups` list every user sees during
+# onboarding. Unbounded, that let any signed-in student (a) issue one query+insert per item, so a
+# single request could hammer the database, and (b) inject arbitrary entries into a global,
+# user-visible vocabulary. Both caps below exist to close that.
+#
+# 80 chars matches the `String(80)` columns — longer previously reached the database and failed
+# there as an opaque error instead of a clean 422.
+_LookupName = Annotated[str, StringConstraints(min_length=1, max_length=80, strip_whitespace=True)]
+_MAX_LOOKUP_ITEMS = 30
 
 
 class ProfileUpdate(BaseModel):
@@ -14,10 +27,10 @@ class ProfileUpdate(BaseModel):
     is_hidden: bool | None = None
     allow_messages_from_matches_only: bool | None = None
     show_profile_to_verified_only: bool | None = None
-    interests: list[str] | None = None
-    languages_spoken: list[str] | None = None
-    languages_learning: list[str] | None = None
-    looking_for_codes: list[str] | None = None
+    interests: list[_LookupName] | None = Field(default=None, max_length=_MAX_LOOKUP_ITEMS)
+    languages_spoken: list[_LookupName] | None = Field(default=None, max_length=_MAX_LOOKUP_ITEMS)
+    languages_learning: list[_LookupName] | None = Field(default=None, max_length=_MAX_LOOKUP_ITEMS)
+    looking_for_codes: list[_LookupName] | None = Field(default=None, max_length=_MAX_LOOKUP_ITEMS)
 
 
 class MyProfileRead(ProfilePublic):

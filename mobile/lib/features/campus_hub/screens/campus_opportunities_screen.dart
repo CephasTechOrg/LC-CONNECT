@@ -11,17 +11,15 @@ import '../../programs/providers/programs_provider.dart';
 import '../models/campus_post.dart';
 import '../providers/campus_hub_provider.dart';
 
-const _opportunityFilters = <String, String>{
-  'all': 'All',
+const _categoryFilters = <String, String>{
+  'all': 'All types',
   'internship': 'Internships',
   'job': 'Jobs',
   'volunteer': 'Volunteering',
   'leadership': 'Leadership',
 };
 
-// Source tab — independent of the category chips below. The server already never sends a
-// Blueprint Bond post to anyone but a verified scholar, so this is a client-side filter over
-// posts the user was already allowed to receive, not a second authorization check.
+/// Spec: All / Campus / Blueprint Bond. Blueprint Bond is scholar-only.
 enum _SourceTab { all, campus, blueprintBond }
 
 class CampusOpportunitiesScreen extends ConsumerStatefulWidget {
@@ -32,16 +30,16 @@ class CampusOpportunitiesScreen extends ConsumerStatefulWidget {
 }
 
 class _OpportunitiesState extends ConsumerState<CampusOpportunitiesScreen> {
-  String _filter = 'all';
-  _SourceTab _sourceTab = _SourceTab.all;
+  String _category = 'all';
+  _SourceTab _source = _SourceTab.all;
 
   CampusPostsQuery get _query => CampusPostsQuery(
         kind: 'opportunity',
-        category: _filter == 'all' ? null : _filter,
+        category: _category == 'all' ? null : _category,
       );
 
-  List<CampusPostSummary> _bySource(List<CampusPostSummary> posts) {
-    switch (_sourceTab) {
+  List<CampusPostSummary> _bySource(List<CampusPostSummary> posts, _SourceTab source) {
+    switch (source) {
       case _SourceTab.all:
         return posts;
       case _SourceTab.campus:
@@ -51,10 +49,34 @@ class _OpportunitiesState extends ConsumerState<CampusOpportunitiesScreen> {
     }
   }
 
+  String _emptyTitle(_SourceTab source) {
+    switch (source) {
+      case _SourceTab.blueprintBond:
+        return 'No Blueprint Bond opportunities';
+      case _SourceTab.campus:
+        return 'No campus opportunities';
+      case _SourceTab.all:
+        return 'No opportunities yet';
+    }
+  }
+
+  String _emptySubtitle(_SourceTab source) {
+    switch (source) {
+      case _SourceTab.blueprintBond:
+        return 'Approved employer partner roles for Presidential Scholars will appear here.';
+      case _SourceTab.campus:
+        return 'Campus jobs, internships, and leadership roles will appear here.';
+      case _SourceTab.all:
+        return 'Jobs, internships, and campus roles will appear here when published.';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final postsAsync = ref.watch(campusPostsProvider(_query));
     final isVerifiedScholar = ref.watch(isVerifiedScholarProvider);
+    // Non-scholars never receive Blueprint Bond posts; keep filtering campus-facing.
+    final source = isVerifiedScholar ? _source : _SourceTab.all;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -62,79 +84,34 @@ class _OpportunitiesState extends ConsumerState<CampusOpportunitiesScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(8, 8, 12, 0),
-              child: Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
-                    onPressed: () => context.pop(),
-                  ),
-                  Expanded(
-                    child: Text(
-                      'Opportunities',
-                      style: GoogleFonts.dmSans(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textDark,
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.search_rounded, size: 22, color: AppColors.textMid),
-                    onPressed: () {},
-                  ),
-                ],
-              ),
+            _OpportunitiesHeader(
+              onBack: () => context.pop(),
+              subtitle: isVerifiedScholar
+                  ? 'Campus roles and Blueprint Bond openings'
+                  : 'Jobs, internships, and campus roles',
             ),
-            const SizedBox(height: 8),
+            if (isVerifiedScholar) ...[
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
+                child: _SourceSwitch(
+                  selected: source,
+                  onChanged: (tab) => setState(() => _source = tab),
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
             SizedBox(
               height: 36,
               child: ListView(
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 20),
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: AppFilterChip(
-                      label: 'All',
-                      selected: _sourceTab == _SourceTab.all,
-                      onTap: () => setState(() => _sourceTab = _SourceTab.all),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: AppFilterChip(
-                      label: 'Campus',
-                      selected: _sourceTab == _SourceTab.campus,
-                      onTap: () => setState(() => _sourceTab = _SourceTab.campus),
-                    ),
-                  ),
-                  if (isVerifiedScholar)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: AppFilterChip(
-                        label: 'Blueprint Bond',
-                        selected: _sourceTab == _SourceTab.blueprintBond,
-                        onTap: () => setState(() => _sourceTab = _SourceTab.blueprintBond),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 8),
-            SizedBox(
-              height: 36,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                children: _opportunityFilters.entries.map((e) {
+                children: _categoryFilters.entries.map((e) {
                   return Padding(
                     padding: const EdgeInsets.only(right: 8),
                     child: AppFilterChip(
                       label: e.value,
-                      selected: _filter == e.key,
-                      onTap: () => setState(() => _filter = e.key),
+                      selected: _category == e.key,
+                      onTap: () => setState(() => _category = e.key),
                     ),
                   );
                 }).toList(),
@@ -152,9 +129,13 @@ class _OpportunitiesState extends ConsumerState<CampusOpportunitiesScreen> {
                     onRetry: () => ref.invalidate(campusPostsProvider(_query)),
                   ),
                   data: (allPosts) {
-                    final posts = _bySource(allPosts);
+                    final posts = _bySource(allPosts, source);
                     if (posts.isEmpty) {
-                      return _OpportunitiesEmpty(filter: _filter);
+                      return AppEmptyState(
+                        icon: Icons.work_outline,
+                        title: _emptyTitle(source),
+                        subtitle: _emptySubtitle(source),
+                      );
                     }
                     return ListView.builder(
                       padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
@@ -178,6 +159,122 @@ class _OpportunitiesState extends ConsumerState<CampusOpportunitiesScreen> {
   }
 }
 
+class _OpportunitiesHeader extends StatelessWidget {
+  final VoidCallback onBack;
+  final String subtitle;
+  const _OpportunitiesHeader({required this.onBack, required this.subtitle});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 4, 20, 12),
+      child: Row(
+        children: [
+          IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
+            onPressed: onBack,
+          ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Opportunities',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textDark,
+                  ),
+                ),
+                Text(
+                  subtitle,
+                  style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.textMuted),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Primary Campus ↔ Blueprint Bond switch (plus All). Visually distinct from category chips.
+class _SourceSwitch extends StatelessWidget {
+  final _SourceTab selected;
+  final ValueChanged<_SourceTab> onChanged;
+
+  const _SourceSwitch({required this.selected, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1EFF6),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          _Seg(
+            label: 'All',
+            selected: selected == _SourceTab.all,
+            onTap: () => onChanged(_SourceTab.all),
+          ),
+          _Seg(
+            label: 'Campus',
+            selected: selected == _SourceTab.campus,
+            onTap: () => onChanged(_SourceTab.campus),
+          ),
+          _Seg(
+            label: 'Blueprint Bond',
+            selected: selected == _SourceTab.blueprintBond,
+            onTap: () => onChanged(_SourceTab.blueprintBond),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Seg extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _Seg({required this.label, required this.selected, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Material(
+        color: selected ? Colors.white : Colors.transparent,
+        borderRadius: BorderRadius.circular(9),
+        elevation: selected ? 1 : 0,
+        shadowColor: const Color(0x1A312B3C),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(9),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            child: Text(
+              label,
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.dmSans(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+                color: selected ? AppColors.textDark : AppColors.textMuted,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _OpportunityCard extends StatelessWidget {
   final CampusPostSummary post;
   final VoidCallback onTap;
@@ -185,7 +282,7 @@ class _OpportunityCard extends StatelessWidget {
   const _OpportunityCard({required this.post, required this.onTap});
 
   static const _typeStyles = <String, (Color, Color, IconData)>{
-    'internship': (Color(0xFF2563EB), Color(0xFFE0EDFF), Icons.code_rounded),
+    'internship': (Color(0xFF2563EB), Color(0xFFE0EDFF), Icons.school_outlined),
     'job': (Color(0xFFD97706), Color(0xFFFEF3C7), Icons.work_outline_rounded),
     'volunteer': (Color(0xFF16A34A), Color(0xFFDCFCE7), Icons.favorite_outline_rounded),
     'leadership': (Color(0xFF7C3AED), Color(0xFFF3E8FF), Icons.emoji_events_outlined),
@@ -193,10 +290,23 @@ class _OpportunityCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cat = post.category ?? 'internship';
-    final (badgeColor, badgeBg, icon) = _typeStyles[cat] ?? _typeStyles['internship']!;
-    final typeLabel = _opportunityFilters[cat] ??
-        (cat.isNotEmpty ? '${cat[0].toUpperCase()}${cat.substring(1)}' : 'Opportunity');
+    final cat = post.category ?? '';
+    final (badgeColor, badgeBg, icon) = _typeStyles[cat] ??
+        (AppColors.primary, AppColors.primarySoft, Icons.work_outline_rounded);
+    final typeLabel = switch (cat) {
+      'internship' => 'Internship',
+      'job' => 'Job',
+      'volunteer' => 'Volunteer',
+      'leadership' => 'Leadership',
+      _ => cat.isNotEmpty ? '${cat[0].toUpperCase()}${cat.substring(1)}' : 'Opportunity',
+    };    final sourceLabel = post.isEmployerPartner || post.isBlueprintBond
+        ? 'Employer Partner'
+        : 'Campus Opportunity';
+    final sourceColor =
+        post.isEmployerPartner || post.isBlueprintBond ? AppColors.primary : AppColors.textMuted;
+    final sourceBg = post.isEmployerPartner || post.isBlueprintBond
+        ? AppColors.primarySoft
+        : AppColors.background;
 
     return Material(
       color: AppColors.surface,
@@ -209,74 +319,42 @@ class _OpportunityCard extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: AppColors.border),
-            boxShadow: const [
-              BoxShadow(color: Color(0x0A111827), blurRadius: 3, offset: Offset(0, 1)),
-            ],
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                width: 60,
-                height: 60,
+                width: 52,
+                height: 52,
                 decoration: BoxDecoration(
                   color: badgeBg,
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: Icon(icon, color: badgeColor, size: 28),
+                child: Icon(icon, color: badgeColor, size: 24),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: badgeBg,
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            typeLabel.replaceAll(RegExp(r's$'), ''),
-                            style: GoogleFonts.dmSans(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: badgeColor,
-                            ),
-                          ),
-                        ),
+                        _Badge(label: typeLabel, color: badgeColor, background: badgeBg),
                         const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: post.isEmployerPartner ? const Color(0xFFEFF6FB) : AppColors.background,
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            post.isEmployerPartner ? 'Employer Partner' : 'Campus Opportunity',
-                            style: GoogleFonts.dmSans(
-                              fontSize: 10.5,
-                              fontWeight: FontWeight.w600,
-                              color: post.isEmployerPartner ? AppColors.primary : AppColors.textMuted,
-                            ),
-                          ),
+                        Flexible(
+                          child: _Badge(label: sourceLabel, color: sourceColor, background: sourceBg),
                         ),
-                        const Spacer(),
+                        const SizedBox(width: 8),
                         Text(
                           DateFormat('MMM d').format(post.publishAt.toLocal()),
-                          style: GoogleFonts.dmSans(
-                            fontSize: 12,
-                            color: AppColors.textMuted,
-                          ),
+                          style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textMuted),
                         ),
                       ],
                     ),
                     const SizedBox(height: 8),
                     Text(
                       post.title,
-                      maxLines: 1,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.dmSans(
                         fontSize: 15.5,
@@ -284,43 +362,16 @@ class _OpportunityCard extends StatelessWidget {
                         color: AppColors.textDark,
                       ),
                     ),
-                    if (post.summary != null && post.summary!.isNotEmpty) ...[
-                      const SizedBox(height: 2),
+                    if (post.summary != null && post.summary!.trim().isNotEmpty) ...[
+                      const SizedBox(height: 4),
                       Text(
                         post.summary!,
-                        maxLines: 1,
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.textMid),
+                        style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.textMid, height: 1.35),
                       ),
                     ],
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        const Icon(Icons.place_outlined, size: 13, color: AppColors.textMuted),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Salisbury, NC',
-                          style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textMuted),
-                        ),
-                        const SizedBox(width: 12),
-                        const Icon(Icons.calendar_today_outlined, size: 12, color: AppColors.textMuted),
-                        const SizedBox(width: 4),
-                        Text(
-                          cat == 'internship' ? 'Internship' : 'Part-time',
-                          style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textMuted),
-                        ),
-                      ],
-                    ),
                   ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              Padding(
-                padding: const EdgeInsets.only(top: 2),
-                child: Icon(
-                  Icons.bookmark_border_rounded,
-                  size: 22,
-                  color: AppColors.textMuted,
                 ),
               ),
             ],
@@ -331,148 +382,26 @@ class _OpportunityCard extends StatelessWidget {
   }
 }
 
-class _OpportunitiesEmpty extends StatelessWidget {
-  final String filter;
-  const _OpportunitiesEmpty({required this.filter});
+class _Badge extends StatelessWidget {
+  final String label;
+  final Color color;
+  final Color background;
 
-  static const _samples = <(String, String, String, String, String, String)>[
-    ('internship', 'Summer Analyst Internship', 'Goldman Sachs', 'New York, NY', 'Full-time', 'Jul 28'),
-    ('internship', 'Software Engineering Intern', 'Google', 'Mountain View, CA', 'Internship', 'Jul 27'),
-    ('volunteer', 'Community Outreach Volunteer', 'Livingstone Cares', 'Salisbury, NC', 'Part-time', 'Jul 26'),
-    ('job', 'Marketing Assistant', 'Livingstone College', 'Salisbury, NC', 'Part-time', 'Jul 25'),
-    ('internship', 'Business Development Intern', 'Bank of America', 'Charlotte, NC', 'Internship', 'Jul 24'),
-  ];
+  const _Badge({required this.label, required this.color, required this.background});
 
   @override
   Widget build(BuildContext context) {
-    final filtered = filter == 'all' ? _samples : _samples.where((s) => s.$1 == filter).toList();
-
-    if (filtered.isEmpty) {
-      return const AppEmptyState(
-        icon: Icons.work_outline,
-        title: 'No opportunities yet',
-        subtitle: 'Jobs, internships, and campus roles will appear here.',
-      );
-    }
-
-    return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-      itemCount: filtered.length,
-      itemBuilder: (context, index) {
-        final (cat, title, org, location, schedule, date) = filtered[index];
-        return Padding(
-          padding: EdgeInsets.only(bottom: index < filtered.length - 1 ? 14 : 0),
-          child: _SampleOpportunityCard(
-            category: cat,
-            title: title,
-            org: org,
-            location: location,
-            schedule: schedule,
-            date: date,
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _SampleOpportunityCard extends StatelessWidget {
-  final String category;
-  final String title;
-  final String org;
-  final String location;
-  final String schedule;
-  final String date;
-
-  const _SampleOpportunityCard({
-    required this.category,
-    required this.title,
-    required this.org,
-    required this.location,
-    required this.schedule,
-    required this.date,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final (badgeColor, badgeBg, icon) =
-        _OpportunityCard._typeStyles[category] ?? _OpportunityCard._typeStyles['internship']!;
-    final typeLabel = (_opportunityFilters[category] ?? 'Opportunity').replaceAll(RegExp(r's$'), '');
-
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-        boxShadow: const [
-          BoxShadow(color: Color(0x0A111827), blurRadius: 3, offset: Offset(0, 1)),
-        ],
+        color: background,
+        borderRadius: BorderRadius.circular(6),
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(
-              color: badgeBg,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Icon(icon, color: badgeColor, size: 28),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: badgeBg,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        typeLabel,
-                        style: GoogleFonts.dmSans(fontSize: 11, fontWeight: FontWeight.w700, color: badgeColor),
-                      ),
-                    ),
-                    const Spacer(),
-                    Text(date, style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textMuted)),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.dmSans(fontSize: 15.5, fontWeight: FontWeight.w700, color: AppColors.textDark),
-                ),
-                const SizedBox(height: 2),
-                Text(org, style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.textMid)),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    const Icon(Icons.place_outlined, size: 13, color: AppColors.textMuted),
-                    const SizedBox(width: 4),
-                    Text(location, style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textMuted)),
-                    const SizedBox(width: 12),
-                    const Icon(Icons.calendar_today_outlined, size: 12, color: AppColors.textMuted),
-                    const SizedBox(width: 4),
-                    Text(schedule, style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textMuted)),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          const Padding(
-            padding: EdgeInsets.only(top: 2),
-            child: Icon(Icons.bookmark_border_rounded, size: 22, color: AppColors.textMuted),
-          ),
-        ],
+      child: Text(
+        label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: GoogleFonts.dmSans(fontSize: 11, fontWeight: FontWeight.w700, color: color),
       ),
     );
   }

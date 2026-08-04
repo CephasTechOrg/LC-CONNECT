@@ -79,7 +79,7 @@ export default function OpportunitiesPage() {
           external_url: externalUrl.trim() || null,
         }),
       });
-      setFlash('Submitted for Honors Program review.');
+      setFlash('Published — Presidential Scholars can see it now.');
       setTitle('');
       setDescription('');
       setCategory('internship');
@@ -98,7 +98,7 @@ export default function OpportunitiesPage() {
       <header className="ops-top">
         <div>
           <h1>Opportunities</h1>
-          <p>Submit roles for Presidential Scholars — every submission is reviewed before it goes live.</p>
+          <p>Post roles for Presidential Scholars — they go live as soon as you publish.</p>
         </div>
         <button
           className="ops-btn primary"
@@ -159,7 +159,7 @@ export default function OpportunitiesPage() {
             </div>
             <div className="actions">
               <button className="btn" type="submit" disabled={submitting}>
-                {submitting ? 'Submitting…' : 'Submit for review'}
+                {submitting ? 'Publishing…' : 'Publish opportunity'}
               </button>
               <button className="btn ghost" type="button" onClick={() => setShowForm(false)}>
                 Cancel
@@ -182,7 +182,7 @@ export default function OpportunitiesPage() {
             <OpsLoading label="Loading opportunities…" />
           ) : submissions.length === 0 ? (
             <OpsEmpty title="Nothing submitted yet">
-              Use New opportunity to send a role for Honors Program review.
+              Use New opportunity to publish a role for Presidential Scholars.
             </OpsEmpty>
           ) : (
             <table className="ops-table">

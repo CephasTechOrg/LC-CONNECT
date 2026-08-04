@@ -164,7 +164,7 @@ class CampusPostUpdate(BaseModel):
 class CampusResourceCreate(BaseModel):
     category: str = Field(min_length=1, max_length=30)
     title: str = Field(min_length=1, max_length=200)
-    description: str = Field(min_length=1)
+    description: str = Field(min_length=1, max_length=4000)
     location: str | None = Field(default=None, max_length=200)
     hours: str | None = Field(default=None, max_length=200)
     contact_email: EmailStr | None = None
@@ -177,7 +177,7 @@ class CampusResourceCreate(BaseModel):
 class CampusResourceUpdate(BaseModel):
     category: str | None = Field(default=None, min_length=1, max_length=30)
     title: str | None = Field(default=None, min_length=1, max_length=200)
-    description: str | None = Field(default=None, min_length=1)
+    description: str | None = Field(default=None, min_length=1, max_length=4000)
     location: str | None = Field(default=None, max_length=200)
     hours: str | None = Field(default=None, max_length=200)
     contact_email: EmailStr | None = None

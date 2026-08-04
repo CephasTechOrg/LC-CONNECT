@@ -15,11 +15,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.features.campus_hub import publishing
-from app.features.campus_hub.schema import CampusPostCreate
-from app.models import CampusPost, EmployerAccount, EmployerOpportunitySubmission, EmployerOrganization, User
+from app.models import EmployerAccount, EmployerOpportunitySubmission, EmployerOrganization, User
 from app.shared.audit import record_audit
-from app.shared.programs import PRESIDENTIAL_SCHOLARS_SLUG
+from app.shared.employer_publishing import publish_submission
 from app.shared.supabase_admin import (
     AuthUserAlreadyRegistered,
     get_auth_user_id_by_email,
@@ -216,28 +214,7 @@ async def approve_submission(
             status_code=status.HTTP_409_CONFLICT, detail='Only a pending submission can be approved'
         )
 
-    if submission.published_post_id is not None:
-        post = await db.get(CampusPost, submission.published_post_id)
-    else:
-        payload = CampusPostCreate(
-            kind='opportunity',
-            title=submission.title,
-            body=submission.description,
-            category=submission.category,
-            external_url=submission.external_url,
-        )
-        post = await publishing.create_post(db, actor=actor, payload=payload)
-        post.source = 'employer'
-        post.eligible_program_slug = PRESIDENTIAL_SCHOLARS_SLUG
-        # Record the link BEFORE attempting to publish — if `publish_post` fails, a retry must
-        # see this draft via `published_post_id` and just retry publishing it, never create a
-        # second draft.
-        submission.published_post_id = post.id
-        await db.commit()
-        await db.refresh(post)
-
-    if post.status != 'published':
-        post = await publishing.publish_post(db, actor=actor, post_id=post.id)
+    await publish_submission(db, submission=submission, actor=actor)
 
     before = _submission_snapshot(submission)
     submission.status = 'approved'

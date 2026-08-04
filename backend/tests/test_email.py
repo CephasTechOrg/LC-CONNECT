@@ -3,6 +3,8 @@ templates are bypassed via `generate_link`, see `app/shared/supabase_admin.py`).
 
 from __future__ import annotations
 
+import pytest
+
 from app import email as email_service
 
 
@@ -104,3 +106,45 @@ def test_invite_email_without_page_url_still_sends_the_code(monkeypatch):
     assert '99998888' in calls[0]['html']
     assert '<a href="None"' not in calls[0]['html']
     assert 'href=""' not in calls[0]['html']
+
+
+# ── provider selection ───────────────────────────────────────────────────────────
+#
+# `EMAIL_PROVIDER=auto` (what render.yaml sets) previously fell back to the console provider when
+# no mail credentials were present. In production that silently did two bad things at once: it
+# printed invite/password-reset codes into the log stream, and "sent" mail that reached nobody —
+# with nothing raising to make either visible.
+
+
+def test_console_fallback_refused_in_production(monkeypatch):
+    monkeypatch.setattr(email_service.settings, 'email_provider', 'auto')
+    monkeypatch.setattr(email_service.settings, 'resend_api_key', None)
+    monkeypatch.setattr(email_service.settings, 'smtp_username', None)
+    monkeypatch.setattr(email_service.settings, 'smtp_password', None)
+    monkeypatch.setattr(email_service.settings, 'environment', 'production')
+    with pytest.raises(RuntimeError, match='not configured in production'):
+        email_service._active_provider()
+
+
+def test_explicit_console_also_refused_in_production(monkeypatch):
+    """Even set deliberately — production must never log auth codes."""
+    monkeypatch.setattr(email_service.settings, 'email_provider', 'console')
+    monkeypatch.setattr(email_service.settings, 'environment', 'production')
+    with pytest.raises(RuntimeError):
+        email_service._active_provider()
+
+
+def test_console_still_allowed_in_development(monkeypatch):
+    monkeypatch.setattr(email_service.settings, 'email_provider', 'auto')
+    monkeypatch.setattr(email_service.settings, 'resend_api_key', None)
+    monkeypatch.setattr(email_service.settings, 'smtp_username', None)
+    monkeypatch.setattr(email_service.settings, 'smtp_password', None)
+    monkeypatch.setattr(email_service.settings, 'environment', 'development')
+    assert email_service._active_provider() == 'console'
+
+
+def test_resend_selected_in_production_when_configured(monkeypatch):
+    monkeypatch.setattr(email_service.settings, 'email_provider', 'auto')
+    monkeypatch.setattr(email_service.settings, 'resend_api_key', 're_test')
+    monkeypatch.setattr(email_service.settings, 'environment', 'production')
+    assert email_service._active_provider() == 'resend'

@@ -17,6 +17,7 @@ from app.features.employers.schema import (
     OpportunitySubmissionRead,
 )
 from app.features.scholars.schema import SignedUrlRead
+from app.shared.rate_limit import employer_register_limit
 from app.shared.storage import storage_service
 
 router = APIRouter(prefix='/employers', tags=['employers'])
@@ -37,7 +38,12 @@ def _scholar_view(profile, social_profile, *, headshot_url: str | None = None) -
     )
 
 
-@router.post('/register', response_model=EmployerOrganizationRead, status_code=201)
+@router.post(
+    '/register',
+    response_model=EmployerOrganizationRead,
+    status_code=201,
+    dependencies=[Depends(employer_register_limit)],
+)
 async def register_employer(
     payload: EmployerRegisterRequest,
     db: AsyncSession = Depends(get_db),

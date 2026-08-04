@@ -74,6 +74,16 @@ class Settings(BaseSettings):
         default=20, alias='RATE_LIMIT_CAMPUS_POST_PUBLISHES_PER_DAY'
     )
     rate_limit_scholar_uploads_per_day: int = Field(default=10, alias='RATE_LIMIT_SCHOLAR_UPLOADS_PER_DAY')
+    # Anonymous endpoints — keyed on client IP (and, for resets, also on the target email) since
+    # there is no signed-in user to key on. Generous enough that a real person retrying never
+    # trips them; tight enough to stop inbox-bombing and junk-registration floods.
+    rate_limit_employer_registrations_per_hour: int = Field(
+        default=5, alias='RATE_LIMIT_EMPLOYER_REGISTRATIONS_PER_HOUR'
+    )
+    rate_limit_password_resets_per_hour: int = Field(default=10, alias='RATE_LIMIT_PASSWORD_RESETS_PER_HOUR')
+    rate_limit_password_resets_per_email_per_hour: int = Field(
+        default=5, alias='RATE_LIMIT_PASSWORD_RESETS_PER_EMAIL_PER_HOUR'
+    )
     rate_limit_employer_opportunity_submissions_per_day: int = Field(
         default=10, alias='RATE_LIMIT_EMPLOYER_OPPORTUNITY_SUBMISSIONS_PER_DAY'
     )

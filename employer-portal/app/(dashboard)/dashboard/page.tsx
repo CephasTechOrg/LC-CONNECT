@@ -130,7 +130,7 @@ export default function DashboardHomePage() {
           <div>
             <div className="dash-kpi-value">{loading ? '—' : pending.length}</div>
             <div className="dash-kpi-title">Pending reviews</div>
-            <div className="dash-kpi-sub">Awaiting Honors approval</div>
+            <div className="dash-kpi-sub">Awaiting review</div>
           </div>
         </div>
         <div className="dash-kpi">
@@ -191,7 +191,7 @@ export default function DashboardHomePage() {
                       ? 'Approved and live to scholars'
                       : s.status === 'rejected'
                         ? 'Not approved'
-                        : 'Awaiting Honors Program review'}
+                        : 'Awaiting review'}
                   </div>
                 </div>
                 <div className="activity-time">{timeAgo(s.created_at)}</div>
@@ -268,7 +268,7 @@ export default function DashboardHomePage() {
                 <tr>
                   <td><span className="ops-chip warn">Pending</span></td>
                   <td>{pending.length}</td>
-                  <td>Awaiting Honors Program review</td>
+                  <td>Awaiting review</td>
                 </tr>
                 <tr>
                   <td><span className="ops-chip success">Approved</span></td>

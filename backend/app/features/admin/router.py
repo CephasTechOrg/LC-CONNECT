@@ -47,7 +47,7 @@ from app.features.campus_hub.schema import (
 )
 from app.features.campus_positions.schema import CampusPositionRead
 from app.features.employers.schema import EmployerOrganizationRead, OpportunitySubmissionRead
-from app.models import Profile, Report, User
+from app.models import CampusPost, Profile, Report, User
 from app.shared.profiles import get_profile_by_user_id
 from app.shared.schemas import ReportRead
 
@@ -528,9 +528,17 @@ async def resend_employer_invite(
     return _employer_org_admin_read(org, account)
 
 
-def _submission_admin_read(submission, *, org_name: str) -> OpportunitySubmissionAdminRead:
+def _submission_admin_read(
+    submission, *, org_name: str, post_status: str | None = None
+) -> OpportunitySubmissionAdminRead:
     base = OpportunitySubmissionRead.model_validate(submission).model_dump()
-    return OpportunitySubmissionAdminRead(**base, organization_id=submission.organization_id, organization_name=org_name)
+    return OpportunitySubmissionAdminRead(
+        **base,
+        organization_id=submission.organization_id,
+        organization_name=org_name,
+        published_post_id=submission.published_post_id,
+        published_post_status=post_status,
+    )
 
 
 @router.get('/employers/opportunities', response_model=list[OpportunitySubmissionAdminRead])
@@ -540,7 +548,19 @@ async def list_opportunity_submissions(
     db: AsyncSession = Depends(get_db),
 ) -> list[OpportunitySubmissionAdminRead]:
     rows = await employers_admin.list_submissions(db, status_filter=status)
-    return [_submission_admin_read(submission, org_name=org.name) for submission, org in rows]
+    # Fetch the published posts' current status in one query so the admin list can show what is
+    # actually live right now (a post may already have been archived from the Campus Hub page).
+    post_ids = [s.published_post_id for s, _ in rows if s.published_post_id]
+    statuses: dict = {}
+    if post_ids:
+        found = (await db.execute(select(CampusPost.id, CampusPost.status).where(CampusPost.id.in_(post_ids)))).all()
+        statuses = {pid: st for pid, st in found}
+    return [
+        _submission_admin_read(
+            submission, org_name=org.name, post_status=statuses.get(submission.published_post_id)
+        )
+        for submission, org in rows
+    ]
 
 
 @router.post('/employers/opportunities/{submission_id}/approve', response_model=OpportunitySubmissionAdminRead)

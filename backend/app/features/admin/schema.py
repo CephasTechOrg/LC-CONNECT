@@ -121,6 +121,10 @@ class OpportunitySubmissionRejectRequest(BaseModel):
 class OpportunitySubmissionAdminRead(OpportunitySubmissionRead):
     organization_id: UUID
     organization_name: str
+    # Employer posts now publish immediately, so moderation is reactive: an admin needs the
+    # published post's id to take it down without hunting for it in the Campus Hub content list.
+    published_post_id: UUID | None = None
+    published_post_status: str | None = None
 
 
 class CampusPostAdminRead(BaseModel):

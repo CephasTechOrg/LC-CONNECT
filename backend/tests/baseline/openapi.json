@@ -2073,6 +2073,7 @@
             "title": "Contact Email"
           },
           "description": {
+            "maxLength": 4000,
             "minLength": 1,
             "title": "Description",
             "type": "string"
@@ -2277,6 +2278,7 @@
           "description": {
             "anyOf": [
               {
+                "maxLength": 4000,
                 "minLength": 1,
                 "type": "string"
               },
@@ -4933,8 +4935,11 @@
             "anyOf": [
               {
                 "items": {
+                  "maxLength": 80,
+                  "minLength": 1,
                   "type": "string"
                 },
+                "maxItems": 30,
                 "type": "array"
               },
               {
@@ -4958,8 +4963,11 @@
             "anyOf": [
               {
                 "items": {
+                  "maxLength": 80,
+                  "minLength": 1,
                   "type": "string"
                 },
+                "maxItems": 30,
                 "type": "array"
               },
               {
@@ -4972,8 +4980,11 @@
             "anyOf": [
               {
                 "items": {
+                  "maxLength": 80,
+                  "minLength": 1,
                   "type": "string"
                 },
+                "maxItems": 30,
                 "type": "array"
               },
               {
@@ -4986,8 +4997,11 @@
             "anyOf": [
               {
                 "items": {
+                  "maxLength": 80,
+                  "minLength": 1,
                   "type": "string"
                 },
+                "maxItems": 30,
                 "type": "array"
               },
               {
