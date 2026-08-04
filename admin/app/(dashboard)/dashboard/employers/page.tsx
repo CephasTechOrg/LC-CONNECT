@@ -16,6 +16,8 @@ type EmployerOrganization = {
 };
 
 type OpportunitySubmission = {
+  published_post_id: string | null;
+  published_post_status: string | null;
   id: string;
   title: string;
   description: string;
@@ -42,7 +44,9 @@ export default function EmployersPage() {
     searchParams.get('tab') === 'opportunities' ? 'opportunities' : 'organizations',
   );
   const [orgTab, setOrgTab] = useState<StatusTab>('pending');
-  const [oppTab, setOppTab] = useState<StatusTab>('pending');
+  // Employer posts publish immediately now, so 'approved' (live) is where the admin's
+  // attention belongs; 'pending' only holds the rare submission that could not auto-publish.
+  const [oppTab, setOppTab] = useState<StatusTab>('approved');
   const [orgs, setOrgs] = useState<EmployerOrganization[]>([]);
   const [opps, setOpps] = useState<OpportunitySubmission[]>([]);
   const [orgLoading, setOrgLoading] = useState(true);
@@ -134,6 +138,24 @@ export default function EmployersPage() {
     } catch (err) {
       setError(true);
       setStatus(toUserMessage(err, 'Could not resend the invitation. Please try again.'));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function takeDown(item: OpportunitySubmission) {
+    if (!item.published_post_id) return;
+    if (!window.confirm(`Take down "${item.title}"? Students will no longer see it.`)) return;
+    setBusy(item.id);
+    try {
+      const token = await getAccessToken();
+      if (!token) return;
+      await apiFetch(`/admin/campus-posts/${item.published_post_id}/archive`, token, { method: 'POST' });
+      setFlash(`Took down "${item.title}".`);
+      await loadOpps(oppTab);
+    } catch (err) {
+      setError(true);
+      setStatus(toUserMessage(err, 'Could not take down that post. Please try again.'));
     } finally {
       setBusy(null);
     }
@@ -347,9 +369,22 @@ export default function EmployersPage() {
                             >
                               Review
                             </button>
+                          ) : item.published_post_status === 'published' ? (
+                            <button
+                              className="ops-btn danger"
+                              type="button"
+                              disabled={busy === item.id}
+                              onClick={() => void takeDown(item)}
+                            >
+                              Take down
+                            </button>
                           ) : (
                             <span className="ops-cell-sub">
-                              {item.review_note ? `Note: ${item.review_note}` : 'Read-only'}
+                              {item.published_post_status === 'archived'
+                                ? 'Taken down'
+                                : item.review_note
+                                  ? `Note: ${item.review_note}`
+                                  : 'Read-only'}
                             </span>
                           )}
                         </div>

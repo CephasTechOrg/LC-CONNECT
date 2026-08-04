@@ -4420,6 +4420,29 @@
             "title": "Organization Name",
             "type": "string"
           },
+          "published_post_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published Post Id"
+          },
+          "published_post_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published Post Status"
+          },
           "review_note": {
             "anyOf": [
               {
