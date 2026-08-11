@@ -258,6 +258,67 @@ async def test_revoke_not_found_404(db, factory):
     assert exc.value.status_code == 404
 
 
+async def test_revoke_drops_the_admin_role_so_access_actually_ends(db, factory):
+    """The whole point of revocation: `require_admin_aal2` gates on `User.role == 'admin'`, so
+    if the role survived, a revoked admin would keep every non-scope-gated admin endpoint."""
+    super_admin = await _admin_with_scope(db, factory, 'super_admin')
+    target = await factory.user(display_name='Target')
+    membership, user, _ = await admins_service.invite_admin(
+        db, actor=super_admin, email=target.email, role='content_admin'
+    )
+    assert user.role == 'admin'
+
+    await admins_service.revoke_admin_membership(db, actor=super_admin, membership_id=membership.id)
+
+    await db.refresh(user)
+    assert user.role == 'staff'  # factory emails are @livingstone.edu
+    assert await admins_service.get_admin_scopes(db, user.id) == set()
+
+
+async def test_revoke_keeps_admin_role_while_another_scope_remains(db, factory):
+    super_admin = await _admin_with_scope(db, factory, 'super_admin')
+    target = await factory.user(display_name='Two Hats')
+    first, user, _ = await admins_service.invite_admin(
+        db, actor=super_admin, email=target.email, role='content_admin'
+    )
+    await admins_service.invite_admin(db, actor=super_admin, email=target.email, role='auditor')
+
+    await admins_service.revoke_admin_membership(db, actor=super_admin, membership_id=first.id)
+
+    await db.refresh(user)
+    assert user.role == 'admin'
+    assert await admins_service.get_admin_scopes(db, user.id) == {'auditor'}
+
+
+async def test_cannot_revoke_the_last_super_admin(db, factory):
+    """Only a super_admin can create a super_admin, so revoking the last one is unrecoverable."""
+    super_admin = await _admin_with_scope(db, factory, 'super_admin')
+    membership = (
+        await db.execute(select(AdminMembership).where(AdminMembership.user_id == super_admin.id))
+    ).scalar_one()
+
+    with pytest.raises(HTTPException) as exc:
+        await admins_service.revoke_admin_membership(db, actor=super_admin, membership_id=membership.id)
+    assert exc.value.status_code == 409
+
+    await db.refresh(super_admin)
+    assert super_admin.role == 'admin'
+
+
+async def test_can_revoke_a_super_admin_when_another_remains(db, factory):
+    first = await _admin_with_scope(db, factory, 'super_admin')
+    second = await _admin_with_scope(db, factory, 'super_admin')
+    membership = (
+        await db.execute(select(AdminMembership).where(AdminMembership.user_id == second.id))
+    ).scalar_one()
+
+    revoked = await admins_service.revoke_admin_membership(db, actor=first, membership_id=membership.id)
+
+    assert revoked.status == 'revoked'
+    await db.refresh(second)
+    assert second.role == 'staff'
+
+
 async def test_revoke_already_revoked_is_409(db, factory):
     super_admin = await _admin_with_scope(db, factory, 'super_admin')
     target = await factory.user(display_name='Target')

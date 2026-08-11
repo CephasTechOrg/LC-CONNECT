@@ -10,6 +10,8 @@ import '../../../shared/widgets/app_states.dart';
 import '../../programs/providers/programs_provider.dart';
 import '../models/campus_post.dart';
 import '../providers/campus_hub_provider.dart';
+import '../widgets/campus_post_style.dart';
+import '../widgets/campus_subpage_header.dart';
 
 const _categoryFilters = <String, String>{
   'all': 'All types',
@@ -84,11 +86,12 @@ class _OpportunitiesState extends ConsumerState<CampusOpportunitiesScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _OpportunitiesHeader(
-              onBack: () => context.pop(),
+            CampusSubpageHeader(
+              title: 'Opportunities',
               subtitle: isVerifiedScholar
                   ? 'Campus roles and Blueprint Bond openings'
                   : 'Jobs, internships, and campus roles',
+              onBack: () => context.pop(),
             ),
             if (isVerifiedScholar) ...[
               Padding(
@@ -154,46 +157,6 @@ class _OpportunitiesState extends ConsumerState<CampusOpportunitiesScreen> {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _OpportunitiesHeader extends StatelessWidget {
-  final VoidCallback onBack;
-  final String subtitle;
-  const _OpportunitiesHeader({required this.onBack, required this.subtitle});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 4, 20, 12),
-      child: Row(
-        children: [
-          IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
-            onPressed: onBack,
-          ),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Opportunities',
-                  style: GoogleFonts.dmSans(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textDark,
-                  ),
-                ),
-                Text(
-                  subtitle,
-                  style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.textMuted),
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -281,32 +244,21 @@ class _OpportunityCard extends StatelessWidget {
 
   const _OpportunityCard({required this.post, required this.onTap});
 
-  static const _typeStyles = <String, (Color, Color, IconData)>{
-    'internship': (Color(0xFF2563EB), Color(0xFFE0EDFF), Icons.school_outlined),
-    'job': (Color(0xFFD97706), Color(0xFFFEF3C7), Icons.work_outline_rounded),
-    'volunteer': (Color(0xFF16A34A), Color(0xFFDCFCE7), Icons.favorite_outline_rounded),
-    'leadership': (Color(0xFF7C3AED), Color(0xFFF3E8FF), Icons.emoji_events_outlined),
-  };
+  static String _typeLabel(String category) => opportunityCategoryLabels[category] ??
+      (category.isNotEmpty ? '${category[0].toUpperCase()}${category.substring(1)}' : 'Opportunity');
 
   @override
   Widget build(BuildContext context) {
-    final cat = post.category ?? '';
-    final (badgeColor, badgeBg, icon) = _typeStyles[cat] ??
-        (AppColors.primary, AppColors.primarySoft, Icons.work_outline_rounded);
-    final typeLabel = switch (cat) {
-      'internship' => 'Internship',
-      'job' => 'Job',
-      'volunteer' => 'Volunteer',
-      'leadership' => 'Leadership',
-      _ => cat.isNotEmpty ? '${cat[0].toUpperCase()}${cat.substring(1)}' : 'Opportunity',
-    };    final sourceLabel = post.isEmployerPartner || post.isBlueprintBond
-        ? 'Employer Partner'
-        : 'Campus Opportunity';
-    final sourceColor =
-        post.isEmployerPartner || post.isBlueprintBond ? AppColors.primary : AppColors.textMuted;
-    final sourceBg = post.isEmployerPartner || post.isBlueprintBond
-        ? AppColors.primarySoft
-        : AppColors.background;
+    final (badgeColor, badgeBg, icon) = campusCategoryStyle('opportunity', post.category);
+    final typeLabel = _typeLabel(post.category ?? '');
+    final isPartner = post.isEmployerPartner || post.isBlueprintBond;
+    final sourceLabel = isPartner ? 'Employer Partner' : 'Campus Opportunity';
+    final sourceColor = isPartner ? AppColors.primary : AppColors.textMuted;
+    final sourceBg = isPartner ? AppColors.primarySoft : AppColors.background;
+
+    final deadline = post.expiresAt;
+    final daysLeft = deadline?.toLocal().difference(DateTime.now()).inDays;
+    final closingSoon = daysLeft != null && daysLeft <= 3;
 
     return Material(
       color: AppColors.surface,
@@ -319,6 +271,9 @@ class _OpportunityCard extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: AppColors.border),
+            boxShadow: const [
+              BoxShadow(color: Color(0x0A111827), blurRadius: 3, offset: Offset(0, 1)),
+            ],
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -326,10 +281,7 @@ class _OpportunityCard extends StatelessWidget {
               Container(
                 width: 52,
                 height: 52,
-                decoration: BoxDecoration(
-                  color: badgeBg,
-                  borderRadius: BorderRadius.circular(14),
-                ),
+                decoration: BoxDecoration(color: badgeBg, borderRadius: BorderRadius.circular(14)),
                 child: Icon(icon, color: badgeColor, size: 24),
               ),
               const SizedBox(width: 12),
@@ -339,15 +291,13 @@ class _OpportunityCard extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        _Badge(label: typeLabel, color: badgeColor, background: badgeBg),
+                        CampusBadge(label: typeLabel, color: badgeColor, background: badgeBg),
                         const SizedBox(width: 6),
-                        Flexible(
-                          child: _Badge(label: sourceLabel, color: sourceColor, background: sourceBg),
-                        ),
-                        const SizedBox(width: 8),
+                        Flexible(child: CampusBadge(label: sourceLabel, color: sourceColor, background: sourceBg)),
+                        const Spacer(),
                         Text(
                           DateFormat('MMM d').format(post.publishAt.toLocal()),
-                          style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textMuted),
+                          style: GoogleFonts.dmSans(fontSize: 11.5, color: AppColors.textMuted),
                         ),
                       ],
                     ),
@@ -363,7 +313,7 @@ class _OpportunityCard extends StatelessWidget {
                       ),
                     ),
                     if (post.summary != null && post.summary!.trim().isNotEmpty) ...[
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 3),
                       Text(
                         post.summary!,
                         maxLines: 2,
@@ -371,37 +321,38 @@ class _OpportunityCard extends StatelessWidget {
                         style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.textMid, height: 1.35),
                       ),
                     ],
+                    if (deadline != null) ...[
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.schedule_rounded,
+                            size: 13,
+                            color: closingSoon ? const Color(0xFFDC2626) : AppColors.textMuted,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Closes ${DateFormat('MMM d').format(deadline.toLocal())}',
+                            style: GoogleFonts.dmSans(
+                              fontSize: 11.5,
+                              fontWeight: closingSoon ? FontWeight.w700 : FontWeight.w500,
+                              color: closingSoon ? const Color(0xFFDC2626) : AppColors.textMuted,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
+              ),
+              const SizedBox(width: 4),
+              const Padding(
+                padding: EdgeInsets.only(top: 16),
+                child: Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
               ),
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _Badge extends StatelessWidget {
-  final String label;
-  final Color color;
-  final Color background;
-
-  const _Badge({required this.label, required this.color, required this.background});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(
-        label,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: GoogleFonts.dmSans(fontSize: 11, fontWeight: FontWeight.w700, color: color),
       ),
     );
   }

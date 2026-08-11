@@ -58,4 +58,4 @@ async def unregister(
     current_user: User = Depends(require_verified_student),
     db: AsyncSession = Depends(get_db),
 ) -> None:
-    await unregister_device(db, token)
+    await unregister_device(db, current_user.id, token)

@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../models/campus_post.dart';
+import 'campus_post_style.dart';
 
 /// One row on the Announcements list. There are no per-announcement images, so the leading
 /// thumbnail is a tinted icon placeholder — colored by category, same visual language as the
@@ -14,18 +15,10 @@ class CampusPostCard extends StatelessWidget {
 
   const CampusPostCard({super.key, required this.post, required this.onTap});
 
-  static const _categoryStyles = <String, (Color, Color, IconData)>{
-    'general': (AppColors.textMuted, AppColors.border, Icons.campaign_outlined),
-    'academic': (AppColors.green, Color(0xFFDCFCE7), Icons.school_outlined),
-    'campus': (AppColors.primary, AppColors.primarySoft, Icons.account_balance_outlined),
-    'events': (Color(0xFF7C3AED), Color(0xFFF3E8FF), Icons.event_outlined),
-    'safety': (Color(0xFFD97706), Color(0xFFFEF3C7), Icons.warning_amber_rounded),
-  };
-
   @override
   Widget build(BuildContext context) {
     final category = post.category ?? 'general';
-    final (badgeColor, badgeBg, icon) = _categoryStyles[category] ?? _categoryStyles['general']!;
+    final (badgeColor, badgeBg, icon) = campusCategoryStyle('announcement', category);
     final categoryLabel = announcementCategoryLabels[category] ?? 'General';
     final dateLabel = DateFormat('MMM d').format(post.publishAt.toLocal());
 
@@ -72,14 +65,7 @@ class CampusPostCard extends StatelessWidget {
                             ),
                             const SizedBox(width: 6),
                           ],
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(color: badgeBg, borderRadius: BorderRadius.circular(8)),
-                            child: Text(
-                              categoryLabel,
-                              style: GoogleFonts.dmSans(fontSize: 11, fontWeight: FontWeight.w700, color: badgeColor),
-                            ),
-                          ),
+                          CampusBadge(label: categoryLabel, color: badgeColor, background: badgeBg),
                           const Spacer(),
                           Text(dateLabel, style: GoogleFonts.dmSans(fontSize: 11.5, color: AppColors.textMuted)),
                         ],

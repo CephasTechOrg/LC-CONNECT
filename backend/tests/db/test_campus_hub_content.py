@@ -327,3 +327,95 @@ async def test_resources_list_active_only(db, factory):
     with pytest.raises(HTTPException) as exc:
         await get_resource(db, inactive.id)
     assert exc.value.status_code == 404
+
+
+# ── staff-audience posts require a VERIFIED position, not just a campus mailbox ──────
+
+
+async def _verified_staff(db, factory, *, display_name='Verified Staff'):
+    """A staff account whose campus position an admin has actually approved."""
+    from sqlalchemy import select as _select
+
+    from app.features.admin.campus_positions import approve_position
+    from app.features.campus_positions.schema import CampusPositionCreate
+    from app.features.campus_positions.service import upsert_primary_position
+    from app.models import Profile as _Profile
+
+    admin = await _admin(db, factory)
+    staff = await factory.user(display_name=display_name)
+    staff.role = 'staff'
+    await db.commit()
+    profile = (await db.execute(_select(_Profile).where(_Profile.user_id == staff.id))).scalar_one()
+    position = await upsert_primary_position(
+        db,
+        staff,
+        profile,
+        CampusPositionCreate(
+            category='advising',
+            official_title='Advisor',
+            department='Student Success',
+            contact_email=staff.email,
+        ),
+    )
+    await approve_position(db, actor=admin, position_id=position.id)
+    return admin, staff, position
+
+
+async def _unvetted_staff(db, factory):
+    """Just a @livingstone.edu mailbox — role='staff' by email inference, nobody vouched."""
+    staff = await factory.user(display_name='Unvetted Staff')
+    staff.role = 'staff'
+    await db.commit()
+    return staff
+
+
+async def test_staff_audience_post_hidden_from_unvetted_staff(db, factory):
+    admin, verified, _ = await _verified_staff(db, factory)
+    unvetted = await _unvetted_staff(db, factory)
+    post = await _published_announcement(db, admin, title='Staff briefing', audience='staff')
+
+    assert all(row['id'] != post.id for row in await list_posts(db, user=unvetted))
+    assert any(row['id'] == post.id for row in await list_posts(db, user=verified))
+
+
+async def test_staff_audience_post_not_readable_by_id_by_unvetted_staff(db, factory):
+    """The single-post path must match the feed — otherwise the id is a bypass."""
+    admin, verified, _ = await _verified_staff(db, factory)
+    unvetted = await _unvetted_staff(db, factory)
+    post = await _published_announcement(db, admin, title='Staff briefing', audience='staff')
+
+    with pytest.raises(HTTPException) as exc:
+        await get_post(db, post_id=post.id, user=unvetted)
+    assert exc.value.status_code == 404
+
+    assert (await get_post(db, post_id=post.id, user=verified))['id'] == post.id
+
+
+async def test_unvetted_staff_still_sees_public_posts(db, factory):
+    """The fallback narrows staff-only content — it must not cut them off from the campus feed."""
+    admin = await _admin(db, factory)
+    unvetted = await _unvetted_staff(db, factory)
+    post = await _published_announcement(db, admin, title='Campus wide', audience='all')
+
+    assert any(row['id'] == post.id for row in await list_posts(db, user=unvetted))
+
+
+async def test_revoking_a_position_removes_staff_audience_visibility(db, factory):
+    from app.features.admin.campus_positions import revoke_position
+
+    admin, staff, position = await _verified_staff(db, factory)
+    post = await _published_announcement(db, admin, title='Staff briefing', audience='staff')
+    assert any(row['id'] == post.id for row in await list_posts(db, user=staff))
+
+    await revoke_position(db, actor=admin, position_id=position.id, review_note='Left the college')
+
+    assert all(row['id'] != post.id for row in await list_posts(db, user=staff))
+
+
+async def test_admin_still_sees_every_audience(db, factory):
+    admin = await _admin(db, factory)
+    staff_post = await _published_announcement(db, admin, title='Staff', audience='staff')
+    student_post = await _published_announcement(db, admin, title='Students', audience='students')
+
+    ids = {row['id'] for row in await list_posts(db, user=admin)}
+    assert {staff_post.id, student_post.id} <= ids

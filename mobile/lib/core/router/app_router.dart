@@ -149,6 +149,15 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/connections',
         builder: (context, state) => const ConnectionsScreen(),
       ),
+      // Same reasoning as '/connections' above: reachable from the top-level notification center
+      // (the Blueprint Bond completion nudge), so it cannot live inside the shell. It used to,
+      // which surfaced as the app appearing to sign out when tapping that notification — the
+      // navigator-lock crash unwound the whole route stack back to '/login'-adjacent state rather
+      // than a real session loss.
+      GoRoute(
+        path: '/profile/blueprint-bond',
+        builder: (context, state) => const BlueprintBondScreen(),
+      ),
       ShellRoute(
         builder: (context, state, child) => NavShell(child: child),
         routes: [
@@ -260,10 +269,6 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: 'campus-position',
                 builder: (context, state) => const EditCampusPositionScreen(),
-              ),
-              GoRoute(
-                path: 'blueprint-bond',
-                builder: (context, state) => const BlueprintBondScreen(),
               ),
             ],
           ),

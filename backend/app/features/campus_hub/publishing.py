@@ -21,7 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.features.campus_hub.schema import CampusPostCreate, CampusPostUpdate, categories_for_kind
 from app.features.campus_positions.service import get_primary_position
-from app.models import CampusPost, DeviceToken, User
+from app.models import CampusPost, DeviceToken, Program, ProgramMembership, User
 from app.shared.audit import record_audit
 
 
@@ -298,17 +298,33 @@ async def recipient_tokens_for_post(db: AsyncSession, post: CampusPost) -> list[
     elif post.audience == 'staff':
         role_filter = ['staff', 'admin']
 
-    rows = (
-        await db.execute(
-            select(DeviceToken.token)
-            .join(User, User.id == DeviceToken.user_id)
+    stmt = (
+        select(DeviceToken.token)
+        .join(User, User.id == DeviceToken.user_id)
+        .where(
+            User.is_active.is_(True),
+            User.status == 'active',
+            User.is_verified.is_(True),
+            User.deleted_at.is_(None),
+            User.role.in_(role_filter),
+        )
+    )
+
+    # Audience/role alone is NOT the full visibility rule: a post restricted to a programme
+    # (Blueprint Bond opportunities) is invisible in the feed to everyone else, so pushing it to
+    # every student would announce a post they cannot open — leaking its title campus-wide.
+    # Mirror the same membership check `published_posts_stmt` applies.
+    if post.eligible_program_slug:
+        member = (
+            select(ProgramMembership.id)
+            .join(Program, Program.id == ProgramMembership.program_id)
             .where(
-                User.is_active.is_(True),
-                User.status == 'active',
-                User.is_verified.is_(True),
-                User.deleted_at.is_(None),
-                User.role.in_(role_filter),
+                ProgramMembership.user_id == User.id,
+                ProgramMembership.status == 'active',
+                Program.slug == post.eligible_program_slug,
             )
         )
-    ).all()
+        stmt = stmt.where(member.exists())
+
+    rows = (await db.execute(stmt)).all()
     return [row[0] for row in rows]

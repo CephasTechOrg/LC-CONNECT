@@ -80,3 +80,20 @@ async def test_admin_ids_lists_admins_and_owner(db, factory):
 
     ids = set(await group_service.admin_ids(db, group.conversation_id))
     assert ids == {owner.id, member.id}
+
+
+# ── device tokens ────────────────────────────────────────────────────────────────
+
+
+async def test_unregister_device_only_touches_the_callers_own_token(db, factory):
+    """The token is a URL path segment, so an unscoped delete would let anyone holding
+    someone else's token silently kill that person's push notifications."""
+    victim = await factory.user(display_name='Victim')
+    attacker = await factory.user(display_name='Attacker')
+    await notifications.register_device(db, victim.id, 'victim-token', 'ios')
+
+    await notifications.unregister_device(db, attacker.id, 'victim-token')
+    assert await notifications.tokens_for_user(db, victim.id) == ['victim-token']
+
+    await notifications.unregister_device(db, victim.id, 'victim-token')
+    assert await notifications.tokens_for_user(db, victim.id) == []

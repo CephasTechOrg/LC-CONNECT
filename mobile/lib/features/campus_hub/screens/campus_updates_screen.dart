@@ -9,6 +9,7 @@ import '../../../shared/widgets/app_states.dart';
 import '../models/campus_post.dart';
 import '../providers/campus_hub_provider.dart';
 import '../widgets/campus_post_card.dart';
+import '../widgets/campus_subpage_header.dart';
 
 class CampusUpdatesScreen extends ConsumerStatefulWidget {
   const CampusUpdatesScreen({super.key});
@@ -49,6 +50,11 @@ class _CampusUpdatesScreenState extends ConsumerState<CampusUpdatesScreen> {
     // plain header, and it's already flowing through the app so it costs nothing extra to show.
     final unread = ref.watch(announcementCountProvider);
     final total = async.asData?.value.total;
+    final subtitle = total == null
+        ? 'Official campus announcements'
+        : unread > 0
+            ? '$total announcement${total == 1 ? '' : 's'} · $unread new'
+            : '$total announcement${total == 1 ? '' : 's'}';
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -56,8 +62,8 @@ class _CampusUpdatesScreenState extends ConsumerState<CampusUpdatesScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _AnnouncementsHero(onBack: () => context.pop(), total: total, unread: unread),
-            const SizedBox(height: 14),
+            CampusSubpageHeader(title: 'Announcements', subtitle: subtitle, onBack: () => context.pop()),
+            const SizedBox(height: 6),
             SizedBox(
               height: 36,
               child: ListView(
@@ -133,57 +139,6 @@ class _CampusUpdatesScreenState extends ConsumerState<CampusUpdatesScreen> {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-/// Header — same navy tone as the home "Latest updates" panel (so this still reads as one
-/// designed surface, not a plain white page), pared down to just back + title + a live stat
-/// line. No extra icon badge or shadow — kept simple on purpose.
-class _AnnouncementsHero extends StatelessWidget {
-  final VoidCallback onBack;
-  final int? total;
-  final int unread;
-  const _AnnouncementsHero({required this.onBack, required this.total, required this.unread});
-
-  String get _subtitle {
-    if (total == null) return 'Official campus announcements';
-    final countLabel = '$total announcement${total == 1 ? '' : 's'}';
-    return unread > 0 ? '$countLabel · $unread new' : countLabel;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(8, 4, 20, 16),
-      decoration: const BoxDecoration(
-        color: Color(0xFF1B3A5C),
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(18)),
-      ),
-      child: Row(
-        children: [
-          IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: Colors.white),
-            onPressed: onBack,
-          ),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Announcements',
-                  style: GoogleFonts.dmSans(fontSize: 17, fontWeight: FontWeight.w700, color: Colors.white),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  _subtitle,
-                  style: GoogleFonts.dmSans(fontSize: 12.5, color: Colors.white.withValues(alpha: 0.7)),
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }

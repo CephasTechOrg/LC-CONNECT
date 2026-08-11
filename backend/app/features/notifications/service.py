@@ -30,8 +30,17 @@ async def register_device(db: AsyncSession, user_id: UUID, token: str, platform:
     await db.commit()
 
 
-async def unregister_device(db: AsyncSession, token: str) -> None:
-    await db.execute(delete(DeviceToken).where(DeviceToken.token == token))
+async def unregister_device(db: AsyncSession, user_id: UUID, token: str) -> None:
+    """Drop one of *the caller's own* device tokens.
+
+    Scoped to `user_id` on purpose: the token is the URL path segment, so without this anyone
+    holding another user's token could silently unregister their device and kill their push
+    notifications. A token that isn't theirs simply matches nothing (the endpoint stays 204/
+    idempotent, and never reveals whether the token exists).
+    """
+    await db.execute(
+        delete(DeviceToken).where(DeviceToken.token == token, DeviceToken.user_id == user_id)
+    )
     await db.commit()
 
 

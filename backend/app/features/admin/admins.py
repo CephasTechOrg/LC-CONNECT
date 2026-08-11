@@ -14,7 +14,7 @@ from typing import Any
 from uuid import UUID
 
 from fastapi import Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
@@ -22,7 +22,7 @@ from app.database import get_db
 from app.dependencies import require_admin_aal2
 from app.models import AdminMembership, Profile, User
 from app.shared.audit import record_audit
-from app.shared.email_roles import normalize_campus_email
+from app.shared.email_roles import infer_role_from_email, normalize_campus_email
 from app.shared.supabase_admin import (
     AuthUserAlreadyRegistered,
     get_auth_user_id_by_email,
@@ -188,6 +188,39 @@ async def invite_admin(
     return membership, target, profile
 
 
+async def _active_membership_count(db: AsyncSession, role: str) -> int:
+    return int(
+        (
+            await db.execute(
+                select(func.count(AdminMembership.id)).where(
+                    AdminMembership.role == role, AdminMembership.status == 'active'
+                )
+            )
+        ).scalar_one()
+    )
+
+
+async def _demote_if_no_scopes_left(db: AsyncSession, user_id: UUID) -> None:
+    """Drop `User.role` back off 'admin' once the last active membership is gone.
+
+    `require_admin_aal2` gates on `User.role == 'admin'` alone, so without this a revoked admin
+    keeps every admin endpoint that isn't additionally scope-gated — revocation would flip a row
+    without actually removing access. `sync_user_role_from_email` deliberately never downgrades an
+    admin (it must not fight this system on every bootstrap), so this is the one place that does.
+    """
+    if await get_admin_scopes(db, user_id):
+        return
+    user = await db.get(User, user_id)
+    if user is None or user.role != 'admin':
+        return
+    try:
+        user.role = infer_role_from_email(user.email)
+    except ValueError:
+        # An email that no longer maps to a campus domain (deleted/anonymized account). Leaving
+        # them as 'admin' is the one outcome we can't accept, so fall back to the lowest role.
+        user.role = 'student'
+
+
 async def revoke_admin_membership(db: AsyncSession, *, actor: User, membership_id: UUID) -> AdminMembership:
     membership = await db.get(AdminMembership, membership_id)
     if membership is None:
@@ -199,9 +232,19 @@ async def revoke_admin_membership(db: AsyncSession, *, actor: User, membership_i
     if not can_invite(_primary_role(actor_scopes), membership.role):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='You are not allowed to revoke this role')
 
+    # Only a super_admin can create a super_admin, so revoking the last one is unrecoverable
+    # without direct database access — refuse rather than let the platform lock itself out.
+    if membership.role == 'super_admin' and await _active_membership_count(db, 'super_admin') <= 1:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail='This is the last Super Admin — promote another Super Admin before revoking this one.',
+        )
+
     before = {'status': membership.status}
     membership.status = 'revoked'
     membership.revoked_at = datetime.now(UTC)
+    await db.flush()  # so the scope re-check below sees the revocation
+    await _demote_if_no_scopes_left(db, membership.user_id)
 
     await record_audit(
         db,
