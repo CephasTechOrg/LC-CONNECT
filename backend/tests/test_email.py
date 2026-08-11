@@ -148,3 +148,59 @@ def test_resend_selected_in_production_when_configured(monkeypatch):
     monkeypatch.setattr(email_service.settings, 'resend_api_key', 're_test')
     monkeypatch.setattr(email_service.settings, 'environment', 'production')
     assert email_service._active_provider() == 'resend'
+
+
+# ── decision-outcome notices ──────────────────────────────────────────────────
+
+
+def test_review_note_is_html_escaped(monkeypatch):
+    """`review_note` is free text an admin typed, interpolated into an HTML mail body."""
+    from app import email_notices
+
+    captured = {}
+    monkeypatch.setattr(
+        email_notices, 'send_branded_email',
+        lambda to, **kw: captured.update(kw, to=to),
+    )
+
+    email_notices.send_employer_rejected_email(
+        'hr@acme.com', review_note='<script>alert(1)</script> & "quoted"'
+    )
+
+    assert '<script>' not in captured['body_html']
+    assert '&lt;script&gt;' in captured['body_html']
+    assert '&amp;' in captured['body_html']
+
+
+def test_missing_review_note_renders_no_note_block(monkeypatch):
+    from app import email_notices
+
+    captured = {}
+    monkeypatch.setattr(
+        email_notices, 'send_branded_email',
+        lambda to, **kw: captured.update(kw, to=to),
+    )
+
+    email_notices.send_position_decision_email('a@livingstone.edu', outcome='approved', review_note=None)
+    assert captured['body_html'] == ''
+
+
+def test_unknown_position_outcome_sends_nothing(monkeypatch):
+    from app import email_notices
+
+    calls = []
+    monkeypatch.setattr(email_notices, 'send_branded_email', lambda to, **kw: calls.append(to))
+
+    email_notices.send_position_decision_email('a@livingstone.edu', outcome='bogus', review_note=None)
+    assert calls == []
+
+
+def test_send_quietly_swallows_failures_and_reports_false():
+    """A mail outage must never roll back the decision the email was reporting."""
+    from app import email_notices
+
+    def _boom(*_a, **_k):
+        raise RuntimeError('resend is down')
+
+    assert email_notices.send_quietly(_boom, 'a@livingstone.edu') is False
+    assert email_notices.send_quietly(lambda *_a, **_k: None, 'a@livingstone.edu') is True

@@ -9,9 +9,26 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.email_notices import send_position_decision_email, send_quietly
 from app.features.campus_hub import publishing
 from app.models import CampusPosition, CampusPost, Profile, User
 from app.shared.audit import record_audit
+
+
+async def _notify_decision(db: AsyncSession, position: CampusPosition, outcome: str) -> None:
+    """Tell the position's owner what an admin decided.
+
+    Until this existed the whole review workflow was silent: `review_note` was written on a
+    rejection and never reached the person it was written for, and an approval — which is what
+    unlocks publishing, staff messaging, and staff-audience posts — arrived with no signal at all.
+    Sent after commit and failure-isolated; the decision stands whether or not the mail goes out.
+    """
+    owner = await db.get(User, position.user_id)
+    if owner is None or not owner.email:
+        return
+    send_quietly(
+        send_position_decision_email, owner.email, outcome=outcome, review_note=position.review_note
+    )
 
 
 def _position_snapshot(position: CampusPosition) -> dict[str, str | None]:
@@ -91,6 +108,7 @@ async def approve_position(db: AsyncSession, *, actor: User, position_id: UUID) 
     )
     await db.commit()
     await db.refresh(position)
+    await _notify_decision(db, position, 'approved')
     return position
 
 
@@ -122,6 +140,7 @@ async def reject_position(
     )
     await db.commit()
     await db.refresh(position)
+    await _notify_decision(db, position, 'rejected')
     return position
 
 
@@ -177,4 +196,5 @@ async def revoke_position(
 
     if archive_posts:
         await archive_authored_posts(db, actor=actor, author_id=position.user_id)
+    await _notify_decision(db, position, 'revoked')
     return position

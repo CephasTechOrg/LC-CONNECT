@@ -15,6 +15,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.email_notices import send_employer_rejected_email, send_quietly
 from app.models import EmployerAccount, EmployerOpportunitySubmission, EmployerOrganization, User
 from app.shared.audit import record_audit
 from app.shared.employer_publishing import publish_submission
@@ -151,6 +152,7 @@ async def reject_organization(
     if org.status != 'pending':
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='Only a pending organization can be rejected')
 
+    account = await get_account_for_org(db, org.id)
     before = _org_snapshot(org)
     org.status = 'rejected'
     org.review_note = reason.strip() if reason else None
@@ -168,6 +170,10 @@ async def reject_organization(
     )
     await db.commit()
     await db.refresh(org)
+
+    # Approval emails the branded invite via `invite_auth_user`; rejection used to send nothing,
+    # leaving the contact waiting indefinitely. Failure-isolated — the rejection already stands.
+    send_quietly(send_employer_rejected_email, account.email, review_note=org.review_note)
     return org
 
 

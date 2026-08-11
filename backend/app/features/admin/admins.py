@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.database import get_db
 from app.dependencies import require_admin_aal2
+from app.email_notices import send_admin_access_granted_email, send_quietly
 from app.models import AdminMembership, Profile, User
 from app.shared.audit import record_audit
 from app.shared.email_roles import infer_role_from_email, normalize_campus_email
@@ -130,6 +131,9 @@ async def invite_admin(
     # must NOT be sent a fresh invite — Supabase's invite call is for *new* auth users only and
     # errors on an email that's already registered, which would make it impossible to ever promote
     # an existing account to admin. Only invite when there's genuinely no auth identity yet.
+    # Whether Supabase's invite email (which already explains the grant) actually went out. Both
+    # "already has an identity" paths below skip it, and those people must still be told somehow.
+    invite_email_sent = False
     if target is not None and target.auth_user_id is not None:
         auth_user_id = target.auth_user_id
     else:
@@ -138,6 +142,7 @@ async def invite_admin(
         redirect_to = f'{settings.admin_portal_url}/accept-invite' if settings.admin_portal_url else None
         try:
             auth_user_id = invite_auth_user(normalized, redirect_to=redirect_to)
+            invite_email_sent = auth_user_id is not None
         except AuthUserAlreadyRegistered:
             # They already have an LC Connect account (e.g. signed up in the mobile app but never
             # bootstrapped a local row). Link that identity and grant the role — they sign in with
@@ -183,6 +188,14 @@ async def invite_admin(
     )
     await db.commit()
     await db.refresh(membership)
+
+    # Promoting an account that already had a Supabase identity sends no invite email, so this is
+    # the only thing that tells them. Sent after the commit and failure-isolated: the grant is
+    # already durable, and a mail outage must not make a successful promotion look like it failed.
+    if not invite_email_sent:
+        send_quietly(
+            send_admin_access_granted_email, target.email, portal_url=settings.admin_portal_url
+        )
 
     profile = (await db.execute(select(Profile).where(Profile.user_id == target.id))).scalar_one()
     return membership, target, profile

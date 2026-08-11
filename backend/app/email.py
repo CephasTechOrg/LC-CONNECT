@@ -358,6 +358,50 @@ safely ignore this email.
     return text, html
 
 
+def send_branded_email(
+    to_email: str,
+    *,
+    subject: str,
+    text: str,
+    heading: str,
+    intro: str,
+    body_html: str = '',
+    page_url: str | None = None,
+    cta_label: str | None = None,
+    closing: str | None = None,
+) -> None:
+    """Send a message in the standard LC Connect shell (wordmark, heading, intro, footer).
+
+    The auth templates above each hand-roll this shell because they predate it and are load-
+    bearing — they are deliberately left alone. New, non-auth mail (see `app/email_notices.py`)
+    composes through here instead of copying the markup a sixth time.
+
+    `body_html` is inserted as-is, so every caller is responsible for escaping anything a human
+    typed (`email_notices._reason_block` does).
+    """
+    closing_html = (
+        f'  <p style="font-size:13px;color:#6B7280">{closing}</p>\n' if closing else ''
+    )
+    html_body = f"""\
+<html>
+<body style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;color:#1F2937">
+  <div style="margin-bottom:24px">
+    <span style="font-size:22px;font-weight:800;color:#4F8FC2">LC</span>
+    <span style="font-size:22px;font-weight:800;color:#111827"> Connect</span>
+  </div>
+  <p style="margin-bottom:8px;font-weight:700;font-size:18px">{heading}</p>
+  <p style="margin-bottom:24px">{intro}</p>
+{body_html}{_cta_button(page_url, cta_label or 'Open LC Connect')}
+{closing_html}  <hr style="border:none;border-top:1px solid #E5EAF0;margin:32px 0">
+  <p style="font-size:12px;color:#9CA3AF">
+    LC Connect &mdash; Livingstone College Campus Connection App
+  </p>
+</body>
+</html>
+"""
+    _send_email(to_email=to_email, subject=subject, text=text, html=html_body)
+
+
 def send_signup_confirmation_email(to_email: str, *, code: str) -> None:
     """Covers the mobile app's direct `supabase.auth.signUp()`/`resend()` calls, which never touch
     this backend — see `app/features/auth/email_hook.py` (the Supabase 'Send Email' Auth Hook),
