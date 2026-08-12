@@ -13,6 +13,15 @@ from app.shared.audit import record_audit
 
 
 async def suspend_user(db: AsyncSession, user_id: UUID, *, actor_id: UUID | None = None) -> User:
+    # Self-suspension is the hardest lockout in the system: `_ensure_active` rejects the account
+    # on the very next request, so the admin can no longer authenticate — and reactivating
+    # requires authenticating. Only another admin could undo it, and a sole admin could not be
+    # rescued at all without direct database access.
+    if actor_id is not None and actor_id == user_id:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail='You cannot suspend your own account — ask another admin to do it.',
+        )
     user = await db.get(User, user_id)
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='User not found')

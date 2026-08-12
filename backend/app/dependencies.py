@@ -10,10 +10,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.config import settings
 from app.database import get_db
 from app.models import User
-from app.security import SupabaseClaims, decode_access_token, verify_supabase_access_token
+from app.security import SupabaseClaims, verify_supabase_access_token
 
 bearer_scheme = HTTPBearer(auto_error=False)
 logger = logging.getLogger('lc_connect.auth')
@@ -22,8 +21,7 @@ logger = logging.getLogger('lc_connect.auth')
 @dataclass(frozen=True, slots=True)
 class AuthContext:
     user: User
-    claims: SupabaseClaims | None
-    legacy: bool
+    claims: SupabaseClaims
 
 
 async def get_supabase_claims(
@@ -41,14 +39,8 @@ async def get_supabase_claims(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Invalid or expired token') from None
 
 
-async def _load_user(db: AsyncSession, *, auth_user_id: UUID | None = None, user_id: UUID | None = None) -> User | None:
-    stmt = select(User).options(selectinload(User.profile))
-    if auth_user_id is not None:
-        stmt = stmt.where(User.auth_user_id == auth_user_id)
-    elif user_id is not None:
-        stmt = stmt.where(User.id == user_id)
-    else:
-        return None
+async def _load_user(db: AsyncSession, auth_user_id: UUID) -> User | None:
+    stmt = select(User).options(selectinload(User.profile)).where(User.auth_user_id == auth_user_id)
     return (await db.execute(stmt)).scalar_one_or_none()
 
 
@@ -65,31 +57,19 @@ async def get_auth_context(
     if credentials is None or credentials.scheme.lower() != 'bearer':
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Missing bearer token')
 
-    token = credentials.credentials
-
     try:
-        claims = await verify_supabase_access_token(token)
-    except ValueError:
-        claims = None
+        claims = await verify_supabase_access_token(credentials.credentials)
+    except ValueError as exc:
+        logger.warning('Supabase token rejected: %s', exc)
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Invalid or expired token') from None
 
-    if claims is not None:
-        user = await _load_user(db, auth_user_id=claims.sub)
-        if user is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail='User not bootstrapped. Call POST /auth/bootstrap first.',
-            )
-        return AuthContext(user=_ensure_active(user), claims=claims, legacy=False)
-
-    if not settings.auth_legacy_enabled:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Invalid or expired token')
-
-    legacy_id = decode_access_token(token)
-    if legacy_id is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Invalid or expired token')
-
-    user = await _load_user(db, user_id=legacy_id)
-    return AuthContext(user=_ensure_active(user), claims=None, legacy=True)
+    user = await _load_user(db, claims.sub)
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail='User not bootstrapped. Call POST /auth/bootstrap first.',
+        )
+    return AuthContext(user=_ensure_active(user), claims=claims)
 
 
 async def get_current_user(ctx: AuthContext = Depends(get_auth_context)) -> User:
@@ -131,14 +111,14 @@ async def require_admin(current_user: User = Depends(get_current_user)) -> User:
 
 
 async def require_admin_aal2(ctx: AuthContext = Depends(get_auth_context)) -> User:
+    """Admin + a Supabase session that actually completed MFA.
+
+    Every context now carries real Supabase claims (there is no second, weaker auth path since
+    the legacy password router was removed), so `aal` is the single thing left to check.
+    """
     if ctx.user.role != 'admin':
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='Admin access required')
-    if ctx.legacy:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail='Admin actions require Supabase MFA (aal2)',
-        )
-    if ctx.claims is None or ctx.claims.aal != 'aal2':
+    if ctx.claims.aal != 'aal2':
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail='Admin actions require MFA (aal2)',

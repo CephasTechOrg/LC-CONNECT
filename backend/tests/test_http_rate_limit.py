@@ -59,3 +59,53 @@ async def test_dependency_raises_429_over_limit():
 
     # A different user is unaffected by user-1 hitting the cap.
     assert await limit(_User('user-2')) is not None
+
+
+# ── invite resends are the one purely email-amplifying admin action ───────────────
+
+
+async def test_invite_resend_limit_is_wired_and_bounded():
+    """Bulk *inviting* is legitimate onboarding, but resending to the same person is nothing but
+    an email send — unbounded, it can quietly drain the transactional-email quota."""
+    from app.config import settings
+    from app.shared.rate_limit import invite_resend_limit
+
+    assert invite_resend_limit.action == 'invite_resend'
+    limit = settings.rate_limit_invite_resends_per_day
+    user = _User('admin-1')
+
+    for _ in range(limit):
+        assert await invite_resend_limit(user) is user
+    with pytest.raises(HTTPException) as exc:
+        await invite_resend_limit(user)
+    assert exc.value.status_code == 429
+
+
+def test_both_resend_endpoints_carry_the_limit():
+    """A limiter nobody depends on is worse than none — it reads as protection that isn't there."""
+    from fastapi.routing import APIRoute
+
+    from app.main import app
+
+    def _routes(routes):
+        """Routers nest (app -> admin -> admins_router); a nested router keeps its own
+        un-prefixed path, so match on the suffix rather than the full mounted path."""
+        for route in routes:
+            if isinstance(route, APIRoute):
+                yield route
+            elif type(route).__name__ == '_IncludedRouter':
+                yield from _routes(route.original_router.routes)
+            elif hasattr(route, 'routes'):
+                yield from _routes(route.routes)
+
+    def _actions(route) -> set[str]:
+        return {getattr(d.call, 'action', getattr(d.call, '__name__', '')) for d in route.dependant.dependencies}
+
+    seen = {
+        route.path: _actions(route)
+        for route in _routes(app.routes)
+        if route.path.endswith('resend-invite')
+    }
+    assert len(seen) == 2, f'expected two resend endpoints, found {sorted(seen)}'
+    for path, actions in seen.items():
+        assert 'invite_resend' in actions, f'{path} is missing the resend rate limit'

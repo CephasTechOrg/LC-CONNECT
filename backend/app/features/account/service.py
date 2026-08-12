@@ -23,13 +23,15 @@ import logging
 from datetime import UTC, datetime
 from uuid import UUID
 
-from sqlalchemy import delete, or_, select, update
+from fastapi import HTTPException, status
+from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.realtime.runtime import disconnect_user
 from app.models import (
     Activity,
     ActivityParticipant,
+    AdminMembership,
     Block,
     ConnectionRequest,
     Conversation,
@@ -74,9 +76,47 @@ async def _reassign_or_delete_owned_groups(db: AsyncSession, user_id: UUID) -> N
             replacement.role = 'owner'
 
 
+async def _assert_not_last_super_admin(db: AsyncSession, user_id: UUID) -> None:
+    """Refuse to delete the platform's only Super Admin.
+
+    Only a Super Admin can create a Super Admin, so this deletion would leave nobody able to
+    grant the role again — the admin system would be permanently unrecoverable without direct
+    database access. The remedy is entirely in the caller's hands (appoint a second Super Admin,
+    or have this one's membership revoked first), so this blocks a footgun rather than trapping
+    anyone in an account they cannot leave.
+    """
+    holds_it = (
+        await db.execute(
+            select(AdminMembership.id).where(
+                AdminMembership.user_id == user_id,
+                AdminMembership.role == 'super_admin',
+                AdminMembership.status == 'active',
+            )
+        )
+    ).scalar_one_or_none()
+    if holds_it is None:
+        return
+    total = int(
+        (
+            await db.execute(
+                select(func.count(AdminMembership.id)).where(
+                    AdminMembership.role == 'super_admin', AdminMembership.status == 'active'
+                )
+            )
+        ).scalar_one()
+    )
+    if total <= 1:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail='You are the only Super Admin. Appoint another Super Admin, or have your admin '
+            'access revoked, before deleting this account.',
+        )
+
+
 async def delete_account(db: AsyncSession, user: User) -> None:
     """Anonymize the caller's account in place and revoke their access. Commits once, then does
     the external cleanup (sockets + Supabase Auth) — those never block the deletion."""
+    await _assert_not_last_super_admin(db, user.id)
     user_id = user.id
     auth_user_id = user.auth_user_id  # capture before we unlink it
     now = datetime.now(UTC)
@@ -111,6 +151,16 @@ async def delete_account(db: AsyncSession, user: User) -> None:
     await db.execute(delete(Notification).where(Notification.user_id == user_id))
     await db.execute(delete(DeviceToken).where(DeviceToken.user_id == user_id))
     await db.execute(delete(ScholarProfessionalProfile).where(ScholarProfessionalProfile.user_id == user_id))
+
+    # Retire any admin roles. Left active these would keep a deleted person on the admin roster
+    # (joined to a "Deleted user" profile) and — worse — keep counting toward the
+    # last-Super-Admin guard, so the true last Super Admin could revoke themselves believing a
+    # second one still existed. Revoked rather than deleted, so the audit trail survives.
+    await db.execute(
+        update(AdminMembership)
+        .where(AdminMembership.user_id == user_id, AdminMembership.status == 'active')
+        .values(status='revoked', revoked_at=now)
+    )
 
     # 5. Profile → "Deleted user" tombstone; wipe personal data + avatar.
     profile = (await db.execute(select(Profile).where(Profile.user_id == user_id))).scalar_one_or_none()

@@ -88,6 +88,7 @@ POST /api/v1/activities/{activity_id}/cancel
 POST /api/v1/activities/{activity_id}/join
 POST /api/v1/admin/activities/{activity_id}/remove
 POST /api/v1/admin/admins/invite
+POST /api/v1/admin/admins/me/resign
 POST /api/v1/admin/admins/{membership_id}/resend-invite
 POST /api/v1/admin/admins/{membership_id}/revoke
 POST /api/v1/admin/campus-positions/{position_id}/approve

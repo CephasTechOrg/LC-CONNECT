@@ -93,7 +93,7 @@ async def test_require_admin_blocks_student():
 
 
 async def test_admin_aal2_allows_admin_with_mfa():
-    ctx = AuthContext(user=_user(role="admin"), claims=SimpleNamespace(aal="aal2"), legacy=False)
+    ctx = AuthContext(user=_user(role="admin"), claims=SimpleNamespace(aal="aal2"))
     assert await require_admin_aal2(ctx) is ctx.user
 
 
@@ -101,11 +101,10 @@ async def test_admin_aal2_allows_admin_with_mfa():
     "ctx",
     [
         # non-admin, even with MFA
-        AuthContext(user=SimpleNamespace(role="student"), claims=SimpleNamespace(aal="aal2"), legacy=False),
-        # admin on the legacy (non-Supabase) path — no MFA guarantee
-        AuthContext(user=SimpleNamespace(role="admin"), claims=None, legacy=True),
-        # admin but only aal1 (no MFA)
-        AuthContext(user=SimpleNamespace(role="admin"), claims=SimpleNamespace(aal="aal1"), legacy=False),
+        AuthContext(user=SimpleNamespace(role="student"), claims=SimpleNamespace(aal="aal2")),
+        # admin but only aal1 (no MFA) — the sole remaining way to fail this gate now that
+        # the legacy non-Supabase path is gone and every context carries real claims
+        AuthContext(user=SimpleNamespace(role="admin"), claims=SimpleNamespace(aal="aal1")),
     ],
 )
 async def test_admin_aal2_rejects(ctx):
@@ -130,7 +129,7 @@ PROTECTED_GET_ROUTES = [
 @pytest.mark.parametrize("path", PROTECTED_GET_ROUTES)
 def test_unverified_user_gets_403_on_protected_routes(path):
     app.dependency_overrides[get_auth_context] = lambda: AuthContext(
-        user=_user(is_verified=False), claims=None, legacy=False
+        user=_user(is_verified=False), claims=SimpleNamespace(aal="aal1")
     )
     app.dependency_overrides[get_db] = _dummy_db
     client = TestClient(app)

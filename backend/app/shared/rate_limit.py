@@ -133,6 +133,11 @@ recipient_search_limit = UserRateLimit(
     'recipient_search', settings.rate_limit_recipient_searches_per_minute, 60,
     'Too many searches — please slow down.',
 )
+# Every call sends a real email (admin + employer invite resends share this budget).
+invite_resend_limit = UserRateLimit(
+    'invite_resend', settings.rate_limit_invite_resends_per_day, _DAY,
+    "You've resent too many invites today — try again tomorrow.",
+)
 campus_post_create_limit = UserRateLimit(
     'campus_post_create', settings.rate_limit_campus_post_creates_per_day, _DAY,
     "You've drafted too many campus posts today — try again tomorrow.",

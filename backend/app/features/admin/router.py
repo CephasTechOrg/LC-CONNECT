@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.dependencies import require_admin_aal2
 from app.features.admin import admins as admins_admin
+from app.features.admin import admins_router
 from app.features.admin import campus_positions as campus_admin
 from app.features.admin import campus_posts as posts_admin
 from app.features.admin import campus_resources as resources_admin
@@ -16,15 +17,12 @@ from app.features.admin import programs as programs_admin
 from app.features.admin import system_status as system_status_admin
 from app.features.admin.schema import (
     AdminDashboardSummary,
-    AdminMembershipRead,
     AdminUserRead,
     CampusPositionAdminRead,
     CampusPostAdminRead,
     CampusResourceAdminRead,
     EmployerOrganizationAdminRead,
     EmployerRejectRequest,
-    InviteAdminRequest,
-    MyAdminScopesRead,
     OpportunitySubmissionAdminRead,
     OpportunitySubmissionRejectRequest,
     PositionReviewRequest,
@@ -49,9 +47,14 @@ from app.features.campus_positions.schema import CampusPositionRead
 from app.features.employers.schema import EmployerOrganizationRead, OpportunitySubmissionRead
 from app.models import CampusPost, Profile, Report, User
 from app.shared.profiles import get_profile_by_user_id
+from app.shared.rate_limit import invite_resend_limit
 from app.shared.schemas import ReportRead
 
 router = APIRouter(prefix='/admin', tags=['admin'])
+
+# The `/admins/...` roster endpoints live in their own module (size); same prefix, so the
+# API surface is identical to when they were declared inline here.
+router.include_router(admins_router.router)
 
 
 def _position_admin_read(position, user: User, profile: Profile) -> CampusPositionAdminRead:
@@ -396,85 +399,6 @@ async def revoke_program_membership(
     return _membership_admin_read(membership, target, profile, program)
 
 
-def _admin_membership_read(membership, user: User, profile: Profile) -> AdminMembershipRead:
-    return AdminMembershipRead(
-        id=membership.id,
-        user_id=membership.user_id,
-        role=membership.role,
-        status=membership.status,
-        invited_at=membership.invited_at,
-        revoked_at=membership.revoked_at,
-        user_email=user.email,
-        display_name=profile.display_name,
-    )
-
-
-@router.get('/admins/me/scopes', response_model=MyAdminScopesRead)
-async def get_my_admin_scopes(
-    actor: User = Depends(require_admin_aal2),
-    db: AsyncSession = Depends(get_db),
-) -> MyAdminScopesRead:
-    """Lets the admin portal gate its own nav — any admin can see their own scopes."""
-    scopes = await admins_admin.get_admin_scopes(db, actor.id)
-    return MyAdminScopesRead(scopes=sorted(scopes))
-
-
-@router.get('/admins', response_model=list[AdminMembershipRead])
-async def list_admin_memberships(
-    _: User = Depends(require_admin_aal2),
-    db: AsyncSession = Depends(get_db),
-) -> list[AdminMembershipRead]:
-    """The admin roster — read-only, open to any admin (no scope beyond `require_admin_aal2`)."""
-    rows = await admins_admin.list_memberships(db)
-    return [_admin_membership_read(membership, user, profile) for membership, user, profile in rows]
-
-
-@router.post('/admins/invite', response_model=AdminMembershipRead, status_code=201)
-async def invite_admin(
-    payload: InviteAdminRequest,
-    actor: User = Depends(require_admin_aal2),
-    db: AsyncSession = Depends(get_db),
-) -> AdminMembershipRead:
-    """Only Super Admin / School Admin can actually succeed here — `invite_admin` enforces the
-    invite matrix itself (403 for anyone else), `require_admin_aal2` is just the base gate."""
-    membership, user, profile = await admins_admin.invite_admin(
-        db, actor=actor, email=payload.email, role=payload.role
-    )
-
-    from app.features.realtime.runtime import emit_notification
-
-    # Promoting an *existing* account (the common case — students/staff already use the mobile
-    # app) never sends a Supabase invite email (see `invite_admin`'s existing-identity branch), so
-    # without this the person would have no way to ever find out. A brand-new invitee has no
-    # session/device tokens yet, so this is a harmless no-op for them until they eventually sign in.
-    await emit_notification(user_id=user.id, notif_type='admin_membership_invited')
-    return _admin_membership_read(membership, user, profile)
-
-
-@router.post('/admins/{membership_id}/revoke', response_model=AdminMembershipRead)
-async def revoke_admin(
-    membership_id: UUID,
-    actor: User = Depends(require_admin_aal2),
-    db: AsyncSession = Depends(get_db),
-) -> AdminMembershipRead:
-    membership = await admins_admin.revoke_admin_membership(db, actor=actor, membership_id=membership_id)
-    user = await db.get(User, membership.user_id)
-    profile = await get_profile_by_user_id(db, membership.user_id)
-    return _admin_membership_read(membership, user, profile)
-
-
-@router.post('/admins/{membership_id}/resend-invite', response_model=AdminMembershipRead)
-async def resend_admin_invite(
-    membership_id: UUID,
-    actor: User = Depends(require_admin_aal2),
-    db: AsyncSession = Depends(get_db),
-) -> AdminMembershipRead:
-    membership = await admins_admin.resend_admin_invite(db, actor=actor, membership_id=membership_id)
-    user = await db.get(User, membership.user_id)
-    profile = await get_profile_by_user_id(db, membership.user_id)
-    return _admin_membership_read(membership, user, profile)
-
-
 def _employer_org_admin_read(org, account) -> EmployerOrganizationAdminRead:
     base = EmployerOrganizationRead.model_validate(org).model_dump()
     return EmployerOrganizationAdminRead(
@@ -517,7 +441,9 @@ async def reject_employer_organization(
     return _employer_org_admin_read(org, account)
 
 
-@router.post('/employers/{org_id}/resend-invite', response_model=EmployerOrganizationAdminRead)
+@router.post(
+    '/employers/{org_id}/resend-invite',
+    dependencies=[Depends(invite_resend_limit)],)
 async def resend_employer_invite(
     org_id: UUID,
     actor: User = Depends(admins_admin.require_admin_scope('honors_admin')),

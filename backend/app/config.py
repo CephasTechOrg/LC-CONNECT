@@ -13,14 +13,6 @@ class Settings(BaseSettings):
     api_v1_prefix: str = Field(default='/api/v1', alias='API_V1_PREFIX')
     database_url: str = Field(alias='DATABASE_URL')
 
-    jwt_secret_key: str = Field(alias='JWT_SECRET_KEY')
-    jwt_algorithm: str = Field(default='HS256', alias='JWT_ALGORITHM')
-    access_token_expire_minutes: int = Field(default=60 * 24 * 7, alias='ACCESS_TOKEN_EXPIRE_MINUTES')
-    # Legacy custom-password auth (/auth/login, /register, /reset). OFF by default: the app signs in
-    # via Supabase Auth, so these unauthenticated password endpoints are a rollback-only surface.
-    # Set AUTH_LEGACY_ENABLED=true ONLY to temporarily re-open them during an emergency rollback.
-    auth_legacy_enabled: bool = Field(default=False, alias='AUTH_LEGACY_ENABLED')
-
     cors_origins: str = Field(default='', alias='CORS_ORIGINS')
 
     # Where a Supabase invite email's confirmation link sends the invitee — admin invites (Phase 3)
@@ -74,6 +66,10 @@ class Settings(BaseSettings):
         default=20, alias='RATE_LIMIT_CAMPUS_POST_PUBLISHES_PER_DAY'
     )
     rate_limit_scholar_uploads_per_day: int = Field(default=10, alias='RATE_LIMIT_SCHOLAR_UPLOADS_PER_DAY')
+    # Resending an invite re-sends a real email every time. Bulk *inviting* is legitimate
+    # onboarding, but repeatedly resending to the same person has no high-volume use — so this
+    # caps the one shape that is purely an email amplifier.
+    rate_limit_invite_resends_per_day: int = Field(default=20, alias='RATE_LIMIT_INVITE_RESENDS_PER_DAY')
     # Anonymous endpoints — keyed on client IP (and, for resets, also on the target email) since
     # there is no signed-in user to key on. Generous enough that a real person retrying never
     # trips them; tight enough to stop inbox-bombing and junk-registration floods.

@@ -29,7 +29,6 @@ from app.features.realtime.protocol import CloseCode
 from app.features.realtime.runtime import manager as ws_manager
 from app.features.safety import router as safety_router
 from app.features.scholars import router as scholars_router
-from app.routers import auth
 from app.shared.rate_limit import prune_idle_buckets
 from app.shared.request_limits import MaxBodySizeMiddleware
 
@@ -102,13 +101,8 @@ async def health_check() -> dict[str, str]:
     return {'status': 'ok', 'service': 'lc-connect-api'}
 
 
-# Supabase Auth path (bootstrap + /me) — the live login flow for the mobile app.
+# Supabase Auth is the ONLY auth path — the legacy custom-password router was removed.
 app.include_router(auth_v2_router, prefix=settings.api_v1_prefix)
-# Legacy custom-password auth (login/register/reset). The app no longer uses it (it signs in via
-# Supabase Auth), so this is a rollback-only surface — mount it ONLY while the flag is on, so
-# setting AUTH_LEGACY_ENABLED=false removes these unauthenticated password endpoints entirely.
-if settings.auth_legacy_enabled:
-    app.include_router(auth.router, prefix=settings.api_v1_prefix)
 app.include_router(lookups_router, prefix=settings.api_v1_prefix)
 app.include_router(profiles_router, prefix=settings.api_v1_prefix)
 app.include_router(campus_positions_router, prefix=settings.api_v1_prefix)

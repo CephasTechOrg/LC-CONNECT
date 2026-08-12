@@ -241,6 +241,16 @@ async def revoke_admin_membership(db: AsyncSession, *, actor: User, membership_i
     if membership.status != 'active':
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='This membership is not active')
 
+    # Only the Super Admin is protected from revoking themselves. Everyone below that rank is
+    # allowed to step down (see `resign_admin_membership`) — losing a Content Admin is a normal
+    # staffing change another admin can undo, whereas a Super Admin who removes their own access
+    # is removing the platform's top authority with one mis-click.
+    if membership.user_id == actor.id and membership.role == 'super_admin':
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail='A Super Admin cannot revoke their own access — ask another Super Admin to do it.',
+        )
+
     actor_scopes = await get_admin_scopes(db, actor.id)
     if not can_invite(_primary_role(actor_scopes), membership.role):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='You are not allowed to revoke this role')
@@ -271,6 +281,54 @@ async def revoke_admin_membership(db: AsyncSession, *, actor: User, membership_i
     await db.commit()
     await db.refresh(membership)
     return membership
+
+
+async def resign_admin_membership(db: AsyncSession, *, actor: User) -> list[AdminMembership]:
+    """Step down from every admin role you hold. Returns the memberships that were revoked.
+
+    Separate from `revoke_admin_membership` because that path is governed by the invite matrix,
+    which only Super Admin and School Admin appear in — a Content Admin, Honors Admin or Auditor
+    could therefore never remove their own access through it, leaving them with no way out except
+    asking someone else. This is the way out.
+
+    A Super Admin is deliberately excluded: they are the platform's top authority, and only
+    another Super Admin can create one, so stepping down must be a decision two people see.
+    """
+    scopes = await get_admin_scopes(db, actor.id)
+    if not scopes:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='You do not hold any admin role')
+    if 'super_admin' in scopes:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail='A Super Admin cannot step down on their own — ask another Super Admin to revoke your access.',
+        )
+
+    memberships = list(
+        (
+            await db.execute(
+                select(AdminMembership).where(
+                    AdminMembership.user_id == actor.id, AdminMembership.status == 'active'
+                )
+            )
+        ).scalars().all()
+    )
+    now = datetime.now(UTC)
+    for membership in memberships:
+        membership.status = 'revoked'
+        membership.revoked_at = now
+        await record_audit(
+            db,
+            actor_id=actor.id,
+            action='admin_membership.resign',
+            target_type='admin_membership',
+            target_id=membership.id,
+            before_data={'status': 'active'},
+            after_data={'status': 'revoked', 'role': membership.role},
+        )
+    await db.flush()
+    await _demote_if_no_scopes_left(db, actor.id)
+    await db.commit()
+    return memberships
 
 
 async def resend_admin_invite(db: AsyncSession, *, actor: User, membership_id: UUID) -> AdminMembership:

@@ -6662,6 +6662,37 @@
         ]
       }
     },
+    "/api/v1/admin/admins/me/resign": {
+      "post": {
+        "description": "Step down from your own admin roles. Super Admins are excluded \u2014 see\n`admins.resign_admin_membership`. Declared before `/admins/{membership_id}/...` so the\nliteral `me` segment is never captured as a membership id.",
+        "operationId": "resign_admin_api_v1_admin_admins_me_resign_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AdminMembershipRead"
+                  },
+                  "title": "Response Resign Admin Api V1 Admin Admins Me Resign Post",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Resign Admin",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
     "/api/v1/admin/admins/me/scopes": {
       "get": {
         "description": "Lets the admin portal gate its own nav \u2014 any admin can see their own scopes.",
@@ -8362,7 +8393,7 @@
     },
     "/api/v1/auth/forgot-password": {
       "post": {
-        "description": "Public, unauthenticated \u2014 and deliberately reports the same success message whether or not\nan account exists for this email, so this can never be used to enumerate accounts.\n\nSame path as the legacy router's own `/auth/forgot-password` (`app/routers/auth.py`) \u2014 this\nrouter is always mounted first, so if `AUTH_LEGACY_ENABLED` is ever flipped on for an\nemergency rollback, this one wins and the legacy handler at this path becomes unreachable.\nAcceptable: legacy is \"do not extend, slated for deletion\" (CLAUDE.md), and this endpoint\nstill successfully resets the password either way, just via the modern path.",
+        "description": "Public, unauthenticated \u2014 and deliberately reports the same success message whether or not\nan account exists for this email, so this can never be used to enumerate accounts.\n\nRate-limited twice over: per caller IP, and per target address. The IP cap alone still lets a\ndistributed caller bomb one person's inbox, so both are needed.",
         "operationId": "forgot_password_api_v1_auth_forgot_password_post",
         "requestBody": {
           "content": {

@@ -40,11 +40,8 @@ async def forgot_password(payload: ForgotPasswordRequest) -> MessageResponse:
     """Public, unauthenticated — and deliberately reports the same success message whether or not
     an account exists for this email, so this can never be used to enumerate accounts.
 
-    Same path as the legacy router's own `/auth/forgot-password` (`app/routers/auth.py`) — this
-    router is always mounted first, so if `AUTH_LEGACY_ENABLED` is ever flipped on for an
-    emergency rollback, this one wins and the legacy handler at this path becomes unreachable.
-    Acceptable: legacy is "do not extend, slated for deletion" (CLAUDE.md), and this endpoint
-    still successfully resets the password either way, just via the modern path."""
+    Rate-limited twice over: per caller IP, and per target address. The IP cap alone still lets a
+    distributed caller bomb one person's inbox, so both are needed."""
     # Also cap per target address: an IP cap alone still allows a distributed caller to bomb one
     # person's inbox. Checked before any send so a bombing attempt costs no email quota.
     forgot_password_email_limit.check(payload.email)
