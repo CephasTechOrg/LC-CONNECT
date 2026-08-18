@@ -30,6 +30,22 @@ from app.config import settings
 logger = logging.getLogger(__name__)
 
 
+def _signing_secret() -> str:
+    """Normalize Supabase's secret format to what `standardwebhooks` expects.
+
+    Supabase presents the Send Email hook secret as `v1,whsec_<base64>`, but the library only
+    strips a bare `whsec_` prefix (`Webhook._SECRET_PREFIX`). Left as-is, the leading `v1,` goes
+    into `base64.b64decode`, which silently discards the out-of-alphabet characters and yields a
+    *different key* — so every signature mismatches and Supabase's call fails with 401, which
+    (the hook being fail-closed) blocks the signup or password reset that triggered it.
+
+    Silent-garbage-key is exactly the kind of failure worth normalizing at the edge rather than
+    relying on whoever pastes the value into Render to trim it by hand.
+    """
+    secret = (settings.supabase_send_email_hook_secret or '').strip()
+    return secret.removeprefix('v1,')
+
+
 async def verify_and_parse(request: Request) -> dict[str, Any]:
     """Raises HTTPException (503 unconfigured, 401 bad signature) — never returns unverified data."""
     if not settings.supabase_send_email_hook_secret:
@@ -38,7 +54,7 @@ async def verify_and_parse(request: Request) -> dict[str, Any]:
         )
     body = await request.body()
     try:
-        payload = Webhook(settings.supabase_send_email_hook_secret).verify(body, dict(request.headers))
+        payload = Webhook(_signing_secret()).verify(body, dict(request.headers))
     except (WebhookVerificationError, ValueError) as exc:
         # `standardwebhooks` raises its own `WebhookVerificationError` for a well-formed-but-
         # mismatched signature, but a malformed one (bad base64, wrong header shape, ...) can

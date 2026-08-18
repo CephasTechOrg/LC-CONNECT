@@ -167,3 +167,71 @@ def test_webhook_endpoint_send_failure_uses_supabase_error_shape(monkeypatch):
     response = client.post('/api/v1/auth/webhooks/send-email', content=body, headers=headers)
     assert response.status_code == 500
     assert response.json()['error']['http_code'] == 500
+
+
+# ── Supabase's `v1,whsec_` secret format ────────────────────────────────────────
+
+
+def _sign(secret_b64: str, payload: str) -> dict[str, str]:
+    """Sign a payload the way Supabase does — with the RAW key, not the prefixed string."""
+    from datetime import UTC, datetime
+
+    from standardwebhooks.webhooks import Webhook
+
+    ts = datetime.now(UTC)
+    return {
+        'webhook-id': 'msg_test',
+        'webhook-timestamp': str(int(ts.timestamp())),
+        'webhook-signature': Webhook(secret_b64).sign('msg_test', ts, payload),
+    }
+
+
+def test_verify_accepts_supabase_v1_whsec_secret_format(monkeypatch):
+    """Supabase presents the secret as `v1,whsec_<base64>`; `standardwebhooks` only strips
+    `whsec_`. Leaving `v1,` on silently base64-decodes to a *different key*, so every real
+    Supabase call 401s — and because the hook is fail-closed, that blocks the signup or password
+    reset behind it. Regression guard for a live outage this caused."""
+    import base64
+    import secrets as _secrets
+
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+
+    key_b64 = base64.b64encode(_secrets.token_bytes(32)).decode()
+    monkeypatch.setattr(email_hook.settings, 'supabase_send_email_hook_secret', f'v1,whsec_{key_b64}')
+
+    sent: list[tuple] = []
+    monkeypatch.setattr(
+        email_hook.email_service, 'send_password_reset_email',
+        lambda to, **kw: sent.append((to, kw)),
+    )
+
+    payload = (
+        '{"user":{"email":"a@livingstone.edu"},'
+        '"email_data":{"email_action_type":"recovery","token":"123456"}}'
+    )
+    response = TestClient(app).post(
+        '/api/v1/auth/webhooks/send-email',
+        content=payload,
+        headers={'content-type': 'application/json', **_sign(key_b64, payload)},
+    )
+
+    assert response.status_code == 200, response.text
+    assert sent and sent[0][0] == 'a@livingstone.edu'
+
+
+def test_verify_still_accepts_a_bare_whsec_secret(monkeypatch):
+    """Don't regress the plain `whsec_<base64>` form the library already handled."""
+    import base64
+    import secrets as _secrets
+
+    key_b64 = base64.b64encode(_secrets.token_bytes(32)).decode()
+    monkeypatch.setattr(email_hook.settings, 'supabase_send_email_hook_secret', f'whsec_{key_b64}')
+    assert email_hook._signing_secret() == f'whsec_{key_b64}'
+
+
+def test_signing_secret_tolerates_whitespace(monkeypatch):
+    """A trailing newline from a copy-paste into Render must not change the key."""
+    monkeypatch.setattr(email_hook.settings, 'supabase_send_email_hook_secret', '  v1,whsec_AAAA\n')
+    assert email_hook._signing_secret() == 'whsec_AAAA'
