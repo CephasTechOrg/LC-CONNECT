@@ -36,14 +36,17 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(
-          'If that email is registered, a reset link has been sent.',
+          'If that email is registered, we sent a 6-digit code.',
           style: GoogleFonts.dmSans(),
         ),
         backgroundColor: const Color(0xFF059669),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ));
-      context.pop(); // Navigate back to sign-in
+      // Go to the code-entry screen, NOT back to login. Reset is code-based (the email carries
+      // a 6-digit OTP, deliberately not a magic link — see backend `_cta_button`), so bouncing
+      // to sign-in left the user holding a code with nowhere to enter it.
+      context.push('/reset-password', extra: _emailCtrl.text.trim().toLowerCase());
     } catch (e) {
       if (!mounted) return;
       final msg = authErrorMessage(e);
