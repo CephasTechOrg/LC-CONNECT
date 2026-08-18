@@ -6,7 +6,6 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lc_connect/core/api/api_client.dart';
-import 'package:lc_connect/core/storage/secure_storage.dart';
 import 'package:lc_connect/features/messages/providers/messages_provider.dart';
 import 'package:lc_connect/features/messages/screens/messages_screen.dart';
 import 'package:lc_connect/features/messages/screens/chat_screen.dart';
@@ -34,7 +33,7 @@ class _EmptyListAdapter implements HttpClientAdapter {
 ApiClient _stubApiClient() {
   final dio = Dio(BaseOptions(baseUrl: 'http://test.local/'))
     ..httpClientAdapter = _EmptyListAdapter();
-  return ApiClient(SecureStorage(), dio: dio);
+  return ApiClient(dio: dio);
 }
 
 // ── Mock notifier ─────────────────────────────────────────────────

@@ -10,7 +10,6 @@ import 'package:lc_connect/core/notifications/in_app_banner.dart';
 import 'package:lc_connect/core/notifications/notification_sound.dart';
 import 'package:lc_connect/core/realtime/realtime_client.dart';
 import 'package:lc_connect/core/realtime/ws_protocol.dart';
-import 'package:lc_connect/core/storage/secure_storage.dart';
 import 'package:lc_connect/features/auth/providers/auth_provider.dart';
 import 'package:lc_connect/features/messages/providers/in_app_message_listener.dart';
 import 'package:lc_connect/features/messages/providers/messages_provider.dart';
@@ -62,7 +61,7 @@ class _StubAdapter implements HttpClientAdapter {
 
 ApiClient _stubApi() {
   final dio = Dio(BaseOptions(baseUrl: 'http://test.local/'))..httpClientAdapter = _StubAdapter();
-  return ApiClient(SecureStorage(), dio: dio);
+  return ApiClient(dio: dio);
 }
 
 final _partner = MessagePartner(

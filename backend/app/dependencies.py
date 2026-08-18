@@ -77,6 +77,17 @@ async def get_current_user(ctx: AuthContext = Depends(get_auth_context)) -> User
 
 
 async def require_verified_student(current_user: User = Depends(get_current_user)) -> User:
+    """MISNAMED — this checks email confirmation only, NOT that the caller is a student.
+
+    It is identical to `require_verified_user`; the student check lives in
+    `require_verified_connect_student` below. Do not "fix" this by adding a role check: groups
+    and activities are deliberately open to staff as well as students (staff responsibilities
+    within groups are planned), and tightening this would silently remove that access.
+
+    The name is the hazard: an endpoint added with this guard on the assumption that it means
+    "students only" would be open to every verified account. Renaming it to something honest
+    (`require_email_confirmed_user`) is the real fix and is still outstanding.
+    """
     if not current_user.is_verified:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='Verified student required')
     return current_user

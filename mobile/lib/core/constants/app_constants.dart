@@ -31,5 +31,4 @@ class AppConstants {
   /// Applied per-request to file uploads, which send a multi-MB body over mobile data.
   static const Duration uploadTimeout = Duration(seconds: 120);
 
-  static const String tokenKey = 'lc_connect_access_token';
 }

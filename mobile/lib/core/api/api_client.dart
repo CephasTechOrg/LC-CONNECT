@@ -3,19 +3,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../constants/app_constants.dart';
-import '../storage/secure_storage.dart';
 
-final apiClientProvider = Provider<ApiClient>((ref) {
-  final storage = ref.watch(secureStorageProvider);
-  return ApiClient(storage);
-});
+final apiClientProvider = Provider<ApiClient>((ref) => ApiClient());
 
 class ApiClient {
   late final Dio _dio;
 
   /// [dio] is an injection seam for tests: pass a pre-configured Dio (e.g. with a
   /// stub adapter) to bypass the network + auth interceptor. Production passes none.
-  ApiClient(SecureStorage storage, {Dio? dio}) {
+  ApiClient({Dio? dio}) {
     if (dio != null) {
       _dio = dio;
       return;
@@ -28,7 +24,7 @@ class ApiClient {
         contentType: 'application/json',
       ),
     );
-    _dio.interceptors.add(_AuthInterceptor(storage, _dio));
+    _dio.interceptors.add(_AuthInterceptor(_dio));
   }
 
   Dio get dio => _dio;
@@ -40,11 +36,10 @@ class ApiClient {
 class _AuthInterceptor extends Interceptor {
   static const _retriedFlag = '__auth_retried__';
 
-  final SecureStorage _storage;
   final Dio _dio;
   Future<bool>? _refreshing;
 
-  _AuthInterceptor(this._storage, this._dio);
+  _AuthInterceptor(this._dio);
 
   GoTrueClient get _auth => Supabase.instance.client.auth;
 
@@ -53,8 +48,9 @@ class _AuthInterceptor extends Interceptor {
     RequestOptions options,
     RequestInterceptorHandler handler,
   ) async {
-    // Prefer the live Supabase access token; fall back to stored token.
-    final token = _auth.currentSession?.accessToken ?? await _storage.getToken();
+    // The Supabase session is the single source of truth for the bearer token; it is restored
+    // from the keystore at startup, so there is no second copy to fall back to.
+    final token = _auth.currentSession?.accessToken;
     if (token != null) {
       options.headers['Authorization'] = 'Bearer $token';
     }
@@ -79,7 +75,6 @@ class _AuthInterceptor extends Interceptor {
       // Refresh token expired/revoked — force sign-out; the auth listener + router
       // will send the user back to login.
       await _auth.signOut();
-      await _storage.deleteToken();
       return handler.next(err);
     }
 
@@ -103,7 +98,6 @@ class _AuthInterceptor extends Interceptor {
     try {
       final session = (await _auth.refreshSession()).session;
       if (session == null) return false;
-      await _storage.saveToken(session.accessToken);
       return true;
     } catch (_) {
       return false;

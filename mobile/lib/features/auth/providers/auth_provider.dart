@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/api/api_client.dart';
-import '../../../core/storage/secure_storage.dart';
 
 class AuthUser {
   final String id;
@@ -49,36 +48,24 @@ class AuthNotifier extends AsyncNotifier<AuthUser?> {
 
   @override
   Future<AuthUser?> build() async {
-    // React to Supabase session changes: keep the stored token fresh after a
-    // background refresh, and flip to signed-out (→ router redirects to login)
-    // when the session is revoked or the refresh token expires.
+    // React to Supabase session changes: flip to signed-out (→ router redirects to login)
+    // when the session is revoked or the refresh token expires. Supabase persists the session
+    // itself (now into the keystore — see `SecureSessionLocalStorage`), so there is nothing for
+    // us to mirror on a token refresh.
     final sub = _auth.onAuthStateChange.listen((data) {
-      switch (data.event) {
-        case AuthChangeEvent.tokenRefreshed:
-          final refreshed = data.session;
-          if (refreshed != null) {
-            ref.read(secureStorageProvider).saveToken(refreshed.accessToken);
-          }
-        case AuthChangeEvent.signedOut:
-          ref.read(secureStorageProvider).deleteToken();
-          state = const AsyncData(null);
-        default:
-          break;
+      if (data.event == AuthChangeEvent.signedOut) {
+        state = const AsyncData(null);
       }
     });
     ref.onDispose(sub.cancel);
 
-    final session = _auth.currentSession;
-    if (session == null) {
-      await ref.read(secureStorageProvider).deleteToken();
+    if (_auth.currentSession == null) {
       return null;
     }
-    await ref.read(secureStorageProvider).saveToken(session.accessToken);
     try {
       return await _bootstrap();
     } on DioException {
       await _auth.signOut();
-      await ref.read(secureStorageProvider).deleteToken();
       return null;
     }
   }
@@ -87,10 +74,6 @@ class AuthNotifier extends AsyncNotifier<AuthUser?> {
     final client = ref.read(apiClientProvider);
     final response = await client.dio.post('/auth/bootstrap');
     return AuthUser.fromBootstrap(response.data as Map<String, dynamic>);
-  }
-
-  Future<void> _persistSession(Session session) async {
-    await ref.read(secureStorageProvider).saveToken(session.accessToken);
   }
 
   Future<void> login(String email, String password) async {
@@ -104,7 +87,6 @@ class AuthNotifier extends AsyncNotifier<AuthUser?> {
       if (session == null) {
         throw AuthException('No session returned. Confirm your email first.');
       }
-      await _persistSession(session);
       return _bootstrap();
     });
   }
@@ -123,7 +105,6 @@ class AuthNotifier extends AsyncNotifier<AuthUser?> {
         return null;
       }
       _pendingEmail = null;
-      await _persistSession(session);
       return _bootstrap();
     });
   }
@@ -146,7 +127,6 @@ class AuthNotifier extends AsyncNotifier<AuthUser?> {
         throw AuthException('Verification succeeded but no session was created.');
       }
       _pendingEmail = null;
-      await _persistSession(session);
       return _bootstrap();
     });
   }
@@ -201,7 +181,6 @@ class AuthNotifier extends AsyncNotifier<AuthUser?> {
   Future<void> logout() async {
     _pendingEmail = null;
     await _auth.signOut();
-    await ref.read(secureStorageProvider).deleteToken();
     // Force a state transition so GoRouter refreshListenable always fires,
     // even when we were already AsyncData(null) (pending-confirm signup).
     state = const AsyncLoading();

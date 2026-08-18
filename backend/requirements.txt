@@ -10,8 +10,6 @@ pydantic-settings==2.14.2
 python-jose[cryptography]==3.5.0
 PyJWT[crypto]==2.13.0
 httpx==0.28.1
-passlib[bcrypt]==1.7.4
-bcrypt==4.3.0
 python-multipart==0.0.32
 supabase==2.31.0
 email-validator==2.3.0

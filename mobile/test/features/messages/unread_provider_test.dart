@@ -7,7 +7,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lc_connect/core/api/api_client.dart';
 import 'package:lc_connect/core/realtime/realtime_client.dart';
 import 'package:lc_connect/core/realtime/ws_protocol.dart';
-import 'package:lc_connect/core/storage/secure_storage.dart';
 import 'package:lc_connect/features/auth/providers/auth_provider.dart';
 import 'package:lc_connect/features/messages/providers/unread_provider.dart';
 
@@ -58,7 +57,7 @@ class _SummaryAdapter implements HttpClientAdapter {
 ApiClient _stubApi(String summaryJson) {
   final dio = Dio(BaseOptions(baseUrl: 'http://test.local/'))
     ..httpClientAdapter = _SummaryAdapter(summaryJson);
-  return ApiClient(SecureStorage(), dio: dio);
+  return ApiClient(dio: dio);
 }
 
 ConversationUpdated _incoming(String conv, String sender) => ConversationUpdated(conv, {
