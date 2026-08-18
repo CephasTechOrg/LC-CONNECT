@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import '../data/auth_error_messages.dart';
 import '../../../core/theme/app_theme.dart';
 import '../providers/auth_provider.dart';
 
@@ -46,9 +46,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
       context.pop(); // Navigate back to sign-in
     } catch (e) {
       if (!mounted) return;
-      final msg = e is AuthException
-          ? e.message
-          : 'Something went wrong. Please try again.';
+      final msg = authErrorMessage(e);
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(msg, style: GoogleFonts.dmSans()),
         backgroundColor: AppColors.error,
@@ -194,9 +192,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
       setState(() => _success = true);
     } catch (e) {
       if (!mounted) return;
-      final msg = e is AuthException
-          ? e.message
-          : 'Something went wrong. Please try again.';
+      final msg = authErrorMessage(e);
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(msg, style: GoogleFonts.dmSans()),
         backgroundColor: AppColors.error,

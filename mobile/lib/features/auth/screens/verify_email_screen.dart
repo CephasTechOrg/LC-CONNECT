@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../data/auth_error_messages.dart';
 import '../../../core/theme/app_theme.dart';
 import '../providers/auth_provider.dart';
 
@@ -44,12 +46,12 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
       await notifier.verifyEmailOtp(email: email, token: _otpCtrl.text.trim());
     } catch (e) {
       if (!mounted) return;
-      final msg = e is AuthException
-          ? e.message
-          : e is DioException
-              ? ((e.response?.data as Map?)?['detail'] as String? ??
-                  'Something went wrong. Please try again.')
-              : 'Something went wrong. Please try again.';
+      // The backend's own `detail` is already user-facing copy, so it is preferred when the
+      // failure came from us; anything from Supabase goes through the mapper.
+      final msg = e is DioException
+          ? ((e.response?.data as Map?)?['detail'] as String? ??
+              'Something went wrong. Please try again.')
+          : authErrorMessage(e);
       ScaffoldMessenger.of(context).showSnackBar(_snackBar(msg, isError: true));
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -74,9 +76,7 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
       _startCooldown(60);
     } catch (e) {
       if (!mounted) return;
-      final msg = e is AuthException
-          ? e.message
-          : 'Could not resend. Please try again.';
+      final msg = authErrorMessage(e);
       ScaffoldMessenger.of(context).showSnackBar(_snackBar(msg, isError: true));
     } finally {
       if (mounted) setState(() => _resending = false);
