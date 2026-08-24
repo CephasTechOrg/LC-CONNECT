@@ -20,7 +20,8 @@ from app.dependencies import (
     get_auth_context,
     require_admin,
     require_admin_aal2,
-    require_verified_student,
+    require_email_confirmed_user,
+    require_verified_connect_student,
 )
 from app.main import app
 
@@ -43,17 +44,36 @@ def _clear_overrides():
     app.dependency_overrides.clear()
 
 
-# ── Unit: require_verified_student ────────────────────────────────────────────
+# ── Unit: require_email_confirmed_user ────────────────────────────────────────
 
-async def test_verified_student_passes():
+async def test_email_confirmed_user_passes():
     user = _user(is_verified=True)
-    assert await require_verified_student(user) is user
+    assert await require_email_confirmed_user(user) is user
 
 
-async def test_unverified_student_is_forbidden():
+async def test_email_confirmed_allows_verified_staff():
+    """Name hazard regression: this gate is email confirmation, not student-only."""
+    staff = _user(is_verified=True, role="staff")
+    assert await require_email_confirmed_user(staff) is staff
+
+
+async def test_unverified_user_is_forbidden():
     with pytest.raises(HTTPException) as exc:
-        await require_verified_student(_user(is_verified=False))
+        await require_email_confirmed_user(_user(is_verified=False))
     assert exc.value.status_code == 403
+    assert exc.value.detail == "Verified account required"
+
+
+async def test_require_verified_connect_student_blocks_staff():
+    with pytest.raises(HTTPException) as exc:
+        await require_verified_connect_student(_user(is_verified=True, role="staff"))
+    assert exc.value.status_code == 403
+    assert "student" in str(exc.value.detail).lower()
+
+
+async def test_require_verified_connect_student_allows_student():
+    student = _user(is_verified=True, role="student")
+    assert await require_verified_connect_student(student) is student
 
 
 # ── Unit: _ensure_active (authenticated + active) ─────────────────────────────
@@ -134,7 +154,7 @@ def test_unverified_user_gets_403_on_protected_routes(path):
     app.dependency_overrides[get_db] = _dummy_db
     client = TestClient(app)
     response = client.get(path)
-    assert response.status_code == 403, f"{path} must require a verified student"
+    assert response.status_code == 403, f"{path} must require a verified (email-confirmed) user"
 
 
 def test_missing_token_gets_401_on_protected_route():

@@ -32,9 +32,10 @@ The existing Supabase Realtime implementation depends on custom FastAPI JWTs, sh
 4. `03_fastapi_websocket_messaging.md` — realtime protocol and design.
 5. `04_security_privacy_compliance.md` — security, privacy, safety, and retention.
 6. `05_execution_roadmap.md` — ordered implementation plan.
-7. `todo_auth_websocket_security.md` — implementation checklist.
-8. `DECISION_LOG.md` — accepted architecture decisions.
-9. `SOURCES.md` — primary references.
+7. `06_enterprise_system_review.md` — **enterprise review: findings, scores, and prioritized next steps.**
+8. `todo_auth_websocket_security.md` — implementation checklist.
+9. `DECISION_LOG.md` — accepted architecture decisions.
+10. `SOURCES.md` — primary references.
 
 ## Engineering conventions
 

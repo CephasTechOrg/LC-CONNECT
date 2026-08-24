@@ -25,7 +25,9 @@ class _FeaturedCardState extends ConsumerState<_FeaturedCard> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(e.toString()),
+            content: Text(
+              apiErrorMessage(e, fallback: 'Could not update your RSVP — try again.'),
+            ),
             backgroundColor: AppColors.error,
           ),
         );

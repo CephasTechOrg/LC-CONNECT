@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.database import get_db
-from app.dependencies import require_verified_student
+from app.dependencies import require_email_confirmed_user
 from app.features.activities import service
 from app.features.activities.schema import (
     ActivityCreate,
@@ -25,7 +25,7 @@ router = APIRouter(prefix='/activities', tags=['activities'])
 
 
 @router.post('', response_model=ActivityRead, status_code=status.HTTP_201_CREATED)
-async def create_activity(payload: ActivityCreate, current_user: User = Depends(require_verified_student), db: AsyncSession = Depends(get_db)):
+async def create_activity(payload: ActivityCreate, current_user: User = Depends(require_email_confirmed_user), db: AsyncSession = Depends(get_db)):
     activity = Activity(
         creator_id=current_user.id,
         title=payload.title.strip(),
@@ -45,7 +45,7 @@ async def create_activity(payload: ActivityCreate, current_user: User = Depends(
 
 
 @router.get('', response_model=list[ActivityRead])
-async def list_activities(current_user: User = Depends(require_verified_student), db: AsyncSession = Depends(get_db), category: str | None = Query(default=None), limit: int = Query(default=30, ge=1, le=100)):
+async def list_activities(current_user: User = Depends(require_email_confirmed_user), db: AsyncSession = Depends(get_db), category: str | None = Query(default=None), limit: int = Query(default=30, ge=1, le=100)):
     count_subq = select(func.count(ActivityParticipant.id)).where(ActivityParticipant.activity_id == Activity.id).scalar_subquery()
     joined_subq = select(ActivityParticipant.id).where(ActivityParticipant.activity_id == Activity.id, ActivityParticipant.user_id == current_user.id).exists().correlate(Activity)
 
@@ -63,7 +63,7 @@ async def list_activities(current_user: User = Depends(require_verified_student)
 
 
 @router.get('/{activity_id}', response_model=ActivityRead)
-async def get_activity(activity_id: UUID, current_user: User = Depends(require_verified_student), db: AsyncSession = Depends(get_db)):
+async def get_activity(activity_id: UUID, current_user: User = Depends(require_email_confirmed_user), db: AsyncSession = Depends(get_db)):
     activity = await db.get(Activity, activity_id)
     if activity is None or activity.is_cancelled:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Activity not found')
@@ -71,7 +71,7 @@ async def get_activity(activity_id: UUID, current_user: User = Depends(require_v
 
 
 @router.get('/{activity_id}/participants', response_model=list[ActivityParticipantRead])
-async def list_participants(activity_id: UUID, current_user: User = Depends(require_verified_student), db: AsyncSession = Depends(get_db)):
+async def list_participants(activity_id: UUID, current_user: User = Depends(require_email_confirmed_user), db: AsyncSession = Depends(get_db)):
     """The activity's roster (public — any verified student can view)."""
     activity = await db.get(Activity, activity_id)
     if activity is None or activity.is_cancelled:
@@ -80,7 +80,7 @@ async def list_participants(activity_id: UUID, current_user: User = Depends(requ
 
 
 @router.patch('/{activity_id}', response_model=ActivityRead)
-async def edit_activity(activity_id: UUID, payload: ActivityUpdate, current_user: User = Depends(require_verified_student), db: AsyncSession = Depends(get_db)):
+async def edit_activity(activity_id: UUID, payload: ActivityUpdate, current_user: User = Depends(require_email_confirmed_user), db: AsyncSession = Depends(get_db)):
     activity = await service.creator_activity(db, activity_id, current_user.id)
     await service.update_activity(db, activity, payload.model_dump(exclude_unset=True))
     await db.commit()
@@ -88,7 +88,7 @@ async def edit_activity(activity_id: UUID, payload: ActivityUpdate, current_user
 
 
 @router.post('/{activity_id}/cancel', response_model=ActivityRead)
-async def cancel_activity(activity_id: UUID, current_user: User = Depends(require_verified_student), db: AsyncSession = Depends(get_db)):
+async def cancel_activity(activity_id: UUID, current_user: User = Depends(require_email_confirmed_user), db: AsyncSession = Depends(get_db)):
     """Creator cancels their activity (soft — the row stays, hidden from listings/joins)."""
     activity = await service.creator_activity(db, activity_id, current_user.id)
     activity.is_cancelled = True
@@ -101,7 +101,7 @@ async def cancel_activity(activity_id: UUID, current_user: User = Depends(requir
 async def upload_activity_banner(
     activity_id: UUID,
     file: UploadFile = File(...),
-    current_user: User = Depends(require_verified_student),
+    current_user: User = Depends(require_email_confirmed_user),
     db: AsyncSession = Depends(get_db),
 ):
     activity = await service.creator_activity(db, activity_id, current_user.id)
@@ -115,14 +115,14 @@ async def upload_activity_banner(
 
 
 @router.post('/{activity_id}/join', response_model=ActivityRead)
-async def join_activity(activity_id: UUID, current_user: User = Depends(require_verified_student), db: AsyncSession = Depends(get_db)):
+async def join_activity(activity_id: UUID, current_user: User = Depends(require_email_confirmed_user), db: AsyncSession = Depends(get_db)):
     activity = await service.join_activity(db, activity_id, current_user.id)  # race-safe under a row lock
     await db.commit()
     return await activity_read(db, activity, current_user.id)
 
 
 @router.delete('/{activity_id}/leave', response_model=ActivityRead)
-async def leave_activity(activity_id: UUID, current_user: User = Depends(require_verified_student), db: AsyncSession = Depends(get_db)):
+async def leave_activity(activity_id: UUID, current_user: User = Depends(require_email_confirmed_user), db: AsyncSession = Depends(get_db)):
     activity = await service.leave_activity(db, activity_id, current_user.id)
     await db.commit()
     return await activity_read(db, activity, current_user.id)

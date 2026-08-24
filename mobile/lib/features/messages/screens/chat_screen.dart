@@ -7,10 +7,12 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../../../core/api/api_client.dart';
+import '../../../core/api/api_error.dart';
 import '../../../core/realtime/realtime_client.dart';
 import '../../../core/realtime/ws_protocol.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/avatar_widget.dart';
+import '../../../shared/widgets/app_states.dart';
 import '../../../shared/widgets/verified_badge.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../groups/providers/groups_provider.dart';
@@ -61,6 +63,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   bool _loading = true;
   bool _loadingOlder = false;
   bool _hasMore = true;
+  /// Set when the first history page fails and the list is still empty — shown as
+  /// [AppErrorState] so the user is not left thinking the conversation is empty.
+  String? _loadError;
   bool _partnerTyping = false;
   String? _typingUserId; // who is typing (group mode → resolve to their name)
   String _currentUserId = '';
@@ -138,12 +143,31 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         _absorb(page); // merge — preserve any live messages that arrived during the load
         _hasMore = page.length >= _pageSize;
         _loading = false;
+        _loadError = null;
       });
       _scrollToBottom(jump: true);
       _sendRead();
-    } catch (_) {
-      if (mounted) setState(() => _loading = false);
+    } catch (e) {
+      if (!mounted) return;
+      // Only surface an empty-thread error if nothing arrived live during the failed load.
+      setState(() {
+        _loading = false;
+        if (_messages.isEmpty) {
+          _loadError = apiErrorMessage(
+            e,
+            fallback: 'Could not load this conversation. Check your connection and try again.',
+          );
+        }
+      });
     }
+  }
+
+  void _retryLoadInitial() {
+    setState(() {
+      _loading = true;
+      _loadError = null;
+    });
+    _loadInitial();
   }
 
   Future<void> _loadOlder() async {
@@ -516,20 +540,22 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             Expanded(
               child: _loading
                   ? const Center(child: CircularProgressIndicator())
-                  : _messages.isEmpty
-                      ? _EmptyChatState(name: widget.groupTitle ?? partner?.displayName ?? 'your match')
-                      : _MessageList(
-                          messages: _messages,
-                          currentUserId: _currentUserId,
-                          partnerAvatarUrl: partner?.avatarUrl,
-                          isGroup: _isGroup,
-                          senders: _senders(),
-                          onReport: _isGroup ? _reportMessage : null,
-                          onDelete: _deleteMessage,
-                          iAmGroupAdmin: _iAmGroupAdmin,
-                          scrollController: _scrollController,
-                          onRetry: _retry,
-                        ),
+                  : _loadError != null && _messages.isEmpty
+                      ? AppErrorState(message: _loadError!, onRetry: _retryLoadInitial)
+                      : _messages.isEmpty
+                          ? _EmptyChatState(name: widget.groupTitle ?? partner?.displayName ?? 'your match')
+                          : _MessageList(
+                              messages: _messages,
+                              currentUserId: _currentUserId,
+                              partnerAvatarUrl: partner?.avatarUrl,
+                              isGroup: _isGroup,
+                              senders: _senders(),
+                              onReport: _isGroup ? _reportMessage : null,
+                              onDelete: _deleteMessage,
+                              iAmGroupAdmin: _iAmGroupAdmin,
+                              scrollController: _scrollController,
+                              onRetry: _retry,
+                            ),
             ),
             if (_partnerTyping) _TypingIndicator(name: _typingName(partner)),
             _InputBar(

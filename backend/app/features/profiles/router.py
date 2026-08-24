@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.database import get_db
-from app.dependencies import require_verified_student
+from app.dependencies import require_email_confirmed_user
 from app.features.campus_positions.service import get_primary_position
 from app.features.profiles.schema import MyProfileRead, ProfileUpdate
 from app.features.profiles.service import (
@@ -28,7 +28,7 @@ router = APIRouter(prefix='/profiles', tags=['profiles'])
 
 
 @router.get('/me', response_model=MyProfileRead)
-async def get_my_profile(current_user: User = Depends(require_verified_student), db: AsyncSession = Depends(get_db)) -> MyProfileRead:
+async def get_my_profile(current_user: User = Depends(require_email_confirmed_user), db: AsyncSession = Depends(get_db)) -> MyProfileRead:
     profile = await get_profile_by_user_id(db, current_user.id)
 
     connection_count = int((await db.execute(
@@ -65,7 +65,7 @@ async def get_my_profile(current_user: User = Depends(require_verified_student),
 
 
 @router.patch('/me', response_model=ProfilePublic)
-async def update_my_profile(payload: ProfileUpdate, current_user: User = Depends(require_verified_student), db: AsyncSession = Depends(get_db)) -> ProfilePublic:
+async def update_my_profile(payload: ProfileUpdate, current_user: User = Depends(require_email_confirmed_user), db: AsyncSession = Depends(get_db)) -> ProfilePublic:
     profile = await get_profile_by_user_id(db, current_user.id)
     data = payload.model_dump(exclude_unset=True)
 
@@ -101,7 +101,7 @@ async def update_my_profile(payload: ProfileUpdate, current_user: User = Depends
 
 
 @router.post('/me/avatar', response_model=ProfilePublic, dependencies=[Depends(avatar_upload_limit)])
-async def upload_my_avatar(file: UploadFile = File(...), current_user: User = Depends(require_verified_student), db: AsyncSession = Depends(get_db)) -> ProfilePublic:
+async def upload_my_avatar(file: UploadFile = File(...), current_user: User = Depends(require_email_confirmed_user), db: AsyncSession = Depends(get_db)) -> ProfilePublic:
     # Byte cap first (cheap, before we decode), then sanitize: sanitize_avatar validates
     # the real image bytes (not the spoofable content-type header), strips EXIF/GPS, and
     # re-encodes to a clean JPEG. We store only that sanitized output.
@@ -116,7 +116,7 @@ async def upload_my_avatar(file: UploadFile = File(...), current_user: User = De
 
 
 @router.get('/{profile_id}', response_model=ProfilePublic)
-async def get_profile(profile_id: UUID, current_user: User = Depends(require_verified_student), db: AsyncSession = Depends(get_db)) -> ProfilePublic:
+async def get_profile(profile_id: UUID, current_user: User = Depends(require_email_confirmed_user), db: AsyncSession = Depends(get_db)) -> ProfilePublic:
     profile = (await db.execute(select(Profile).options(*profile_load_options()).where(Profile.id == profile_id))).scalar_one_or_none()
     if profile is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Profile not found')

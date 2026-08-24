@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/api/api_client.dart';
+import '../../../core/api/api_error.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../campus_positions/providers/campus_positions_provider.dart';
@@ -122,11 +123,14 @@ class _StaffOnboardingScreenState extends ConsumerState<StaffOnboardingScreen> {
           );
 
       await ref.read(authNotifierProvider.notifier).refreshProfile();
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Something went wrong. Please try again.', style: GoogleFonts.dmSans()),
+          content: Text(
+            apiErrorMessage(e, fallback: 'Something went wrong. Please try again.'),
+            style: GoogleFonts.dmSans(),
+          ),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),

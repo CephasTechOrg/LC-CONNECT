@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.database import get_db
-from app.dependencies import require_verified_student
+from app.dependencies import require_email_confirmed_user
 from app.features.scholars import service
 from app.features.scholars.schema import (
     ConsentUpdateRequest,
@@ -18,7 +18,7 @@ router = APIRouter(prefix='/scholars', tags=['scholars'])
 
 
 async def require_verified_scholar(
-    current_user: User = Depends(require_verified_student),
+    current_user: User = Depends(require_email_confirmed_user),
     db: AsyncSession = Depends(get_db),
 ) -> User:
     """Blueprint Bond is verified-scholar-only — a normal student gets a 403, not just a

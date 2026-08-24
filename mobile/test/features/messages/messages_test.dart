@@ -431,12 +431,14 @@ void main() {
       expect(find.byType(ChatScreen), findsOneWidget);
     });
 
-    testWidgets('input bar renders with send button', (tester) async {
+    testWidgets('input bar renders send button without dead attachment control',
+        (tester) async {
       await tester.pumpWidget(chatScope());
       await tester.pumpAndSettle();
 
       expect(find.byIcon(Icons.arrow_upward_rounded), findsOneWidget);
-      expect(find.byIcon(Icons.add_circle_outline_rounded), findsOneWidget);
+      // Attachment (+) was a no-op false affordance — must stay removed until media ships.
+      expect(find.byIcon(Icons.add_circle_outline_rounded), findsNothing);
     });
 
     testWidgets('typing in input field works', (tester) async {

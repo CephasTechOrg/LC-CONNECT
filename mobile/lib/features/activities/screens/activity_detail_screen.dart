@@ -68,12 +68,14 @@ class _ActivityDetailScreenState extends ConsumerState<ActivityDetailScreen> {
       } else {
         await notifier.join(activity.id);
       }
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Something went wrong. Please try again.',
-              style: GoogleFonts.dmSans()),
+          content: Text(
+            apiErrorMessage(e, fallback: 'Could not update your RSVP — try again.'),
+            style: GoogleFonts.dmSans(),
+          ),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
           shape:

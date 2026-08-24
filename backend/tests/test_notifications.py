@@ -7,7 +7,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.database import get_db
-from app.dependencies import require_verified_student
+from app.dependencies import require_email_confirmed_user
 from app.features.notifications.push import PushSender, _notification_copy
 from app.main import app
 
@@ -29,7 +29,7 @@ def _clear_overrides():
 
 
 def _authed_client(user):
-    app.dependency_overrides[require_verified_student] = lambda: user
+    app.dependency_overrides[require_email_confirmed_user] = lambda: user
     app.dependency_overrides[get_db] = _fake_db
     return TestClient(app)
 

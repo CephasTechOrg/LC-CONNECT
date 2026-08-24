@@ -19,14 +19,8 @@ class _InputBar extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
       child: Row(
         children: [
-          IconButton(
-            icon: const Icon(Icons.add_circle_outline_rounded,
-                color: AppColors.textMuted, size: 26),
-            onPressed: () {},
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-          ),
-          const SizedBox(width: 10),
+          // Attachment (+) removed — media chat is not shipped; a no-op button
+          // was a false affordance. Re-add when upload/send-media is implemented.
           Expanded(
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14),

@@ -32,7 +32,9 @@ class _IncomingCardState extends ConsumerState<_IncomingCard> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(e.toString()),
+          content: Text(
+            apiErrorMessage(e, fallback: 'Could not accept — try again.'),
+          ),
           backgroundColor: AppColors.error,
         ));
       }
@@ -51,7 +53,9 @@ class _IncomingCardState extends ConsumerState<_IncomingCard> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(e.toString()),
+          content: Text(
+            apiErrorMessage(e, fallback: 'Could not decline — try again.'),
+          ),
           backgroundColor: AppColors.error,
         ));
       }

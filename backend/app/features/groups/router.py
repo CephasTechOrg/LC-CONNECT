@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.database import get_db
-from app.dependencies import require_verified_student
+from app.dependencies import require_email_confirmed_user
 from app.features.groups import service
 from app.features.groups.policies import GroupAction, can
 from app.features.groups.schema import (
@@ -63,7 +63,7 @@ async def _notify(user_id: UUID, notif_type: str, group: Group, actor_id: UUID) 
 
 @router.post('', response_model=GroupRead, status_code=status.HTTP_201_CREATED,
              dependencies=[Depends(group_create_limit)])
-async def create_group(payload: GroupCreate, current_user: User = Depends(require_verified_student), db: AsyncSession = Depends(get_db)):
+async def create_group(payload: GroupCreate, current_user: User = Depends(require_email_confirmed_user), db: AsyncSession = Depends(get_db)):
     group = await service.create_group(db, current_user, payload)
     await db.commit()
     member = await service.membership(db, group.conversation_id, current_user.id)
@@ -80,12 +80,12 @@ async def _summaries(db: AsyncSession, rows: list[tuple[Group, object]]) -> list
 
 
 @router.get('/me', response_model=list[GroupSummary])
-async def list_my_groups(current_user: User = Depends(require_verified_student), db: AsyncSession = Depends(get_db)):
+async def list_my_groups(current_user: User = Depends(require_email_confirmed_user), db: AsyncSession = Depends(get_db)):
     return await _summaries(db, await service.my_groups(db, current_user.id))
 
 
 @router.get('/invites', response_model=list[GroupSummary])
-async def list_my_invites(current_user: User = Depends(require_verified_student), db: AsyncSession = Depends(get_db)):
+async def list_my_invites(current_user: User = Depends(require_email_confirmed_user), db: AsyncSession = Depends(get_db)):
     """Groups the user has been invited to (including private/unlisted ones not in discovery)."""
     return await _summaries(db, await service.my_invites(db, current_user.id))
 
@@ -95,7 +95,7 @@ async def discover(
     q: str | None = Query(default=None),
     category: str | None = Query(default=None),
     limit: int = Query(default=30, ge=1, le=100),
-    current_user: User = Depends(require_verified_student),
+    current_user: User = Depends(require_email_confirmed_user),
     db: AsyncSession = Depends(get_db),
 ):
     groups = await service.discover_groups(db, query=q, category=category, limit=limit)
@@ -112,13 +112,13 @@ async def discover(
 
 
 @router.get('/{group_id}', response_model=GroupRead)
-async def get_group(group_id: UUID, current_user: User = Depends(require_verified_student), db: AsyncSession = Depends(get_db)):
+async def get_group(group_id: UUID, current_user: User = Depends(require_email_confirmed_user), db: AsyncSession = Depends(get_db)):
     group, member = await _visible_group(group_id, current_user, db)
     return await service.to_read(db, group, member)
 
 
 @router.patch('/{group_id}', response_model=GroupRead)
-async def edit_group(group_id: UUID, payload: GroupUpdate, current_user: User = Depends(require_verified_student), db: AsyncSession = Depends(get_db)):
+async def edit_group(group_id: UUID, payload: GroupUpdate, current_user: User = Depends(require_email_confirmed_user), db: AsyncSession = Depends(get_db)):
     group, member = await _visible_group(group_id, current_user, db)
     _require(member, GroupAction.EDIT_GROUP)
     await service.update_group(db, group, payload.model_dump(exclude_unset=True))
@@ -130,7 +130,7 @@ async def edit_group(group_id: UUID, payload: GroupUpdate, current_user: User = 
 async def upload_group_avatar(
     group_id: UUID,
     file: UploadFile = File(...),
-    current_user: User = Depends(require_verified_student),
+    current_user: User = Depends(require_email_confirmed_user),
     db: AsyncSession = Depends(get_db),
 ):
     group, member = await _visible_group(group_id, current_user, db)
@@ -145,7 +145,7 @@ async def upload_group_avatar(
 
 
 @router.delete('/{group_id}', status_code=status.HTTP_204_NO_CONTENT)
-async def delete_group(group_id: UUID, current_user: User = Depends(require_verified_student), db: AsyncSession = Depends(get_db)):
+async def delete_group(group_id: UUID, current_user: User = Depends(require_email_confirmed_user), db: AsyncSession = Depends(get_db)):
     group, member = await _visible_group(group_id, current_user, db)
     _require(member, GroupAction.DELETE_GROUP)  # owner only
     # Delete the conversation: the group (via its ON DELETE CASCADE FK), members, and messages
@@ -158,7 +158,7 @@ async def delete_group(group_id: UUID, current_user: User = Depends(require_veri
 # ── join / invite / leave ─────────────────────────────────────────────────────────
 
 @router.post('/{group_id}/join', response_model=JoinResult)
-async def join(group_id: UUID, current_user: User = Depends(require_verified_student), db: AsyncSession = Depends(get_db)):
+async def join(group_id: UUID, current_user: User = Depends(require_email_confirmed_user), db: AsyncSession = Depends(get_db)):
     group, _ = await _visible_group(group_id, current_user, db)
     result = await service.join_group(db, group, current_user)
     await db.commit()
@@ -169,7 +169,7 @@ async def join(group_id: UUID, current_user: User = Depends(require_verified_stu
 
 
 @router.get('/{group_id}/members', response_model=list[GroupMemberRead])
-async def list_members(group_id: UUID, current_user: User = Depends(require_verified_student), db: AsyncSession = Depends(get_db)):
+async def list_members(group_id: UUID, current_user: User = Depends(require_email_confirmed_user), db: AsyncSession = Depends(get_db)):
     group, member = await _visible_group(group_id, current_user, db)
     if _active_role(member) is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='Members only')
@@ -177,14 +177,14 @@ async def list_members(group_id: UUID, current_user: User = Depends(require_veri
 
 
 @router.get('/{group_id}/requests', response_model=list[GroupMemberRead])
-async def list_requests(group_id: UUID, current_user: User = Depends(require_verified_student), db: AsyncSession = Depends(get_db)):
+async def list_requests(group_id: UUID, current_user: User = Depends(require_email_confirmed_user), db: AsyncSession = Depends(get_db)):
     group, member = await _visible_group(group_id, current_user, db)
     _require(member, GroupAction.APPROVE_REQUEST)
     return await service.members_read(db, group.conversation_id, member_status='requested')
 
 
 @router.post('/{group_id}/requests/{user_id}/approve', status_code=status.HTTP_204_NO_CONTENT)
-async def approve(group_id: UUID, user_id: UUID, current_user: User = Depends(require_verified_student), db: AsyncSession = Depends(get_db)):
+async def approve(group_id: UUID, user_id: UUID, current_user: User = Depends(require_email_confirmed_user), db: AsyncSession = Depends(get_db)):
     group, member = await _visible_group(group_id, current_user, db)
     _require(member, GroupAction.APPROVE_REQUEST)
     await service.approve_request(db, group, user_id)
@@ -193,7 +193,7 @@ async def approve(group_id: UUID, user_id: UUID, current_user: User = Depends(re
 
 
 @router.post('/{group_id}/requests/{user_id}/reject', status_code=status.HTTP_204_NO_CONTENT)
-async def reject(group_id: UUID, user_id: UUID, current_user: User = Depends(require_verified_student), db: AsyncSession = Depends(get_db)):
+async def reject(group_id: UUID, user_id: UUID, current_user: User = Depends(require_email_confirmed_user), db: AsyncSession = Depends(get_db)):
     group, member = await _visible_group(group_id, current_user, db)
     _require(member, GroupAction.APPROVE_REQUEST)
     await service.reject_request(db, group, user_id)
@@ -203,7 +203,7 @@ async def reject(group_id: UUID, user_id: UUID, current_user: User = Depends(req
 
 @router.post('/{group_id}/invites', status_code=status.HTTP_204_NO_CONTENT,
              dependencies=[Depends(group_invite_limit)])
-async def invite(group_id: UUID, user_id: UUID = Body(..., embed=True), current_user: User = Depends(require_verified_student), db: AsyncSession = Depends(get_db)):
+async def invite(group_id: UUID, user_id: UUID = Body(..., embed=True), current_user: User = Depends(require_email_confirmed_user), db: AsyncSession = Depends(get_db)):
     group, member = await _visible_group(group_id, current_user, db)
     _require(member, GroupAction.INVITE)
     await service.invite_user(db, group, user_id, invited_by=current_user.id)
@@ -212,7 +212,7 @@ async def invite(group_id: UUID, user_id: UUID = Body(..., embed=True), current_
 
 
 @router.post('/{group_id}/invites/accept', response_model=JoinResult)
-async def accept_invite(group_id: UUID, current_user: User = Depends(require_verified_student), db: AsyncSession = Depends(get_db)):
+async def accept_invite(group_id: UUID, current_user: User = Depends(require_email_confirmed_user), db: AsyncSession = Depends(get_db)):
     group = await _load_group(db, group_id)  # invited users may not "see" a private group yet
     result = await service.accept_invite(db, group, current_user)
     await db.commit()
@@ -220,14 +220,14 @@ async def accept_invite(group_id: UUID, current_user: User = Depends(require_ver
 
 
 @router.post('/{group_id}/invites/decline', status_code=status.HTTP_204_NO_CONTENT)
-async def decline_invite(group_id: UUID, current_user: User = Depends(require_verified_student), db: AsyncSession = Depends(get_db)):
+async def decline_invite(group_id: UUID, current_user: User = Depends(require_email_confirmed_user), db: AsyncSession = Depends(get_db)):
     group = await _load_group(db, group_id)  # invited users may not "see" a private group yet
     await service.decline_invite(db, group, current_user)
     await db.commit()
 
 
 @router.delete('/{group_id}/members/me', status_code=status.HTTP_204_NO_CONTENT)
-async def leave(group_id: UUID, current_user: User = Depends(require_verified_student), db: AsyncSession = Depends(get_db)):
+async def leave(group_id: UUID, current_user: User = Depends(require_email_confirmed_user), db: AsyncSession = Depends(get_db)):
     group, member = await _visible_group(group_id, current_user, db)
     if _active_role(member) is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Not a member')
@@ -240,7 +240,7 @@ async def leave(group_id: UUID, current_user: User = Depends(require_verified_st
 async def set_my_mute(
     group_id: UUID,
     muted: bool = Body(..., embed=True),
-    current_user: User = Depends(require_verified_student),
+    current_user: User = Depends(require_email_confirmed_user),
     db: AsyncSession = Depends(get_db),
 ):
     group, member = await _visible_group(group_id, current_user, db)
@@ -255,7 +255,7 @@ async def change_member_role(
     group_id: UUID,
     user_id: UUID,
     role: str = Body(..., embed=True),
-    current_user: User = Depends(require_verified_student),
+    current_user: User = Depends(require_email_confirmed_user),
     db: AsyncSession = Depends(get_db),
 ):
     group, member = await _visible_group(group_id, current_user, db)
@@ -269,7 +269,7 @@ async def change_member_role(
 async def transfer_ownership(
     group_id: UUID,
     user_id: UUID = Body(..., embed=True),
-    current_user: User = Depends(require_verified_student),
+    current_user: User = Depends(require_email_confirmed_user),
     db: AsyncSession = Depends(get_db),
 ):
     group, member = await _visible_group(group_id, current_user, db)
@@ -283,7 +283,7 @@ async def remove_member(
     group_id: UUID,
     user_id: UUID,
     ban: bool = Query(default=False),
-    current_user: User = Depends(require_verified_student),
+    current_user: User = Depends(require_email_confirmed_user),
     db: AsyncSession = Depends(get_db),
 ):
     group, member = await _visible_group(group_id, current_user, db)

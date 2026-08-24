@@ -27,9 +27,9 @@
 - [x] Idempotent `POST /api/v1/auth/bootstrap` (feature folder)
 - [x] Flutter Auth migration (signup / login / verify / reset via Supabase)
 - [x] Dio uses current Supabase access token
-- [x] `require_verified_student` dependency **exists**
+- [x] `require_email_confirmed_user` dependency (renamed from `require_verified_student`, 2026-08-24)
 - [x] Admin `require_admin_aal2` wired on admin routes
-- [x] Apply `require_verified_student` to student-protected REST routes (profiles, discovery, connections, messages, activities, safety — all endpoints; unverified users get 403)
+- [x] Apply `require_email_confirmed_user` to email-verified REST routes (profiles, activities, groups, safety, notifications, etc.; unverified users get 403). Student-only social matching uses `require_verified_connect_student`.
 - [x] Token refresh behavior — Dio interceptor recovers a 401 by refreshing the session once and replaying the request (shared in-flight refresh); `AuthNotifier` listens to `onAuthStateChange` to keep the stored token fresh and sign out on session death. (Reconnect/backoff is Phase 2 WebSocket work.)
 - [x] Password recovery functional — OTP-code flow (`resetPasswordForEmail` → `verifyOTP(recovery)` → `updateUser`); no deep link required
 - [ ] (Optional) Recovery **deep links** — tap-email-to-open-app UX. Deferred: needs iOS `Info.plist` URL scheme + `passwordRecovery` auth-event routing + **Supabase dashboard redirect-URL allow-list** (external). Not needed for the feature to work.
@@ -37,7 +37,7 @@
 - [ ] Retire custom auth (`AUTH_LEGACY_ENABLED=false`)
 - [ ] Drop old credential columns (`password_hash`, OTP fields)
 - [ ] Rotate old custom JWT secret
-- [~] Auth automated tests — done: verified/unverified, active/suspended, admin-aal2 (all cases), missing-token 401, and route-wiring (unverified → 403 on all student GET routes) in `tests/test_auth_guards.py`. Still open: bootstrap concurrency + real expired/invalid token cases.
+- [~] Auth automated tests — done: verified/unverified, active/suspended, admin-aal2 (all cases), missing-token 401, route-wiring (unverified → 403), email-confirmed allows staff, connect-student blocks staff (`tests/test_auth_guards.py`). Still open: bootstrap concurrency + real expired/invalid token cases.
 
 ## Phase 2 — Slice 1 (backend gateway) — DONE
 

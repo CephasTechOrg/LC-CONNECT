@@ -76,25 +76,20 @@ async def get_current_user(ctx: AuthContext = Depends(get_auth_context)) -> User
     return ctx.user
 
 
-async def require_verified_student(current_user: User = Depends(get_current_user)) -> User:
-    """MISNAMED — this checks email confirmation only, NOT that the caller is a student.
+async def require_email_confirmed_user(current_user: User = Depends(get_current_user)) -> User:
+    """Require a bootstrapped user whose email has been confirmed (any role).
 
-    It is identical to `require_verified_user`; the student check lives in
-    `require_verified_connect_student` below. Do not "fix" this by adding a role check: groups
-    and activities are deliberately open to staff as well as students (staff responsibilities
-    within groups are planned), and tightening this would silently remove that access.
-
-    The name is the hazard: an endpoint added with this guard on the assumption that it means
-    "students only" would be open to every verified account. Renaming it to something honest
-    (`require_email_confirmed_user`) is the real fix and is still outstanding.
+    Does **not** check student role. Groups, activities, profiles, and notifications are
+    deliberately open to staff as well as students. For student-only social matching use
+    `require_verified_connect_student`.
     """
     if not current_user.is_verified:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='Verified student required')
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='Verified account required')
     return current_user
 
 
 async def require_verified_connect_student(
-    current_user: User = Depends(require_verified_student),
+    current_user: User = Depends(require_email_confirmed_user),
 ) -> User:
     """Gate social discovery, connections, and match messaging to students only.
 
@@ -109,9 +104,10 @@ async def require_verified_connect_student(
     return current_user
 
 
-async def require_verified_user(current_user: User = Depends(get_current_user)) -> User:
-    if not current_user.is_verified:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='Verified account required')
+async def require_verified_user(
+    current_user: User = Depends(require_email_confirmed_user),
+) -> User:
+    """Alias of `require_email_confirmed_user` for campus-hub / messages call sites."""
     return current_user
 
 

@@ -37,8 +37,10 @@ class _StudentCardState extends State<_StudentCard> {
       setState(() => _isActing = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Something went wrong. Please try again.',
-              style: GoogleFonts.dmSans()),
+          content: Text(
+            apiErrorMessage(e, fallback: 'Something went wrong. Please try again.'),
+            style: GoogleFonts.dmSans(),
+          ),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
