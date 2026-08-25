@@ -3614,6 +3614,35 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "HealthChecks": {
+        "properties": {
+          "database": {
+            "enum": [
+              "ok",
+              "down",
+              "skipped"
+            ],
+            "title": "Database",
+            "type": "string"
+          },
+          "redis": {
+            "description": "skipped until REDIS_URL is set and a Redis client is wired (Phase 5)",
+            "enum": [
+              "ok",
+              "down",
+              "skipped"
+            ],
+            "title": "Redis",
+            "type": "string"
+          }
+        },
+        "required": [
+          "database",
+          "redis"
+        ],
+        "title": "HealthChecks",
+        "type": "object"
+      },
       "InviteAdminRequest": {
         "properties": {
           "email": {
@@ -3655,6 +3684,23 @@
           "group_id"
         ],
         "title": "JoinResult",
+        "type": "object"
+      },
+      "LivenessResponse": {
+        "properties": {
+          "service": {
+            "default": "lc-connect-api",
+            "title": "Service",
+            "type": "string"
+          },
+          "status": {
+            "const": "ok",
+            "default": "ok",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "title": "LivenessResponse",
         "type": "object"
       },
       "MatchRead": {
@@ -5302,6 +5348,32 @@
           "staff_publishing_enabled"
         ],
         "title": "PublishingCapabilitiesRead",
+        "type": "object"
+      },
+      "ReadinessResponse": {
+        "properties": {
+          "checks": {
+            "$ref": "#/components/schemas/HealthChecks"
+          },
+          "service": {
+            "default": "lc-connect-api",
+            "title": "Service",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "ready",
+              "not_ready"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "checks"
+        ],
+        "title": "ReadinessResponse",
         "type": "object"
       },
       "RecipientSearchResult": {
@@ -12480,24 +12552,46 @@
     },
     "/health": {
       "get": {
-        "operationId": "health_check_health_get",
+        "description": "Liveness \u2014 the API process is running. Safe for frequent cheap probes.",
+        "operationId": "liveness_health_get",
         "responses": {
           "200": {
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": {
-                    "type": "string"
-                  },
-                  "title": "Response Health Check Health Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/LivenessResponse"
                 }
               }
             },
             "description": "Successful Response"
           }
         },
-        "summary": "Health Check"
+        "summary": "Liveness",
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "description": "Readiness \u2014 dependencies required to serve traffic are reachable.\n\nReturns HTTP 503 when not ready so load balancers stop sending traffic.",
+        "operationId": "readiness_health_ready_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadinessResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Readiness",
+        "tags": [
+          "health"
+        ]
       }
     }
   }

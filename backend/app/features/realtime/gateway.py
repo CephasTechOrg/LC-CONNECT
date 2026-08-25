@@ -1,9 +1,10 @@
 """WebSocket gateway: `/api/v1/ws`.
 
 Lifecycle: accept → authenticate (first frame must be `auth`, within a timeout) →
-serve (dispatch loop) → unregister. Every inbound frame is validated; every send is
-re-authorized; one bad frame or handler never tears down the socket. Dead sockets are
-detected by uvicorn ping/pong and the receive loop's disconnect.
+serve (dispatch loop) → unregister. Every inbound frame is size-capped then validated;
+every send is re-authorized; one bad frame or handler never tears down the socket.
+Idle sockets are closed by the lifespan reaper (`WS_IDLE_TIMEOUT_SECONDS`); dead
+transport is also detected by uvicorn ping/pong.
 """
 
 from __future__ import annotations
@@ -31,6 +32,7 @@ from app.features.realtime.runtime import (
     subscribe_limiter,
     typing_limiter,
 )
+from app.features.realtime.ws_io import FrameTooLarge, receive_json_bounded
 from app.shared.conversations import active_member_ids, active_members_with_mute
 
 logger = logging.getLogger('lc_connect.realtime')
@@ -55,15 +57,23 @@ async def _close(websocket: WebSocket, code: int) -> None:
         await websocket.close(code)
 
 
+async def _recv(websocket: WebSocket):
+    """Bounded JSON receive shared by auth + serve loops."""
+    return await receive_json_bounded(websocket, settings.ws_max_frame_bytes)
+
+
 # ── authentication ────────────────────────────────────────────────────────────
 
 async def _authenticate(websocket: WebSocket) -> Connection | None:
     try:
-        raw = await asyncio.wait_for(websocket.receive_json(), timeout=settings.ws_auth_timeout_seconds)
+        raw = await asyncio.wait_for(_recv(websocket), timeout=settings.ws_auth_timeout_seconds)
     except TimeoutError:
         await _close(websocket, CloseCode.AUTH_TIMEOUT)
         return None
     except WebSocketDisconnect:
+        return None
+    except FrameTooLarge:
+        await _close(websocket, CloseCode.ABUSE)
         return None
     except Exception:
         await _close(websocket, CloseCode.AUTH_FAILED)
@@ -102,9 +112,13 @@ async def _authenticate(websocket: WebSocket) -> Connection | None:
 async def _serve(websocket: WebSocket, conn: Connection) -> None:
     while True:
         try:
-            raw = await websocket.receive_json()
+            raw = await _recv(websocket)
         except WebSocketDisconnect:
             return
+        except FrameTooLarge:
+            if not await _tolerate_oversized(websocket, conn):
+                return
+            continue
         except Exception:
             if not await _tolerate_malformed(websocket, conn):
                 return
@@ -130,6 +144,18 @@ async def _tolerate_malformed(websocket: WebSocket, conn: Connection) -> bool:
         await _close(websocket, CloseCode.ABUSE)
         return False
     manager.send(conn, protocol.error(ErrorCode.INVALID_FRAME, 'Malformed frame'))
+    return True
+
+
+async def _tolerate_oversized(websocket: WebSocket, conn: Connection) -> bool:
+    """Oversized frames share the malformed abuse budget — DoS protection, not a soft retry."""
+    if not malformed_limiter.allow(id(conn)):
+        await _close(websocket, CloseCode.ABUSE)
+        return False
+    manager.send(
+        conn,
+        protocol.error(ErrorCode.FRAME_TOO_LARGE, 'Frame exceeds size limit'),
+    )
     return True
 
 

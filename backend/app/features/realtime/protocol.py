@@ -25,9 +25,11 @@ class ErrorCode:
     AUTH_FAILED = 'auth_failed'
     FORBIDDEN = 'forbidden'
     INVALID_FRAME = 'invalid_frame'
+    FRAME_TOO_LARGE = 'frame_too_large'
     RATE_LIMITED = 'rate_limited'
     NOT_SUBSCRIBED = 'not_subscribed'
     INTERNAL = 'internal_error'
+    IDLE_TIMEOUT = 'idle_timeout'
 
 
 class CloseCode:
@@ -35,6 +37,7 @@ class CloseCode:
     AUTH_FAILED = 4401
     FORBIDDEN = 4403
     AUTH_TIMEOUT = 4408
+    IDLE_TIMEOUT = 4409
     ABUSE = 4429
     GOING_AWAY = 1001
 

@@ -8,25 +8,16 @@ wrapped in a thread pool, consistent with the existing convention rather than a 
 
 from __future__ import annotations
 
-import logging
-
-from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.admin.schema import ServiceStatus, SystemStatusRead
 from app.shared import supabase_admin
+from app.shared.health import check_database_session
 from app.shared.storage import storage_service
-
-logger = logging.getLogger(__name__)
 
 
 async def _check_database(db: AsyncSession) -> ServiceStatus:
-    try:
-        await db.execute(text('SELECT 1'))
-        return 'operational'
-    except Exception:  # noqa: BLE001 — a status check must never itself raise
-        logger.exception('system_status: database check failed')
-        return 'down'
+    return 'operational' if await check_database_session(db) else 'down'
 
 
 async def get_system_status(db: AsyncSession) -> SystemStatusRead:

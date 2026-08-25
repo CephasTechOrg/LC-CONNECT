@@ -122,8 +122,7 @@ Discovery cards
 |-------|--------|----------|
 | Single-process only (`InMemoryEventBus`; Redis configured but not implemented) | Cannot scale horizontally | Critical at scale |
 | WS token verified once at connect; mid-session expiry not enforced | Stale token on long-lived socket | High |
-| `reap_idle()` exists but never scheduled in lifespan | Idle connections not reaped | High |
-| `ws_max_frame_bytes` defined but not enforced before `receive_json()` | DoS surface | High |
+| `reap_idle()` / `ws_max_frame_bytes` unwired | **Resolved (#6)** — lifespan reaper + bounded receive | — |
 
 ---
 
@@ -165,10 +164,10 @@ Discovery cards
 | Issue | Impact | Severity |
 |-------|--------|----------|
 | In-memory rate limits + WS manager | Abuse bypass and inconsistent revocation across instances | Critical at scale |
-| Shallow `/health` (no DB/Redis check) | Orchestrators can't detect dependency outages | High |
+| Shallow `/health` (no DB/Redis check) | **Resolved (#3)** — `/health` liveness + `/health/ready` with DB probe (Redis seam) | — |
 | No request correlation IDs | Slow incident debugging | High |
 | No metrics/tracing/Sentry | Blind to latency, error rates, WS connection counts | High |
-| CI skips `tests/db/` (~40 files) | Data-layer regressions can merge undetected | High |
+| CI skips `tests/db/` (~40 files) | **Resolved (#1)** — `backend-db` CI job runs Postgres 16 integration suite | — |
 | Legacy DB columns (`password_hash`, OTP) | Migration debt; low active risk while NULL | Medium |
 | `admin/router.py` at 514 lines | Approaching maintainability threshold | Low |
 
@@ -282,7 +281,7 @@ Discovery cards
 | Phase 6 — Push notifications | FCM integrated |
 | Phase 7 — Privacy/export | Partial (deletion yes, export no) |
 | Phase 8 — Moderation audit | Partial |
-| Phase 9 — Full CI test suite | DB tests not in CI |
+| Phase 9 — Full CI test suite | Complete for backend unit + DB integration (Redis/multi-instance still open) |
 
 ### 6.2 Scaling ceiling
 
@@ -324,16 +323,21 @@ Prioritized by ROI and launch risk. Each item includes owner hint, effort estima
 | ✅ 10 | Remove dead UI affordances (discovery tune, chat `+`) | 2026-08-24 | Widget tests assert icons stay absent |
 | ✅ 12 | Standardize error messages (`apiErrorMessage` / `authErrorMessage`) | 2026-08-23 | Register, connections, activities, onboarding, discovery |
 | ✅ 13 | Rename `require_verified_student` → `require_email_confirmed_user` | 2026-08-24 | All routers + auth-guard tests (staff pass / student-only gate) |
+| ✅ 1 | Add PostgreSQL to CI — run `backend/tests/db/` on every PR | 2026-08-24 | Separate `backend-db` job (Postgres 16); `REQUIRE_TEST_DB=1` hard-fails if DB missing; unit job uses `--ignore=tests/db` |
+
+### Completed (Sprint B — in progress)
+
+| # | Action | Completed | Notes |
+|---|--------|-----------|-------|
+| ✅ 3 | Deep health `/health/ready` with DB (+ Redis seam) | 2026-08-24 | Liveness `/health` unchanged; readiness returns 503 when DB down; Redis skipped until configured; shared probe reused by admin system-status |
+| ✅ 6 | Wire WS idle reaper + enforce `ws_max_frame_bytes` | 2026-08-24 | Lifespan runs `run_idle_reaper`; gateway uses bounded receive (`ws_io.py`); close code 4409; tests for reap + oversize |
 
 ### P0 — Before campus-wide launch (remaining blockers)
 
 | # | Action | Owner | Effort | Acceptance criteria |
 |---|--------|-------|--------|---------------------|
-| 1 | **Add PostgreSQL to CI** — run `backend/tests/db/` on every PR | Backend / DevOps | 1–2 days | CI job spins Postgres service; all db tests run green on PR |
 | 2 | **Implement Redis EventBus + distributed rate limits** | Backend | 1–2 weeks | 2+ API instances deliver WS events cross-node; rate limits shared |
-| 3 | **Deep health endpoint** — `/health/ready` with DB (+ Redis when added) | Backend | 1 day | Render/load balancer can detect dependency failure |
 | 5 | **Step-up auth for account deletion** — fresh Supabase session or password | Backend + Mobile | 2–3 days | Deletion requires reauthentication, not token-only |
-| 6 | **Wire WS idle reaper + enforce `ws_max_frame_bytes`** | Backend | 1–2 days | Idle sockets closed; oversized frames rejected before parse |
 
 ### P1 — Enterprise hardening (30–60 days)
 
@@ -367,19 +371,21 @@ Prioritized by ROI and launch risk. Each item includes owner hint, effort estima
 
 Aligns with `05_execution_roadmap.md` and closes gaps identified in this review.
 
-### Sprint A — Confidence and correctness (2 weeks)
+### Sprint A — Confidence and correctness (2 weeks) — ✅ complete
 
 1. ~~Chat load error UI (#4)~~ ✅
 2. ~~Error message standardization (#12)~~ ✅
 3. ~~Remove dead UI affordances (#10)~~ ✅
 4. ~~Rename `require_verified_student` → `require_email_confirmed_user` (#13)~~ ✅
-5. **PostgreSQL in CI (#1)** ← next
+5. ~~PostgreSQL in CI (#1)~~ ✅
+
+**Next:** Sprint B — Production hardening (#3 deep health, #6 WS idle/frame limits, #5 step-up deletion, …)
 
 ### Sprint B — Production hardening (2–3 weeks)
 
-1. Deep health endpoint (#3)
-2. WS idle reaper + frame size enforcement (#6)
-3. Step-up auth for deletion (#5)
+1. ~~Deep health endpoint (#3)~~ ✅
+2. ~~WS idle reaper + frame size enforcement (#6)~~ ✅
+3. Step-up auth for deletion (#5) ← next
 4. Correlation IDs (#7)
 5. Disable `/docs` in prod + security headers (#14)
 
@@ -405,6 +411,7 @@ Aligns with `05_execution_roadmap.md` and closes gaps identified in this review.
 | Area | Primary paths |
 |------|---------------|
 | App entry | `backend/app/main.py` |
+| Health probes | `backend/app/shared/health.py` (`/health`, `/health/ready`) |
 | Auth dependencies | `backend/app/dependencies.py` |
 | JWT verification | `backend/app/security/supabase_jwt.py` |
 | Models | `backend/app/models/*.py` |

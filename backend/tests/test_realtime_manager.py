@@ -144,6 +144,30 @@ async def test_close_user_closes_all_their_sockets():
     assert sock2.closed == 4403
 
 
+async def test_reap_idle_closes_stale_sockets_only():
+    import time
+
+    from app.features.realtime.protocol import CloseCode
+
+    mgr = ConnectionManager()
+    fresh_sock, stale_sock = FakeSocket(), FakeSocket()
+    fresh = mgr.register(fresh_sock, uuid4())
+    stale = mgr.register(stale_sock, uuid4())
+    # Make `stale` look idle beyond the cutoff; keep `fresh` current.
+    stale.last_seen = time.monotonic() - 120
+    mgr.touch(fresh)
+
+    closed = await mgr.reap_idle(idle_seconds=60, code=CloseCode.IDLE_TIMEOUT)
+    await _tick()
+
+    assert closed == 1
+    assert mgr.total_connections == 1
+    assert stale_sock.closed == CloseCode.IDLE_TIMEOUT
+    assert stale_sock.sent and stale_sock.sent[-1]['code'] == 'idle_timeout'
+    assert fresh_sock.closed is None
+    await mgr.unregister(fresh)
+
+
 async def test_revoke_pair_noop_when_not_shared():
     mgr = ConnectionManager()
     user_a, user_b = uuid4(), uuid4()

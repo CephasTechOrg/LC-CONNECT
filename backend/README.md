@@ -85,6 +85,7 @@ http://127.0.0.1:8000/docs
 
 ```text
 GET    /health
+GET    /health/ready   # readiness — 200 when DB up; 503 when not
 POST   /api/v1/auth/register
 POST   /api/v1/auth/login
 GET    /api/v1/auth/me

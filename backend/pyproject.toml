@@ -2,6 +2,9 @@
 asyncio_mode = "auto"
 testpaths = ["tests"]
 addopts = "-q"
+markers = [
+    "db: integration tests that require Postgres (tests/db/)",
+]
 
 [tool.ruff]
 line-length = 120

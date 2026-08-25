@@ -72,6 +72,7 @@ GET /api/v1/scholars/me
 GET /api/v1/scholars/me/headshot-url
 GET /api/v1/scholars/me/resume-url
 GET /health
+GET /health/ready
 PATCH /api/v1/activities/{activity_id}
 PATCH /api/v1/admin/campus-posts/{post_id}
 PATCH /api/v1/admin/campus-resources/{resource_id}

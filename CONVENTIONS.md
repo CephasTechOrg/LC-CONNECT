@@ -108,7 +108,10 @@ The API contract is snapshotted so internal refactors provably change no behavio
 - `tests/test_route_inventory.py` — the `(METHOD, PATH)` set vs `tests/baseline/routes.txt`.
 - `tests/test_import_smoke.py` — every `app.*` module imports cleanly.
 
-Run: `pytest`  (no live database needed — these inspect the assembled app only).
+Run: `pytest --ignore=tests/db`  (no live database needed — these inspect the assembled app only).
+
+Postgres integration tests live in `tests/db/` and run in CI against a Postgres service
+(`REQUIRE_TEST_DB=1`). Locally: `pytest tests/db` when Postgres is available.
 
 When the API is *intentionally* changed, regenerate the baseline:
 

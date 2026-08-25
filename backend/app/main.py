@@ -27,8 +27,10 @@ from app.features.programs import router as programs_router
 from app.features.realtime import router as realtime_router
 from app.features.realtime.protocol import CloseCode
 from app.features.realtime.runtime import manager as ws_manager
+from app.features.realtime.runtime import run_idle_reaper
 from app.features.safety import router as safety_router
 from app.features.scholars import router as scholars_router
+from app.shared.health import router as health_router
 from app.shared.rate_limit import prune_idle_buckets
 from app.shared.request_limits import MaxBodySizeMiddleware
 
@@ -59,7 +61,9 @@ async def _prune_rate_limiters() -> None:
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     pruner = asyncio.create_task(_prune_rate_limiters())
+    idle_reaper = asyncio.create_task(run_idle_reaper())
     yield
+    idle_reaper.cancel()
     pruner.cancel()
     # Close live WebSockets cleanly on shutdown/restart (clients reconnect + REST-sync).
     await ws_manager.shutdown(CloseCode.GOING_AWAY)
@@ -96,10 +100,8 @@ async def root() -> dict[str, str]:
     return {'message': 'LC Connect API is running', 'docs': '/docs'}
 
 
-@app.get('/health')
-async def health_check() -> dict[str, str]:
-    return {'status': 'ok', 'service': 'lc-connect-api'}
-
+# Liveness (`/health`) + readiness (`/health/ready`) — see app.shared.health.
+app.include_router(health_router)
 
 # Supabase Auth is the ONLY auth path — the legacy custom-password router was removed.
 app.include_router(auth_v2_router, prefix=settings.api_v1_prefix)

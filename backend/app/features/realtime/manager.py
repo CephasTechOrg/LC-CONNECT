@@ -233,7 +233,12 @@ class ConnectionManager:
         cutoff = time.monotonic() - idle_seconds
         stale = [c for conns in self._by_user.values() for c in conns if c.last_seen < cutoff]
         for conn in stale:
-            conn.enqueue({'type': 'error', 'code': 'idle_timeout', 'message': 'Connection idle'})
+            # Best-effort notify on the socket itself — the outbox writer is cancelled in
+            # unregister, so an enqueued frame would often never flush.
+            with contextlib.suppress(Exception):
+                await conn.socket.send_json(
+                    {'type': 'error', 'code': 'idle_timeout', 'message': 'Connection idle'}
+                )
             await self.unregister(conn, code)
         return len(stale)
 

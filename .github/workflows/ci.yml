@@ -5,6 +5,11 @@ on:
     branches: [main]
   pull_request:
 
+# Shared placeholders so Settings() can import without a checked-in .env.
+# Unit tests never open a DB connection; the DB job overrides with the service URL.
+env:
+  DATABASE_URL: postgresql+asyncpg://postgres:postgres@127.0.0.1:5432/lc_connect_db
+
 jobs:
   line-limits:
     name: File-length rules
@@ -17,7 +22,7 @@ jobs:
       - run: python scripts/check_line_limits.py
 
   backend:
-    name: Backend (ruff + pytest)
+    name: Backend (ruff + unit/snapshot)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -31,8 +36,46 @@ jobs:
       - run: pip install -r requirements-dev.txt
       - name: Lint
         run: ruff check .
-      - name: Tests (API snapshot + import smoke — no DB required)
-        run: pytest
+      - name: Unit + contract tests (no Postgres)
+        # Exclude tests/db so a local Postgres in the runner cannot accidentally pull them in.
+        run: pytest --ignore=tests/db
+
+  backend-db:
+    name: Backend (Postgres integration)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        # Match a modern Supabase/Postgres major; pin for reproducible CI.
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          # Keep the default `postgres` DB so conftest can CREATE DATABASE lc_connect_test.
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@127.0.0.1:5432/postgres
+      TEST_DATABASE_URL: postgresql+asyncpg://postgres:postgres@127.0.0.1:5432/lc_connect_test
+      # Hard-fail if the service is misconfigured — never silently skip the suite.
+      REQUIRE_TEST_DB: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements-dev.txt
+      - name: Postgres integration tests
+        run: pytest tests/db -v --tb=short
 
   mobile:
     name: Mobile (flutter analyze)

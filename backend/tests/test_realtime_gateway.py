@@ -253,3 +253,16 @@ def test_malformed_frame_gets_error(happy_auth):
         ws.send_json({'type': 'totally-unknown'})
         frame = ws.receive_json()
     assert frame['type'] == 'error' and frame['code'] == 'invalid_frame'
+
+
+def test_oversized_frame_gets_frame_too_large_error(happy_auth, monkeypatch):
+    """Serve-loop size cap: oversize is rejected before JSON/protocol validation."""
+    from app.config import settings
+
+    monkeypatch.setattr(settings, 'ws_max_frame_bytes', 64)
+    with _client().websocket_connect('/api/v1/ws') as ws:
+        ws.send_json({'type': 'auth', 'access_token': 'good'})
+        assert ws.receive_json()['type'] == 'auth.ok'
+        ws.send_text('{"pad":"' + ('x' * 200) + '"}')
+        frame = ws.receive_json()
+    assert frame['type'] == 'error' and frame['code'] == 'frame_too_large'

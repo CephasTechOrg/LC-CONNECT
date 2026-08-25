@@ -32,6 +32,29 @@ typing_limiter = RateLimiter(settings.ws_typing_rate_per_10s, 10)
 subscribe_limiter = RateLimiter(settings.ws_subscribe_rate_per_10s, 10)
 malformed_limiter = RateLimiter(settings.ws_max_malformed_frames, 60)
 
+
+async def run_idle_reaper() -> None:
+    """Periodically drop sockets that have not received an inbound frame recently.
+
+    Complements uvicorn's ping/pong (transport-alive) with an application-level idle
+    timeout (no client frames). Interval is a fraction of the idle timeout so we do
+    not wait a full idle window after the cutoff before closing.
+    """
+    log = logging.getLogger('lc_connect.realtime')
+    interval = max(15, settings.ws_idle_timeout_seconds // 3)
+    while True:
+        await asyncio.sleep(interval)
+        try:
+            closed = await manager.reap_idle(
+                float(settings.ws_idle_timeout_seconds),
+                protocol.CloseCode.IDLE_TIMEOUT,
+            )
+            if closed:
+                log.info('idle reaper: closed %d websocket(s)', closed)
+        except Exception:  # noqa: BLE001 — housekeeping must never crash the app
+            log.warning('idle reaper failed', exc_info=True)
+
+
 # Deliberately small: only notifications worth a push. Everything else (role changes, removals,
 # rejections, ...) stays live-only — the in-app badge catches them up on next open.
 PUSHABLE_NOTIFICATION_TYPES = frozenset({

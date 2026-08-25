@@ -1,16 +1,17 @@
-"""Postgres integration-test harness (P0 of the groups plan).
+"""Postgres integration-test harness.
 
 The rest of the suite is deliberately DB-free — it proves the API contract and isolated
 logic, but **not** that messaging behaves correctly on real rows. These fixtures give the
-*parity* tests a real Postgres so we can lock messaging behaviour in place **before** the
-Conversation migration moves the message container.
+integration tests a real Postgres so we can lock behaviour against real rows.
 
 Safety:
 - Uses a **separate database** (default `lc_connect_test`, auto-created) — never the dev DB.
   Override with ``TEST_DATABASE_URL``.
 - Every test starts from a truncated schema, so tests never see each other's rows.
-- If Postgres isn't reachable the DB tests **skip cleanly**, so the DB-free suite still runs
-  everywhere (including CI without a database).
+- Locally, if Postgres isn't reachable the DB tests **skip cleanly**, so the DB-free suite
+  still runs without a database.
+- In CI, set ``REQUIRE_TEST_DB=1`` so a missing Postgres is a **hard failure** (never a
+  silent green skip).
 """
 
 from __future__ import annotations
@@ -34,6 +35,11 @@ from app.models import Block, Conversation, Match, Message, Profile, User
 from app.shared.conversations import ensure_dm_conversation
 
 TEST_DB_NAME = 'lc_connect_test'
+
+
+def _require_test_db() -> bool:
+    """CI sets REQUIRE_TEST_DB=1 so unavailable Postgres fails the job instead of skipping."""
+    return os.getenv('REQUIRE_TEST_DB', '').strip().lower() in {'1', 'true', 'yes'}
 
 
 def test_database_url() -> str:
@@ -81,17 +87,21 @@ async def _prepare_schema(engine) -> None:
 @pytest_asyncio.fixture
 async def _engine():
     """A clean test-DB engine (NullPool, so concurrent sessions each get their own
-    connection — needed for the capacity race test). Skips if Postgres isn't available."""
+    connection — needed for the capacity race test). Skips locally if Postgres isn't
+    available; fails hard when REQUIRE_TEST_DB is set (CI)."""
     url = test_database_url()
     engine = None
     try:
         await _ensure_database(url)
         engine = create_async_engine(url, poolclass=NullPool)
         await _prepare_schema(engine)
-    except Exception as exc:  # noqa: BLE001 — any connectivity/permission problem → skip
+    except Exception as exc:  # noqa: BLE001 — any connectivity/permission problem
         if engine is not None:
             await engine.dispose()
-        pytest.skip(f'Postgres test DB unavailable ({type(exc).__name__}: {exc}) — skipping DB tests')
+        detail = f'Postgres test DB unavailable ({type(exc).__name__}: {exc})'
+        if _require_test_db():
+            pytest.fail(f'{detail} — REQUIRE_TEST_DB=1 so this is a hard failure')
+        pytest.skip(f'{detail} — skipping DB tests')
     yield engine
     await engine.dispose()
 

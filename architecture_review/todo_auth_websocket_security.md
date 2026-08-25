@@ -10,7 +10,7 @@
 - [x] Daily start docs (`docs/getting-started/daily_dev_start.md`)
 - [x] Cursor rules (architecture + file structure)
 - [x] Dependency lock — direct deps pinned to exact versions in `requirements.txt` + `requirements-dev.txt` (reproducible across CI, Render, local; Render/CI install these directly)
-- [x] CI pipeline (`.github/workflows/ci.yml` — line limits + backend snapshot tests + `flutter analyze`)
+- [x] CI pipeline (`.github/workflows/ci.yml` — line limits + backend unit/snapshot + Postgres `tests/db` + `flutter analyze`)
 - [x] Backend regression harness (`backend/tests/` — OpenAPI snapshot, route inventory, import smoke)
 - [x] File-length enforcement (`scripts/check_line_limits.py`, 600 hard cap; pre-push hook + CI)
 
@@ -44,17 +44,17 @@
 Single-instance, in-memory `ConnectionManager` behind an `EventBus` seam (Redis-ready).
 Backend `app/features/realtime/` + `messages` REST paging/sync + idempotency. 25 realtime
 tests (protocol, rate-limit, manager backpressure/revocation, gateway lifecycle over TestClient).
-Deferred to later slices: Redis fan-out, push (FCM/APNs), presence, Flutter client, app-level
-idle reaper + graceful-shutdown lifespan (uvicorn ping/pong covers dead-socket detection now).
+Deferred to later slices: Redis fan-out, push (FCM/APNs), presence, Flutter client.
+App-level idle reaper + max-frame enforcement shipped 2026-08-24 (`run_idle_reaper` + `ws_io.receive_json_bounded`).
 
 ## WebSocket (Phase 2+)
 
 - [x] `/api/v1/ws`
 - [x] Auth-first protocol
 - [x] Stable schemas/errors (typed discriminated-union frames + error codes)
-- [x] Auth timeout (idle reaper + close-on-idle deferred; uvicorn ping/pong detects dead sockets)
-- [x] Payload limits (frame size + body length)
-- [x] Malformed-event limits (bounded, then close)
+- [x] Auth timeout + app-level idle reaper (`WS_IDLE_TIMEOUT_SECONDS`, close code 4409; uvicorn ping/pong still covers dead transport)
+- [x] Payload limits (frame size via `receive_json_bounded` + body length in protocol)
+- [x] Malformed-event limits (bounded, then close; oversized frames share the abuse budget)
 - [x] Graceful shutdown lifespan (mounted in `app/main.py` → `ws_manager.shutdown(GOING_AWAY)`)
 - [ ] Metrics without content/tokens
 - [x] Flutter connection-state banner (`RealtimeClient.status` ValueListenable)

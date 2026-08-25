@@ -49,8 +49,9 @@ Run **`/verify`** (defined in `.claude/commands/`) to execute the whole gate at 
 pieces manually:
 
 ```bash
-# Backend (from backend/, no DB needed):
-.venv/bin/pytest          # API-contract snapshot + route inventory + import smoke
+# Backend (from backend/):
+.venv/bin/pytest --ignore=tests/db   # unit + API snapshot (no Postgres)
+.venv/bin/pytest tests/db            # integration (needs local Postgres / TEST_DATABASE_URL)
 .venv/bin/ruff check .
 
 # Mobile (from mobile/):
@@ -59,6 +60,9 @@ flutter analyze
 # Repo:
 python scripts/check_line_limits.py
 ```
+
+CI runs both backend suites: unit/snapshot without Postgres, and `tests/db` against a
+Postgres 16 service with `REQUIRE_TEST_DB=1` (missing DB fails the job — never silent skip).
 
 **The backend API contract is snapshot-guarded.** A pure refactor must leave `pytest` green
 (byte-identical OpenAPI). Only regenerate the baseline for intentional API changes:
