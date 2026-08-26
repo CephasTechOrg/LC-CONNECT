@@ -37,15 +37,21 @@ class _DeleteAccountDialog extends ConsumerStatefulWidget {
 }
 
 class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
-  final _controller = TextEditingController();
+  final _emailCtrl = TextEditingController();
+  final _passwordCtrl = TextEditingController();
   bool _busy = false;
+  bool _obscure = true;
 
   bool get _emailMatches =>
-      _controller.text.trim().toLowerCase() == widget.email.toLowerCase();
+      _emailCtrl.text.trim().toLowerCase() == widget.email.toLowerCase();
+
+  bool get _canSubmit =>
+      _emailMatches && _passwordCtrl.text.isNotEmpty && !_busy;
 
   @override
   void dispose() {
-    _controller.dispose();
+    _emailCtrl.dispose();
+    _passwordCtrl.dispose();
     super.dispose();
   }
 
@@ -77,31 +83,46 @@ class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
           ),
           const SizedBox(height: 8),
           TextField(
-            controller: _controller,
+            controller: _emailCtrl,
             enabled: !_busy,
             keyboardType: TextInputType.emailAddress,
+            autocorrect: false,
+            textInputAction: TextInputAction.next,
+            onChanged: (_) => setState(() {}),
+            decoration: _fieldDecoration(hint: widget.email),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            'Enter your password to continue:',
+            style: GoogleFonts.dmSans(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textDark,
+            ),
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _passwordCtrl,
+            enabled: !_busy,
+            obscureText: _obscure,
             autocorrect: false,
             textInputAction: TextInputAction.done,
             onChanged: (_) => setState(() {}),
             onSubmitted: (_) {
-              if (_emailMatches && !_busy) _submit();
+              if (_canSubmit) _submit();
             },
-            decoration: InputDecoration(
-              hintText: widget.email,
-              hintStyle: GoogleFonts.dmSans(color: AppColors.textMuted),
-              filled: true,
-              fillColor: AppColors.background,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: AppColors.border),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: AppColors.border),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+            decoration: _fieldDecoration(hint: 'Password').copyWith(
+              suffixIcon: IconButton(
+                onPressed: _busy
+                    ? null
+                    : () => setState(() => _obscure = !_obscure),
+                icon: Icon(
+                  _obscure
+                      ? Icons.visibility_outlined
+                      : Icons.visibility_off_outlined,
+                  size: 20,
+                  color: AppColors.textMuted,
+                ),
               ),
             ),
           ),
@@ -113,7 +134,7 @@ class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
           child: Text('Cancel', style: GoogleFonts.dmSans(color: AppColors.textMuted)),
         ),
         TextButton(
-          onPressed: _busy || !_emailMatches ? null : _submit,
+          onPressed: _canSubmit ? _submit : null,
           child: _busy
               ? const SizedBox(
                   width: 18,
@@ -132,11 +153,33 @@ class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
     );
   }
 
+  InputDecoration _fieldDecoration({required String hint}) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: GoogleFonts.dmSans(color: AppColors.textMuted),
+      filled: true,
+      fillColor: AppColors.background,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: const BorderSide(color: AppColors.border),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: const BorderSide(color: AppColors.border),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+      ),
+    );
+  }
+
   Future<void> _submit() async {
     setState(() => _busy = true);
     try {
       await ref.read(accountServiceProvider).deleteAccount(
-            confirmEmail: _controller.text.trim(),
+            confirmEmail: _emailCtrl.text.trim(),
+            password: _passwordCtrl.text,
           );
       if (!mounted) return;
       Navigator.of(context).pop(true);

@@ -16,30 +16,57 @@ from app.config import settings
 from app.database import AsyncSessionLocal
 from app.features.notifications.push import push_sender
 from app.features.realtime import protocol
-from app.features.realtime.event_bus import InMemoryEventBus
+from app.features.realtime.event_bus import InMemoryEventBus, RedisEventBus
 from app.features.realtime.manager import ConnectionManager
 from app.models import Conversation, ConversationMember, Profile
 from app.shared.rate_limit import RateLimiter
+from app.shared.redis_client import get_redis, redis_configured
 
 logger = logging.getLogger('lc_connect.realtime')
 
 manager = ConnectionManager(outbox_max=settings.ws_outbox_max_size)
-event_bus = InMemoryEventBus(manager)
 
-# 10-second windows for message/typing/subscribe; a 60s window for malformed frames.
-send_limiter = RateLimiter(settings.ws_send_rate_per_10s, 10)
-typing_limiter = RateLimiter(settings.ws_typing_rate_per_10s, 10)
-subscribe_limiter = RateLimiter(settings.ws_subscribe_rate_per_10s, 10)
-malformed_limiter = RateLimiter(settings.ws_max_malformed_frames, 60)
 
+class _EventBusProxy:
+    """Stable import target — lifespan swaps ``_inner`` to Redis without rebinding callers."""
+
+    def __init__(self) -> None:
+        self._inner: InMemoryEventBus | RedisEventBus = InMemoryEventBus(manager)
+
+    async def publish_to_conversation(
+        self, conversation_id: UUID, frame: dict, exclude_user: UUID | None = None
+    ) -> None:
+        await self._inner.publish_to_conversation(conversation_id, frame, exclude_user)
+
+    async def publish_to_user(self, user_id: UUID, frame: dict) -> None:
+        await self._inner.publish_to_user(user_id, frame)
+
+    async def publish_control(self, payload: dict) -> None:
+        await self._inner.publish_control(payload)
+
+
+event_bus = _EventBusProxy()
+
+# Conn-id keys stay process-local (``allow``). User/conversation keys use ``aallow``.
+send_limiter = RateLimiter(settings.ws_send_rate_per_10s, 10, name='ws_send')
+typing_limiter = RateLimiter(settings.ws_typing_rate_per_10s, 10, name='ws_typing')
+subscribe_limiter = RateLimiter(settings.ws_subscribe_rate_per_10s, 10, name='ws_subscribe')
+malformed_limiter = RateLimiter(settings.ws_max_malformed_frames, 60, name='ws_malformed')
+
+
+def use_redis_event_bus() -> RedisEventBus | None:
+    """Swap proxy inner to Redis fan-out when a client is connected."""
+    if not redis_configured() or get_redis() is None:
+        return None
+    if isinstance(event_bus._inner, RedisEventBus):
+        return event_bus._inner
+    bus = RedisEventBus(manager, settings.environment_slug)
+    event_bus._inner = bus
+    logger.info('realtime: RedisEventBus active (env=%s)', settings.environment_slug)
+    return bus
 
 async def run_idle_reaper() -> None:
-    """Periodically drop sockets that have not received an inbound frame recently.
-
-    Complements uvicorn's ping/pong (transport-alive) with an application-level idle
-    timeout (no client frames). Interval is a fraction of the idle timeout so we do
-    not wait a full idle window after the cutoff before closing.
-    """
+    """Periodically drop sockets that have not received an inbound frame recently."""
     log = logging.getLogger('lc_connect.realtime')
     interval = max(15, settings.ws_idle_timeout_seconds // 3)
     while True:
@@ -55,8 +82,6 @@ async def run_idle_reaper() -> None:
             log.warning('idle reaper failed', exc_info=True)
 
 
-# Deliberately small: only notifications worth a push. Everything else (role changes, removals,
-# rejections, ...) stays live-only — the in-app badge catches them up on next open.
 PUSHABLE_NOTIFICATION_TYPES = frozenset({
     'connection_request',
     'connection_accepted',
@@ -71,13 +96,7 @@ PUSHABLE_NOTIFICATION_TYPES = frozenset({
 async def emit_notification(
     *, user_id: UUID, notif_type: str, group_id: UUID | None = None, actor_id: UUID | None = None
 ) -> None:
-    """Persist an in-app notification and deliver it live to the recipient's user channel.
-
-    Best-effort and self-contained (own session): the group action is the source of truth, this
-    is a side effect. An offline recipient still gets it — the row persists and their badge seeds
-    from `GET /notifications/unread-count` on next open. For the small set of high-value types
-    (see `PUSHABLE_NOTIFICATION_TYPES`), a still-offline recipient also gets a push.
-    """
+    """Persist an in-app notification and deliver it live to the recipient's user channel."""
     from app.features.notifications import service as notifications_service
 
     try:
@@ -100,11 +119,9 @@ async def emit_notification(
 async def _schedule_notification_push(
     user_id: UUID, notif_type: str, actor_name: str | None, group_name: str | None
 ) -> None:
-    """Push only if the recipient is *still* offline after a short grace window — mirrors the
-    message-push grace (absorbs Wi-Fi↔cellular handoffs); they already got it live otherwise."""
     await asyncio.sleep(settings.push_reconnect_grace_seconds)
     if manager.user_socket_count(user_id) != 0:
-        return  # reconnected during the grace window — they'll see it live
+        return
     async with AsyncSessionLocal() as db:
         await push_sender.notify_in_app_event(
             db, recipient_id=user_id, notif_type=notif_type, actor_name=actor_name, group_name=group_name,
@@ -112,41 +129,38 @@ async def _schedule_notification_push(
 
 
 async def broadcast_announcement(audience: str) -> None:
-    """Ping every connected client that a new announcement is live, so their unread counter can
-    tick up in real time. Best-effort and content-free — the client filters by its own role."""
+    """Ping connected clients that a new announcement is live (cross-instance via control)."""
     try:
-        manager.broadcast(protocol.announcement_event(audience))
+        await event_bus.publish_control({'event': 'announcement', 'audience': audience})
     except Exception as exc:  # noqa: BLE001 — a live ping must never break publishing
         logger.warning('broadcast_announcement failed (audience=%s): %s', audience, exc)
 
 
 async def broadcast_message_deleted(conversation_id: UUID, message_id: UUID, member_ids: list[UUID]) -> None:
-    """Tell every conversation member (via their user channel) that a message was deleted, so an
-    open chat tombstones it live. Best-effort."""
     frame = protocol.message_deleted(conversation_id, message_id)
     for user_id in member_ids:
         await event_bus.publish_to_user(user_id, frame)
 
 
 async def revoke_pair_access(user_a: UUID, user_b: UUID) -> None:
-    """A block happened — drop any live conversation the two users share."""
-    frame = protocol.error(protocol.ErrorCode.FORBIDDEN, 'Conversation access revoked')
-    await manager.revoke_pair(user_a, user_b, frame)
+    """A block happened — drop shared live conversations on every instance."""
+    await event_bus.publish_control({
+        'event': 'pair.revoked',
+        'user_a': str(user_a),
+        'user_b': str(user_b),
+    })
 
 
 async def disconnect_user(user_id: UUID) -> None:
-    """A suspension happened — close every socket for the user."""
-    frame = protocol.error(protocol.ErrorCode.FORBIDDEN, 'Account suspended')
-    await manager.close_user(user_id, frame, protocol.CloseCode.FORBIDDEN)
+    """A suspension happened — close every socket for the user on every instance."""
+    await event_bus.publish_control({
+        'event': 'user.suspended',
+        'user_id': str(user_id),
+    })
 
 
 async def revoke_staff_conversations(user_id: UUID) -> None:
-    """A staff position was revoked — drop every live `staff_dm` the user is in.
-
-    Authorization is re-checked per frame, so a revoked member can no longer send; this also
-    detaches both sides' open subscriptions so an ex-official channel stops streaming.
-    Best-effort: the revocation itself is the source of truth.
-    """
+    """A staff position was revoked — drop every live `staff_dm` the user is in."""
     try:
         async with AsyncSessionLocal() as db:
             conversation_ids = list(
@@ -162,23 +176,32 @@ async def revoke_staff_conversations(user_id: UUID) -> None:
                     )
                 ).scalars().all()
             )
-        frame = protocol.error(protocol.ErrorCode.FORBIDDEN, 'Conversation access revoked')
         for conversation_id in conversation_ids:
-            await manager.revoke_conversation(conversation_id, frame)
+            await event_bus.publish_control({
+                'event': 'conversation.revoked',
+                'conversation_id': str(conversation_id),
+            })
     except Exception as exc:  # noqa: BLE001 - revocation must never break the admin action
         logger.warning('revoke_staff_conversations failed (user=%s): %s', user_id, exc)
 
 
 async def schedule_offline_push(recipient_id: UUID, sender_id: UUID, conversation_id: UUID) -> None:
-    """Push only if the recipient is *still* offline after a short grace window (rec #1) —
-    absorbs Wi-Fi↔cellular handoffs / rapid reconnects. Fire-and-forget from the send path."""
+    """Push only if the recipient is still offline on *this* instance after grace.
+
+    Cross-instance presence is not tracked here yet — a user connected only on another
+    instance may still get a push (harmless; they already have the live message).
+    """
     if not push_sender.enabled:
         return
     await asyncio.sleep(settings.push_reconnect_grace_seconds)
     after_grace = manager.user_socket_count(recipient_id)
     if after_grace != 0:
-        logger.info('offline push skipped: recipient=%s reconnected during grace (sockets=%d)', recipient_id, after_grace)
-        return  # reconnected during the grace window — they'll get it live
+        logger.info(
+            'offline push skipped: recipient=%s reconnected during grace (sockets=%d)',
+            recipient_id,
+            after_grace,
+        )
+        return
     logger.info('offline push firing: recipient=%s still offline after grace', recipient_id)
     async with AsyncSessionLocal() as db:
         name = (

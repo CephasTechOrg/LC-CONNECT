@@ -83,16 +83,16 @@ Thread list stays live via the user-channel `conversation.updated`. 15 Dart unit
 
 ## Redis
 
-- [ ] Provision service
-- [ ] Async client
-- [ ] Environment prefixes
-- [ ] Pub/Sub publisher/subscriber
-- [ ] Deliver to local sockets
-- [ ] Typing TTL
+- [ ] Provision service (ops — Render/Upstash/Docker)
+- [x] Async client (`app/shared/redis_client.py`)
+- [x] Environment prefixes (`lcconnect:<slug>:…`)
+- [x] Pub/Sub publisher/subscriber (`RedisEventBus`)
+- [x] Deliver to local sockets
+- [ ] Typing TTL (still client-side expiry; Redis key optional later)
 - [ ] Optional presence TTL
-- [ ] Distributed rate limits
-- [ ] Outage behavior
-- [ ] Health metrics
+- [x] Distributed rate limits (`RateLimiter.aallow`)
+- [x] Outage behavior (local fallback + readiness fails when `REDIS_URL` set but down)
+- [ ] Health metrics (beyond ping / WS connection count)
 
 ## Messages — DONE (Slice 1, except Flutter retry UI)
 

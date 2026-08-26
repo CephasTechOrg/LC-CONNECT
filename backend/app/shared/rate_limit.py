@@ -1,16 +1,16 @@
-"""In-memory token-bucket rate limiter + a per-user HTTP abuse-limit dependency.
+"""Token-bucket rate limiter (in-memory) + optional Redis-backed ``aallow``.
 
-`RateLimiter` is O(1) per check, one bucket per key. The clock is injectable so tests are
-deterministic. `discard`/`prune` keep the key space bounded; the Redis-backed distributed
-version is a later slice behind the same `allow(key)` API. Used by the WebSocket gateway and
-(via `UserRateLimit`) by the REST endpoints.
+``allow(key)`` stays sync and process-local (tests, conn-id keys).
+``aallow(key)`` uses Redis when connected so limits are shared across instances;
+falls back to memory on outage or when Redis is unset.
 
-Rate limiting for **login/signup lives in Supabase Auth** (dashboard settings) — this module is
-only for *authenticated* abuse (a signed-in user spamming expensive actions).
+Rate limiting for **login/signup lives in Supabase Auth** — this module is only for
+*authenticated* (and a few public) abuse caps.
 """
 
 from __future__ import annotations
 
+import logging
 import time
 from collections.abc import Callable, Hashable
 
@@ -19,9 +19,38 @@ from fastapi import Depends, HTTPException, Request, status
 from app.config import settings
 from app.dependencies import require_verified_user
 from app.models import User
+from app.shared.redis_client import get_redis
+
+logger = logging.getLogger('lc_connect.rate_limit')
 
 # Every RateLimiter registers here so a periodic task can drop idle buckets (bounded memory).
 _REGISTRY: list[RateLimiter] = []
+
+# Atomic token-bucket in Redis (parity with in-memory allow semantics).
+_TOKEN_BUCKET_LUA = """
+local key = KEYS[1]
+local capacity = tonumber(ARGV[1])
+local refill = tonumber(ARGV[2])
+local now = tonumber(ARGV[3])
+local cost = tonumber(ARGV[4])
+local data = redis.call('HMGET', key, 'tokens', 'ts')
+local tokens = tonumber(data[1])
+local ts = tonumber(data[2])
+if tokens == nil then
+  tokens = capacity
+  ts = now
+end
+tokens = math.min(capacity, tokens + (now - ts) * refill)
+local allowed = 0
+if tokens >= cost then
+  tokens = tokens - cost
+  allowed = 1
+end
+redis.call('HSET', key, 'tokens', tokens, 'ts', now)
+local ttl = math.ceil(capacity / refill) * 2 + 60
+redis.call('EXPIRE', key, ttl)
+return allowed
+"""
 
 
 def prune_idle_buckets(idle_seconds: float) -> int:
@@ -31,18 +60,26 @@ def prune_idle_buckets(idle_seconds: float) -> int:
 
 
 class RateLimiter:
-    def __init__(self, capacity: int, per_seconds: float, clock: Callable[[], float] = time.monotonic) -> None:
+    def __init__(
+        self,
+        capacity: int,
+        per_seconds: float,
+        clock: Callable[[], float] = time.monotonic,
+        *,
+        name: str | None = None,
+    ) -> None:
         if capacity <= 0 or per_seconds <= 0:
             raise ValueError('capacity and per_seconds must be positive')
         self._capacity = float(capacity)
         self._refill_per_sec = capacity / per_seconds
         self._clock = clock
+        self._name = name or 'anon'
         # key -> [tokens, last_refill_ts]
         self._buckets: dict[Hashable, list[float]] = {}
-        _REGISTRY.append(self)  # so a background task can prune every limiter's idle buckets
+        _REGISTRY.append(self)
 
     def allow(self, key: Hashable, cost: float = 1.0) -> bool:
-        """Consume `cost` tokens for `key`. Returns False when the bucket is dry."""
+        """Consume `cost` tokens for `key` in this process. Returns False when dry."""
         now = self._clock()
         bucket = self._buckets.get(key)
         if bucket is None:
@@ -54,6 +91,27 @@ class RateLimiter:
             return True
         self._buckets[key] = [tokens, now]
         return False
+
+    async def aallow(self, key: Hashable, cost: float = 1.0) -> bool:
+        """Distributed check when Redis is up; otherwise same as ``allow``."""
+        client = get_redis()
+        if client is None:
+            return self.allow(key, cost)
+        redis_key = f'lcconnect:{settings.environment_slug}:rl:{self._name}:{key}'
+        try:
+            allowed = await client.eval(
+                _TOKEN_BUCKET_LUA,
+                1,
+                redis_key,
+                self._capacity,
+                self._refill_per_sec,
+                time.time(),
+                cost,
+            )
+            return bool(allowed)
+        except Exception:  # noqa: BLE001 — availability over perfect enforcement
+            logger.warning('redis rate-limit failed (%s) — memory fallback', self._name, exc_info=True)
+            return self.allow(key, cost)
 
     def discard(self, key: Hashable) -> None:
         """Drop a key's bucket (e.g. on disconnect/unsubscribe)."""
@@ -72,12 +130,6 @@ class RateLimiter:
 
 
 # ── Per-user HTTP abuse limits ─────────────────────────────────────────────────────
-#
-# One token bucket per action, keyed by user id. A user may burst up to `limit`, then refills
-# to a sustained ~`limit` per `per_seconds`. Applied to a handful of expensive/abusable actions
-# so a signed-in user can't spam them; normal use never comes close. Values are generous on
-# purpose (block abuse, never legitimate students). In-memory + single-instance for now — move
-# the buckets to Redis when the API runs multiple workers.
 
 _DAY = 86_400
 
@@ -88,12 +140,10 @@ class UserRateLimit:
     def __init__(self, action: str, limit: int, per_seconds: float, message: str) -> None:
         self.action = action
         self._message = message
-        self._limiter = RateLimiter(limit, per_seconds)
+        self._limiter = RateLimiter(limit, per_seconds, name=action)
 
     async def __call__(self, current_user: User = Depends(require_verified_user)) -> User:
-        # `require_verified_user` (not the student-matching gate) so staff-facing actions —
-        # messaging search, campus publishing — can share the same limiter pattern.
-        if not self._limiter.allow(current_user.id):
+        if not await self._limiter.aallow(current_user.id):
             raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=self._message)
         return current_user
 
@@ -127,13 +177,10 @@ staff_thread_limit = UserRateLimit(
     'staff_thread', settings.rate_limit_staff_threads_per_day, _DAY,
     "You've started too many new conversations today — try again tomorrow.",
 )
-# Guards the recipient directory against scripted enumeration (staff-only, but still a
-# name-listing surface).
 recipient_search_limit = UserRateLimit(
     'recipient_search', settings.rate_limit_recipient_searches_per_minute, 60,
     'Too many searches — please slow down.',
 )
-# Every call sends a real email (admin + employer invite resends share this budget).
 invite_resend_limit = UserRateLimit(
     'invite_resend', settings.rate_limit_invite_resends_per_day, _DAY,
     "You've resent too many invites today — try again tomorrow.",
@@ -149,11 +196,6 @@ campus_post_publish_limit = UserRateLimit(
 
 
 # ── Public (unauthenticated) abuse limits ──────────────────────────────────────────
-#
-# `UserRateLimit` keys on `User.id`, which does not exist on the handful of endpoints that must
-# stay open to anonymous callers (employer registration, forgot-password). Those were previously
-# unlimited, which meant anyone could flood the Honors approval queue with junk organisations, or
-# repeatedly trigger reset emails to bomb a victim's inbox and burn the transactional-email quota.
 
 
 def client_ip(request: Request) -> str:
@@ -172,34 +214,33 @@ def client_ip(request: Request) -> str:
 
 
 class PublicRateLimit:
-    """Caps an anonymous action per client IP (429 over). Same bucket mechanics as
-    `UserRateLimit`, different key — see `client_ip` for why the key is best-effort."""
+    """Caps an anonymous action per client IP (429 over)."""
 
     def __init__(self, action: str, limit: int, per_seconds: float, message: str) -> None:
         self.action = action
         self._message = message
-        self._limiter = RateLimiter(limit, per_seconds)
+        self._limiter = RateLimiter(limit, per_seconds, name=action)
 
     async def __call__(self, request: Request) -> None:
-        if not self._limiter.allow(client_ip(request)):
+        if not await self._limiter.aallow(client_ip(request)):
             raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=self._message)
 
 
 class KeyedRateLimit:
-    """Caps an action per caller-supplied key (e.g. the email a reset was requested for).
-
-    Complements the IP limit: an IP cap alone still lets a distributed caller bomb one victim's
-    inbox, and an email cap alone still lets one host enumerate many addresses. Both together
-    close each other's gap.
-    """
+    """Caps an action per caller-supplied key (e.g. the email a reset was requested for)."""
 
     def __init__(self, action: str, limit: int, per_seconds: float, message: str) -> None:
         self.action = action
         self._message = message
-        self._limiter = RateLimiter(limit, per_seconds)
+        self._limiter = RateLimiter(limit, per_seconds, name=action)
 
     def check(self, key: str) -> None:
+        """Sync memory-only check (tests). Prefer ``acheck`` in request handlers."""
         if not self._limiter.allow(key.strip().lower()):
+            raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=self._message)
+
+    async def acheck(self, key: str) -> None:
+        if not await self._limiter.aallow(key.strip().lower()):
             raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=self._message)
 
 
@@ -213,7 +254,6 @@ forgot_password_ip_limit = PublicRateLimit(
     'forgot_password_ip', settings.rate_limit_password_resets_per_hour, _HOUR,
     'Too many password reset requests. Please try again later.',
 )
-# Deliberately per-address: stops one inbox being bombed even from many source IPs.
 forgot_password_email_limit = KeyedRateLimit(
     'forgot_password_email', settings.rate_limit_password_resets_per_email_per_hour, _HOUR,
     'Too many password reset requests. Please try again later.',

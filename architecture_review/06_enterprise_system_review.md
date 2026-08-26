@@ -120,7 +120,7 @@ Discovery cards
 
 | Issue | Impact | Severity |
 |-------|--------|----------|
-| Single-process only (`InMemoryEventBus`; Redis configured but not implemented) | Cannot scale horizontally | Critical at scale |
+| Single-process only (`InMemoryEventBus`; Redis configured but not implemented) | Cannot scale horizontally | **Resolved in code (#2)** — set `REDIS_URL` before multi-instance |
 | WS token verified once at connect; mid-session expiry not enforced | Stale token on long-lived socket | High |
 | `reap_idle()` / `ws_max_frame_bytes` unwired | **Resolved (#6)** — lifespan reaper + bounded receive | — |
 
@@ -142,7 +142,7 @@ Discovery cards
 | Report list views not audit-logged | Read access to PII/evidence unrecorded |
 | Suspension reason returned in API but not persisted in audit log | Weak accountability |
 | No appeal/reactivation product flow | Incomplete moderation lifecycle |
-| Account deletion requires email string match only | No step-up reauthentication |
+| Account deletion requires email string match only | **Resolved (#5)** — password step-up via Supabase GoTrue | — |
 
 ---
 
@@ -165,8 +165,8 @@ Discovery cards
 |-------|--------|----------|
 | In-memory rate limits + WS manager | Abuse bypass and inconsistent revocation across instances | Critical at scale |
 | Shallow `/health` (no DB/Redis check) | **Resolved (#3)** — `/health` liveness + `/health/ready` with DB probe (Redis seam) | — |
-| No request correlation IDs | Slow incident debugging | High |
-| No metrics/tracing/Sentry | Blind to latency, error rates, WS connection counts | High |
+| No request correlation IDs | Slow incident debugging | High → **Resolved (Sprint B #7)** |
+| No metrics/tracing/Sentry | Blind to latency, error rates, WS connection counts | High (WS count now on admin; latency/Sentry still open) |
 | CI skips `tests/db/` (~40 files) | **Resolved (#1)** — `backend-db` CI job runs Postgres 16 integration suite | — |
 | Legacy DB columns (`password_hash`, OTP) | Migration debt; low active risk while NULL | Medium |
 | `admin/router.py` at 514 lines | Approaching maintainability threshold | Low |
@@ -181,7 +181,7 @@ Discovery cards
 
 | Control | Status | Enterprise gap |
 |---------|--------|----------------|
-| Authentication (Supabase + JWKS) | Strong | Step-up for account deletion |
+| Authentication (Supabase + JWKS) | Strong | Step-up on account deletion (#5) |
 | Authorization / IDOR prevention | Strong | `require_email_confirmed_user` + `require_verified_connect_student` |
 | WebSocket auth + per-action authz | Good (single instance) | Token expiry mid-session; idle/frame limits unwired |
 | Rate limiting | Per-process only | Must be Redis-backed before scaling |
@@ -191,7 +191,7 @@ Discovery cards
 | Privacy rights | Not implemented | No data export endpoint |
 | Encryption | TLS + DB at-rest | Messages plaintext at rest (by design for moderation) |
 | Secrets management | Env-only service keys | No CI secret scanning |
-| Production hardening | Partial | `/docs` enabled; no security headers middleware |
+| Production hardening | Stronger | `/docs` off in prod; security headers + HSTS in prod (#14) |
 
 ### 4.2 Critical findings (before multi-instance production)
 
@@ -207,7 +207,7 @@ Discovery cards
 | 2 | No user data export (GDPR/CCPA) | Deferred in `05_execution_roadmap.md` |
 | 3 | Moderator report access not audit-logged | `backend/app/features/admin/router.py` |
 | 4 | Suspension reason not persisted in audit trail | `backend/app/features/admin/service.py` |
-| 5 | OpenAPI `/docs` enabled in production | `backend/app/main.py` |
+| 5 | OpenAPI `/docs` enabled in production | **Resolved (Sprint B #14)** — disabled when `is_production` |
 | 6 | Request body size limit bypass via chunked uploads | `backend/app/shared/request_limits.py` |
 | 7 | Group hard-delete destroys unreported evidence | `docs/security/audit_and_data_retention.md` |
 
@@ -277,7 +277,7 @@ Discovery cards
 |---------------|--------|
 | Phase 1 — Supabase Auth | Complete (legacy router removed) |
 | Phase 2–4 — WebSocket + authz + idempotency | Complete (single instance) |
-| Phase 5 — Redis fan-out | Not started (seam exists in `backend/app/features/realtime/event_bus.py`) |
+| Phase 5 — Redis fan-out | Code complete (`RedisEventBus` + `aallow`); provision `REDIS_URL` in deploy |
 | Phase 6 — Push notifications | FCM integrated |
 | Phase 7 — Privacy/export | Partial (deletion yes, export no) |
 | Phase 8 — Moderation audit | Partial |
@@ -325,29 +325,37 @@ Prioritized by ROI and launch risk. Each item includes owner hint, effort estima
 | ✅ 13 | Rename `require_verified_student` → `require_email_confirmed_user` | 2026-08-24 | All routers + auth-guard tests (staff pass / student-only gate) |
 | ✅ 1 | Add PostgreSQL to CI — run `backend/tests/db/` on every PR | 2026-08-24 | Separate `backend-db` job (Postgres 16); `REQUIRE_TEST_DB=1` hard-fails if DB missing; unit job uses `--ignore=tests/db` |
 
-### Completed (Sprint B — in progress)
+### Completed (Sprint B — ✅ complete)
 
 | # | Action | Completed | Notes |
 |---|--------|-----------|-------|
 | ✅ 3 | Deep health `/health/ready` with DB (+ Redis seam) | 2026-08-24 | Liveness `/health` unchanged; readiness returns 503 when DB down; Redis skipped until configured; shared probe reused by admin system-status |
 | ✅ 6 | Wire WS idle reaper + enforce `ws_max_frame_bytes` | 2026-08-24 | Lifespan runs `run_idle_reaper`; gateway uses bounded receive (`ws_io.py`); close code 4409; tests for reap + oversize |
+| ✅ 5 | Step-up auth for account deletion | 2026-08-25 | `password` required; verified via Supabase GoTrue; 403 on wrong password (not 401); rate-limited; mobile password field |
+| ✅ 7 | Request correlation IDs + basic WS metric | 2026-08-25 | `X-Request-ID` middleware + log `[req=…]`; stamped on audit `after_data`; admin `websocket_connections` count (per-instance). Send latency / error counters deferred |
+| ✅ 14 | Disable `/docs` in prod + security headers | 2026-08-25 | `docs`/`redoc`/`openapi.json` null when `is_production`; `SecurityHeadersMiddleware` (CSP, XFO, nosniff, Referrer-Policy); HSTS only in prod |
+
+### Completed (Sprint C — in progress)
+
+| # | Action | Completed | Notes |
+|---|--------|-----------|-------|
+| ✅ 2 | Redis EventBus + distributed rate limits | 2026-08-25 | `REDIS_URL` → async client, `RedisEventBus` Pub/Sub fan-out, control events (suspend/block/announce); `RateLimiter.aallow` Lua token bucket; memory fallback when unset/outage. Typing TTL / cross-instance presence deferred |
 
 ### P0 — Before campus-wide launch (remaining blockers)
 
 | # | Action | Owner | Effort | Acceptance criteria |
 |---|--------|-------|--------|---------------------|
-| 2 | **Implement Redis EventBus + distributed rate limits** | Backend | 1–2 weeks | 2+ API instances deliver WS events cross-node; rate limits shared |
-| 5 | **Step-up auth for account deletion** — fresh Supabase session or password | Backend + Mobile | 2–3 days | Deletion requires reauthentication, not token-only |
+| — | Provision Redis in each deploy env + set `REDIS_URL` before multi-instance | Ops | — | Health `/health/ready` redis=ok; 2+ API instances share fan-out |
 
 ### P1 — Enterprise hardening (30–60 days)
 
 | # | Action | Owner | Effort | Acceptance criteria |
 |---|--------|-------|--------|---------------------|
-| 7 | Add request correlation IDs + basic metrics (WS connections, send latency, errors) | Backend / SRE | 1 week | Logs include `request_id`; metrics exported or visible in admin |
+| ~~7~~ | ~~Add request correlation IDs + basic metrics (WS connections, send latency, errors)~~ | Backend / SRE | — | ✅ Done (Sprint B): `X-Request-ID` + logs + admin WS count; latency/error metrics still open |
 | 8 | Audit report views/resolutions; persist suspension reasons | Backend | 3–5 days | Every report read and suspend action has audit record with reason |
 | 9 | Data export endpoint (`GET /account/export` or async job) | Backend | 1 week | Verified user can download their data in machine-readable format |
 | 11 | Surface connection requests from Connect tab with badge | Mobile | 1 day | Incoming count visible without visiting Notifications |
-| 14 | Disable `/docs` in production; add security headers middleware | Backend | 1 day | Prod has no public OpenAPI; HSTS/CSP/X-Frame-Options set |
+| ~~14~~ | ~~Disable `/docs` in production; add security headers middleware~~ | Backend | — | ✅ Done (Sprint B): docs off in prod; security headers + HSTS |
 | 15 | Refresh stale docs (`PHASE_0_1_STATUS.md`, `docs/security/overview.md`) | Docs | 1 day | Docs match Supabase Auth + FastAPI WS architecture |
 
 ### P2 — UX and compliance maturity (60–90 days)
@@ -385,14 +393,16 @@ Aligns with `05_execution_roadmap.md` and closes gaps identified in this review.
 
 1. ~~Deep health endpoint (#3)~~ ✅
 2. ~~WS idle reaper + frame size enforcement (#6)~~ ✅
-3. Step-up auth for deletion (#5) ← next
-4. Correlation IDs (#7)
-5. Disable `/docs` in prod + security headers (#14)
+3. ~~Step-up auth for deletion (#5)~~ ✅
+4. ~~Correlation IDs (#7)~~ ✅
+5. ~~Disable `/docs` in prod + security headers (#14)~~ ✅
+
+**Sprint B complete.** Sprint C #2 (Redis EventBus + distributed rate limits) implemented in code — provision `REDIS_URL` before running 2+ API instances.
 
 ### Sprint C — Scale and compliance (3–4 weeks)
 
-1. Redis EventBus + distributed rate limits (#2)
-2. Audit completeness (#8)
+1. ~~Redis EventBus + distributed rate limits (#2)~~ ✅ (code; ops must set `REDIS_URL`)
+2. Audit completeness (#8) ← next
 3. Data export (#9)
 4. Documentation refresh (#15)
 

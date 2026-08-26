@@ -24,6 +24,16 @@ Application startup complete.
 Uvicorn running on http://0.0.0.0:8000
 ```
 
+Optional — local Redis (only needed to exercise multi-instance fan-out):
+
+```bash
+docker run --rm -p 6379:6379 redis:7-alpine
+# in backend/.env: REDIS_URL=redis://127.0.0.1:6379/0
+# then restart uvicorn — logs should show "redis: connected"
+```
+
+Without `REDIS_URL`, the API stays single-instance (in-memory EventBus + rate limits). That is fine for day-to-day local work.
+
 ### Terminal B — Mobile (one simulator)
 
 ```bash

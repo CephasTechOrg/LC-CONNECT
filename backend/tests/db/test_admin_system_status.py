@@ -16,6 +16,7 @@ async def test_all_operational_when_every_check_succeeds(db, monkeypatch):
     assert result.database == 'operational'
     assert result.auth == 'operational'
     assert result.storage == 'operational'
+    assert result.websocket_connections >= 0
 
 
 async def test_auth_down_when_ping_fails(db, monkeypatch):

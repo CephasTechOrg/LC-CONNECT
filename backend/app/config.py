@@ -96,8 +96,8 @@ class Settings(BaseSettings):
     dev_test_emails: str = Field(default='', alias='DEV_TEST_EMAILS')
     dev_test_email_default_role: str = Field(default='student', alias='DEV_TEST_EMAIL_DEFAULT_ROLE')
 
-    # WebSocket real-time gateway (Phase 2). redis_url is the seam for multi-instance
-    # fan-out later; unused while the gateway runs single-instance (in-memory).
+    # WebSocket real-time gateway. When REDIS_URL is set, lifespan connects Redis for
+    # Pub/Sub fan-out + distributed rate limits; unset keeps single-instance memory paths.
     redis_url: str | None = Field(default=None, alias='REDIS_URL')
     ws_heartbeat_seconds: int = Field(default=25, alias='WS_HEARTBEAT_SECONDS')
     ws_auth_timeout_seconds: int = Field(default=10, alias='WS_AUTH_TIMEOUT_SECONDS')

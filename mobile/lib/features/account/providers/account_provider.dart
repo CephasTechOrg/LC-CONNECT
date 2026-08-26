@@ -3,7 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/api/api_client.dart';
 
 abstract class AccountService {
-  Future<void> deleteAccount({required String confirmEmail});
+  Future<void> deleteAccount({
+    required String confirmEmail,
+    required String password,
+  });
 }
 
 class _ApiAccountService implements AccountService {
@@ -12,10 +15,16 @@ class _ApiAccountService implements AccountService {
   _ApiAccountService(this._client);
 
   @override
-  Future<void> deleteAccount({required String confirmEmail}) async {
+  Future<void> deleteAccount({
+    required String confirmEmail,
+    required String password,
+  }) async {
     await _client.dio.delete(
       '/account',
-      data: {'confirm_email': confirmEmail.trim().toLowerCase()},
+      data: {
+        'confirm_email': confirmEmail.trim().toLowerCase(),
+        'password': password,
+      },
     );
   }
 }

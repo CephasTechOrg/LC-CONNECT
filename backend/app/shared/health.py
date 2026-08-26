@@ -38,7 +38,7 @@ _PROBE_TIMEOUT_SECONDS = 2.0
 class HealthChecks(BaseModel):
     database: CheckStatus
     redis: CheckStatus = Field(
-        description='skipped until REDIS_URL is set and a Redis client is wired (Phase 5)',
+        description='skipped until REDIS_URL is set; then requires a live PING',
     )
 
 
@@ -80,14 +80,16 @@ async def probe_database() -> CheckStatus:
 
 
 async def probe_redis() -> CheckStatus:
-    """Redis is optional until Phase 5. Unconfigured → skipped (does not fail readiness).
-
-    When ``REDIS_URL`` is set, attempt a PING if ``redis`` is installed; otherwise report
-    ``down`` so a misconfigured multi-instance deploy cannot look healthy without Redis.
-    """
+    """Unconfigured → skipped. Configured → PING via the shared client (or a one-shot probe)."""
     if not settings.redis_url:
         return 'skipped'
 
+    from app.shared.redis_client import get_redis, ping_redis
+
+    if get_redis() is not None:
+        return 'ok' if await ping_redis() else 'down'
+
+    # Lifespan has not connected yet (or connect failed) — one-shot probe for readiness.
     try:
         import redis.asyncio as redis_async
     except ImportError:

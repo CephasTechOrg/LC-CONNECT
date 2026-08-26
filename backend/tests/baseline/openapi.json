@@ -2,16 +2,23 @@
   "components": {
     "schemas": {
       "AccountDeleteRequest": {
-        "description": "Self-service account deletion. `confirm_email` must equal the caller's own email \u2014 a\ndeliberate, hard-to-fumble confirmation so the destructive action can't fire by accident.",
+        "description": "Self-service account deletion.\n\n- ``confirm_email`` must equal the caller's email (anti-misclick).\n- ``password`` is a step-up reauthentication \u2014 a stolen bearer token alone cannot delete.",
         "properties": {
           "confirm_email": {
             "format": "email",
             "title": "Confirm Email",
             "type": "string"
+          },
+          "password": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Password",
+            "type": "string"
           }
         },
         "required": [
-          "confirm_email"
+          "confirm_email",
+          "password"
         ],
         "title": "AccountDeleteRequest",
         "type": "object"
@@ -3626,7 +3633,7 @@
             "type": "string"
           },
           "redis": {
-            "description": "skipped until REDIS_URL is set and a Redis client is wired (Phase 5)",
+            "description": "skipped until REDIS_URL is set; then requires a live PING",
             "enum": [
               "ok",
               "down",
@@ -5964,13 +5971,20 @@
             ],
             "title": "Storage",
             "type": "string"
+          },
+          "websocket_connections": {
+            "description": "Live WebSocket connections on this API process (per-instance).",
+            "minimum": 0.0,
+            "title": "Websocket Connections",
+            "type": "integer"
           }
         },
         "required": [
           "api_gateway",
           "database",
           "auth",
-          "storage"
+          "storage",
+          "websocket_connections"
         ],
         "title": "SystemStatusRead",
         "type": "object"
@@ -6091,7 +6105,7 @@
     },
     "/api/v1/account": {
       "delete": {
-        "description": "Permanently delete the caller's account. Irreversible. `confirm_email` must match the\ncaller's own email. The account is anonymized in place \u2014 see the service for what is kept.",
+        "description": "Permanently delete the caller's account. Irreversible.\n\nRequires (1) email confirmation matching the account and (2) the current password\nverified against Supabase Auth. A valid access token alone is not enough.",
         "operationId": "delete_account_api_v1_account_delete",
         "requestBody": {
           "content": {

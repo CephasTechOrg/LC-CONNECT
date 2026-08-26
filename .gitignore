@@ -39,6 +39,9 @@ node_modules/
 # Claude Code personal overrides (keep shared .claude/settings.json committed)
 .claude/settings.local.json
 
+# Local pip --target scratch (do not commit; install via requirements.txt)
+backend/_vendor_redis/
+
 # Firebase / push secrets — never commit
 *.p8
 **/serviceAccount*.json

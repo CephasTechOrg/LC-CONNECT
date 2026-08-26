@@ -27,12 +27,15 @@ from app.features.programs import router as programs_router
 from app.features.realtime import router as realtime_router
 from app.features.realtime.protocol import CloseCode
 from app.features.realtime.runtime import manager as ws_manager
-from app.features.realtime.runtime import run_idle_reaper
+from app.features.realtime.runtime import run_idle_reaper, use_redis_event_bus
 from app.features.safety import router as safety_router
 from app.features.scholars import router as scholars_router
 from app.shared.health import router as health_router
 from app.shared.rate_limit import prune_idle_buckets
+from app.shared.redis_client import close_redis, connect_redis
+from app.shared.request_context import RequestIdMiddleware, configure_request_id_logging
 from app.shared.request_limits import MaxBodySizeMiddleware
+from app.shared.security_headers import SecurityHeadersMiddleware
 
 # Surface our own loggers (push, realtime) in the uvicorn console. Without this,
 # `lc_connect.*` INFO logs are swallowed (uvicorn only configures its own loggers).
@@ -43,6 +46,7 @@ if not _app_logger.handlers:
     _app_logger.addHandler(_handler)
     _app_logger.setLevel(logging.INFO)
     _app_logger.propagate = False
+configure_request_id_logging(_app_logger)
 
 
 async def _prune_rate_limiters() -> None:
@@ -62,18 +66,42 @@ async def _prune_rate_limiters() -> None:
 async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     pruner = asyncio.create_task(_prune_rate_limiters())
     idle_reaper = asyncio.create_task(run_idle_reaper())
+    subscriber: asyncio.Task[None] | None = None
+    try:
+        await connect_redis()
+        redis_bus = use_redis_event_bus()
+        if redis_bus is not None:
+            subscriber = asyncio.create_task(redis_bus.run_subscriber())
+    except Exception:  # noqa: BLE001 — boot without Redis rather than crash the API
+        logging.getLogger('lc_connect').warning(
+            'redis: connect failed — continuing with in-memory EventBus/rate limits',
+            exc_info=True,
+        )
     yield
+    if subscriber is not None:
+        subscriber.cancel()
+        try:
+            await subscriber
+        except asyncio.CancelledError:
+            pass
     idle_reaper.cancel()
     pruner.cancel()
+    await close_redis()
     # Close live WebSockets cleanly on shutdown/restart (clients reconnect + REST-sync).
     await ws_manager.shutdown(CloseCode.GOING_AWAY)
 
+
+# Public OpenAPI UI is a free attack surface map — keep it off in production.
+_docs_enabled = not settings.is_production
 
 app = FastAPI(
     title=settings.app_name,
     version='0.1.0',
     default_response_class=ORJSONResponse,
     lifespan=lifespan,
+    docs_url='/docs' if _docs_enabled else None,
+    redoc_url='/redoc' if _docs_enabled else None,
+    openapi_url='/openapi.json' if _docs_enabled else None,
 )
 
 if settings.is_development:
@@ -93,11 +121,17 @@ app.add_middleware(
 # of multipart headroom so it can never be misconfigured to reject a legitimate avatar upload.
 _max_body_mb = max(settings.max_request_body_mb, settings.max_profile_image_mb + 2)
 app.add_middleware(MaxBodySizeMiddleware, max_bytes=_max_body_mb * 1024 * 1024)
+app.add_middleware(SecurityHeadersMiddleware, enable_hsts=settings.is_production)
+# Outermost for responses: ensure X-Request-ID is always present (Starlette runs last-added first).
+app.add_middleware(RequestIdMiddleware)
 
 
 @app.get('/')
 async def root() -> dict[str, str]:
-    return {'message': 'LC Connect API is running', 'docs': '/docs'}
+    payload = {'message': 'LC Connect API is running'}
+    if _docs_enabled:
+        payload['docs'] = '/docs'
+    return payload
 
 
 # Liveness (`/health`) + readiness (`/health/ready`) — see app.shared.health.

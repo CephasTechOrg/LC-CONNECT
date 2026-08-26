@@ -204,7 +204,7 @@ def _on_unsubscribe(conn: Connection, frame: protocol.UnsubscribeFrame) -> None:
 
 
 async def _on_send(conn: Connection, frame: protocol.SendFrame) -> None:
-    if not send_limiter.allow((conn.user_id, frame.conversation_id)):
+    if not await send_limiter.aallow((conn.user_id, frame.conversation_id)):
         manager.send(conn, protocol.error(ErrorCode.RATE_LIMITED, 'Slow down', frame.request_id))
         return
     async with AsyncSessionLocal() as db:
@@ -251,7 +251,7 @@ async def _on_typing(conn: Connection, conversation_id: UUID, active: bool) -> N
     partners = conn.partners.get(conversation_id)
     if not partners:
         return
-    if active and not typing_limiter.allow((conn.user_id, conversation_id)):
+    if active and not await typing_limiter.aallow((conn.user_id, conversation_id)):
         return
     # Deliver to every other member's USER channel → shows inside the chat and on their list.
     # One recipient for a DM, all others for a group.

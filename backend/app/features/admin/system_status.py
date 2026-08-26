@@ -11,6 +11,7 @@ from __future__ import annotations
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.admin.schema import ServiceStatus, SystemStatusRead
+from app.features.realtime.runtime import manager as ws_manager
 from app.shared import supabase_admin
 from app.shared.health import check_database_session
 from app.shared.storage import storage_service
@@ -26,4 +27,5 @@ async def get_system_status(db: AsyncSession) -> SystemStatusRead:
         database=await _check_database(db),
         auth='operational' if supabase_admin.ping() else 'down',
         storage='operational' if storage_service.ping() else 'down',
+        websocket_connections=ws_manager.total_connections,
     )

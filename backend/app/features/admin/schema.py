@@ -100,6 +100,10 @@ class SystemStatusRead(BaseModel):
     database: ServiceStatus
     auth: ServiceStatus
     storage: ServiceStatus
+    websocket_connections: int = Field(
+        ge=0,
+        description='Live WebSocket connections on this API process (per-instance).',
+    )
 
 
 class EmployerRejectRequest(BaseModel):

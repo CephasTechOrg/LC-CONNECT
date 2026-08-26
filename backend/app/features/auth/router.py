@@ -44,7 +44,7 @@ async def forgot_password(payload: ForgotPasswordRequest) -> MessageResponse:
     distributed caller bomb one person's inbox, so both are needed."""
     # Also cap per target address: an IP cap alone still allows a distributed caller to bomb one
     # person's inbox. Checked before any send so a bombing attempt costs no email quota.
-    forgot_password_email_limit.check(payload.email)
+    await forgot_password_email_limit.acheck(payload.email)
     portal_url = settings.admin_portal_url if payload.portal == 'admin' else settings.employer_portal_url
     redirect_to = f'{portal_url}/reset-password' if portal_url else None
     request_password_reset(payload.email, redirect_to=redirect_to)

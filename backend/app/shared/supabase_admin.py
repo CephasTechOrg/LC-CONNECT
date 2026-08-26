@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import logging
 
+import httpx
 from supabase import create_client
 
 from app import email as email_service
@@ -151,3 +152,59 @@ def request_password_reset(email: str, *, redirect_to: str | None = None) -> boo
     except Exception:  # noqa: BLE001 — best-effort; the caller never surfaces this to the client
         logger.exception('supabase_admin: failed to send password reset to %s', email)
         return False
+
+
+def verify_password_for_email(
+    email: str,
+    password: str,
+    *,
+    expected_auth_user_id: str | None = None,
+) -> bool:
+    """Prove the caller still knows the account password (step-up for destructive actions).
+
+    Hits Supabase GoTrue's password grant. A stolen bearer/refresh token alone is not enough —
+    the password must match. Returns False when Auth is unconfigured, credentials are wrong, or
+    the authenticated subject does not match ``expected_auth_user_id``. Never raises; never logs
+    the password.
+    """
+    if not settings.supabase_url or not settings.supabase_service_role_key:
+        logger.error('supabase_admin: cannot verify password — Supabase Auth is not configured')
+        return False
+    if not password:
+        return False
+
+    url = f'{settings.supabase_url.rstrip("/")}/auth/v1/token?grant_type=password'
+    try:
+        with httpx.Client(timeout=8.0) as client:
+            response = client.post(
+                url,
+                headers={
+                    'apikey': settings.supabase_service_role_key,
+                    'Content-Type': 'application/json',
+                },
+                json={'email': email.strip().lower(), 'password': password},
+            )
+    except Exception:  # noqa: BLE001 — treat network/Auth outages as failed step-up, not 500s
+        logger.exception('supabase_admin: password verification request failed')
+        return False
+
+    if response.status_code != 200:
+        return False
+
+    try:
+        body = response.json()
+    except Exception:  # noqa: BLE001
+        return False
+
+    user = body.get('user') if isinstance(body, dict) else None
+    if not isinstance(user, dict):
+        return False
+    sub = user.get('id')
+    if expected_auth_user_id is not None and str(sub) != str(expected_auth_user_id):
+        logger.warning(
+            'supabase_admin: password ok but auth subject mismatch (expected %s, got %s)',
+            expected_auth_user_id,
+            sub,
+        )
+        return False
+    return True

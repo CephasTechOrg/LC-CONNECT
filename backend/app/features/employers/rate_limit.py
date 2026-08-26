@@ -17,12 +17,12 @@ _DAY = 86400
 class EmployerRateLimit:
     def __init__(self, limit: int, per_seconds: float, message: str) -> None:
         self._message = message
-        self._limiter = RateLimiter(limit, per_seconds)
+        self._limiter = RateLimiter(limit, per_seconds, name='employer_opportunity_submit')
 
     async def __call__(
         self, ctx: EmployerAuthContext = Depends(require_approved_employer)
     ) -> EmployerAuthContext:
-        if not self._limiter.allow(ctx.account.id):
+        if not await self._limiter.aallow(ctx.account.id):
             raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=self._message)
         return ctx
 
