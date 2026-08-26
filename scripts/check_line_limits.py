@@ -31,6 +31,8 @@ EXCLUDE_DIRS = {
     ".git", ".venv", "venv", "build", ".dart_tool", "node_modules",
     "__pycache__", ".pytest_cache", ".ruff_cache", "alembic",
     "ios", "android", "macos", "windows", "linux", "web",
+    # Scratch pip --target installs (never commit; see .gitignore).
+    "_vendor_redis",
 }
 
 # Reviewed, intentional exceptions: {relative_path: reason}. Keep this list short.
