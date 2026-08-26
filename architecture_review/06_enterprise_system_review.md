@@ -95,7 +95,7 @@ Discovery cards
 
 | Issue | Location | Impact |
 |-------|----------|--------|
-| Connection requests only via Notifications | No link/badge on Connect tab | Low discoverability |
+| Connection requests only via Notifications | **Resolved (#11)** — Connect tab badge + header requests button |
 | No pull-to-refresh on Discovery or Connections | Multiple screens | Harder recovery on stale data |
 
 **Resolved (Sprint A)**
@@ -271,7 +271,8 @@ Discovery cards
 
 ### 6.1 Migration progress vs. docs
 
-`00_current_state_review.md` and `PHASE_0_1_STATUS.md` are partially stale (still reference custom auth and Supabase Realtime). **Live checklist:** `todo_auth_websocket_security.md`.
+`00_current_state_review.md` is a **historical** pre-WebSocket snapshot (bannered). Live status:
+`PHASE_0_1_STATUS.md`. **Live checklist:** `todo_auth_websocket_security.md`.
 
 | Roadmap phase | Status |
 |---------------|--------|
@@ -335,13 +336,20 @@ Prioritized by ROI and launch risk. Each item includes owner hint, effort estima
 | ✅ 7 | Request correlation IDs + basic WS metric | 2026-08-25 | `X-Request-ID` middleware + log `[req=…]`; stamped on audit `after_data`; admin `websocket_connections` count (per-instance). Send latency / error counters deferred |
 | ✅ 14 | Disable `/docs` in prod + security headers | 2026-08-25 | `docs`/`redoc`/`openapi.json` null when `is_production`; `SecurityHeadersMiddleware` (CSP, XFO, nosniff, Referrer-Policy); HSTS only in prod |
 
-### Completed (Sprint C — in progress)
+### Completed (Sprint C — ✅ complete)
 
 | # | Action | Completed | Notes |
 |---|--------|-----------|-------|
 | ✅ 2 | Redis EventBus + distributed rate limits | 2026-08-25 | `REDIS_URL` → async client, `RedisEventBus` Pub/Sub fan-out, control events (suspend/block/announce); `RateLimiter.aallow` Lua token bucket; memory fallback when unset/outage. Typing TTL / cross-instance presence deferred |
 | ✅ 8 | Audit report views/resolutions; persist suspension reasons | 2026-08-26 | `reason` required on suspend → audit `after_data`; `GET /admin/reports/{id}` audits `report.view`; `POST .../resolve` audits `report.resolve`; admin Moderation/Users UI wired |
 | ✅ 9 | Data export endpoint | 2026-08-26 | `GET /account/export` JSON (`schema_version: 1`); audited `account.export`; 5/day rate limit; mobile Profile → Download my data (clipboard) |
+| ✅ 15 | Refresh stale architecture/security docs | 2026-08-26 | `PHASE_0_1_STATUS.md` rewritten; security overview/RLS/rate-limit/audit; docs README + folder_structure; Realtime messaging marked historical |
+
+### Completed (Sprint D — in progress)
+
+| # | Action | Completed | Notes |
+|---|--------|-----------|-------|
+| ✅ 11 | Surface connection requests on Connect tab | 2026-08-26 | Nav badge on Connect; header `ConnectionRequestsButton` → `/connections`; `incomingConnectionCountProvider`; WS refresh on `connection_request` |
 
 ### P0 — Before campus-wide launch (remaining blockers)
 
@@ -356,9 +364,9 @@ Prioritized by ROI and launch risk. Each item includes owner hint, effort estima
 | ~~7~~ | ~~Add request correlation IDs + basic metrics (WS connections, send latency, errors)~~ | Backend / SRE | — | ✅ Done (Sprint B): `X-Request-ID` + logs + admin WS count; latency/error metrics still open |
 | ~~8~~ | ~~Audit report views/resolutions; persist suspension reasons~~ | Backend | — | ✅ Done (Sprint C): `report.view` / `report.resolve` / suspend `reason` on audit |
 | ~~9~~ | ~~Data export endpoint (`GET /account/export` or async job)~~ | Backend | — | ✅ Done (Sprint C): sync JSON export + audit + mobile download |
-| 11 | Surface connection requests from Connect tab with badge | Mobile | 1 day | Incoming count visible without visiting Notifications |
+| ~~11~~ | ~~Surface connection requests from Connect tab with badge~~ | Mobile | — | ✅ Done (Sprint D): nav badge + Connect header CTA |
 | ~~14~~ | ~~Disable `/docs` in production; add security headers middleware~~ | Backend | — | ✅ Done (Sprint B): docs off in prod; security headers + HSTS |
-| 15 | Refresh stale docs (`PHASE_0_1_STATUS.md`, `docs/security/overview.md`) | Docs | 1 day | Docs match Supabase Auth + FastAPI WS architecture |
+| ~~15~~ | ~~Refresh stale docs (`PHASE_0_1_STATUS.md`, `docs/security/overview.md`)~~ | Docs | — | ✅ Done (Sprint C): docs match Supabase Auth + FastAPI WS + Redis seam |
 
 ### P2 — UX and compliance maturity (60–90 days)
 
@@ -406,12 +414,14 @@ Aligns with `05_execution_roadmap.md` and closes gaps identified in this review.
 1. ~~Redis EventBus + distributed rate limits (#2)~~ ✅ (code; ops must set `REDIS_URL`)
 2. ~~Audit completeness (#8)~~ ✅
 3. ~~Data export (#9)~~ ✅
-4. Documentation refresh (#15) ← next
+4. ~~Documentation refresh (#15)~~ ✅
+
+**Sprint C complete** (code + docs). Remaining ops: provision Redis before multi-instance. Next: Sprint D — UX / accessibility.
 
 ### Sprint D — UX and accessibility (3–4 weeks)
 
-1. Connection requests discoverability (#11)
-2. Global offline banner (#18)
+1. ~~Connection requests discoverability (#11)~~ ✅
+2. Global offline banner (#18) ← next
 3. Pull-to-refresh (#19)
 4. Accessibility pass (#16)
 5. Skeleton loaders (#17)

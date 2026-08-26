@@ -95,9 +95,12 @@ content). URLs are public (with a cache-buster) — appropriate for display imag
 |---|---|
 | "What did this reported message say?" | `GET /admin/reports` → `message_body` (survives deletion) |
 | "Who reported whom, and why?" | `reports`: `reporter_id`, `reported_user_id`, `reason`, `details`, `created_at` |
+| "Did a moderator open / resolve this report?" | `admin_audit_logs`: actions `report.view`, `report.resolve` |
+| "Why was this account suspended?" | `admin_audit_logs` action `user.suspend` → `after_data.reason` |
 | "Was this person ever in the group / how did they leave?" | `conversation_members` row: `status` (`removed`/`banned`), `role`, `joined_at` |
 | "Is a deleted message's original text recoverable?" | `messages` row: `body` is retained even when `deleted_at` is set — **unless** the group was hard-deleted |
 | "Who deleted this message?" | ⚠️ not recorded yet (`deleted_by` deferred) — only `deleted_at` |
+| "Can a user download their own data?" | `GET /account/export` (JSON; audited as `account.export`) |
 
 ---
 

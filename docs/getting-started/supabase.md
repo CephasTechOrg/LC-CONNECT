@@ -1,6 +1,16 @@
 # LC Connect — Supabase Setup Guide
 
-This document covers every Supabase configuration decision made for LC Connect: project setup, storage, database connection strings, Realtime publications, and RLS policies. Read this before touching any Supabase setting.
+> **Updated guidance (2026-08-26):** LC Connect uses Supabase for **Auth**, **PostgreSQL**, and
+> **Storage**. Chat realtime is **FastAPI WebSockets** (optional Redis fan-out) — **not** Supabase
+> Realtime. Prefer [`architecture_review/`](../../architecture_review/README.md) and
+> [`PHASE_0_1_STATUS.md`](../../architecture_review/PHASE_0_1_STATUS.md) when this guide conflicts.
+>
+> Sections below that describe “custom FastAPI JWT + Realtime” or “we do not use Supabase Auth”
+> are **historical** and should not be followed for new work.
+
+This document originally covered Supabase project setup, storage, connection strings, Realtime
+publications, and RLS. Keep using it for **project keys, Storage buckets, and DB URLs**; ignore
+Realtime-as-chat and “no Supabase Auth” claims.
 
 ---
 

@@ -1,6 +1,21 @@
 # LC Connect — Real-Time Messaging
 
-This document explains how real-time message delivery works in LC Connect end-to-end: the Supabase configuration, the Flutter client subscription code, the deduplication strategy, and the rationale behind every decision.
+> **⚠️ SUPERSEDED (2026-08-26).** Product chat is **FastAPI WebSockets** + optional Redis Pub/Sub,
+> not Supabase Realtime. Use:
+>
+> - [`architecture_review/03_fastapi_websocket_messaging.md`](../../architecture_review/03_fastapi_websocket_messaging.md)
+> - [`architecture_review/PHASE_0_1_STATUS.md`](../../architecture_review/PHASE_0_1_STATUS.md)
+>
+> This document is retained only as **historical** context for the old Realtime design. Do not
+> implement new chat features from it.
+
+---
+
+# (Historical) Supabase Realtime messaging design
+
+This document originally explained how real-time message delivery worked via Supabase Realtime:
+configuration, Flutter channel subscriptions, deduplication, and related decisions. That path is
+**no longer the product architecture**.
 
 ---
 

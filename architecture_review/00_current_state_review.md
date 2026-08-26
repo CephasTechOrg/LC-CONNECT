@@ -1,5 +1,10 @@
 # 00 — Current-State Review
 
+> **Historical snapshot** from the pre–FastAPI-WebSocket review. For **current** readiness,
+> scores, and sprint order use [`06_enterprise_system_review.md`](./06_enterprise_system_review.md)
+> and [`PHASE_0_1_STATUS.md`](./PHASE_0_1_STATUS.md). Chat is no longer Supabase Realtime;
+> auth is Supabase Auth only.
+
 ## Executive verdict
 
 LC Connect is already a substantial early MVP. It contains Flutter screens and routing, custom authentication, email verification and password recovery, profiles, discovery, matching, activities, blocks, reports, admin endpoints, persistent messages, live Supabase message delivery, and typing indicators.

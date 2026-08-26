@@ -13,14 +13,17 @@ board. It should feel like a **safe campus connection platform**, not a dating a
 
 | Layer | Technology |
 |---|---|
-| Mobile app | Flutter (Dart) |
+| Mobile app | Flutter (Dart) + Riverpod |
 | Backend API | FastAPI (Python) |
 | Database | PostgreSQL on Supabase |
 | Image storage | Supabase Storage |
-| Real-time | Custom FastAPI WebSocket gateway (+ Supabase Realtime for RLS-guarded direct reads) |
-| Auth | **Supabase Auth** (JWT verified by FastAPI); legacy custom JWT retained behind a flag, unmounted |
+| Real-time chat | **FastAPI WebSockets** + optional **Redis Pub/Sub** fan-out (not Supabase Realtime) |
+| Auth | **Supabase Auth** only — FastAPI verifies JWTs and enforces authorization |
 | Push | Firebase Cloud Messaging / APNs |
-| Deployment | Render (backend), Android APK |
+| Deployment | Render (API + portals), mobile stores |
+
+**Architecture direction (source of truth when docs conflict):**
+[`architecture_review/`](../architecture_review/README.md).
 
 ---
 

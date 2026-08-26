@@ -1,5 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/api/api_client.dart';
+import '../../../core/realtime/realtime_client.dart';
+import '../../../core/realtime/ws_protocol.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../messages/providers/messages_provider.dart';
 
@@ -100,10 +104,30 @@ final connectionsNotifierProvider =
     AsyncNotifierProvider<ConnectionsNotifier, ConnectionsState>(
         ConnectionsNotifier.new);
 
+/// Incoming pending count for nav / Connect header badges. Watching this (e.g. in
+/// [NavShell]) keeps [connectionsNotifierProvider] warm across tabs.
+final incomingConnectionCountProvider = Provider<int>((ref) {
+  final async = ref.watch(connectionsNotifierProvider);
+  return async.asData?.value.incoming.length ?? 0;
+});
+
 class ConnectionsNotifier extends AsyncNotifier<ConnectionsState> {
+  StreamSubscription<InboundEvent>? _eventsSub;
+
   @override
   Future<ConnectionsState> build() async {
     ref.watch(authNotifierProvider);
+    // Live refresh when a connection_request (or acceptance) notification arrives —
+    // keeps the Connect-tab badge honest without opening Notifications.
+    try {
+      final rt = ref.watch(realtimeClientProvider);
+      _eventsSub?.cancel();
+      _eventsSub = rt.events.listen(_onRealtimeEvent);
+      ref.onDispose(() => _eventsSub?.cancel());
+    } catch (_) {
+      // Realtime unavailable in some widget tests — list still loads via REST.
+    }
+
     final client = ref.watch(apiClientProvider);
     final results = await Future.wait([
       client.dio.get('/connections/incoming'),
@@ -118,6 +142,14 @@ class ConnectionsNotifier extends AsyncNotifier<ConnectionsState> {
           .map((j) => ConnectionRequest.fromJson(j as Map<String, dynamic>))
           .toList(),
     );
+  }
+
+  void _onRealtimeEvent(InboundEvent event) {
+    if (event is! NotificationEvent) return;
+    final type = event.notification['type'] as String?;
+    if (type == 'connection_request' || type == 'connection_accepted') {
+      ref.invalidateSelf();
+    }
   }
 
   Future<void> accept(String requestId) async {

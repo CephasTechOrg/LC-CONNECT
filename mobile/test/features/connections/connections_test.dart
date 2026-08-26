@@ -255,4 +255,24 @@ void main() {
       expect(find.text('2'), findsOneWidget);
     });
   });
+
+  group('incomingConnectionCountProvider', () {
+    test('exposes incoming list length', () async {
+      final container = ProviderContainer(
+        overrides: [
+          connectionsNotifierProvider.overrideWith(
+            () => _MockConnectionsNotifier(
+              ConnectionsState(
+                incoming: [_sampleIncoming, _sampleIncoming],
+                outgoing: const [],
+              ),
+            ),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+      await container.read(connectionsNotifierProvider.future);
+      expect(container.read(incomingConnectionCountProvider), 2);
+    });
+  });
 }

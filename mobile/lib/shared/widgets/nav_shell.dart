@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../core/theme/app_theme.dart';
 import '../../features/auth/providers/auth_provider.dart';
+import '../../features/connections/providers/connections_provider.dart';
 import '../../features/messages/providers/unread_provider.dart';
 
 class NavShell extends ConsumerWidget {
@@ -29,10 +31,12 @@ class NavShell extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Watching here keeps the unread mirror alive across every tab (not just Messages).
+    // Watching here keeps unread + incoming-request mirrors alive across every tab.
     final totalUnread = ref.watch(unreadProvider.select((s) => s.total));
+    final incomingRequests = ref.watch(incomingConnectionCountProvider);
     final role = ref.watch(authNotifierProvider).asData?.value?.role ?? 'student';
-    final tabs = _tabsFor(role != 'student');
+    final isStaff = role != 'student';
+    final tabs = _tabsFor(isStaff);
     return Scaffold(
       body: child,
       bottomNavigationBar: Container(
@@ -43,23 +47,42 @@ class NavShell extends ConsumerWidget {
           currentIndex: _currentIndex(context, tabs),
           onTap: (i) => context.go(tabs[i].path),
           items: tabs
-              .map((t) => BottomNavigationBarItem(
-                    icon: _tabIcon(t, totalUnread),
-                    label: t.label,
-                  ))
+              .map(
+                (t) => BottomNavigationBarItem(
+                  icon: _tabIcon(
+                    t,
+                    totalUnread: totalUnread,
+                    incomingRequests: isStaff ? 0 : incomingRequests,
+                  ),
+                  label: t.label,
+                ),
+              )
               .toList(),
         ),
       ),
     );
   }
 
-  Widget _tabIcon(_Tab tab, int totalUnread) {
+  Widget _tabIcon(
+    _Tab tab, {
+    required int totalUnread,
+    required int incomingRequests,
+  }) {
     final icon = Icon(tab.icon);
-    if (tab.path != '/messages' || totalUnread <= 0) return icon;
-    return Badge(
-      label: Text(totalUnread > 99 ? '99+' : '$totalUnread'),
-      child: icon,
-    );
+    if (tab.path == '/messages' && totalUnread > 0) {
+      return Badge(
+        label: Text(totalUnread > 99 ? '99+' : '$totalUnread'),
+        child: icon,
+      );
+    }
+    // Students' Connect tab — pending connection requests (not staff Students browse).
+    if (tab.path == '/discover' && tab.label == 'Connect' && incomingRequests > 0) {
+      return Badge(
+        label: Text(incomingRequests > 99 ? '99+' : '$incomingRequests'),
+        child: icon,
+      );
+    }
+    return icon;
   }
 }
 

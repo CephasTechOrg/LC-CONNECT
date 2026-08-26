@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lc_connect/features/auth/providers/auth_provider.dart';
+import 'package:lc_connect/features/connections/providers/connections_provider.dart';
 import 'package:lc_connect/features/discovery/providers/discovery_provider.dart';
 import 'package:lc_connect/features/discovery/screens/discovery_screen.dart';
 import 'package:lc_connect/features/notifications/providers/notifications_provider.dart';
@@ -28,10 +29,21 @@ class _MockNotificationCount extends NotificationCountNotifier {
   int build() => 0;
 }
 
-Widget _discoveryScope() {
+class _MockConnectionsNotifier extends ConnectionsNotifier {
+  _MockConnectionsNotifier([this.incoming = const []]);
+  final List<ConnectionRequest> incoming;
+
+  @override
+  Future<ConnectionsState> build() async =>
+      ConnectionsState(incoming: incoming, outgoing: const []);
+}
+
+Widget _discoveryScope({List<ConnectionRequest> incoming = const []}) {
   final router = GoRouter(
     routes: [
       GoRoute(path: '/', builder: (_, _) => const DiscoveryScreen()),
+      GoRoute(path: '/connections', builder: (_, _) => const SizedBox()),
+      GoRoute(path: '/notifications', builder: (_, _) => const SizedBox()),
     ],
   );
   return ProviderScope(
@@ -39,6 +51,9 @@ Widget _discoveryScope() {
       authNotifierProvider.overrideWith(_MockAuthNotifier.new),
       discoveryNotifierProvider.overrideWith(_MockDiscoveryNotifier.new),
       notificationCountProvider.overrideWith(_MockNotificationCount.new),
+      connectionsNotifierProvider.overrideWith(
+        () => _MockConnectionsNotifier(incoming),
+      ),
     ],
     child: MaterialApp.router(routerConfig: router),
   );
@@ -54,6 +69,21 @@ void main() {
       expect(find.byIcon(Icons.tune_rounded), findsNothing);
       expect(find.byIcon(Icons.search_rounded), findsOneWidget);
       expect(find.text('All'), findsOneWidget); // filter chip row still present
+    });
+
+    testWidgets('header exposes connection requests entry with badge', (tester) async {
+      final req = ConnectionRequest(
+        id: 'req-1',
+        senderId: 'u1',
+        receiverId: 'me',
+        status: 'pending',
+        createdAt: DateTime.now(),
+      );
+      await tester.pumpWidget(_discoveryScope(incoming: [req, req]));
+      await tester.pumpAndSettle();
+
+      expect(find.byIcon(Icons.person_add_alt_1_outlined), findsOneWidget);
+      expect(find.text('2'), findsOneWidget);
     });
   });
 }

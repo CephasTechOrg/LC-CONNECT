@@ -35,13 +35,14 @@ Our REST endpoints are all JWT-gated, so they aren't *login*-brute-forceable. Th
 ### How it works
 
 - A **token bucket per `(action, user_id)`** ([`app/shared/rate_limit.py`](../../backend/app/shared/rate_limit.py)):
-  a user may **burst up to the limit**, then refills to a sustained ~limit-per-window. O(1) per check.
+  a user may **burst up to the limit**, then refills to a sustained ~limit-per-window.
 - Applied as a FastAPI **dependency** (`UserRateLimit`) via route `dependencies=[...]` — it doesn't
   change the endpoint's logic or its OpenAPI schema.
 - Over the limit → **HTTP 429** with a friendly, user-facing `detail` message. The mobile app surfaces
   that message directly (see the 429 UX below).
-- **In-memory, single-instance** today (fine for the current deploy). When the API scales to multiple
-  workers, the buckets move to Redis behind the same interface.
+- **`allow()`** is process-local memory (fine for conn-scoped keys). **`aallow()`** uses Redis when
+  `REDIS_URL` is connected (shared across instances) and falls back to memory on outage / when Redis
+  is unset. WebSocket send/typing and HTTP abuse limits use `aallow`.
 
 ### The limits (per user, per day)
 

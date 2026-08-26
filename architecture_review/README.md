@@ -59,4 +59,6 @@ decomposed into `features/<feature>/widgets/`. See
 
 ## Progress
 
-See `PHASE_0_1_STATUS.md` and the checked items in `todo_auth_websocket_security.md`.
+See `PHASE_0_1_STATUS.md` (updated 2026-08-26 — current phase status) and the checked items in
+`todo_auth_websocket_security.md`. For launch gaps and sprint order, use
+`06_enterprise_system_review.md`.

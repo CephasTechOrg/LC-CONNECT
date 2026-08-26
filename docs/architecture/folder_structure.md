@@ -129,17 +129,12 @@ supabase/migrations/    # versioned SQL Alembic does not manage (RLS policies, p
 Run in Supabase Dashboard → SQL Editor or via `supabase db push`. See
 `security_rls_messages.md`.
 
-## 5. Legacy auth island (transitional)
+## 5. Legacy auth island — **removed**
 
-`app/routers/auth.py` and `app/schemas.py` are the **only** parts not yet feature-sliced. They
-hold the transitional password/OTP auth flow that runs alongside the Supabase-auth path during
-rollout. This is deliberate: the flow is scheduled for removal once the Supabase migration is
-confirmed, so it is not worth relocating code that will be deleted.
-
-**Retirement step:** when the password flow is retired, delete `app/routers/auth.py`,
-`app/schemas.py`, and the `app/routers/` package, then regenerate the API baseline
-(`UPDATE_SNAPSHOTS=1 pytest`). The new Supabase-auth endpoints already live in
-`app/features/auth/`.
+The transitional `app/routers/auth.py` + `app/schemas.py` password/OTP island has been **deleted**.
+Auth lives only in `app/features/auth/`. Unused DB columns (`password_hash`, OTP fields) may still
+exist as nullable leftovers — do not write to them; dropping them is a separate DBA runbook
+(`architecture_review/06_enterprise_system_review.md` item #20).
 
 ## 6. Regression safety net (`backend/tests/`)
 

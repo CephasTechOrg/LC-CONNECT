@@ -240,8 +240,9 @@ Fill at least these keys:
 | `SUPABASE_JWT_SECRET` | Supabase → API → **Legacy JWT Secret** | Verifying mobile tokens |
 | `SUPABASE_JWT_AUDIENCE` | Usually `authenticated` | Token checks |
 | `ALLOWED_EMAIL_DOMAINS` | Default campus domains are fine | Signup policy |
-| `JWT_SECRET_KEY` | Any long random string | Only if legacy auth is enabled |
-| `AUTH_LEGACY_ENABLED` | `true` during migration rollback window | Legacy custom JWT |
+| `REDIS_URL` | Optional — leave unset for single-instance local | Multi-instance WS fan-out + shared rate limits |
+
+`JWT_SECRET_KEY` / `AUTH_LEGACY_ENABLED` are **obsolete** (legacy custom auth removed). Do not set them for new environments.
 
 Example local database URL:
 

@@ -12,6 +12,7 @@ import '../../../shared/widgets/verified_badge.dart';
 import '../../notifications/widgets/notifications_bell_button.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../campus_hub/widgets/staff_student_directory.dart';
+import '../../connections/widgets/connection_requests_button.dart';
 import '../../groups/widgets/groups_panel.dart';
 import '../providers/discovery_provider.dart';
 import '../../safety/providers/safety_provider.dart';
@@ -149,10 +150,16 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
   }
 
   Widget _buildHeader() {
-    return const AppShellHeader(
+    return AppShellHeader(
       title: 'Connect',
       subtitle: 'Students, study partners & groups at Livingstone',
-      trailing: NotificationsBellButton(),
+      trailing: const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ConnectionRequestsButton(),
+          NotificationsBellButton(),
+        ],
+      ),
     );
   }
 
