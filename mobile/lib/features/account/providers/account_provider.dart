@@ -7,6 +7,9 @@ abstract class AccountService {
     required String confirmEmail,
     required String password,
   });
+
+  /// Machine-readable JSON map of the caller's own data (`GET /account/export`).
+  Future<Map<String, dynamic>> exportAccount();
 }
 
 class _ApiAccountService implements AccountService {
@@ -26,6 +29,12 @@ class _ApiAccountService implements AccountService {
         'password': password,
       },
     );
+  }
+
+  @override
+  Future<Map<String, dynamic>> exportAccount() async {
+    final response = await _client.dio.get<Map<String, dynamic>>('/account/export');
+    return Map<String, dynamic>.from(response.data ?? const {});
   }
 }
 

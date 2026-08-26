@@ -53,13 +53,15 @@ export default function UsersPage() {
   }, [load]);
 
   async function suspend(userId: string, label: string) {
+    const reason = window.prompt(`Reason for suspending ${label}?`)?.trim();
+    if (!reason) return;
     if (!window.confirm(`Suspend ${label}? They will be signed out and blocked from the app.`)) return;
     try {
       const token = await getAccessToken();
       if (!token) return;
       await apiFetch(`/admin/users/${userId}/suspend`, token, {
         method: 'POST',
-        body: JSON.stringify({ reason: null }),
+        body: JSON.stringify({ reason }),
       });
       setError(null);
       setFlash(`Suspended ${label}.`);

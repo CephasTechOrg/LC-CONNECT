@@ -122,14 +122,32 @@ export default function ModerationPage() {
     });
   }, [reports, q, statusFilter, typeFilter, usersById]);
 
+  async function openReport(report: Report) {
+    setSelected(report);
+    try {
+      const token = await getAccessToken();
+      if (!token) return;
+      // Audits report.view — evidence access is recorded even if the list already has the row.
+      const fresh = await apiFetch<Report>(`/admin/reports/${report.id}`, token);
+      setSelected(fresh);
+      setReports((prev) => prev.map((r) => (r.id === fresh.id ? fresh : r)));
+    } catch (err) {
+      // Keep the list-row selection if the detail call fails; still show the drawer.
+      setError(true);
+      setStatus(toUserMessage(err, 'Could not open this report. Please try again.'));
+    }
+  }
+
   async function suspend(userId: string, label: string, reason: string | null) {
+    const trimmed = reason?.trim() || window.prompt(`Reason for suspending ${label}?`)?.trim();
+    if (!trimmed) return;
     if (!window.confirm(`Suspend ${label}? They will be signed out and blocked from the app.`)) return;
     try {
       const token = await getAccessToken();
       if (!token) return;
       await apiFetch(`/admin/users/${userId}/suspend`, token, {
         method: 'POST',
-        body: JSON.stringify({ reason: reason?.trim() || null }),
+        body: JSON.stringify({ reason: trimmed }),
       });
       setError(false);
       setFlash(`Suspended ${label}.`);
@@ -138,6 +156,25 @@ export default function ModerationPage() {
     } catch (err) {
       setError(true);
       setStatus(toUserMessage(err, 'Could not suspend this account. Please try again.'));
+    }
+  }
+
+  async function resolveReport(report: Report) {
+    if (!window.confirm('Mark this report as resolved?')) return;
+    try {
+      const token = await getAccessToken();
+      if (!token) return;
+      const updated = await apiFetch<Report>(`/admin/reports/${report.id}/resolve`, token, {
+        method: 'POST',
+        body: JSON.stringify({ note: null }),
+      });
+      setError(false);
+      setFlash('Report marked resolved.');
+      setSelected(updated);
+      setReports((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
+    } catch (err) {
+      setError(true);
+      setStatus(toUserMessage(err, 'Could not resolve this report. Please try again.'));
     }
   }
 
@@ -244,7 +281,7 @@ export default function ModerationPage() {
                         </span>
                       </td>
                       <td>
-                        <button className="ops-btn primary" type="button" onClick={() => setSelected(r)}>
+                        <button className="ops-btn primary" type="button" onClick={() => void openReport(r)}>
                           Review
                         </button>
                       </td>
@@ -317,6 +354,11 @@ export default function ModerationPage() {
                   ) : null}
 
                   <div className="ops-drawer-footer" style={{ flexDirection: 'column' }}>
+                    {selected.status === 'open' ? (
+                      <button className="btn" type="button" onClick={() => void resolveReport(selected)}>
+                        Mark resolved
+                      </button>
+                    ) : null}
                     {selected.reported_user_id && reported && reported.status === 'active' ? (
                       <button
                         className="btn danger"
@@ -335,10 +377,11 @@ export default function ModerationPage() {
                         Take down activity
                       </button>
                     ) : null}
-                    {!selected.activity_id &&
+                    {selected.status !== 'open' &&
+                    !selected.activity_id &&
                     !(selected.reported_user_id && reported && reported.status === 'active') ? (
                       <p className="status" style={{ margin: 0 }}>
-                        No further actions available for this report with current APIs.
+                        No further actions available for this report.
                       </p>
                     ) : null}
                   </div>

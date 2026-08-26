@@ -20,7 +20,13 @@ class AdminUserRead(BaseModel):
 
 
 class SuspendUserRequest(BaseModel):
-    reason: str | None = Field(default=None, max_length=240)
+    """Moderator must record why the account was suspended (stored on the audit trail)."""
+
+    reason: str = Field(min_length=1, max_length=240)
+
+
+class ResolveReportRequest(BaseModel):
+    note: str | None = Field(default=None, max_length=500)
 
 
 class PositionReviewRequest(BaseModel):

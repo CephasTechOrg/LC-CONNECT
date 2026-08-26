@@ -34,6 +34,44 @@
         "title": "AccountDeleteResponse",
         "type": "object"
       },
+      "AccountExportResponse": {
+        "additionalProperties": true,
+        "description": "Machine-readable copy of the caller's own data (privacy right of access).\n\nTop-level shape is stable; nested sections may grow. Clients should key off\n``schema_version``. Secrets (password hashes, OTPs, raw push tokens) are never included.",
+        "properties": {
+          "account": {
+            "additionalProperties": true,
+            "title": "Account",
+            "type": "object"
+          },
+          "exported_at": {
+            "title": "Exported At",
+            "type": "string"
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile"
+          },
+          "schema_version": {
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "exported_at",
+          "account"
+        ],
+        "title": "AccountExportResponse",
+        "type": "object"
+      },
       "ActivityCreate": {
         "properties": {
           "category": {
@@ -5633,6 +5671,24 @@
         "title": "ReportRead",
         "type": "object"
       },
+      "ResolveReportRequest": {
+        "properties": {
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "title": "ResolveReportRequest",
+        "type": "object"
+      },
       "ScholarProfessionalProfileRead": {
         "properties": {
           "career_interests": {
@@ -5920,20 +5976,18 @@
         "type": "object"
       },
       "SuspendUserRequest": {
+        "description": "Moderator must record why the account was suspended (stored on the audit trail).",
         "properties": {
           "reason": {
-            "anyOf": [
-              {
-                "maxLength": 240,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Reason"
+            "maxLength": 240,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
           }
         },
+        "required": [
+          "reason"
+        ],
         "title": "SuspendUserRequest",
         "type": "object"
       },
@@ -6145,6 +6199,33 @@
           }
         ],
         "summary": "Delete Account",
+        "tags": [
+          "account"
+        ]
+      }
+    },
+    "/api/v1/account/export": {
+      "get": {
+        "description": "Download a JSON copy of the caller's own data (profile, messages sent, social graph, \u2026).",
+        "operationId": "export_account_api_v1_account_export_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountExportResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Export Account",
         "tags": [
           "account"
         ]
@@ -8243,6 +8324,113 @@
           }
         ],
         "summary": "List Reports",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/reports/{report_id}": {
+      "get": {
+        "description": "Open one report for moderation \u2014 audited as ``report.view`` (evidence access).",
+        "operationId": "get_report_api_v1_admin_reports__report_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "report_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Report Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Report",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/reports/{report_id}/resolve": {
+      "post": {
+        "operationId": "resolve_report_api_v1_admin_reports__report_id__resolve_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "report_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Report Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveReportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Resolve Report",
         "tags": [
           "admin"
         ]

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, EmailStr, Field
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 class AccountDeleteRequest(BaseModel):
@@ -16,3 +18,18 @@ class AccountDeleteRequest(BaseModel):
 
 class AccountDeleteResponse(BaseModel):
     status: str = 'deleted'
+
+
+class AccountExportResponse(BaseModel):
+    """Machine-readable copy of the caller's own data (privacy right of access).
+
+    Top-level shape is stable; nested sections may grow. Clients should key off
+    ``schema_version``. Secrets (password hashes, OTPs, raw push tokens) are never included.
+    """
+
+    model_config = ConfigDict(extra='allow')
+
+    exported_at: str
+    schema_version: int = 1
+    account: dict[str, Any]
+    profile: dict[str, Any] | None = None

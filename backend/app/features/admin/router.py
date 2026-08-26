@@ -30,11 +30,14 @@ from app.features.admin.schema import (
     ProgramMembershipAdminRead,
     ProgramMembershipRevokeRequest,
     ProgramMembershipVerifyRequest,
+    ResolveReportRequest,
     SuspendUserRequest,
     SystemStatusRead,
 )
+from app.features.admin.service import get_report_for_moderation as do_get_report
 from app.features.admin.service import reactivate_user as do_reactivate_user
 from app.features.admin.service import remove_activity as do_remove_activity
+from app.features.admin.service import resolve_report as do_resolve_report
 from app.features.admin.service import suspend_user as do_suspend_user
 from app.features.campus_hub import publishing
 from app.features.campus_hub.schema import (
@@ -141,6 +144,26 @@ async def list_users(
 @router.get('/reports', response_model=list[ReportRead])
 async def list_reports(_: User = Depends(require_admin_aal2), db: AsyncSession = Depends(get_db)):
     return list((await db.execute(select(Report).order_by(Report.created_at.desc()).limit(200))).scalars().all())
+
+
+@router.get('/reports/{report_id}', response_model=ReportRead)
+async def get_report(
+    report_id: UUID,
+    actor: User = Depends(require_admin_aal2),
+    db: AsyncSession = Depends(get_db),
+):
+    """Open one report for moderation — audited as ``report.view`` (evidence access)."""
+    return await do_get_report(db, report_id, actor_id=actor.id)
+
+
+@router.post('/reports/{report_id}/resolve', response_model=ReportRead)
+async def resolve_report(
+    report_id: UUID,
+    payload: ResolveReportRequest,
+    actor: User = Depends(require_admin_aal2),
+    db: AsyncSession = Depends(get_db),
+):
+    return await do_resolve_report(db, report_id, actor_id=actor.id, note=payload.note)
 
 
 @router.get('/campus-positions/pending', response_model=list[CampusPositionAdminRead])
@@ -328,8 +351,8 @@ async def suspend_user(
     actor: User = Depends(require_admin_aal2),
     db: AsyncSession = Depends(get_db),
 ):
-    user = await do_suspend_user(db, user_id, actor_id=actor.id)
-    return {'status': 'suspended', 'user_id': str(user.id), 'reason': payload.reason}
+    user = await do_suspend_user(db, user_id, actor_id=actor.id, reason=payload.reason.strip())
+    return {'status': 'suspended', 'user_id': str(user.id), 'reason': payload.reason.strip()}
 
 
 @router.post('/users/{user_id}/reactivate')

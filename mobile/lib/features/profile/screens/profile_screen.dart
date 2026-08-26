@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -16,6 +19,7 @@ import '../providers/profile_provider.dart';
 part '../widgets/profile_header.dart';
 part '../widgets/profile_position_banner.dart';
 part '../widgets/profile_delete_account.dart';
+part '../widgets/profile_export_account.dart';
 part '../widgets/profile_hero.dart';
 part '../widgets/profile_info_rows.dart';
 part '../widgets/profile_looking_for.dart';

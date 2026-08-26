@@ -9,6 +9,7 @@ DELETE /api/v1/groups/{group_id}/members/me
 DELETE /api/v1/groups/{group_id}/members/{user_id}
 DELETE /api/v1/messages/{message_id}
 GET /
+GET /api/v1/account/export
 GET /api/v1/activities
 GET /api/v1/activities/{activity_id}
 GET /api/v1/activities/{activity_id}/participants
@@ -24,6 +25,7 @@ GET /api/v1/admin/employers
 GET /api/v1/admin/employers/opportunities
 GET /api/v1/admin/programs/{slug}/members
 GET /api/v1/admin/reports
+GET /api/v1/admin/reports/{report_id}
 GET /api/v1/admin/system-status
 GET /api/v1/admin/users
 GET /api/v1/auth/me
@@ -106,6 +108,7 @@ POST /api/v1/admin/employers/{org_id}/reject
 POST /api/v1/admin/employers/{org_id}/resend-invite
 POST /api/v1/admin/programs/{slug}/members
 POST /api/v1/admin/programs/{slug}/members/{user_id}/revoke
+POST /api/v1/admin/reports/{report_id}/resolve
 POST /api/v1/admin/users/{user_id}/reactivate
 POST /api/v1/admin/users/{user_id}/suspend
 POST /api/v1/auth/bootstrap

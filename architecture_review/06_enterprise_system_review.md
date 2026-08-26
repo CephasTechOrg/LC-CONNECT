@@ -140,7 +140,7 @@ Discovery cards
 | Issue | Impact |
 |-------|--------|
 | Report list views not audit-logged | Read access to PII/evidence unrecorded |
-| Suspension reason returned in API but not persisted in audit log | Weak accountability |
+| Suspension reason returned in API but not persisted in audit log | **Resolved (#8)** — stored on `user.suspend` audit `after_data` |
 | No appeal/reactivation product flow | Incomplete moderation lifecycle |
 | Account deletion requires email string match only | **Resolved (#5)** — password step-up via Supabase GoTrue | — |
 
@@ -187,8 +187,8 @@ Discovery cards
 | Rate limiting | Per-process only | Must be Redis-backed before scaling |
 | Input validation | Pydantic + length bounds | Chunked upload bypass on body size middleware |
 | File upload (avatars) | Decode, pixel cap, EXIF strip, re-encode | Document uploads lack AV scan |
-| Audit logging | Write actions only | Report views, suspension reasons, `request_id` missing |
-| Privacy rights | Not implemented | No data export endpoint |
+| Audit logging | Stronger | Report views/resolutions + suspension reasons audited (#8) |
+| Privacy rights | Partial | Export yes (#9); deletion yes; retention policy still incomplete |
 | Encryption | TLS + DB at-rest | Messages plaintext at rest (by design for moderation) |
 | Secrets management | Env-only service keys | No CI secret scanning |
 | Production hardening | Stronger | `/docs` off in prod; security headers + HSTS in prod (#14) |
@@ -204,9 +204,9 @@ Discovery cards
 | # | Finding | Key paths |
 |---|---------|-----------|
 | 1 | WS token expiry not handled mid-session | `backend/app/features/realtime/gateway.py`, `mobile/lib/core/realtime/realtime_client.dart` |
-| 2 | No user data export (GDPR/CCPA) | Deferred in `05_execution_roadmap.md` |
-| 3 | Moderator report access not audit-logged | `backend/app/features/admin/router.py` |
-| 4 | Suspension reason not persisted in audit trail | `backend/app/features/admin/service.py` |
+| 2 | No user data export (GDPR/CCPA) | **Resolved (#9)** — `GET /account/export` |
+| 3 | Moderator report access not audit-logged | **Resolved (#8)** — `GET /admin/reports/{id}` → `report.view` |
+| 4 | Suspension reason not persisted in audit trail | **Resolved (#8)** — required `reason` on suspend → audit |
 | 5 | OpenAPI `/docs` enabled in production | **Resolved (Sprint B #14)** — disabled when `is_production` |
 | 6 | Request body size limit bypass via chunked uploads | `backend/app/shared/request_limits.py` |
 | 7 | Group hard-delete destroys unreported evidence | `docs/security/audit_and_data_retention.md` |
@@ -279,7 +279,7 @@ Discovery cards
 | Phase 2–4 — WebSocket + authz + idempotency | Complete (single instance) |
 | Phase 5 — Redis fan-out | Code complete (`RedisEventBus` + `aallow`); provision `REDIS_URL` in deploy |
 | Phase 6 — Push notifications | FCM integrated |
-| Phase 7 — Privacy/export | Partial (deletion yes, export no) |
+| Phase 7 — Privacy/export | Deletion + export (`GET /account/export`) |
 | Phase 8 — Moderation audit | Partial |
 | Phase 9 — Full CI test suite | Complete for backend unit + DB integration (Redis/multi-instance still open) |
 
@@ -340,6 +340,8 @@ Prioritized by ROI and launch risk. Each item includes owner hint, effort estima
 | # | Action | Completed | Notes |
 |---|--------|-----------|-------|
 | ✅ 2 | Redis EventBus + distributed rate limits | 2026-08-25 | `REDIS_URL` → async client, `RedisEventBus` Pub/Sub fan-out, control events (suspend/block/announce); `RateLimiter.aallow` Lua token bucket; memory fallback when unset/outage. Typing TTL / cross-instance presence deferred |
+| ✅ 8 | Audit report views/resolutions; persist suspension reasons | 2026-08-26 | `reason` required on suspend → audit `after_data`; `GET /admin/reports/{id}` audits `report.view`; `POST .../resolve` audits `report.resolve`; admin Moderation/Users UI wired |
+| ✅ 9 | Data export endpoint | 2026-08-26 | `GET /account/export` JSON (`schema_version: 1`); audited `account.export`; 5/day rate limit; mobile Profile → Download my data (clipboard) |
 
 ### P0 — Before campus-wide launch (remaining blockers)
 
@@ -352,8 +354,8 @@ Prioritized by ROI and launch risk. Each item includes owner hint, effort estima
 | # | Action | Owner | Effort | Acceptance criteria |
 |---|--------|-------|--------|---------------------|
 | ~~7~~ | ~~Add request correlation IDs + basic metrics (WS connections, send latency, errors)~~ | Backend / SRE | — | ✅ Done (Sprint B): `X-Request-ID` + logs + admin WS count; latency/error metrics still open |
-| 8 | Audit report views/resolutions; persist suspension reasons | Backend | 3–5 days | Every report read and suspend action has audit record with reason |
-| 9 | Data export endpoint (`GET /account/export` or async job) | Backend | 1 week | Verified user can download their data in machine-readable format |
+| ~~8~~ | ~~Audit report views/resolutions; persist suspension reasons~~ | Backend | — | ✅ Done (Sprint C): `report.view` / `report.resolve` / suspend `reason` on audit |
+| ~~9~~ | ~~Data export endpoint (`GET /account/export` or async job)~~ | Backend | — | ✅ Done (Sprint C): sync JSON export + audit + mobile download |
 | 11 | Surface connection requests from Connect tab with badge | Mobile | 1 day | Incoming count visible without visiting Notifications |
 | ~~14~~ | ~~Disable `/docs` in production; add security headers middleware~~ | Backend | — | ✅ Done (Sprint B): docs off in prod; security headers + HSTS |
 | 15 | Refresh stale docs (`PHASE_0_1_STATUS.md`, `docs/security/overview.md`) | Docs | 1 day | Docs match Supabase Auth + FastAPI WS architecture |
@@ -402,9 +404,9 @@ Aligns with `05_execution_roadmap.md` and closes gaps identified in this review.
 ### Sprint C — Scale and compliance (3–4 weeks)
 
 1. ~~Redis EventBus + distributed rate limits (#2)~~ ✅ (code; ops must set `REDIS_URL`)
-2. Audit completeness (#8) ← next
-3. Data export (#9)
-4. Documentation refresh (#15)
+2. ~~Audit completeness (#8)~~ ✅
+3. ~~Data export (#9)~~ ✅
+4. Documentation refresh (#15) ← next
 
 ### Sprint D — UX and accessibility (3–4 weeks)
 

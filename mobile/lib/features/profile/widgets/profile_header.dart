@@ -95,6 +95,18 @@ class _Header extends StatelessWidget {
                 },
               ),
               ListTile(
+                leading: const Icon(Icons.download_outlined, color: AppColors.textMid),
+                title: Text(
+                  'Download my data',
+                  style: GoogleFonts.dmSans(color: AppColors.textDark, fontWeight: FontWeight.w500),
+                ),
+                trailing: const Icon(Icons.chevron_right_rounded, size: 18, color: AppColors.border),
+                onTap: () async {
+                  Navigator.of(context).pop();
+                  await _showExportAccountFlow(context, ref);
+                },
+              ),
+              ListTile(
                 leading: const Icon(Icons.delete_forever_outlined, color: AppColors.error),
                 title: Text(
                   'Delete account',
