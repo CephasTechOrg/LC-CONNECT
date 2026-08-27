@@ -1,17 +1,26 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../constants/app_constants.dart';
+import 'health_provider.dart';
 
-final apiClientProvider = Provider<ApiClient>((ref) => ApiClient());
+final apiClientProvider = Provider<ApiClient>((ref) {
+  return ApiClient(
+    onUnreachable: () {
+      // Tip the offline banner immediately when REST can't reach the host.
+      ref.read(backendStatusProvider.notifier).reportUnreachable();
+    },
+  );
+});
 
 class ApiClient {
   late final Dio _dio;
 
   /// [dio] is an injection seam for tests: pass a pre-configured Dio (e.g. with a
   /// stub adapter) to bypass the network + auth interceptor. Production passes none.
-  ApiClient({Dio? dio}) {
+  ApiClient({Dio? dio, VoidCallback? onUnreachable}) {
     if (dio != null) {
       _dio = dio;
       return;
@@ -25,9 +34,30 @@ class ApiClient {
       ),
     );
     _dio.interceptors.add(_AuthInterceptor(_dio));
+    if (onUnreachable != null) {
+      _dio.interceptors.add(_UnreachableInterceptor(onUnreachable));
+    }
   }
 
   Dio get dio => _dio;
+}
+
+/// Marks the app offline when a request fails for network reasons (not HTTP 4xx/5xx).
+class _UnreachableInterceptor extends Interceptor {
+  _UnreachableInterceptor(this._onUnreachable);
+  final VoidCallback _onUnreachable;
+
+  static bool _isUnreachable(DioExceptionType type) =>
+      type == DioExceptionType.connectionTimeout ||
+      type == DioExceptionType.sendTimeout ||
+      type == DioExceptionType.receiveTimeout ||
+      type == DioExceptionType.connectionError;
+
+  @override
+  void onError(DioException err, ErrorInterceptorHandler handler) {
+    if (_isUnreachable(err.type)) _onUnreachable();
+    handler.next(err);
+  }
 }
 
 /// Attaches the current Supabase access token to every request and recovers from

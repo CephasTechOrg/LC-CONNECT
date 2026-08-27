@@ -261,7 +261,7 @@ Discovery cards
 | WS outbox for sends while disconnected | Implemented |
 | WS suspend/resume on app background | Implemented |
 | Friendly timeout messages (`apiErrorMessage`) | Implemented |
-| Global connectivity/backend status banner | Not wired (`backendStatusProvider` unused) |
+| Global connectivity/backend status banner | Wired (`backendStatusProvider` + `OfflineBannerHost`) |
 | REST offline queue (connect, report, profile save) | Not implemented |
 | Local cache for thread list / messages | Not implemented |
 
@@ -374,7 +374,7 @@ Prioritized by ROI and launch risk. Each item includes owner hint, effort estima
 |---|--------|-------|--------|---------------------|
 | 16 | Accessibility pass: `Semantics`, tooltips, 48dp touch targets, text scaling | Mobile | 2 weeks | VoiceOver/TalkBack navigable on core flows |
 | 17 | Skeleton loaders on hub + list screens | Mobile | 3–5 days | Primary lists show placeholder content while loading |
-| 18 | Global offline/connectivity banner (wire `backendStatusProvider` or connectivity listener) | Mobile | 2–3 days | User sees banner when server unreachable |
+| 18 | ~~Global offline/connectivity banner (wire `backendStatusProvider` or connectivity listener)~~ | Mobile | 2–3 days | ~~User sees banner when server unreachable~~ ✅ |
 | 19 | Pull-to-refresh on Discovery, Activities, Connections, Profile | Mobile | 2 days | All primary list screens support manual refresh |
 | 20 | Retire legacy DB columns after backfill runbook | Backend / DBA | 1 week | `password_hash`, OTP columns dropped; migration applied |
 | 21 | Retention purge automation for soft-deleted messages | Backend | 1 week | Scheduled job per published retention policy |
@@ -421,8 +421,8 @@ Aligns with `05_execution_roadmap.md` and closes gaps identified in this review.
 ### Sprint D — UX and accessibility (3–4 weeks)
 
 1. ~~Connection requests discoverability (#11)~~ ✅
-2. Global offline banner (#18) ← next
-3. Pull-to-refresh (#19)
+2. ~~Global offline banner (#18)~~ ✅
+3. Pull-to-refresh (#19) ← next
 4. Accessibility pass (#16)
 5. Skeleton loaders (#17)
 

@@ -1,6 +1,7 @@
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lc_connect/core/api/health_provider.dart';
 import 'package:lc_connect/features/auth/providers/auth_provider.dart';
 import 'package:lc_connect/main.dart';
 
@@ -9,6 +10,12 @@ import 'package:lc_connect/main.dart';
 class _SignedOutAuth extends AuthNotifier {
   @override
   Future<AuthUser?> build() async => null;
+}
+
+/// No network probes — the real notifier would leave pending Dio timers.
+class _OnlineStatus extends BackendStatusNotifier {
+  @override
+  BackendStatus build() => BackendStatus.online;
 }
 
 void main() {
@@ -24,6 +31,7 @@ void main() {
       ProviderScope(
         overrides: [
           authNotifierProvider.overrideWith(_SignedOutAuth.new),
+          backendStatusProvider.overrideWith(_OnlineStatus.new),
         ],
         child: const LcConnectApp(),
       ),
