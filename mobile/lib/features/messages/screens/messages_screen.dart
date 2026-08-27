@@ -9,6 +9,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/avatar_widget.dart';
 import '../../../shared/widgets/app_search_field.dart';
 import '../../../shared/widgets/app_shell_header.dart';
+import '../../../shared/widgets/app_skeleton.dart';
 import '../../../shared/widgets/app_states.dart';
 import '../../../shared/widgets/verified_badge.dart';
 import '../providers/messages_provider.dart';
@@ -81,8 +82,7 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
               ),
             Expanded(
               child: async.when(
-                loading: () =>
-                    const Center(child: CircularProgressIndicator()),
+                loading: () => const AppThreadListSkeleton(),
                 error: (e, _) => _ErrorState(
                   onRetry: () => ref.invalidate(threadsNotifierProvider),
                 ),

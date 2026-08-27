@@ -60,7 +60,9 @@ class _StudentCardState extends State<_StudentCard> {
     final matchReason =
         c.matchReasons.isNotEmpty ? c.matchReasons[0] : null;
 
-    return Container(
+    return Semantics(
+      label: c.displayName ?? 'Student profile',
+      child: Container(
       margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -87,10 +89,13 @@ class _StudentCardState extends State<_StudentCard> {
                 const Spacer(),
                 IconButton(
                   onPressed: widget.onMore,
+                  tooltip: 'More options',
                   icon: const Icon(Icons.more_horiz,
                       color: AppColors.textMuted, size: 20),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
+                  constraints: const BoxConstraints(
+                    minWidth: kMinTouchTarget,
+                    minHeight: kMinTouchTarget,
+                  ),
                 ),
               ],
             ),
@@ -279,9 +284,7 @@ class _StudentCardState extends State<_StudentCard> {
               child: TextButton(
                 onPressed: _isActing ? null : widget.onSkip,
                 style: TextButton.styleFrom(
-                  padding: EdgeInsets.zero,
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  minimumSize: const Size(kMinTouchTarget, kMinTouchTarget),
                 ),
                 child: Text(
                   'Maybe Later',
@@ -295,6 +298,7 @@ class _StudentCardState extends State<_StudentCard> {
           ],
         ),
       ),
+    ),
     );
   }
 }

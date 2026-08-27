@@ -7,6 +7,8 @@ import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/avatar_widget.dart';
 import '../../../shared/widgets/app_states.dart';
+import '../../../shared/widgets/app_skeleton.dart';
+import '../../../shared/widgets/a11y.dart';
 import '../../activities/providers/activities_provider.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../discovery/providers/discovery_provider.dart';
@@ -72,8 +74,7 @@ class CampusHubScreen extends ConsumerWidget {
               const _PublisherCta(),
               ...overviewAsync.when(
                 loading: () => const [
-                  SizedBox(height: 80),
-                  Center(child: CircularProgressIndicator()),
+                  AppHubPanelSkeleton(),
                 ],
                 error: (_, _) => [
                   AppErrorState(

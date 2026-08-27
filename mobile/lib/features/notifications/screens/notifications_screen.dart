@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/app_skeleton.dart';
 import '../../../core/widgets/avatar_widget.dart';
 import '../../connections/providers/connections_provider.dart';
 import '../data/notification_models.dart';
@@ -50,7 +51,11 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
             const _ConnectionRequestsRow(), // pinned: always the way into Connections
             const Divider(height: 1, color: AppColors.border),
             ...async.when(
-              loading: () => [const Padding(padding: EdgeInsets.only(top: 60), child: Center(child: CircularProgressIndicator()))],
+              loading: () => const [
+                AppThreadRowSkeleton(),
+                AppThreadRowSkeleton(),
+                AppThreadRowSkeleton(),
+              ],
               error: (_, _) => [
                 _Message(text: "Couldn't load notifications", onRetry: () => ref.invalidate(notificationsListProvider)),
               ],

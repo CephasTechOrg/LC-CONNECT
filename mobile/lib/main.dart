@@ -45,7 +45,10 @@ class LcConnectApp extends ConsumerWidget {
       theme: AppTheme.light,
       routerConfig: router,
       debugShowCheckedModeBanner: false,
-      builder: (context, child) => AppConnectivityChrome(child: child),
+      builder: (context, child) => MediaQuery.withClampedTextScaling(
+        maxScaleFactor: 1.4,
+        child: AppConnectivityChrome(child: child),
+      ),
     );
   }
 }

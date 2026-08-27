@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../shared/widgets/a11y.dart';
 import '../../../shared/widgets/app_shell_header.dart';
 import '../providers/notifications_provider.dart';
 
@@ -12,11 +13,12 @@ class NotificationsBellButton extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final count = ref.watch(notificationCountProvider);
-    return IconButton(
+    final tooltip =
+        count > 0 ? 'Notifications, $count unread' : 'Notifications';
+    return AppAccessibleIconButton(
+      tooltip: tooltip,
+      semanticsLabel: tooltip,
       onPressed: () => context.push('/notifications'),
-      style: IconButton.styleFrom(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
       icon: AppBellIcon(badgeCount: count),
     );
   }

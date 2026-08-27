@@ -7,6 +7,7 @@ import '../../../core/api/api_error.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/app_filter_chip.dart';
 import '../../../shared/widgets/app_shell_header.dart';
+import '../../../shared/widgets/app_skeleton.dart';
 import '../../../shared/widgets/app_states.dart';
 import '../../notifications/widgets/notifications_bell_button.dart';
 import '../providers/activities_provider.dart';
@@ -59,8 +60,7 @@ class ActivitiesScreen extends ConsumerWidget {
             const SizedBox(height: 12),
             Expanded(
               child: async.when(
-                loading: () =>
-                    const Center(child: CircularProgressIndicator()),
+                loading: () => const AppActivityListSkeleton(),
                 error: (e, _) => _ErrorState(
                   onRetry: () =>
                       ref.invalidate(activitiesNotifierProvider),

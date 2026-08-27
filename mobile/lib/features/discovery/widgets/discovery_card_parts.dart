@@ -114,37 +114,42 @@ class _ActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: isLoading ? AppColors.primaryLight : AppColors.primary,
-      borderRadius: BorderRadius.circular(10),
-      child: InkWell(
-        onTap: isLoading ? null : onTap,
+    return Semantics(
+      button: true,
+      enabled: !isLoading,
+      label: label,
+      child: Material(
+        color: isLoading ? AppColors.primaryLight : AppColors.primary,
         borderRadius: BorderRadius.circular(10),
-        child: Container(
-          height: 42,
-          alignment: Alignment.center,
-          child: isLoading
-              ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(
-                      strokeWidth: 2, color: Colors.white),
-                )
-              : Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(icon, size: 15, color: Colors.white),
-                    const SizedBox(width: 6),
-                    Text(
-                      label,
-                      style: GoogleFonts.dmSans(
-                        color: Colors.white,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
+        child: InkWell(
+          onTap: isLoading ? null : onTap,
+          borderRadius: BorderRadius.circular(10),
+          child: Container(
+            height: kMinTouchTarget,
+            alignment: Alignment.center,
+            child: isLoading
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: Colors.white),
+                  )
+                : Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(icon, size: 15, color: Colors.white),
+                      const SizedBox(width: 6),
+                      Text(
+                        label,
+                        style: GoogleFonts.dmSans(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
+          ),
         ),
       ),
     );

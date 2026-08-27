@@ -7,6 +7,8 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/avatar_widget.dart';
 import '../../../shared/widgets/app_filter_chip.dart';
 import '../../../shared/widgets/app_shell_header.dart';
+import '../../../shared/widgets/a11y.dart';
+import '../../../shared/widgets/app_skeleton.dart';
 import '../../../shared/widgets/app_states.dart';
 import '../../../shared/widgets/verified_badge.dart';
 import '../../notifications/widgets/notifications_bell_button.dart';
@@ -132,8 +134,7 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
               const SizedBox(height: 12),
               Expanded(
                 child: discoveryState.when(
-                  loading: () =>
-                      const Center(child: CircularProgressIndicator()),
+                  loading: () => const AppListSkeleton(count: 2),
                   error: (e, _) => _buildError(),
                   data: (cards) {
                     final filtered = _applyFilters(cards);

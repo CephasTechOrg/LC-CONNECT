@@ -10,6 +10,7 @@ import '../../../core/api/api_error.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/avatar_widget.dart';
 import '../../../shared/widgets/app_shell_header.dart';
+import '../../../shared/widgets/app_skeleton.dart';
 import '../../../shared/widgets/app_states.dart';
 import '../../account/providers/account_provider.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -38,7 +39,7 @@ class ProfileScreen extends ConsumerWidget {
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: async.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
+          loading: () => const AppProfileSkeleton(),
           error: (e, _) => _ErrorState(
             onRetry: () => ref.invalidate(myProfileNotifierProvider),
           ),
@@ -99,7 +100,7 @@ class _ProfileBodyState extends ConsumerState<_ProfileBody> {
   Widget build(BuildContext context) {
     final profile = ref.watch(myProfileNotifierProvider).value;
     if (profile == null) {
-      return const Center(child: CircularProgressIndicator());
+      return const AppProfileSkeleton();
     }
 
     return RefreshIndicator(

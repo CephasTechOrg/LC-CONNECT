@@ -304,7 +304,7 @@ Data durability               ████████░░  8/10
 Observability                 ██░░░░░░░░  2/10
 Privacy & compliance          ████░░░░░░  4/10
 Mobile UX (core flows)        ██████░░░░  6/10
-Mobile accessibility          ██░░░░░░░░  2/10
+Mobile accessibility          ████░░░░░░  4/10
 CI / test confidence          █████░░░░░  5/10
 Operational runbooks          ████░░░░░░  4/10
 Documentation accuracy        █████░░░░░  5/10
@@ -352,6 +352,8 @@ Prioritized by ROI and launch risk. Each item includes owner hint, effort estima
 | ✅ 11 | Surface connection requests on Connect tab | 2026-08-26 | Nav badge on Connect; header `ConnectionRequestsButton` → `/connections`; `incomingConnectionCountProvider`; WS refresh on `connection_request` |
 | ✅ 18 | Global offline/connectivity banner | 2026-08-26 | `BackendStatusNotifier` polls `/health`; `OfflineBannerHost` + Retry; Dio tip-off on connection errors |
 | ✅ 19 | Pull-to-refresh on Discovery, Activities, Connections, Profile | 2026-08-27 | `RefreshIndicator` + `ref.refresh(….future)`; also Groups + staff directory; empty lists use `AlwaysScrollableScrollPhysics` |
+| ✅ 16 | Accessibility pass | 2026-08-27 | `AppAccessibleIconButton`, filter-chip semantics, 48dp targets, nav badge labels, text scale clamp 1.4× |
+| ✅ 17 | Skeleton loaders on hub + list screens | 2026-08-27 | `app_skeleton.dart` on Campus hub, Discovery, Activities, Connections, Profile, Messages, Groups |
 
 ### P0 — Before campus-wide launch (remaining blockers)
 
@@ -374,8 +376,8 @@ Prioritized by ROI and launch risk. Each item includes owner hint, effort estima
 
 | # | Action | Owner | Effort | Acceptance criteria |
 |---|--------|-------|--------|---------------------|
-| 16 | Accessibility pass: `Semantics`, tooltips, 48dp touch targets, text scaling | Mobile | 2 weeks | VoiceOver/TalkBack navigable on core flows |
-| 17 | Skeleton loaders on hub + list screens | Mobile | 3–5 days | Primary lists show placeholder content while loading |
+| 16 | ~~Accessibility pass: `Semantics`, tooltips, 48dp touch targets, text scaling~~ | Mobile | 2 weeks | ~~VoiceOver/TalkBack navigable on core flows~~ ✅ |
+| 17 | ~~Skeleton loaders on hub + list screens~~ | Mobile | 3–5 days | ~~Primary lists show placeholder content while loading~~ ✅ |
 | 18 | ~~Global offline/connectivity banner (wire `backendStatusProvider` or connectivity listener)~~ | Mobile | 2–3 days | ~~User sees banner when server unreachable~~ ✅ |
 | 19 | ~~Pull-to-refresh on Discovery, Activities, Connections, Profile~~ | Mobile | 2 days | ~~All primary list screens support manual refresh~~ ✅ |
 | 20 | Retire legacy DB columns after backfill runbook | Backend / DBA | 1 week | `password_hash`, OTP columns dropped; migration applied |
@@ -425,8 +427,10 @@ Aligns with `05_execution_roadmap.md` and closes gaps identified in this review.
 1. ~~Connection requests discoverability (#11)~~ ✅
 2. ~~Global offline banner (#18)~~ ✅
 3. ~~Pull-to-refresh (#19)~~ ✅
-4. Accessibility pass (#16) ← next
-5. Skeleton loaders (#17)
+4. ~~Accessibility pass (#16)~~ ✅
+5. ~~Skeleton loaders (#17)~~ ✅
+
+**Sprint D complete.**
 
 ---
 

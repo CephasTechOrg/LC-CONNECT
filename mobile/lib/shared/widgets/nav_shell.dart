@@ -43,21 +43,25 @@ class NavShell extends ConsumerWidget {
         decoration: const BoxDecoration(
           border: Border(top: BorderSide(color: AppColors.border)),
         ),
-        child: BottomNavigationBar(
-          currentIndex: _currentIndex(context, tabs),
-          onTap: (i) => context.go(tabs[i].path),
-          items: tabs
-              .map(
-                (t) => BottomNavigationBarItem(
-                  icon: _tabIcon(
-                    t,
-                    totalUnread: totalUnread,
-                    incomingRequests: isStaff ? 0 : incomingRequests,
+        child: Semantics(
+          container: true,
+          label: 'Main navigation',
+          child: BottomNavigationBar(
+            currentIndex: _currentIndex(context, tabs),
+            onTap: (i) => context.go(tabs[i].path),
+            items: tabs
+                .map(
+                  (t) => BottomNavigationBarItem(
+                    icon: _tabIcon(
+                      t,
+                      totalUnread: totalUnread,
+                      incomingRequests: isStaff ? 0 : incomingRequests,
+                    ),
+                    label: t.label,
                   ),
-                  label: t.label,
-                ),
-              )
-              .toList(),
+                )
+                .toList(),
+          ),
         ),
       ),
     );
@@ -68,21 +72,31 @@ class NavShell extends ConsumerWidget {
     required int totalUnread,
     required int incomingRequests,
   }) {
-    final icon = Icon(tab.icon);
+    Widget icon = Icon(tab.icon);
+    String semanticsLabel = tab.label;
+
     if (tab.path == '/messages' && totalUnread > 0) {
-      return Badge(
+      semanticsLabel = '${tab.label}, $totalUnread unread';
+      icon = Badge(
         label: Text(totalUnread > 99 ? '99+' : '$totalUnread'),
         child: icon,
       );
-    }
-    // Students' Connect tab — pending connection requests (not staff Students browse).
-    if (tab.path == '/discover' && tab.label == 'Connect' && incomingRequests > 0) {
-      return Badge(
+    } else if (tab.path == '/discover' &&
+        tab.label == 'Connect' &&
+        incomingRequests > 0) {
+      semanticsLabel = '${tab.label}, $incomingRequests requests';
+      icon = Badge(
         label: Text(incomingRequests > 99 ? '99+' : '$incomingRequests'),
         child: icon,
       );
     }
-    return icon;
+
+    return Semantics(
+      selected: false,
+      label: semanticsLabel,
+      excludeSemantics: true,
+      child: icon,
+    );
   }
 }
 

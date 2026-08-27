@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/avatar_widget.dart';
 import '../../../shared/widgets/app_shell_header.dart';
+import '../../../shared/widgets/app_skeleton.dart';
 import '../../../shared/widgets/app_states.dart';
 import '../providers/student_directory_provider.dart';
 
@@ -64,7 +65,7 @@ class _StaffStudentDirectoryState extends ConsumerState<StaffStudentDirectory> {
         ),
         Expanded(
           child: studentsAsync.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
+            loading: () => const AppListSkeleton(count: 3),
             error: (_, _) => AppErrorState(
               message: 'Could not load students.',
               onRetry: () => ref.invalidate(studentDirectoryProvider(_query)),

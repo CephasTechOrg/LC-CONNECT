@@ -7,6 +7,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/api/api_error.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/app_filter_chip.dart';
+import '../../../shared/widgets/app_skeleton.dart';
 import '../data/group_models.dart';
 import '../data/placeholder_groups.dart' show groupCategories;
 import '../providers/groups_provider.dart';
@@ -175,10 +176,7 @@ class _GroupsPanelState extends ConsumerState<GroupsPanel> {
           ),
         ),
         async.when(
-          loading: () => const Padding(
-            padding: EdgeInsets.only(top: 60),
-            child: Center(child: CircularProgressIndicator()),
-          ),
+          loading: () => const AppListSkeleton(count: 2, padding: EdgeInsets.fromLTRB(20, 60, 20, 20)),
           error: (e, _) => _PanelMessage(
             text: 'Couldn\'t load groups',
             onRetry: () => ref.invalidate(discoverGroupsProvider(_discoverArgs)),

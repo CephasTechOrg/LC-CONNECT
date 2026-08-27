@@ -6,6 +6,7 @@ import 'package:lc_connect/features/activities/providers/activities_provider.dar
 import 'package:lc_connect/features/activities/screens/activities_screen.dart';
 import 'package:lc_connect/features/activities/screens/activity_detail_screen.dart';
 import 'package:lc_connect/features/activities/screens/create_activity_screen.dart';
+import 'package:lc_connect/shared/widgets/app_skeleton.dart';
 
 // ── Mock notifiers ────────────────────────────────────────────────
 
@@ -152,9 +153,9 @@ Widget _createScope() {
 
 void main() {
   group('ActivitiesScreen', () {
-    testWidgets('shows loading indicator initially', (tester) async {
+    testWidgets('shows skeleton while loading initially', (tester) async {
       await tester.pumpWidget(_listScope());
-      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      expect(find.byType(AppActivityListSkeleton), findsOneWidget);
     });
 
     testWidgets('shows empty state when no activities', (tester) async {

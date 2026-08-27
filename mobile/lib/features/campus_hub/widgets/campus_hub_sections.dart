@@ -85,16 +85,10 @@ class _SectionHeader extends StatelessWidget {
             ),
           ),
           if (action != null && onAction != null)
-            GestureDetector(
-              onTap: onAction,
-              child: Text(
-                action!,
-                style: GoogleFonts.dmSans(
-                  fontSize: 13,
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+            AppAccessibleTextAction(
+              label: action!,
+              onTap: onAction!,
+              semanticsLabel: '$action for $title',
             ),
         ],
       ),

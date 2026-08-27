@@ -326,9 +326,11 @@ class _PreviewLoading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.fromLTRB(20, 8, 20, 4),
-      child: Center(child: CircularProgressIndicator()),
+    return const Column(
+      children: [
+        AppPreviewCardSkeleton(),
+        AppPreviewCardSkeleton(),
+      ],
     );
   }
 }

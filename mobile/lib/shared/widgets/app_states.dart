@@ -16,35 +16,42 @@ class AppErrorState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(40),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 48, color: AppColors.textMuted),
-            const SizedBox(height: 12),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: GoogleFonts.dmSans(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textDark,
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextButton(
-              onPressed: onRetry,
-              child: Text(
-                'Retry',
+    return Semantics(
+      liveRegion: true,
+      label: message,
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(40),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 48, color: AppColors.textMuted),
+              const SizedBox(height: 12),
+              Text(
+                message,
+                textAlign: TextAlign.center,
                 style: GoogleFonts.dmSans(
-                  color: AppColors.primary,
+                  fontSize: 15,
                   fontWeight: FontWeight.w600,
+                  color: AppColors.textDark,
                 ),
               ),
-            ),
-          ],
+              const SizedBox(height: 16),
+              TextButton(
+                onPressed: onRetry,
+                style: TextButton.styleFrom(
+                  minimumSize: const Size(48, 48),
+                ),
+                child: Text(
+                  'Retry',
+                  style: GoogleFonts.dmSans(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -99,6 +106,9 @@ class AppEmptyState extends StatelessWidget {
               const SizedBox(height: 16),
               TextButton(
                 onPressed: onAction,
+                style: TextButton.styleFrom(
+                  minimumSize: const Size(48, 48),
+                ),
                 child: Text(
                   actionLabel!,
                   style: GoogleFonts.dmSans(
