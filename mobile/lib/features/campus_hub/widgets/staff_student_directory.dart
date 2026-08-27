@@ -70,26 +70,40 @@ class _StaffStudentDirectoryState extends ConsumerState<StaffStudentDirectory> {
               onRetry: () => ref.invalidate(studentDirectoryProvider(_query)),
             ),
             data: (students) {
-              if (students.isEmpty) {
-                return AppEmptyState(
-                  icon: Icons.school_outlined,
-                  title: _query.isEmpty ? 'No students yet' : 'No students found',
-                  subtitle: _query.isEmpty
-                      ? 'Students will appear here as they join.'
-                      : 'Try a different name or major.',
-                );
-              }
-              return ListView.separated(
-                padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
-                itemCount: students.length,
-                separatorBuilder: (_, _) => const SizedBox(height: 10),
-                itemBuilder: (_, i) => _StudentTile(
-                  student: students[i],
-                  onTap: () => context.push(
-                    '/users/${students[i].profileId}',
-                    extra: students[i].displayName,
-                  ),
-                ),
+              return RefreshIndicator(
+                color: AppColors.primary,
+                onRefresh: () =>
+                    ref.refresh(studentDirectoryProvider(_query).future),
+                child: students.isEmpty
+                    ? ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        children: [
+                          SizedBox(
+                              height: MediaQuery.of(context).size.height * 0.12),
+                          AppEmptyState(
+                            icon: Icons.school_outlined,
+                            title: _query.isEmpty
+                                ? 'No students yet'
+                                : 'No students found',
+                            subtitle: _query.isEmpty
+                                ? 'Students will appear here as they join.'
+                                : 'Try a different name or major.',
+                          ),
+                        ],
+                      )
+                    : ListView.separated(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+                        itemCount: students.length,
+                        separatorBuilder: (_, _) => const SizedBox(height: 10),
+                        itemBuilder: (_, i) => _StudentTile(
+                          student: students[i],
+                          onTap: () => context.push(
+                            '/users/${students[i].profileId}',
+                            extra: students[i].displayName,
+                          ),
+                        ),
+                      ),
               );
             },
           ),

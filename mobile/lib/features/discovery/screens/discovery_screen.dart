@@ -137,8 +137,14 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
                   error: (e, _) => _buildError(),
                   data: (cards) {
                     final filtered = _applyFilters(cards);
-                    if (filtered.isEmpty) return _buildEmpty();
-                    return _buildList(filtered);
+                    return RefreshIndicator(
+                      color: AppColors.primary,
+                      onRefresh: () =>
+                          ref.refresh(discoveryNotifierProvider.future),
+                      child: filtered.isEmpty
+                          ? _buildEmpty()
+                          : _buildList(filtered),
+                    );
                   },
                 ),
               ),
@@ -269,6 +275,7 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
 
   Widget _buildList(List<DiscoveryCard> cards) {
     return ListView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
       itemCount: cards.length,
       itemBuilder: (ctx, i) {
@@ -310,14 +317,20 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
   }
 
   Widget _buildEmpty() {
-    return AppEmptyState(
-      icon: Icons.people_outline,
-      title: _activeFilter == 'all' && _query.isEmpty
-          ? "You've seen everyone!"
-          : 'No students match this filter',
-      subtitle: _activeFilter == 'all' && _query.isEmpty
-          ? 'Check back later as more students join LC Connect.'
-          : 'Try a different filter or search term.',
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      children: [
+        SizedBox(height: MediaQuery.of(context).size.height * 0.12),
+        AppEmptyState(
+          icon: Icons.people_outline,
+          title: _activeFilter == 'all' && _query.isEmpty
+              ? "You've seen everyone!"
+              : 'No students match this filter',
+          subtitle: _activeFilter == 'all' && _query.isEmpty
+              ? 'Check back later as more students join LC Connect.'
+              : 'Try a different filter or search term.',
+        ),
+      ],
     );
   }
 

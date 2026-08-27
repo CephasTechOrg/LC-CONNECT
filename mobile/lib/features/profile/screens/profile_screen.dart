@@ -102,34 +102,39 @@ class _ProfileBodyState extends ConsumerState<_ProfileBody> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    return ListView(
-      children: [
-        _Header(ref: ref),
-        if (profile.campusPositionStatus == 'pending' ||
-            profile.campusPositionStatus == 'rejected' ||
-            profile.campusPositionStatus == 'revoked')
-          _PendingPositionBanner(
-            title: profile.campusPositionTitle,
-            status: profile.campusPositionStatus!,
+    return RefreshIndicator(
+      color: AppColors.primary,
+      onRefresh: () => ref.refresh(myProfileNotifierProvider.future),
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          _Header(ref: ref),
+          if (profile.campusPositionStatus == 'pending' ||
+              profile.campusPositionStatus == 'rejected' ||
+              profile.campusPositionStatus == 'revoked')
+            _PendingPositionBanner(
+              title: profile.campusPositionTitle,
+              status: profile.campusPositionStatus!,
+            ),
+          const BlueprintBondCard(),
+          _HeroSection(
+            profile: profile,
+            uploading: _uploading,
+            onAvatarTap: _pickAndUpload,
           ),
-        const BlueprintBondCard(),
-        _HeroSection(
-          profile: profile,
-          uploading: _uploading,
-          onAvatarTap: _pickAndUpload,
-        ),
-        const SizedBox(height: 8),
-        _InfoRows(profile: profile),
-        const SizedBox(height: 8),
-        _LookingForSection(lookingFor: profile.lookingFor),
-        const SizedBox(height: 8),
-        _PreferencesCard(profile: profile),
-        const SizedBox(height: 8),
-        _StatsRow(profile: profile),
-        const SizedBox(height: 16),
-        _EditProfileButton(),
-        const SizedBox(height: 24),
-      ],
+          const SizedBox(height: 8),
+          _InfoRows(profile: profile),
+          const SizedBox(height: 8),
+          _LookingForSection(lookingFor: profile.lookingFor),
+          const SizedBox(height: 8),
+          _PreferencesCard(profile: profile),
+          const SizedBox(height: 8),
+          _StatsRow(profile: profile),
+          const SizedBox(height: 16),
+          _EditProfileButton(),
+          const SizedBox(height: 24),
+        ],
+      ),
     );
   }
 }

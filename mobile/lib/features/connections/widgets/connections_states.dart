@@ -12,10 +12,16 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppEmptyState(
-      icon: icon,
-      title: title,
-      subtitle: subtitle,
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      children: [
+        SizedBox(height: MediaQuery.of(context).size.height * 0.12),
+        AppEmptyState(
+          icon: icon,
+          title: title,
+          subtitle: subtitle,
+        ),
+      ],
     );
   }
 }

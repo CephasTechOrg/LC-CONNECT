@@ -10,6 +10,7 @@ class _ActivityList extends StatelessWidget {
     final rest = activities.skip(1).toList();
 
     return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
       children: [
         _FeaturedCard(activity: featured),

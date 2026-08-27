@@ -65,14 +65,19 @@ class ActivitiesScreen extends ConsumerWidget {
                   onRetry: () =>
                       ref.invalidate(activitiesNotifierProvider),
                 ),
-                data: (activities) => activities.isEmpty
-                    ? _EmptyState(
-                        hasFilter: filter != 'all',
-                        onClear: () => ref
-                            .read(activitiesFilterProvider.notifier)
-                            .set('all'),
-                      )
-                    : _ActivityList(activities: activities),
+                data: (activities) => RefreshIndicator(
+                  color: AppColors.primary,
+                  onRefresh: () =>
+                      ref.refresh(activitiesNotifierProvider.future),
+                  child: activities.isEmpty
+                      ? _EmptyState(
+                          hasFilter: filter != 'all',
+                          onClear: () => ref
+                              .read(activitiesFilterProvider.notifier)
+                              .set('all'),
+                        )
+                      : _ActivityList(activities: activities),
+                ),
               ),
             ),
           ],

@@ -230,7 +230,7 @@ Discovery cards
 |--------|------:|-------|
 | Visual consistency | 4/5 | `AppTheme`, DM Sans, shared `AppErrorState` / `AppEmptyState` |
 | Feedback and loading | 3.5/5 | Spinners common; chat history load now has error + retry; no skeletons yet |
-| Recoverability | 3.5/5 | Retry on most lists; no global offline banner; partial pull-to-refresh |
+| Recoverability | 4/5 | Retry on most lists; global offline banner; pull-to-refresh on primary lists |
 | Accessibility | 1.5/5 | Zero `Semantics` widgets; minimal tooltips; 10px nav labels |
 | Trust and safety UX | 4/5 | Clear report/block flows; staff identity in DMs |
 | Navigation clarity | 3/5 | Connections buried; tab switch resets nested routes |
@@ -350,6 +350,8 @@ Prioritized by ROI and launch risk. Each item includes owner hint, effort estima
 | # | Action | Completed | Notes |
 |---|--------|-----------|-------|
 | ✅ 11 | Surface connection requests on Connect tab | 2026-08-26 | Nav badge on Connect; header `ConnectionRequestsButton` → `/connections`; `incomingConnectionCountProvider`; WS refresh on `connection_request` |
+| ✅ 18 | Global offline/connectivity banner | 2026-08-26 | `BackendStatusNotifier` polls `/health`; `OfflineBannerHost` + Retry; Dio tip-off on connection errors |
+| ✅ 19 | Pull-to-refresh on Discovery, Activities, Connections, Profile | 2026-08-27 | `RefreshIndicator` + `ref.refresh(….future)`; also Groups + staff directory; empty lists use `AlwaysScrollableScrollPhysics` |
 
 ### P0 — Before campus-wide launch (remaining blockers)
 
@@ -375,7 +377,7 @@ Prioritized by ROI and launch risk. Each item includes owner hint, effort estima
 | 16 | Accessibility pass: `Semantics`, tooltips, 48dp touch targets, text scaling | Mobile | 2 weeks | VoiceOver/TalkBack navigable on core flows |
 | 17 | Skeleton loaders on hub + list screens | Mobile | 3–5 days | Primary lists show placeholder content while loading |
 | 18 | ~~Global offline/connectivity banner (wire `backendStatusProvider` or connectivity listener)~~ | Mobile | 2–3 days | ~~User sees banner when server unreachable~~ ✅ |
-| 19 | Pull-to-refresh on Discovery, Activities, Connections, Profile | Mobile | 2 days | All primary list screens support manual refresh |
+| 19 | ~~Pull-to-refresh on Discovery, Activities, Connections, Profile~~ | Mobile | 2 days | ~~All primary list screens support manual refresh~~ ✅ |
 | 20 | Retire legacy DB columns after backfill runbook | Backend / DBA | 1 week | `password_hash`, OTP columns dropped; migration applied |
 | 21 | Retention purge automation for soft-deleted messages | Backend | 1 week | Scheduled job per published retention policy |
 | 22 | Suspension appeal / support workflow | Product + Backend | 2 weeks | User-facing appeal path documented and implemented |
@@ -422,8 +424,8 @@ Aligns with `05_execution_roadmap.md` and closes gaps identified in this review.
 
 1. ~~Connection requests discoverability (#11)~~ ✅
 2. ~~Global offline banner (#18)~~ ✅
-3. Pull-to-refresh (#19) ← next
-4. Accessibility pass (#16)
+3. ~~Pull-to-refresh (#19)~~ ✅
+4. Accessibility pass (#16) ← next
 5. Skeleton loaders (#17)
 
 ---

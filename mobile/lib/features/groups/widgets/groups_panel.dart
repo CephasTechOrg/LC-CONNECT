@@ -116,8 +116,16 @@ class _GroupsPanelState extends ConsumerState<GroupsPanel> {
   Widget build(BuildContext context) {
     final async = ref.watch(discoverGroupsProvider(_discoverArgs));
 
-    return ListView(
-      padding: EdgeInsets.zero,
+    return RefreshIndicator(
+      color: AppColors.primary,
+      onRefresh: () async {
+        ref.invalidate(myGroupsProvider);
+        ref.invalidate(myInvitesProvider);
+        await ref.refresh(discoverGroupsProvider(_discoverArgs).future);
+      },
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: EdgeInsets.zero,
       children: [
         const PendingInvitesSection(),
         const YourGroupsSection(),
@@ -200,6 +208,7 @@ class _GroupsPanelState extends ConsumerState<GroupsPanel> {
                 ),
         ),
       ],
+    ),
     );
   }
 }

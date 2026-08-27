@@ -7,16 +7,23 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppEmptyState(
-      icon: Icons.calendar_today_outlined,
-      title: hasFilter
-          ? 'No activities in this category'
-          : 'No upcoming activities',
-      subtitle: hasFilter
-          ? 'Try a different filter or check back soon'
-          : 'Be the first to create something!',
-      actionLabel: hasFilter ? 'Clear filter' : null,
-      onAction: hasFilter ? onClear : null,
+    // Scrollable so pull-to-refresh works on empty lists.
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      children: [
+        SizedBox(height: MediaQuery.of(context).size.height * 0.12),
+        AppEmptyState(
+          icon: Icons.calendar_today_outlined,
+          title: hasFilter
+              ? 'No activities in this category'
+              : 'No upcoming activities',
+          subtitle: hasFilter
+              ? 'Try a different filter or check back soon'
+              : 'Be the first to create something!',
+          actionLabel: hasFilter ? 'Clear filter' : null,
+          onAction: hasFilter ? onClear : null,
+        ),
+      ],
     );
   }
 }
