@@ -36,6 +36,9 @@ The existing Supabase Realtime implementation depends on custom FastAPI JWTs, sh
 8. `todo_auth_websocket_security.md` — implementation checklist.
 9. `DECISION_LOG.md` — accepted architecture decisions.
 10. `SOURCES.md` — primary references.
+11. `AUTH_USER_LINKING_RUNBOOK.md` — existing-user `auth_user_id` backfill (#25).
+12. `MESSAGE_RETENTION_CRON_RUNBOOK.md` — **daily cron setup** for soft-deleted message purge (#21).
+13. `PHASE_0_1_STATUS.md` — live migration status.
 
 ## Engineering conventions
 

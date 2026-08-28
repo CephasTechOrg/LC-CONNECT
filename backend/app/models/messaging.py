@@ -93,5 +93,6 @@ class Message(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True, nullable=False)
     read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # Soft-delete ("delete for everyone"): set when unsent. The original body is retained for
-    # moderation/audit but never serialized to clients once this is set (they get a tombstone).
+    # moderation until the retention window elapses, then purged by cron (see
+    # `MESSAGE_SOFT_DELETE_RETENTION_DAYS`). Report snapshots survive row purge.
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

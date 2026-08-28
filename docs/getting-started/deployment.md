@@ -16,6 +16,7 @@ This document covers how the LC Connect FastAPI backend is deployed to Render, i
 8. [Render Free Tier Behavior](#8-render-free-tier-behavior)
 9. [Deployment Checklist](#9-deployment-checklist)
 10. [Troubleshooting — Deployment Failures We Hit](#10-troubleshooting--deployment-failures-we-hit)
+11. [Scheduled jobs — message retention purge](#11-scheduled-jobs--message-retention-purge)
 
 ---
 
@@ -133,6 +134,7 @@ Set these manually in the Render dashboard for the `lc-connect-api` service:
 | `RESEND_REPLY_TO` | Optional support inbox | |
 | `SUPABASE_SEND_EMAIL_HOOK_SECRET` | Supabase → Authentication → Hooks → Send Email → enable | See `docs/getting-started/send_email_hook.md` — without this the hook endpoint 503s |
 | `FIREBASE_CREDENTIALS_JSON` | Firebase service account JSON (whole file contents) | Push notifications cleanly disable if unset — not required |
+| `MESSAGE_SOFT_DELETE_RETENTION_DAYS` | Optional — default `90` | Soft-deleted message purge window; see retention cron runbook |
 
 Variables set directly in the YAML (no manual step needed):
 
@@ -351,6 +353,7 @@ Use this before every deployment:
 - [ ] `requirements.txt` is up to date (`pip freeze > requirements.txt` inside `.venv`)
 - [ ] Local `.env` is in `.gitignore` (never commit secrets)
 - [ ] `/health` endpoint returns `{"status": "ok"}`
+- [ ] Message retention cron scheduled — [`MESSAGE_RETENTION_CRON_RUNBOOK.md`](../../architecture_review/MESSAGE_RETENTION_CRON_RUNBOOK.md)
 
 ### Triggering a deploy
 
@@ -467,3 +470,30 @@ pydantic_core._pydantic_core.ValidationError: DATABASE_URL Field required
 **Cause:** The `.env` file was missing from the repository (it had been deleted during a `git filter-repo` run to remove secrets from history).
 
 **Fix:** Recreated `.env` from `.env.example` with correct local values. Added `.env` to `.gitignore` to prevent accidental future deletion. Set values in Render dashboard for production.
+
+---
+
+## 11. Scheduled jobs — message retention purge
+
+Soft-deleted chat messages are hidden from users immediately but kept in Postgres for moderation.
+After **90 days** (default), a daily job hard-deletes eligible rows. Report snapshots are kept.
+
+**Full setup (Render cron, GitHub Actions, or crontab):**
+
+→ [`architecture_review/MESSAGE_RETENTION_CRON_RUNBOOK.md`](../../architecture_review/MESSAGE_RETENTION_CRON_RUNBOOK.md)
+
+**Quick test after deploy:**
+
+```bash
+cd backend
+PYTHONPATH=. python scripts/purge_soft_deleted_messages.py
+```
+
+**Optional env var** (Render API + cron job):
+
+| Variable | Default | Notes |
+|----------|---------|--------|
+| `MESSAGE_SOFT_DELETE_RETENTION_DAYS` | `90` | Increase only with policy review |
+
+Add a Render **Cron Job** service (or GitHub Actions schedule) — see the runbook for copy-paste config including an optional `render.yaml` snippet.
+

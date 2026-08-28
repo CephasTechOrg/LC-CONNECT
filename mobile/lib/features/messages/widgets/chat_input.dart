@@ -77,6 +77,54 @@ class _InputBar extends StatelessWidget {
   }
 }
 
+// ── Outbox warning ────────────────────────────────────────────────
+void _showOutboxFullSnack(BuildContext context) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(
+        'Send queue is full — wait to reconnect, then tap retry.',
+        style: GoogleFonts.dmSans(color: Colors.white),
+      ),
+      backgroundColor: AppColors.error,
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+    ),
+  );
+}
+
+class _OutboxBanner extends StatelessWidget {
+  final ValueListenable<int> outboxCount;
+  const _OutboxBanner({required this.outboxCount});
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<int>(
+      valueListenable: outboxCount,
+      builder: (context, count, _) {
+        if (count < RealtimeClient.outboxWarnThreshold) return const SizedBox.shrink();
+        final full = count >= RealtimeClient.maxOutboxSize;
+        final label = full
+            ? 'Send queue full — reconnect to send more'
+            : 'Send queue nearly full ($count/${RealtimeClient.maxOutboxSize})';
+        return Container(
+          width: double.infinity,
+          color: AppColors.error.withAlpha(30),
+          padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.dmSans(
+              fontSize: 11,
+              color: AppColors.error,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
 // ── Connection banner ─────────────────────────────────────────────
 class _ConnectionBanner extends StatelessWidget {
   final ValueListenable<RealtimeStatus> status;

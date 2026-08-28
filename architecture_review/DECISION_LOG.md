@@ -16,6 +16,8 @@
 
 **Limitation:** Pub/Sub is at-most-once and not durable. PostgreSQL remains the source of truth.
 
+**Ops (2026-08-27):** Do **not** provision Redis until ready to run 2+ API workers/instances. Single-instance memory fallback is intentional until then; add Redis (+ `REDIS_URL`) in the same window as scaling, Redis first.
+
 ## ADR-004 — Persist before publish
 
 **Decision:** Commit the message to PostgreSQL before publishing a live event.

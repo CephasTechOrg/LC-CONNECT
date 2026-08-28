@@ -26,30 +26,14 @@ class User(Base):
     __tablename__ = 'users'
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    # Supabase Auth subject (auth.users.id). Nullable until backfill completes.
+    # Supabase Auth subject (auth.users.id). NULL only on soft-deleted tombstones
+    # (account deletion unlinks) or before ops linking completes — see AUTH_USER_LINKING_RUNBOOK.
     auth_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
-    # RETIRED — legacy custom-password auth. This column and the four `*_otp_*` ones below are
-    # kept deliberately, not by oversight: the router, JWT and bcrypt helpers that used them were
-    # deleted when Supabase Auth became the only auth path, and nothing reads them any more.
-    #
-    # They stay because dropping columns is irreversible and buys nothing here — they are all
-    # NULL in every row, and a nullable column costs only a null-bitmap bit. The one argument for
-    # dropping them (dormant password hashes are a liability if the database leaks) does not
-    # apply while they hold no data; if that ever changes, NULL the data out rather than dropping
-    # the columns, which gets the same win reversibly.
-    #
-    # Do not start using these for anything. Auth belongs to Supabase.
-    password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
     role: Mapped[str] = mapped_column(String(30), default='student', nullable=False)
     status: Mapped[str] = mapped_column(String(30), default='active', nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    # Retired with `password_hash` above — see that comment before touching these four.
-    verify_otp_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    verify_otp_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    reset_otp_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    reset_otp_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
     # Set when the user self-deletes. The row is anonymized in place (see app/features/account),

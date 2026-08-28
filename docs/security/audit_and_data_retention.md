@@ -108,13 +108,34 @@ content). URLs are public (with a cache-buster) — appropriate for display imag
 
 We intentionally stop short of *total* retention:
 
-- **No indefinite retention of all deleted content.** Soft-deleted messages persist today because we
-  have no purge job yet — but the intended end state is a **bounded retention window** (e.g. ~90
-  days for moderation), after which soft-deleted content is purged. This balances safety with the
-  user's reasonable expectation that "delete" eventually means gone.
+- **No indefinite retention of all deleted content.** Soft-deleted messages persist for
+  **`MESSAGE_SOFT_DELETE_RETENTION_DAYS`** (default **90**), then a daily cron job hard-deletes
+  eligible rows via `scripts/purge_soft_deleted_messages.py`. Report snapshots (`message_body`)
+  are unaffected.
 - **Deferred, in priority order:**
   1. `deleted_by` attribution on message deletes.
   2. Soft-archive for group deletion (stop the hard cascade).
-  3. Retention window / auto-purge job for soft-deleted content.
+  3. ~~Retention window / auto-purge job for soft-deleted content.~~ ✅ (cron + script)
 
 Each is a clean follow-up; none re-opens the safety hole now that reports self-preserve evidence.
+
+---
+
+## 9. Scheduled purge (operations)
+
+**What:** Hard-delete `messages` rows where `deleted_at` is older than the retention window.
+
+**Default window:** 90 days (`MESSAGE_SOFT_DELETE_RETENTION_DAYS`).
+
+Schedule daily via platform cron — **full setup:** [`MESSAGE_RETENTION_CRON_RUNBOOK.md`](./MESSAGE_RETENTION_CRON_RUNBOOK.md).
+
+**Script:**
+
+```bash
+cd backend
+.venv/bin/python scripts/purge_soft_deleted_messages.py          # dry-run
+.venv/bin/python scripts/purge_soft_deleted_messages.py --apply  # delete eligible rows
+```
+
+**Safety:** `reports.message_body` snapshots are **not** purged. If a message row is deleted,
+`reports.message_id` becomes `NULL` but the copied text remains.

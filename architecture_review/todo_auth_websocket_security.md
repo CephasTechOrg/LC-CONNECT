@@ -33,9 +33,9 @@
 - [x] Token refresh behavior — Dio interceptor recovers a 401 by refreshing the session once and replaying the request (shared in-flight refresh); `AuthNotifier` listens to `onAuthStateChange` to keep the stored token fresh and sign out on session death. (Reconnect/backoff is Phase 2 WebSocket work.)
 - [x] Password recovery functional — OTP-code flow (`resetPasswordForEmail` → `verifyOTP(recovery)` → `updateUser`); no deep link required
 - [ ] (Optional) Recovery **deep links** — tap-email-to-open-app UX. Deferred: needs iOS `Info.plist` URL scheme + `passwordRecovery` auth-event routing + **Supabase dashboard redirect-URL allow-list** (external). Not needed for the feature to work.
-- [ ] Formal existing-user linking runbook / backfill script
+- [x] Formal existing-user linking runbook / backfill script (`AUTH_USER_LINKING_RUNBOOK.md` + `scripts.link_auth_users`)
 - [ ] Retire custom auth (`AUTH_LEGACY_ENABLED=false`)
-- [ ] Drop old credential columns (`password_hash`, OTP fields)
+- [x] Drop old credential columns (`password_hash`, OTP fields) — migration `a0b1c2d3e4f5`
 - [ ] Rotate old custom JWT secret
 - [~] Auth automated tests — done: verified/unverified, active/suspended, admin-aal2 (all cases), missing-token 401, route-wiring (unverified → 403), email-confirmed allows staff, connect-student blocks staff (`tests/test_auth_guards.py`). Still open: bootstrap concurrency + real expired/invalid token cases.
 
@@ -192,8 +192,8 @@ Apple Developer account; iOS in-app sound to be verified on a real device.)
 - [x] Active-chat block revocation (`test_realtime_manager.py::test_revoke_pair_revokes_shared_conversation`)
 - [x] Idempotent sends (WS: `test_duplicate_send_returns_same_ack`; service: `test_messages_service.py::test_persist_returns_existing_row_on_conflict`)
 - [x] Cursor sync (`test_messages_service.py` — keyset direction guards for `page_thread`/`sync_thread`)
-- [ ] Multi-instance Redis
-- [ ] Redis outage
+- [ ] Multi-instance Redis _(deferred — provision when adding 2+ workers; single-instance OK until then)_
+- [ ] Redis outage _(exercise when REDIS_URL is live)_
 - [ ] Background/reconnect
 - [ ] Rate limits
 - [ ] Upload attacks

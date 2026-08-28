@@ -6,7 +6,9 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lc_connect/core/api/api_client.dart';
+import 'package:lc_connect/features/messages/data/chat_message_cache.dart';
 import 'package:lc_connect/features/messages/providers/messages_provider.dart';
+import 'package:lc_connect/features/messages/providers/unread_provider.dart';
 import 'package:lc_connect/features/messages/screens/messages_screen.dart';
 import 'package:lc_connect/features/messages/screens/chat_screen.dart';
 import 'package:lc_connect/features/auth/providers/auth_provider.dart';
@@ -53,6 +55,19 @@ class _MockAuthNotifier extends AuthNotifier {
         role: 'student',
         profileCompleted: true,
       );
+}
+
+class _MockUnreadNotifier extends UnreadNotifier {
+  @override
+  UnreadState build() => const UnreadState();
+}
+
+class _NoopChatCache extends ChatMessageCache {
+  @override
+  Future<List<ChatMessage>?> load(String conversationId) async => null;
+
+  @override
+  Future<void> save(String conversationId, List<ChatMessage> messages) async {}
 }
 
 ProviderScope _threadScope({
@@ -390,6 +405,7 @@ void main() {
       return ProviderScope(
         overrides: [
           authNotifierProvider.overrideWith(_MockAuthNotifier.new),
+          unreadProvider.overrideWith(_MockUnreadNotifier.new),
           // Real client, but never connected: this override omits the auth
           // listener that calls connect(), so no socket/backoff timer is created
           // (the widget renders against an idle client). Keeps the test hermetic.
@@ -402,6 +418,7 @@ void main() {
             return client;
           }),
           apiClientProvider.overrideWith((ref) => _stubApiClient()),
+          chatMessageCacheProvider.overrideWith((ref) => _NoopChatCache()),
         ],
         child: MaterialApp(
           home: ChatScreen(
@@ -459,6 +476,7 @@ void main() {
     Widget badIdScope(String badId) => ProviderScope(
           overrides: [
             authNotifierProvider.overrideWith(_MockAuthNotifier.new),
+          unreadProvider.overrideWith(_MockUnreadNotifier.new),
             realtimeClientProvider.overrideWith((ref) {
               final client = RealtimeClient(
                 url: Uri.parse('ws://localhost/ws'),

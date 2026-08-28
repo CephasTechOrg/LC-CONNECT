@@ -24,7 +24,7 @@ It is **not yet enterprise-grade for campus-wide production**. Primary blockers:
 | Security posture | 6.5/10 | Strong auth/authz patterns; distributed controls missing |
 | Mobile UX | 6.0/10 | Cohesive design; accessibility and error consistency weak |
 | Reliability / SRE | 5.5/10 | Message durability good; health/metrics/tracing absent |
-| Compliance readiness | 4.5/10 | No export, incomplete audit, retention undefined |
+| Compliance readiness | 5/10 | Export + deletion; 90-day message purge via cron; audit/legal-hold gaps remain |
 | Test / CI confidence | 5.5/10 | ~350 tests exist; CI runs DB-free subset only |
 | **Campus-wide launch readiness** | **5.8/10** | Pilot-ready single instance; not multi-instance production |
 
@@ -168,7 +168,7 @@ Discovery cards
 | No request correlation IDs | Slow incident debugging | High → **Resolved (Sprint B #7)** |
 | No metrics/tracing/Sentry | Blind to latency, error rates, WS connection counts | High (WS count now on admin; latency/Sentry still open) |
 | CI skips `tests/db/` (~40 files) | **Resolved (#1)** — `backend-db` CI job runs Postgres 16 integration suite | — |
-| Legacy DB columns (`password_hash`, OTP) | Migration debt; low active risk while NULL | Medium |
+| Legacy DB columns (`password_hash`, OTP) | **Resolved (#20)** — columns dropped (`a0b1c2d3e4f5`); run linking gate first | — |
 | `admin/router.py` at 514 lines | Approaching maintainability threshold | Low |
 
 **Key file:** `backend/app/main.py` — `/health` returns OK even if PostgreSQL is down. Admin `system-status` performs live checks but is gated behind admin auth.
@@ -188,7 +188,7 @@ Discovery cards
 | Input validation | Pydantic + length bounds | Chunked upload bypass on body size middleware |
 | File upload (avatars) | Decode, pixel cap, EXIF strip, re-encode | Document uploads lack AV scan |
 | Audit logging | Stronger | Report views/resolutions + suspension reasons audited (#8) |
-| Privacy rights | Partial | Export yes (#9); deletion yes; retention policy still incomplete |
+| Privacy rights | Partial | Export yes (#9); deletion yes; soft-delete purge yes (#21); legal hold / group archive still open |
 | Encryption | TLS + DB at-rest | Messages plaintext at rest (by design for moderation) |
 | Secrets management | Env-only service keys | No CI secret scanning |
 | Production hardening | Stronger | `/docs` off in prod; security headers + HSTS in prod (#14) |
@@ -244,15 +244,15 @@ Discovery cards
 | Dead attachment "+" button | Chat input | **Done** — removed (#10) |
 | Raw errors in SnackBars | Register, connections, activities | **Done** — mapped via `apiErrorMessage` / `authErrorMessage` (#12) |
 | Send spinner never activates | `chat_screen.dart` `_InputBar.sending` | Open |
-| Orphaned `home_screen.dart` | Not in router | Open (#24) |
+| Orphaned `home_screen.dart` | **Resolved (#24)** — deleted; `/home` → `CampusHubScreen` only | — |
 | Light mode only | No `darkTheme` | Open |
 | Tab `context.go()` resets stack | `nav_shell.dart` | Open |
 
 ### 5.3 Chat UX (strongest mobile area)
 
-**Strengths:** Optimistic send, reconnect sync, typing indicators, read receipts, connection banner, in-app foreground banners, failed-message retry, history-load error + retry (#4).
+**Strengths:** Optimistic send, reconnect sync, typing indicators, read receipts, connection banner, in-app foreground banners, failed-message retry, history-load error + retry (#4), scroll-to-bottom FAB (#23), outbox-full warning (#23), per-thread message cache (#23).
 
-**Gaps:** Scroll-to-bottom when scrolled up; outbox-full warning; no media attachments.
+**Gaps:** No media attachments.
 
 ### 5.4 Offline handling
 
@@ -263,7 +263,7 @@ Discovery cards
 | Friendly timeout messages (`apiErrorMessage`) | Implemented |
 | Global connectivity/backend status banner | Wired (`backendStatusProvider` + `OfflineBannerHost`) |
 | REST offline queue (connect, report, profile save) | Not implemented |
-| Local cache for thread list / messages | Not implemented |
+| Local cache for thread list / messages | Per-thread tail cache for open conversations (#23); thread list still REST-only |
 
 ---
 
@@ -276,7 +276,7 @@ Discovery cards
 
 | Roadmap phase | Status |
 |---------------|--------|
-| Phase 1 — Supabase Auth | Complete (legacy router removed) |
+| Phase 1 — Supabase Auth | Complete (legacy routers removed; credential columns dropped `#20`; linking runbook `#25`) |
 | Phase 2–4 — WebSocket + authz + idempotency | Complete (single instance) |
 | Phase 5 — Redis fan-out | Code complete (`RedisEventBus` + `aallow`); provision `REDIS_URL` in deploy |
 | Phase 6 — Push notifications | FCM integrated |
@@ -345,7 +345,7 @@ Prioritized by ROI and launch risk. Each item includes owner hint, effort estima
 | ✅ 9 | Data export endpoint | 2026-08-26 | `GET /account/export` JSON (`schema_version: 1`); audited `account.export`; 5/day rate limit; mobile Profile → Download my data (clipboard) |
 | ✅ 15 | Refresh stale architecture/security docs | 2026-08-26 | `PHASE_0_1_STATUS.md` rewritten; security overview/RLS/rate-limit/audit; docs README + folder_structure; Realtime messaging marked historical |
 
-### Completed (Sprint D — in progress)
+### Completed (Sprint D — ✅ complete)
 
 | # | Action | Completed | Notes |
 |---|--------|-----------|-------|
@@ -354,12 +354,17 @@ Prioritized by ROI and launch risk. Each item includes owner hint, effort estima
 | ✅ 19 | Pull-to-refresh on Discovery, Activities, Connections, Profile | 2026-08-27 | `RefreshIndicator` + `ref.refresh(….future)`; also Groups + staff directory; empty lists use `AlwaysScrollableScrollPhysics` |
 | ✅ 16 | Accessibility pass | 2026-08-27 | `AppAccessibleIconButton`, filter-chip semantics, 48dp targets, nav badge labels, text scale clamp 1.4× |
 | ✅ 17 | Skeleton loaders on hub + list screens | 2026-08-27 | `app_skeleton.dart` on Campus hub, Discovery, Activities, Connections, Profile, Messages, Groups |
+| ✅ 25 | Existing-user `auth_user_id` linking runbook + script | 2026-08-27 | `AUTH_USER_LINKING_RUNBOOK.md`; `scripts.link_auth_users`; `app/shared/auth_linking.py` |
+| ✅ 20 | Drop legacy `password_hash` / OTP columns | 2026-08-27 | Alembic `a0b1c2d3e4f5`; model + account anonymize cleaned |
+| ✅ 24 | Delete orphaned `home_screen.dart` | 2026-08-27 | Removed unused HomeScreen + parts; `/home` remains CampusHub |
 
 ### P0 — Before campus-wide launch (remaining blockers)
 
 | # | Action | Owner | Effort | Acceptance criteria |
 |---|--------|-------|--------|---------------------|
 | — | Provision Redis in each deploy env + set `REDIS_URL` before multi-instance | Ops | — | Health `/health/ready` redis=ok; 2+ API instances share fan-out |
+
+**Ops decision (2026-08-27):** Redis provisioning is **deferred on purpose**. Stay on a **single API instance** (in-memory fan-out / rate limits). Add Redis (+ set `REDIS_URL` on every instance) **immediately before** scaling to 2+ workers — not earlier. Code path already supports Redis when configured.
 
 ### P1 — Enterprise hardening (30–60 days)
 
@@ -380,12 +385,12 @@ Prioritized by ROI and launch risk. Each item includes owner hint, effort estima
 | 17 | ~~Skeleton loaders on hub + list screens~~ | Mobile | 3–5 days | ~~Primary lists show placeholder content while loading~~ ✅ |
 | 18 | ~~Global offline/connectivity banner (wire `backendStatusProvider` or connectivity listener)~~ | Mobile | 2–3 days | ~~User sees banner when server unreachable~~ ✅ |
 | 19 | ~~Pull-to-refresh on Discovery, Activities, Connections, Profile~~ | Mobile | 2 days | ~~All primary list screens support manual refresh~~ ✅ |
-| 20 | Retire legacy DB columns after backfill runbook | Backend / DBA | 1 week | `password_hash`, OTP columns dropped; migration applied |
-| 21 | Retention purge automation for soft-deleted messages | Backend | 1 week | Scheduled job per published retention policy |
+| 20 | ~~Retire legacy DB columns after backfill runbook~~ | Backend / DBA | 1 week | ~~`password_hash`, OTP columns dropped; migration applied~~ ✅ |
+| 21 | ~~Retention purge automation for soft-deleted messages~~ | Backend | 1 week | ~~Scheduled job per published retention policy~~ ✅ |
 | 22 | Suspension appeal / support workflow | Product + Backend | 2 weeks | User-facing appeal path documented and implemented |
-| 23 | Chat maturity: scroll-to-bottom FAB, outbox-full warning, optional local cache | Mobile | 1–2 weeks | Long offline sessions don't silently drop sends |
-| 24 | Delete or archive orphaned `home_screen.dart` | Mobile | 0.5 day | No unrouted dead screens in codebase |
-| 25 | Formal existing-user linking runbook / backfill script | Backend / Ops | 3–5 days | All historical users have `auth_user_id` populated |
+| 23 | ~~Chat maturity: scroll-to-bottom FAB, outbox-full warning, optional local cache~~ | Mobile | 1–2 weeks | ~~Long offline sessions don't silently drop sends~~ ✅ |
+| 24 | ~~Delete or archive orphaned `home_screen.dart`~~ | Mobile | 0.5 day | ~~No unrouted dead screens in codebase~~ ✅ |
+| 25 | ~~Formal existing-user linking runbook / backfill script~~ | Backend / Ops | 3–5 days | ~~All historical users have `auth_user_id` populated~~ ✅ |
 
 ---
 
@@ -420,7 +425,7 @@ Aligns with `05_execution_roadmap.md` and closes gaps identified in this review.
 3. ~~Data export (#9)~~ ✅
 4. ~~Documentation refresh (#15)~~ ✅
 
-**Sprint C complete** (code + docs). Remaining ops: provision Redis before multi-instance. Next: Sprint D — UX / accessibility.
+**Sprint C complete** (code + docs). Redis ops deferred until multi-instance (see P0). Sprint D — UX / accessibility: complete.
 
 ### Sprint D — UX and accessibility (3–4 weeks)
 

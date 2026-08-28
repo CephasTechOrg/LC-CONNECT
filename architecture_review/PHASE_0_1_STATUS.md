@@ -39,9 +39,9 @@ Flutter (iOS / Android)
 | **0 — Baseline** | ✅ Docs, Alembic, CI (unit + Postgres), line limits, pinned deps |
 | **1 — Supabase Auth** | ✅ JWT verify, bootstrap, Flutter Auth, email-confirmed / student gates, Dio refresh |
 | **2–4 — WebSocket messaging** | ✅ Auth-first WS, persist-before-publish, idempotent sends, sync/cursor, typing, idle/frame limits |
-| **5 — Redis** | ✅ Code (`RedisEventBus`, `RateLimiter.aallow`); provision `REDIS_URL` before multi-instance |
+| **5 — Redis** | ✅ Code (`RedisEventBus`, `RateLimiter.aallow`); **ops deferred** — provision `REDIS_URL` later, right before multi-instance |
 | **6 — Push** | ✅ FCM path when credentials configured |
-| **7 — Privacy** | ✅ Account deletion + `GET /account/export`; retention purge still deferred |
+| **7 — Privacy** | ✅ Account deletion + `GET /account/export`; soft-delete message purge (cron + script, 90-day default) |
 | **Hardening (Sprint A–C)** | ✅ See [`06_enterprise_system_review.md`](./06_enterprise_system_review.md) |
 
 Live checklist: [`todo_auth_websocket_security.md`](./todo_auth_websocket_security.md).
@@ -58,7 +58,8 @@ Live checklist: [`todo_auth_websocket_security.md`](./todo_auth_websocket_securi
 
 - Drop unused legacy DB columns (`password_hash`, OTP fields) after a formal backfill/runbook (#20).
 - Redis typing/presence TTL keys (client timers work today).
-- Soft-archive for group hard-delete; retention purge job for soft-deleted messages.
+- Soft-archive for group hard-delete.
+- ~~Retention purge job for soft-deleted messages~~ ✅ (`scripts/purge_soft_deleted_messages.py` + daily cron).
 
 ---
 
@@ -66,9 +67,10 @@ Live checklist: [`todo_auth_websocket_security.md`](./todo_auth_websocket_securi
 
 | Item | Guidance |
 |------|----------|
-| Single API instance | Fine without Redis |
-| 2+ workers / instances | Set `REDIS_URL` on every instance first |
+| Single API instance | Fine without Redis — **current plan**; Redis deferred until workers |
+| 2+ workers / instances | Set `REDIS_URL` on every instance **first**, then scale |
 | Health | `GET /health` liveness · `GET /health/ready` (DB required; Redis when configured) |
+| Message retention cron | [`MESSAGE_RETENTION_CRON_RUNBOOK.md`](./MESSAGE_RETENTION_CRON_RUNBOOK.md) — daily purge of soft-deleted messages |
 | Prod OpenAPI | `/docs` disabled when `ENVIRONMENT=production` |
 
 ---

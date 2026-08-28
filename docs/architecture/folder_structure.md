@@ -58,17 +58,15 @@ extracted into `features/<feature>/widgets/` using Dart **`part` files**: the sc
 `part '../widgets/<name>.dart';` and each widget file starts with
 `part of '../screens/<screen>.dart';`. This keeps the sub-widgets private to the screen library
 and lets them share the screen's imports and helpers, while each file stays small. Example —
-`home/`:
+`home/` (historical — removed; Campus tab is `campus_hub/`):
 
 ```text
-home/
-  screens/home_screen.dart           # state + wiring only (~190 lines)
+campus_hub/
+  screens/campus_hub_screen.dart     # state + wiring
   widgets/
-    home_header.dart                 # part of home_screen.dart
-    home_feed_sections.dart
-    home_student_card.dart
-    home_activity_list.dart
-    home_match_cards.dart
+    campus_home_header.dart          # part of campus_hub_screen.dart
+    campus_hub_sections.dart
+    campus_home_previews.dart
 ```
 
 ## 3. Backend (`backend/`)

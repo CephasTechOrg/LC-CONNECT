@@ -77,7 +77,6 @@ async def bootstrap_user(db: AsyncSession, claims: SupabaseClaims) -> User:
     user = User(
         auth_user_id=claims.sub,
         email=email,
-        password_hash=None,
         is_verified=claims.email_verified,
         role=infer_role_from_email(email),
         status='active',

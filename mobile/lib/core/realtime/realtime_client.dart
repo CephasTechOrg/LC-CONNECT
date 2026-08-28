@@ -41,9 +41,12 @@ class RealtimeClient {
   final Future<String?> Function() tokenProvider;
   final Random _random;
 
-  static const _maxOutbox = 50;
+  static const maxOutboxSize = 50;
+  /// Warn the UI when the offline send queue is nearly full.
+  static const outboxWarnThreshold = 40;
 
   final _status = ValueNotifier<RealtimeStatus>(RealtimeStatus.disconnected);
+  final _outboxCount = ValueNotifier<int>(0);
   final _events = StreamController<InboundEvent>.broadcast();
   final _reconnected = StreamController<void>.broadcast();
   final _subscriptions = <String>{};
@@ -60,6 +63,10 @@ class RealtimeClient {
       : _random = random ?? Random();
 
   ValueListenable<RealtimeStatus> get status => _status;
+
+  /// Queued `message.send` frames waiting for the socket to reach `ready`.
+  ValueListenable<int> get outboxCount => _outboxCount;
+
   Stream<InboundEvent> get events => _events.stream;
 
   /// Fires when the socket returns to `ready` after a drop — cue to REST-sync.
@@ -124,6 +131,7 @@ class RealtimeClient {
       // server via client_message_id, so re-flushing after a reconnect is safe).
       final pending = List.of(_outbox);
       _outbox.clear();
+      _syncOutboxCount();
       for (final frame in pending) {
         _sink(frame);
       }
@@ -174,14 +182,20 @@ class RealtimeClient {
     if (_status.value == RealtimeStatus.ready) _sink(unsubscribeFrame(conversationId));
   }
 
-  void sendMessage({required String conversationId, required String clientMessageId, required String body}) {
+  /// Returns `false` when the offline outbox is full — caller should surface failure.
+  bool sendMessage({required String conversationId, required String clientMessageId, required String body}) {
     final frame = sendFrame(requestId: uuidV4(_random), conversationId: conversationId, clientMessageId: clientMessageId, body: body);
     if (_status.value == RealtimeStatus.ready) {
       _sink(frame);
-    } else if (_outbox.length < _maxOutbox) {
-      _outbox.add(frame); // flushed on next auth.ok
+      return true;
     }
+    if (_outbox.length >= maxOutboxSize) return false;
+    _outbox.add(frame); // flushed on next auth.ok
+    _syncOutboxCount();
+    return true;
   }
+
+  void _syncOutboxCount() => _outboxCount.value = _outbox.length;
 
   void sendTyping(String conversationId, {required bool active}) => _sink(typingFrame(conversationId, active: active));
 
@@ -197,6 +211,7 @@ class RealtimeClient {
   void clear() {
     _subscriptions.clear();
     _outbox.clear();
+    _syncOutboxCount();
     _teardown();
   }
 
@@ -231,6 +246,7 @@ class RealtimeClient {
     _events.close();
     _reconnected.close();
     _status.dispose();
+    _outboxCount.dispose();
   }
 }
 

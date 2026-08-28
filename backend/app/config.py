@@ -110,6 +110,12 @@ class Settings(BaseSettings):
     ws_max_malformed_frames: int = Field(default=10, alias='WS_MAX_MALFORMED_FRAMES')
     ws_outbox_max_size: int = Field(default=256, alias='WS_OUTBOX_MAX_SIZE')
 
+    # Soft-deleted messages are hidden from clients immediately; rows (and bodies) are
+    # hard-purged after this window by `scripts/purge_soft_deleted_messages.py` (cron).
+    message_soft_delete_retention_days: int = Field(
+        default=90, alias='MESSAGE_SOFT_DELETE_RETENTION_DAYS'
+    )
+
     # Push notifications (FCM). SECRET — set via env/secret, never commit. Absent → push disabled.
     firebase_credentials_json: str | None = Field(default=None, alias='FIREBASE_CREDENTIALS_JSON')
     # Grace before an offline push: absorb Wi-Fi↔cellular handoffs / rapid reconnects.

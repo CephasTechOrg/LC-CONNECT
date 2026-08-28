@@ -76,6 +76,57 @@ class _MessageList extends StatelessWidget {
   }
 }
 
+// ── Scroll-to-bottom FAB ─────────────────────────────────────────
+class _ScrollToBottomFab extends StatelessWidget {
+  final int newCount;
+  final VoidCallback onTap;
+  const _ScrollToBottomFab({required this.newCount, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      elevation: 3,
+      shadowColor: Colors.black26,
+      color: AppColors.surface,
+      shape: const CircleBorder(),
+      child: InkWell(
+        onTap: onTap,
+        customBorder: const CircleBorder(),
+        child: SizedBox(
+          width: 44,
+          height: 44,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.primary, size: 26),
+              if (newCount > 0)
+                Positioned(
+                  top: 4,
+                  right: 4,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      newCount > 99 ? '99+' : '$newCount',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 // List item types for interleaving date separators and bubbles
 abstract class _ListItem {}
 

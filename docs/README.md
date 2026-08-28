@@ -66,3 +66,4 @@ Product overview, full project description, the to-do log, and an archived exter
 | Review the security & access-control model | [`security/overview.md`](./security/overview.md) |
 | Change a rate limit or the group size cap | [`security/rate_limiting.md`](./security/rate_limiting.md) |
 | Answer a data-deletion / audit question | [`security/audit_and_data_retention.md`](./security/audit_and_data_retention.md) |
+| Set up the daily message retention cron | [`architecture_review/MESSAGE_RETENTION_CRON_RUNBOOK.md`](../architecture_review/MESSAGE_RETENTION_CRON_RUNBOOK.md) |

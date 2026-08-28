@@ -20,12 +20,17 @@ import '../../safety/providers/safety_provider.dart';
 import '../../safety/widgets/safety_sheet.dart';
 import '../providers/messages_provider.dart';
 import '../providers/unread_provider.dart';
+import '../data/chat_message_cache.dart';
 
 part '../widgets/chat_header.dart';
 part '../widgets/chat_message_list.dart';
 part '../widgets/chat_bubble.dart';
 part '../widgets/chat_input.dart';
 part '../widgets/chat_unavailable.dart';
+part '../widgets/chat_screen_body.dart';
+
+/// Pixels from the bottom of the list before we treat the user as "scrolled up".
+const _kScrollBottomThreshold = 96.0;
 
 class ChatScreen extends ConsumerStatefulWidget {
   /// For a DM this is the match id; for a group it's the group's conversation id — the
@@ -56,18 +61,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   final _inputController = TextEditingController();
   final _scrollController = ScrollController();
-  final List<ChatMessage> _messages = []; // ascending (oldest → newest)
+  final List<ChatMessage> _messages = [];
   final _seenServerIds = <String>{};
-  final _sendTimers = <String, Timer>{}; // clientMessageId → fail-after timer
+  final _sendTimers = <String, Timer>{};
 
   bool _loading = true;
   bool _loadingOlder = false;
   bool _hasMore = true;
-  /// Set when the first history page fails and the list is still empty — shown as
-  /// [AppErrorState] so the user is not left thinking the conversation is empty.
   String? _loadError;
   bool _partnerTyping = false;
-  String? _typingUserId; // who is typing (group mode → resolve to their name)
+  String? _typingUserId;
+  bool _awayFromBottom = false;
+  int _newWhileAway = 0;
   String _currentUserId = '';
   DateTime _lastTypingSent = DateTime.fromMillisecondsSinceEpoch(0);
 
@@ -75,12 +80,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   StreamSubscription<void>? _reconnectSub;
   Timer? _typingResetTimer;
   Timer? _typingStopTimer;
+  Timer? _cacheSaveTimer;
 
-  // Captured once in initState: reading a provider via `ref` in dispose() is
-  // unsafe (the element is unmounting). The client is a session singleton, so the
-  // instance never changes while this screen is mounted.
   late final RealtimeClient _rt;
-  // Captured in initState so dispose() never touches `ref` while unmounting.
   late final UnreadNotifier _unread;
 
   @override
@@ -88,14 +90,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     super.initState();
     _rt = ref.read(realtimeClientProvider);
     _currentUserId = ref.read(authNotifierProvider).asData?.value?.id ?? '';
-    // Mark this chat active + optimistically zero its badge. Deferred to a microtask
-    // because initState runs during the build phase and Riverpod forbids mutating a
-    // provider then. Any message landing in the sub-millisecond gap is harmless — it's
-    // this conversation, which `clearConversation` immediately zeroes anyway. The real
-    // read still goes out via WS (_sendRead).
     _unread = ref.read(unreadProvider.notifier);
     if (!_validThread) {
-      _loading = false; // nothing to load — build() shows the unavailable state
+      _loading = false;
       return;
     }
     Future.microtask(() {
@@ -120,6 +117,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     _reconnectSub?.cancel();
     _typingResetTimer?.cancel();
     _typingStopTimer?.cancel();
+    _cacheSaveTimer?.cancel();
     for (final t in _sendTimers.values) {
       t.cancel();
     }
@@ -128,28 +126,34 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     super.dispose();
   }
 
-  // ── history (paginated REST) ──────────────────────────────────────
-
   Future<void> _loadInitial() async {
     if (!_validThread) return;
+    final cached = await ref.read(chatMessageCacheProvider).load(widget.matchId);
+    if (mounted && cached != null && cached.isNotEmpty) {
+      setState(() {
+        _absorb(cached);
+        _loading = false;
+      });
+      _scrollToBottom(jump: true, force: true);
+    }
     try {
       final resp = await ref
           .read(apiClientProvider)
           .dio
           .get('/messages/threads/${widget.matchId}', queryParameters: {'limit': _pageSize});
       if (!mounted) return;
-      final page = _parsePage(resp.data as List); // newest-first → ascending
+      final page = _parsePage(resp.data as List);
       setState(() {
-        _absorb(page); // merge — preserve any live messages that arrived during the load
+        _absorb(page);
         _hasMore = page.length >= _pageSize;
         _loading = false;
         _loadError = null;
       });
-      _scrollToBottom(jump: true);
+      _scrollToBottom(jump: true, force: true);
       _sendRead();
+      _scheduleCacheSave();
     } catch (e) {
       if (!mounted) return;
-      // Only surface an empty-thread error if nothing arrived live during the failed load.
       setState(() {
         _loading = false;
         if (_messages.isEmpty) {
@@ -173,7 +177,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   Future<void> _loadOlder() async {
     if (_loadingOlder || !_hasMore || _messages.isEmpty) return;
     final oldest = _messages.first;
-    if (oldest.id.startsWith('local:')) return; // no server cursor yet
+    if (oldest.id.startsWith('local:')) return;
     _loadingOlder = true;
     try {
       final resp = await ref.read(apiClientProvider).dio.get(
@@ -191,7 +195,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         _hasMore = older.length >= _pageSize;
       });
     } catch (_) {
-      // keep _hasMore; user can retry by scrolling
     } finally {
       _loadingOlder = false;
     }
@@ -215,7 +218,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       final missed = _parseAscending(resp.data as List);
       if (missed.isNotEmpty) {
         setState(() => _absorb(missed));
-        _scrollToBottom();
+        if (_isNearBottom) {
+          _scrollToBottom();
+        } else {
+          setState(() => _newWhileAway += missed.length);
+        }
+        _scheduleCacheSave();
       }
     } catch (_) {}
   }
@@ -235,9 +243,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     return list;
   }
 
-  /// Merge server messages into the list by id — never clobbers live messages that
-  /// arrived during a load, and drops an optimistic row once its server row appears.
-  /// (Call inside setState.)
   void _absorb(List<ChatMessage> serverMessages) {
     final incomingClientIds = <String>{
       for (final m in serverMessages)
@@ -248,7 +253,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       if (m.id.startsWith('local:') &&
           m.clientMessageId != null &&
           incomingClientIds.contains(m.clientMessageId)) {
-        continue; // superseded by its server version below
+        continue;
       }
       byId[m.id] = m;
     }
@@ -262,7 +267,19 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       ..addAll(merged);
   }
 
-  // ── live events ───────────────────────────────────────────────────
+  void _scheduleCacheSave() {
+    _cacheSaveTimer?.cancel();
+    _cacheSaveTimer = Timer(const Duration(milliseconds: 400), () {
+      if (!mounted || !_validThread) return;
+      ref.read(chatMessageCacheProvider).save(widget.matchId, _messages);
+    });
+  }
+
+  bool get _isNearBottom {
+    if (!_scrollController.hasClients) return true;
+    final pos = _scrollController.position;
+    return pos.maxScrollExtent - pos.pixels <= _kScrollBottomThreshold;
+  }
 
   void _onEvent(InboundEvent event) {
     if (!mounted) return;
@@ -289,7 +306,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     setState(() => _messages[idx] = _messages[idx].copyWith(deleted: true));
   }
 
-  /// Delete a message for everyone (optimistic; reverts + warns on failure).
   Future<void> _deleteMessage(ChatMessage msg) async {
     _markDeleted(msg.id);
     try {
@@ -309,7 +325,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
   }
 
-  /// True if I'm an admin/owner of this group (may moderate — delete others' messages).
   bool get _iAmGroupAdmin {
     if (!_isGroup) return false;
     final members = ref.watch(groupMembersProvider(widget.groupId!)).asData?.value;
@@ -321,10 +336,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   void _mergeIncoming(ChatMessage msg) {
-    if (_seenServerIds.contains(msg.id)) {
-      return;
-    }
-    // Our own message echoed back — already reconciled via ack.
+    if (_seenServerIds.contains(msg.id)) return;
     if (msg.clientMessageId != null &&
         _messages.any((m) => m.clientMessageId == msg.clientMessageId)) {
       _seenServerIds.add(msg.id);
@@ -335,7 +347,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       _messages.add(msg);
       _messages.sort((a, b) => a.createdAt.compareTo(b.createdAt));
     });
-    _scrollToBottom();
+    final isMine = msg.senderId == _currentUserId;
+    if (isMine || _isNearBottom) {
+      _scrollToBottom(force: true);
+    } else {
+      setState(() => _newWhileAway++);
+    }
+    _scheduleCacheSave();
   }
 
   void _reconcileAck(ChatMessage server) {
@@ -351,6 +369,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       }
       _messages.sort((a, b) => a.createdAt.compareTo(b.createdAt));
     });
+    _scheduleCacheSave();
   }
 
   void _setPartnerTyping(bool active, [String? userId]) {
@@ -366,8 +385,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
   }
 
-  /// The name to show in the typing indicator: the group member's name (falling back to
-  /// "Someone" until members load), or the DM partner's name.
   String _typingName(MessagePartner? partner) {
     if (_isGroup) return _senders()[_typingUserId]?.name ?? 'Someone';
     return partner?.displayName ?? 'Your match';
@@ -383,8 +400,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       }
     });
   }
-
-  // ── send / typing / read ──────────────────────────────────────────
 
   void _send() {
     if (!_validThread) return;
@@ -405,11 +420,27 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
     setState(() => _messages.add(optimistic));
     _dispatchSend(clientId, text);
-    _scrollToBottom();
+    _scrollToBottom(force: true);
+    _scheduleCacheSave();
   }
 
   void _dispatchSend(String clientId, String body) {
-    _rt.sendMessage(conversationId: widget.matchId, clientMessageId: clientId, body: body);
+    final accepted = _rt.sendMessage(
+      conversationId: widget.matchId,
+      clientMessageId: clientId,
+      body: body,
+    );
+      if (!accepted) {
+      _sendTimers.remove(clientId)?.cancel();
+      if (!mounted) return;
+      final idx = _messages.indexWhere((m) => m.clientMessageId == clientId);
+      if (idx != -1) {
+        setState(() => _messages[idx] = _messages[idx].copyWith(status: MessageStatus.failed));
+      }
+      _scheduleCacheSave();
+      _showOutboxFullSnack(context);
+      return;
+    }
     _sendTimers[clientId]?.cancel();
     _sendTimers[clientId] = Timer(_sendTimeout, () {
       if (!mounted) return;
@@ -426,7 +457,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final idx = _messages.indexWhere((m) => m.clientMessageId == cid);
     if (idx == -1) return;
     setState(() => _messages[idx] = _messages[idx].copyWith(status: MessageStatus.sending));
-    _dispatchSend(cid, failed.body); // same client id → idempotent
+    _dispatchSend(cid, failed.body);
   }
 
   void _onUserTyping() {
@@ -449,15 +480,29 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
   }
 
-  // ── scroll ────────────────────────────────────────────────────────
-
   void _onScroll() {
+    final nearBottom = _isNearBottom;
+    if (nearBottom != !_awayFromBottom) {
+      setState(() {
+        _awayFromBottom = !nearBottom;
+        if (nearBottom) _newWhileAway = 0;
+      });
+    }
     if (_scrollController.position.pixels <= 80 && !_loadingOlder && _hasMore) {
       _loadOlder();
     }
   }
 
-  void _scrollToBottom({bool jump = false}) {
+  void _scrollToBottomTap() {
+    setState(() {
+      _awayFromBottom = false;
+      _newWhileAway = 0;
+    });
+    _scrollToBottom(force: true);
+  }
+
+  void _scrollToBottom({bool jump = false, bool force = false}) {
+    if (!force && _awayFromBottom) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_scrollController.hasClients) return;
       final target = _scrollController.position.maxScrollExtent;
@@ -470,16 +515,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   bool get _isGroup => widget.groupId != null;
-
-  /// Guard against a malformed thread id reaching the network. `matchId` is a required String,
-  /// but a bad deep-link or push payload can still deliver an empty value or the literal
-  /// "null"/"undefined" from a stringified null. When invalid we render an unavailable state and
-  /// touch no network — the id is never valid mid-session, so this is decided once.
   bool get _validThread => _isValidThreadId(widget.matchId);
 
-  /// Long-press a member's message → report it (group mode only). Scoped to the group so
-  /// moderators know where it came from.
-  /// DM ⋯ menu — report or block the partner (blocking revokes the chat, so return to the inbox).
   void _openDmMenu(MessagePartner partner) {
     showSafetySheet(
       context: context,
@@ -501,8 +538,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
   }
 
-  /// Sender name/avatar by user id, for group bubbles — resolved from the group's members.
-  /// Empty (and identity hidden) until the members load, or for DMs.
   Map<String, MessageSender> _senders() {
     if (!_isGroup) return const {};
     final members = ref.watch(groupMembersProvider(widget.groupId!)).asData?.value;
@@ -518,55 +553,40 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     if (!_validThread) return const _UnavailableChat();
     final partner = widget.thread?.partner;
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _ChatHeader(
-              title: _isGroup ? (widget.groupTitle ?? 'Group') : (partner?.displayName ?? 'Chat'),
-              subtitle: _isGroup ? null : widget.thread?.partnerSubtitle,
-              avatarUrl: _isGroup ? widget.groupAvatarUrl : partner?.avatarUrl,
-              isGroup: _isGroup,
-              isVerified: !_isGroup && (partner?.isVerified ?? false),
-              onIdentityTap: _isGroup
-                  ? () => context.push('/groups/${widget.groupId}')
-                  : (partner != null
-                      ? () => context.push('/users/${partner.profileId}', extra: partner.displayName)
-                      : null),
-              onMenu: (!_isGroup && partner != null) ? () => _openDmMenu(partner) : null,
-            ),
-            _ConnectionBanner(status: _rt.status),
-            Expanded(
-              child: _loading
-                  ? const Center(child: CircularProgressIndicator())
-                  : _loadError != null && _messages.isEmpty
-                      ? AppErrorState(message: _loadError!, onRetry: _retryLoadInitial)
-                      : _messages.isEmpty
-                          ? _EmptyChatState(name: widget.groupTitle ?? partner?.displayName ?? 'your match')
-                          : _MessageList(
-                              messages: _messages,
-                              currentUserId: _currentUserId,
-                              partnerAvatarUrl: partner?.avatarUrl,
-                              isGroup: _isGroup,
-                              senders: _senders(),
-                              onReport: _isGroup ? _reportMessage : null,
-                              onDelete: _deleteMessage,
-                              iAmGroupAdmin: _iAmGroupAdmin,
-                              scrollController: _scrollController,
-                              onRetry: _retry,
-                            ),
-            ),
-            if (_partnerTyping) _TypingIndicator(name: _typingName(partner)),
-            _InputBar(
-              controller: _inputController,
-              sending: false,
-              onSend: _send,
-              onTyping: _onUserTyping,
-            ),
-          ],
-        ),
-      ),
+    return _ChatScreenBody(
+      partner: partner,
+      partnerSubtitle: widget.thread?.partnerSubtitle,
+      loading: _loading,
+      loadError: _loadError,
+      messages: _messages,
+      currentUserId: _currentUserId,
+      isGroup: _isGroup,
+      groupTitle: widget.groupTitle,
+      groupId: widget.groupId,
+      groupAvatarUrl: widget.groupAvatarUrl,
+      senders: _senders(),
+      iAmGroupAdmin: _iAmGroupAdmin,
+      awayFromBottom: _awayFromBottom,
+      newWhileAway: _newWhileAway,
+      partnerTyping: _partnerTyping,
+      typingName: _typingName(partner),
+      inputController: _inputController,
+      scrollController: _scrollController,
+      connectionStatus: _rt.status,
+      outboxCount: _rt.outboxCount,
+      onRetryLoad: _retryLoadInitial,
+      onReport: _reportMessage,
+      onDelete: _deleteMessage,
+      onRetry: _retry,
+      onScrollToBottomTap: _scrollToBottomTap,
+      onSend: _send,
+      onTyping: _onUserTyping,
+      onIdentityTap: _isGroup
+          ? () => context.push('/groups/${widget.groupId}')
+          : (partner != null
+              ? () => context.push('/users/${partner.profileId}', extra: partner.displayName)
+              : null),
+      onMenu: (!_isGroup && partner != null) ? () => _openDmMenu(partner) : null,
     );
   }
 }

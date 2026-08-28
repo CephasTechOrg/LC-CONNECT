@@ -54,7 +54,18 @@ alter table users alter column auth_user_id set not null;
 
 ### Remove old credential columns
 
-After the mobile migration and rollback period, remove password and OTP columns and rotate the old custom JWT secret.
+After linking gate OK (see `AUTH_USER_LINKING_RUNBOOK.md`):
+
+```sql
+-- Applied by Alembic a0b1c2d3e4f5_drop_legacy_credential_columns
+alter table users drop column password_hash;
+alter table users drop column verify_otp_hash;
+alter table users drop column verify_otp_expires_at;
+alter table users drop column reset_otp_hash;
+alter table users drop column reset_otp_expires_at;
+```
+
+`auth_user_id` stays nullable so soft-deleted tombstones can remain unlinked.
 
 ## Token verification
 

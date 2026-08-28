@@ -181,15 +181,10 @@ async def delete_account(db: AsyncSession, user: User) -> None:
 
     # 6. Anonymize the user row and revoke access (is_active=False → auth deps reject immediately).
     user.email = f'deleted+{user_id}@deleted.invalid'
-    user.password_hash = None
     user.auth_user_id = None
     user.status = 'deleted'
     user.is_active = False
     user.is_verified = False
-    user.verify_otp_hash = None
-    user.verify_otp_expires_at = None
-    user.reset_otp_hash = None
-    user.reset_otp_expires_at = None
     user.deleted_at = now
 
     await db.commit()

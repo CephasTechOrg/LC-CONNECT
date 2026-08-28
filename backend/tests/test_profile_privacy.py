@@ -65,5 +65,5 @@ def test_public_profile_carries_no_other_account_fields():
     """The public shape must expose profile data only — never account internals like the auth id,
     password hash, or account status."""
     result = profile_to_public(_profile('student'))
-    forbidden = {'email', 'password_hash', 'auth_user_id', 'status', 'is_active', 'reset_otp_hash'}
+    forbidden = {'email', 'auth_user_id', 'status', 'is_active'}
     assert forbidden.isdisjoint(result.model_fields.keys())

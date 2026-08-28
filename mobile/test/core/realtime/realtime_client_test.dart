@@ -35,4 +35,48 @@ void main() {
       expect(ids.toSet().length, 1000);
     });
   });
+
+  group('sendMessage outbox', () {
+    late RealtimeClient client;
+
+    setUp(() {
+      client = RealtimeClient(
+        url: Uri.parse('ws://localhost/ws'),
+        tokenProvider: () async => 'token',
+        random: Random(1),
+      );
+    });
+
+    tearDown(() => client.dispose());
+
+    test('buffers while disconnected and exposes count', () {
+      expect(client.outboxCount.value, 0);
+      expect(
+        client.sendMessage(conversationId: 'c1', clientMessageId: 'm1', body: 'hi'),
+        isTrue,
+      );
+      expect(client.outboxCount.value, 1);
+    });
+
+    test('returns false when outbox is full', () {
+      for (var i = 0; i < RealtimeClient.maxOutboxSize; i++) {
+        expect(
+          client.sendMessage(conversationId: 'c1', clientMessageId: 'm$i', body: 'x'),
+          isTrue,
+        );
+      }
+      expect(client.outboxCount.value, RealtimeClient.maxOutboxSize);
+      expect(
+        client.sendMessage(conversationId: 'c1', clientMessageId: 'overflow', body: 'nope'),
+        isFalse,
+      );
+      expect(client.outboxCount.value, RealtimeClient.maxOutboxSize);
+    });
+
+    test('clear resets outbox count', () {
+      client.sendMessage(conversationId: 'c1', clientMessageId: 'm1', body: 'hi');
+      client.clear();
+      expect(client.outboxCount.value, 0);
+    });
+  });
 }
