@@ -387,7 +387,7 @@ Prioritized by ROI and launch risk. Each item includes owner hint, effort estima
 | 19 | ~~Pull-to-refresh on Discovery, Activities, Connections, Profile~~ | Mobile | 2 days | ~~All primary list screens support manual refresh~~ ✅ |
 | 20 | ~~Retire legacy DB columns after backfill runbook~~ | Backend / DBA | 1 week | ~~`password_hash`, OTP columns dropped; migration applied~~ ✅ |
 | 21 | ~~Retention purge automation for soft-deleted messages~~ | Backend | 1 week | ~~Scheduled job per published retention policy~~ ✅ |
-| 22 | Suspension appeal / support workflow | Product + Backend | 2 weeks | User-facing appeal path documented and implemented |
+| ✅ 22 | Suspension appeal / support workflow | 2026-08-30 | `suspension_appeals` table; account + admin APIs; mobile `/suspended`; Moderation appeals panel; `SUSPENSION_APPEAL_RUNBOOK.md` |
 | 23 | ~~Chat maturity: scroll-to-bottom FAB, outbox-full warning, optional local cache~~ | Mobile | 1–2 weeks | ~~Long offline sessions don't silently drop sends~~ ✅ |
 | 24 | ~~Delete or archive orphaned `home_screen.dart`~~ | Mobile | 0.5 day | ~~No unrouted dead screens in codebase~~ ✅ |
 | 25 | ~~Formal existing-user linking runbook / backfill script~~ | Backend / Ops | 3–5 days | ~~All historical users have `auth_user_id` populated~~ ✅ |

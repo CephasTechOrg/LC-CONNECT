@@ -13,6 +13,7 @@ from sqlalchemy.orm import selectinload
 from app.features.campus_positions.service import refresh_profile_completed
 from app.models import Profile, User
 from app.security import SupabaseClaims
+from app.shared.account_status import ACCOUNT_INACTIVE_DETAIL, ACCOUNT_SUSPENDED_DETAIL
 from app.shared.email_roles import infer_role_from_email, normalize_campus_email, sync_user_role_from_email
 
 
@@ -24,10 +25,15 @@ def assert_allowed_email(email: str) -> str:
 
 
 def _active_or_raise(user: User) -> User:
+    if user.status == 'suspended':
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=ACCOUNT_SUSPENDED_DETAIL,
+        )
     if not user.is_active or user.status != 'active':
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail='Account is inactive or suspended',
+            detail=ACCOUNT_INACTIVE_DETAIL,
         )
     return user
 

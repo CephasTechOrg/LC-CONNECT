@@ -3,10 +3,19 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.dependencies import get_current_user, require_email_confirmed_user
+from app.dependencies import get_current_user, require_email_confirmed_user, require_suspended_user
 from app.features.account import export as account_export
 from app.features.account import service
-from app.features.account.schema import AccountDeleteRequest, AccountDeleteResponse, AccountExportResponse
+from app.features.account import suspension as suspension_service
+from app.features.account.schema import (
+    AccountDeleteRequest,
+    AccountDeleteResponse,
+    AccountExportResponse,
+    SuspensionAppealCreate,
+    SuspensionAppealSubmitResponse,
+    SuspensionStatusResponse,
+    SuspensionAppealRead,
+)
 from app.models import User
 from app.shared import supabase_admin
 from app.shared.rate_limit import RateLimiter
@@ -17,6 +26,36 @@ router = APIRouter(prefix='/account', tags=['account'])
 _delete_password_limiter = RateLimiter(5, 900, name='account_delete')  # 5 / 15 min / user
 # Export is heavier than a normal GET — keep abuse off shared DB.
 _export_limiter = RateLimiter(5, 86_400, name='account_export')  # 5 / day / user
+_appeal_limiter = RateLimiter(3, 86_400, name='suspension_appeal')  # 3 / day / user
+
+
+@router.get('/suspension-status', response_model=SuspensionStatusResponse)
+async def suspension_status(
+    current_user: User = Depends(require_suspended_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Suspended users can poll appeal state without full app access."""
+    open_appeal = await suspension_service.get_open_appeal(db, current_user.id)
+    return SuspensionStatusResponse(
+        support_email=suspension_service.support_contact_email(),
+        open_appeal=SuspensionAppealRead.model_validate(open_appeal) if open_appeal else None,
+    )
+
+
+@router.post('/suspension-appeal', response_model=SuspensionAppealSubmitResponse, status_code=status.HTTP_201_CREATED)
+async def submit_suspension_appeal(
+    payload: SuspensionAppealCreate,
+    current_user: User = Depends(require_suspended_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """File a one-time open appeal while suspended. Does not auto-reactivate the account."""
+    if not await _appeal_limiter.aallow(current_user.id):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail='Too many appeal submissions today. Please try again tomorrow.',
+        )
+    appeal = await suspension_service.submit_appeal(db, current_user, message=payload.message)
+    return SuspensionAppealSubmitResponse(appeal=SuspensionAppealRead.model_validate(appeal))
 
 
 @router.get('/export', response_model=AccountExportResponse)

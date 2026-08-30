@@ -53,3 +53,23 @@ class AdminAuditLog(Base):
     before_data: Mapped[str | None] = mapped_column(Text, nullable=True)
     after_data: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True, nullable=False)
+
+
+class SuspensionAppeal(Base):
+    """A suspended user's request for review. Does not auto-reactivate — admins decide separately."""
+
+    __tablename__ = 'suspension_appeals'
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey('users.id', ondelete='CASCADE'), index=True, nullable=False
+    )
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(String(20), default='open', index=True, nullable=False)
+    # open | dismissed | resolved
+    admin_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    reviewed_by_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey('users.id', ondelete='SET NULL'), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True, nullable=False)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

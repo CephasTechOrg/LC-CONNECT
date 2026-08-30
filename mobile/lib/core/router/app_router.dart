@@ -5,6 +5,7 @@ import '../../features/auth/screens/forgot_password_screen.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
 import '../../features/auth/screens/verify_email_screen.dart';
+import '../../features/auth/screens/suspended_screen.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../../features/campus_hub/screens/campus_hub_screen.dart';
 import '../../features/campus_hub/screens/campus_directory_screen.dart';
@@ -44,12 +45,18 @@ class _AuthRouterNotifier extends ChangeNotifier {
       authNotifierProvider,
       (prev, next) => notifyListeners(),
     );
+    _ref.listen<SuspendedSession?>(
+      suspendedSessionProvider,
+      (prev, next) => notifyListeners(),
+    );
   }
 
   final Ref _ref;
 
   bool get isLoggedIn =>
       _ref.read(authNotifierProvider).asData?.value != null;
+
+  bool get isSuspended => _ref.read(suspendedSessionProvider) != null;
 
   bool get isVerified =>
       _ref.read(authNotifierProvider).asData?.value?.isVerified ?? false;
@@ -70,6 +77,7 @@ final routerProvider = Provider<GoRouter>((ref) {
     refreshListenable: notifier,
     redirect: (context, state) {
       final isLoggedIn = notifier.isLoggedIn;
+      final isSuspended = notifier.isSuspended;
       final isVerified = notifier.isVerified;
       final profileCompleted = notifier.profileCompleted;
       final awaitingEmailConfirmation = notifier.awaitingEmailConfirmation;
@@ -82,6 +90,14 @@ final routerProvider = Provider<GoRouter>((ref) {
           loc == '/reset-password';
       final isVerifyScreen = loc == '/verify-email';
       final isOnboarding = loc == '/onboarding';
+      final isSuspendedScreen = loc == '/suspended';
+
+      // Suspended account — keep Supabase session so user can appeal; block the rest of the app.
+      if (isSuspended) {
+        if (!isSuspendedScreen) return '/suspended';
+        return null;
+      }
+      if (!isSuspended && isSuspendedScreen) return '/login';
 
       // Pending Supabase email confirmation — allow verify + public auth screens
       // so the user can go back to login/register after canceling.
@@ -125,6 +141,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             ResetPasswordScreen(email: state.extra as String),
       ),
       GoRoute(path: '/verify-email', builder: (context, state) => const VerifyEmailScreen()),
+      GoRoute(path: '/suspended', builder: (context, state) => const SuspendedScreen()),
       GoRoute(path: '/onboarding', builder: (context, state) => const OnboardingScreen()),
       GoRoute(
         path: '/users/:profileId',

@@ -23,6 +23,7 @@ from app.dependencies import (
     require_email_confirmed_user,
     require_verified_connect_student,
 )
+from app.shared.account_status import ACCOUNT_INACTIVE_DETAIL, ACCOUNT_SUSPENDED_DETAIL
 from app.main import app
 
 
@@ -84,13 +85,17 @@ def test_active_user_passes():
 
 
 @pytest.mark.parametrize(
-    "overrides",
-    [{"status": "suspended"}, {"is_active": False}],
+    'overrides,expected_status,expected_detail',
+    [
+        ({'status': 'suspended'}, 403, ACCOUNT_SUSPENDED_DETAIL),
+        ({'is_active': False}, 401, ACCOUNT_INACTIVE_DETAIL),
+    ],
 )
-def test_inactive_or_suspended_is_unauthorized(overrides):
+def test_inactive_or_suspended_is_rejected(overrides, expected_status, expected_detail):
     with pytest.raises(HTTPException) as exc:
         _ensure_active(_user(**overrides))
-    assert exc.value.status_code == 401
+    assert exc.value.status_code == expected_status
+    assert exc.value.detail == expected_detail
 
 
 def test_missing_user_is_unauthorized():

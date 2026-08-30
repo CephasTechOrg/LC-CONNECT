@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from typing import Any
+from datetime import datetime
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
@@ -33,3 +35,28 @@ class AccountExportResponse(BaseModel):
     schema_version: int = 1
     account: dict[str, Any]
     profile: dict[str, Any] | None = None
+
+
+class SuspensionAppealRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    status: str
+    message: str
+    admin_note: str | None = None
+    created_at: datetime
+    reviewed_at: datetime | None = None
+
+
+class SuspensionStatusResponse(BaseModel):
+    is_suspended: bool = True
+    support_email: str
+    open_appeal: SuspensionAppealRead | None = None
+
+
+class SuspensionAppealCreate(BaseModel):
+    message: str = Field(min_length=10, max_length=2000)
+
+
+class SuspensionAppealSubmitResponse(BaseModel):
+    appeal: SuspensionAppealRead

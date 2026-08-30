@@ -128,6 +128,9 @@ class Settings(BaseSettings):
     # back) without a connection, when enabled.
     staff_messaging_enabled: bool = Field(default=True, alias='STAFF_MESSAGING_ENABLED')
 
+    # Shown to suspended users filing an appeal (mobile + API).
+    support_email: str = Field(default='support@livingstone.edu', alias='SUPPORT_EMAIL')
+
     @property
     def push_enabled(self) -> bool:
         return bool(self.firebase_credentials_json)

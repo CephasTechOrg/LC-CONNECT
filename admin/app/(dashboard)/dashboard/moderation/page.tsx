@@ -29,6 +29,18 @@ type AdminUser = {
   display_name: string | null;
 };
 
+type SuspensionAppeal = {
+  id: string;
+  user_id: string;
+  user_email: string;
+  display_name: string | null;
+  message: string;
+  status: string;
+  admin_note: string | null;
+  created_at: string;
+  reviewed_at: string | null;
+};
+
 function reportType(r: Report): string {
   if (r.message_id) return 'Message';
   if (r.activity_id) return 'Activity';
@@ -61,6 +73,7 @@ function relativeWhen(iso: string): string {
 export default function ModerationPage() {
   const [reports, setReports] = useState<Report[]>([]);
   const [users, setUsers] = useState<AdminUser[]>([]);
+  const [appeals, setAppeals] = useState<SuspensionAppeal[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [status, setStatus] = useState('');
@@ -76,12 +89,14 @@ export default function ModerationPage() {
     try {
       const token = await getAccessToken();
       if (!token) throw new Error('Not signed in');
-      const [r, u] = await Promise.all([
+      const [r, u, a] = await Promise.all([
         apiFetch<Report[]>('/admin/reports', token),
         apiFetch<AdminUser[]>('/admin/users', token),
+        apiFetch<SuspensionAppeal[]>('/admin/suspension-appeals?status=open', token).catch(() => []),
       ]);
       setReports(r);
       setUsers(u);
+      setAppeals(a);
     } catch (err) {
       setError(true);
       setStatus(toUserMessage(err, 'Could not load this page. Please refresh and try again.'));
@@ -194,6 +209,29 @@ export default function ModerationPage() {
     }
   }
 
+  async function reviewAppeal(appeal: SuspensionAppeal, action: 'resolve' | 'dismiss') {
+    const note = window.prompt(
+      action === 'resolve'
+        ? 'Optional note for the audit log (reactivate the user separately on Users if appropriate):'
+        : 'Optional note explaining why this appeal was dismissed:',
+    );
+    if (note === null) return;
+    try {
+      const token = await getAccessToken();
+      if (!token) return;
+      await apiFetch(`/admin/suspension-appeals/${appeal.id}/${action}`, token, {
+        method: 'POST',
+        body: JSON.stringify({ note: note.trim() || null }),
+      });
+      setError(false);
+      setFlash(action === 'resolve' ? 'Appeal marked resolved.' : 'Appeal dismissed.');
+      await load();
+    } catch (err) {
+      setError(true);
+      setStatus(toUserMessage(err, 'Could not update this appeal.'));
+    }
+  }
+
   function userLabel(u: AdminUser | undefined, fallbackId: string): string {
     if (!u) return fallbackId;
     return u.display_name || u.email;
@@ -237,6 +275,47 @@ export default function ModerationPage() {
         </div>
 
         {flash ? <p className="ops-flash">{flash}</p> : null}
+
+        {appeals.length > 0 ? (
+          <section style={{ marginBottom: 24 }}>
+            <h2 style={{ fontSize: 18, marginBottom: 8 }}>Open suspension appeals ({appeals.length})</h2>
+            <p className="meta" style={{ marginTop: 0, marginBottom: 12 }}>
+              Resolving an appeal records the review — reactivate the account on Users if you restore access.
+            </p>
+            <div className="ops-table-wrap table-scroll">
+              <table className="ops-table">
+                <thead>
+                  <tr>
+                    <th>User</th>
+                    <th>Message</th>
+                    <th>Submitted</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {appeals.map((a) => (
+                    <tr key={a.id}>
+                      <td>
+                        <div className="ops-cell-title">{a.display_name || a.user_email}</div>
+                        <div className="ops-cell-sub">{a.user_email}</div>
+                      </td>
+                      <td>{a.message.slice(0, 160)}{a.message.length > 160 ? '…' : ''}</td>
+                      <td>{relativeWhen(a.created_at)}</td>
+                      <td style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                        <button className="ops-btn primary" type="button" onClick={() => void reviewAppeal(a, 'resolve')}>
+                          Mark resolved
+                        </button>
+                        <button className="ops-btn" type="button" onClick={() => void reviewAppeal(a, 'dismiss')}>
+                          Dismiss
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        ) : null}
 
         <div className="ops-table-wrap table-scroll">
           {loading ? (

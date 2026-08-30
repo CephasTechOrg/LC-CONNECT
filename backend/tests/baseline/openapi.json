@@ -5991,6 +5991,208 @@
         "title": "SuspendUserRequest",
         "type": "object"
       },
+      "SuspensionAppealAdminRead": {
+        "properties": {
+          "admin_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Admin Note"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "reviewed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewed At"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "user_email": {
+            "format": "email",
+            "title": "User Email",
+            "type": "string"
+          },
+          "user_id": {
+            "format": "uuid",
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "user_id",
+          "user_email",
+          "message",
+          "status",
+          "created_at"
+        ],
+        "title": "SuspensionAppealAdminRead",
+        "type": "object"
+      },
+      "SuspensionAppealCreate": {
+        "properties": {
+          "message": {
+            "maxLength": 2000,
+            "minLength": 10,
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "title": "SuspensionAppealCreate",
+        "type": "object"
+      },
+      "SuspensionAppealRead": {
+        "properties": {
+          "admin_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Admin Note"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "reviewed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewed At"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "message",
+          "created_at"
+        ],
+        "title": "SuspensionAppealRead",
+        "type": "object"
+      },
+      "SuspensionAppealReviewRequest": {
+        "properties": {
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "title": "SuspensionAppealReviewRequest",
+        "type": "object"
+      },
+      "SuspensionAppealSubmitResponse": {
+        "properties": {
+          "appeal": {
+            "$ref": "#/components/schemas/SuspensionAppealRead"
+          }
+        },
+        "required": [
+          "appeal"
+        ],
+        "title": "SuspensionAppealSubmitResponse",
+        "type": "object"
+      },
+      "SuspensionStatusResponse": {
+        "properties": {
+          "is_suspended": {
+            "default": true,
+            "title": "Is Suspended",
+            "type": "boolean"
+          },
+          "open_appeal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SuspensionAppealRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "support_email": {
+            "title": "Support Email",
+            "type": "string"
+          }
+        },
+        "required": [
+          "support_email"
+        ],
+        "title": "SuspensionStatusResponse",
+        "type": "object"
+      },
       "SystemStatusRead": {
         "description": "Every field is the result of a real check made at request time (`app/features/admin/system_status.py`)\n\u2014 never a hardcoded 'operational'. No separate \"Email\" entry: Supabase Auth sends invite\nemails itself, there's no distinct email provider in this codebase to check independently.",
         "properties": {
@@ -6226,6 +6428,80 @@
           }
         ],
         "summary": "Export Account",
+        "tags": [
+          "account"
+        ]
+      }
+    },
+    "/api/v1/account/suspension-appeal": {
+      "post": {
+        "description": "File a one-time open appeal while suspended. Does not auto-reactivate the account.",
+        "operationId": "submit_suspension_appeal_api_v1_account_suspension_appeal_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SuspensionAppealCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuspensionAppealSubmitResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Submit Suspension Appeal",
+        "tags": [
+          "account"
+        ]
+      }
+    },
+    "/api/v1/account/suspension-status": {
+      "get": {
+        "description": "Suspended users can poll appeal state without full app access.",
+        "operationId": "suspension_status_api_v1_account_suspension_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuspensionStatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Suspension Status",
         "tags": [
           "account"
         ]
@@ -8431,6 +8707,175 @@
           }
         ],
         "summary": "Resolve Report",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/suspension-appeals": {
+      "get": {
+        "operationId": "list_suspension_appeals_api_v1_admin_suspension_appeals_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "default": "open",
+              "title": "Status",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SuspensionAppealAdminRead"
+                  },
+                  "title": "Response List Suspension Appeals Api V1 Admin Suspension Appeals Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Suspension Appeals",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/suspension-appeals/{appeal_id}/dismiss": {
+      "post": {
+        "operationId": "dismiss_suspension_appeal_api_v1_admin_suspension_appeals__appeal_id__dismiss_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "appeal_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Appeal Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SuspensionAppealReviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuspensionAppealRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Dismiss Suspension Appeal",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/suspension-appeals/{appeal_id}/resolve": {
+      "post": {
+        "description": "Mark appeal reviewed. Reactivation is still a separate action on the Users page.",
+        "operationId": "resolve_suspension_appeal_api_v1_admin_suspension_appeals__appeal_id__resolve_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "appeal_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Appeal Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SuspensionAppealReviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuspensionAppealRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Resolve Suspension Appeal",
         "tags": [
           "admin"
         ]

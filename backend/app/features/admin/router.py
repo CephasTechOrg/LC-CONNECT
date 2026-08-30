@@ -32,8 +32,12 @@ from app.features.admin.schema import (
     ProgramMembershipVerifyRequest,
     ResolveReportRequest,
     SuspendUserRequest,
+    SuspensionAppealAdminRead,
+    SuspensionAppealReviewRequest,
     SystemStatusRead,
 )
+from app.features.account import suspension as suspension_service
+from app.features.account.schema import SuspensionAppealRead
 from app.features.admin.service import get_report_for_moderation as do_get_report
 from app.features.admin.service import reactivate_user as do_reactivate_user
 from app.features.admin.service import remove_activity as do_remove_activity
@@ -363,6 +367,60 @@ async def reactivate_user(
 ):
     user = await do_reactivate_user(db, user_id, actor_id=actor.id)
     return {'status': 'active', 'user_id': str(user.id)}
+
+
+@router.get('/suspension-appeals', response_model=list[SuspensionAppealAdminRead])
+async def list_suspension_appeals(
+    status: str = 'open',
+    _: User = Depends(require_admin_aal2),
+    db: AsyncSession = Depends(get_db),
+):
+    appeals = await suspension_service.list_appeals(db, status_filter=status or None)
+    out: list[SuspensionAppealAdminRead] = []
+    for appeal in appeals:
+        user = await db.get(User, appeal.user_id)
+        profile = await get_profile_by_user_id(db, appeal.user_id) if user else None
+        out.append(
+            SuspensionAppealAdminRead(
+                id=appeal.id,
+                user_id=appeal.user_id,
+                user_email=user.email if user else 'unknown@livingstone.edu',
+                display_name=profile.display_name if profile else None,
+                message=appeal.message,
+                status=appeal.status,
+                admin_note=appeal.admin_note,
+                created_at=appeal.created_at,
+                reviewed_at=appeal.reviewed_at,
+            )
+        )
+    return out
+
+
+@router.post('/suspension-appeals/{appeal_id}/dismiss', response_model=SuspensionAppealRead)
+async def dismiss_suspension_appeal(
+    appeal_id: UUID,
+    payload: SuspensionAppealReviewRequest,
+    actor: User = Depends(require_admin_aal2),
+    db: AsyncSession = Depends(get_db),
+):
+    appeal = await suspension_service.review_appeal(
+        db, appeal_id, actor_id=actor.id, new_status='dismissed', note=payload.note
+    )
+    return SuspensionAppealRead.model_validate(appeal)
+
+
+@router.post('/suspension-appeals/{appeal_id}/resolve', response_model=SuspensionAppealRead)
+async def resolve_suspension_appeal(
+    appeal_id: UUID,
+    payload: SuspensionAppealReviewRequest,
+    actor: User = Depends(require_admin_aal2),
+    db: AsyncSession = Depends(get_db),
+):
+    """Mark appeal reviewed. Reactivation is still a separate action on the Users page."""
+    appeal = await suspension_service.review_appeal(
+        db, appeal_id, actor_id=actor.id, new_status='resolved', note=payload.note
+    )
+    return SuspensionAppealRead.model_validate(appeal)
 
 
 @router.post('/activities/{activity_id}/remove')

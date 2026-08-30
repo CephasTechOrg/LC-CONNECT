@@ -13,6 +13,7 @@ from sqlalchemy.orm import selectinload
 from app.database import get_db
 from app.models import User
 from app.security import SupabaseClaims, verify_supabase_access_token
+from app.shared.account_status import ACCOUNT_INACTIVE_DETAIL, ACCOUNT_SUSPENDED_DETAIL
 
 bearer_scheme = HTTPBearer(auto_error=False)
 logger = logging.getLogger('lc_connect.auth')
@@ -45,9 +46,43 @@ async def _load_user(db: AsyncSession, auth_user_id: UUID) -> User | None:
 
 
 def _ensure_active(user: User | None) -> User:
-    if user is None or not user.is_active or user.status != 'active':
+    if user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Inactive or suspended user')
+    if user.status == 'suspended':
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=ACCOUNT_SUSPENDED_DETAIL)
+    if not user.is_active or user.status != 'active':
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=ACCOUNT_INACTIVE_DETAIL)
     return user
+
+
+async def get_authenticated_user(
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+    db: AsyncSession = Depends(get_db),
+) -> User:
+    """Valid Supabase JWT + bootstrapped user row — does **not** require an active account.
+
+    Used for suspension appeals while the account is suspended.
+    """
+    if credentials is None or credentials.scheme.lower() != 'bearer':
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Missing bearer token')
+    try:
+        claims = await verify_supabase_access_token(credentials.credentials)
+    except ValueError as exc:
+        logger.warning('Supabase token rejected: %s', exc)
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Invalid or expired token') from None
+    user = await _load_user(db, claims.sub)
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail='User not bootstrapped. Call POST /auth/bootstrap first.',
+        )
+    return user
+
+
+async def require_suspended_user(current_user: User = Depends(get_authenticated_user)) -> User:
+    if current_user.status != 'suspended':
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='Account is not suspended')
+    return current_user
 
 
 async def get_auth_context(

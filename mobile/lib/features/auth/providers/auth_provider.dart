@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/api/api_client.dart';
+import 'suspension_provider.dart';
 
 class AuthUser {
   final String id;
@@ -36,6 +37,23 @@ class AuthUser {
       );
 }
 
+/// Set when bootstrap returns 403 `account_suspended` — session stays alive so the user can appeal.
+class SuspendedSession {
+  final String email;
+
+  const SuspendedSession({required this.email});
+}
+
+class SuspendedSessionNotifier extends Notifier<SuspendedSession?> {
+  @override
+  SuspendedSession? build() => null;
+
+  void set(SuspendedSession? value) => state = value;
+}
+
+final suspendedSessionProvider =
+    NotifierProvider<SuspendedSessionNotifier, SuspendedSession?>(SuspendedSessionNotifier.new);
+
 final authNotifierProvider = AsyncNotifierProvider<AuthNotifier, AuthUser?>(
   AuthNotifier.new,
 );
@@ -48,12 +66,9 @@ class AuthNotifier extends AsyncNotifier<AuthUser?> {
 
   @override
   Future<AuthUser?> build() async {
-    // React to Supabase session changes: flip to signed-out (→ router redirects to login)
-    // when the session is revoked or the refresh token expires. Supabase persists the session
-    // itself (now into the keystore — see `SecureSessionLocalStorage`), so there is nothing for
-    // us to mirror on a token refresh.
     final sub = _auth.onAuthStateChange.listen((data) {
       if (data.event == AuthChangeEvent.signedOut) {
+        ref.read(suspendedSessionProvider.notifier).set(null);
         state = const AsyncData(null);
       }
     });
@@ -64,15 +79,25 @@ class AuthNotifier extends AsyncNotifier<AuthUser?> {
     }
     try {
       return await _bootstrap();
-    } on DioException {
+    } on DioException catch (e) {
+      if (isAccountSuspendedError(e)) {
+        _markSuspended();
+        return null;
+      }
       await _auth.signOut();
       return null;
     }
   }
 
+  void _markSuspended() {
+    final email = _auth.currentSession?.user.email ?? '';
+    ref.read(suspendedSessionProvider.notifier).set(SuspendedSession(email: email));
+  }
+
   Future<AuthUser> _bootstrap() async {
     final client = ref.read(apiClientProvider);
     final response = await client.dio.post('/auth/bootstrap');
+    ref.read(suspendedSessionProvider.notifier).set(null);
     return AuthUser.fromBootstrap(response.data as Map<String, dynamic>);
   }
 
@@ -87,7 +112,15 @@ class AuthNotifier extends AsyncNotifier<AuthUser?> {
       if (session == null) {
         throw AuthException('No session returned. Confirm your email first.');
       }
-      return _bootstrap();
+      try {
+        return await _bootstrap();
+      } on DioException catch (e) {
+        if (isAccountSuspendedError(e)) {
+          _markSuspended();
+          return null;
+        }
+        rethrow;
+      }
     });
   }
 
@@ -178,11 +211,27 @@ class AuthNotifier extends AsyncNotifier<AuthUser?> {
     } catch (_) {}
   }
 
+  /// After an admin reactivates the account, retry bootstrap without signing out.
+  Future<void> retryAfterSuspension() async {
+    ref.read(suspendedSessionProvider.notifier).set(null);
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() async {
+      try {
+        return await _bootstrap();
+      } on DioException catch (e) {
+        if (isAccountSuspendedError(e)) {
+          _markSuspended();
+          return null;
+        }
+        rethrow;
+      }
+    });
+  }
+
   Future<void> logout() async {
     _pendingEmail = null;
+    ref.read(suspendedSessionProvider.notifier).set(null);
     await _auth.signOut();
-    // Force a state transition so GoRouter refreshListenable always fires,
-    // even when we were already AsyncData(null) (pending-confirm signup).
     state = const AsyncLoading();
     state = const AsyncData(null);
   }

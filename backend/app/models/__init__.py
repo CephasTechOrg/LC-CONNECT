@@ -7,7 +7,7 @@ re-export it below — never let any one file creep back past the line-length so
 """
 
 from app.models.activities import Activity, ActivityParticipant
-from app.models.admin import AdminAuditLog, AdminMembership
+from app.models.admin import AdminAuditLog, AdminMembership, SuspensionAppeal
 from app.models.campus import CampusPosition, CampusPost, CampusPostRead, CampusResource, VerificationRequest
 from app.models.core import (
     Interest,
@@ -61,6 +61,7 @@ __all__ = [
     'ProgramMembership',
     'Report',
     'ScholarProfessionalProfile',
+    'SuspensionAppeal',
     'User',
     'UserLanguage',
     'VerificationRequest',

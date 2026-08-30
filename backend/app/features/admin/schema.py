@@ -174,3 +174,19 @@ class CampusResourceAdminRead(BaseModel):
     updated_by_id: UUID | None
     created_at: datetime
     updated_at: datetime
+
+
+class SuspensionAppealAdminRead(BaseModel):
+    id: UUID
+    user_id: UUID
+    user_email: EmailStr
+    display_name: str | None = None
+    message: str
+    status: str
+    admin_note: str | None = None
+    created_at: datetime
+    reviewed_at: datetime | None = None
+
+
+class SuspensionAppealReviewRequest(BaseModel):
+    note: str | None = Field(default=None, max_length=500)
