@@ -65,6 +65,13 @@ services:
       # (not an error) if this is unset.
       - key: FIREBASE_CREDENTIALS_JSON
         sync: false
+      # Shown to suspended users on mobile + GET /account/suspension-status (#22).
+      # Override in Render dashboard if the default campus inbox is wrong.
+      - key: SUPPORT_EMAIL
+        value: support@livingstone.edu
+      # Soft-deleted message hard-purge window — used by scripts/purge_soft_deleted_messages.py (#21).
+      - key: MESSAGE_SOFT_DELETE_RETENTION_DAYS
+        value: "90"
 
   # ── Admin portal (Next.js) ────────────────────────────────────────────────────
   # A Node web service, NOT a static site: `admin/middleware.ts` refreshes the Supabase

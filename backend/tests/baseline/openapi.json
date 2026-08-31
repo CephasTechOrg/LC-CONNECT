@@ -3688,6 +3688,20 @@
         "title": "HealthChecks",
         "type": "object"
       },
+      "HonorsAttendanceFeatureStatus": {
+        "description": "Phase 1 stub \u2014 confirms feature flag wiring (routes arrive in Phase 2).",
+        "properties": {
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled"
+        ],
+        "title": "HonorsAttendanceFeatureStatus",
+        "type": "object"
+      },
       "InviteAdminRequest": {
         "properties": {
           "email": {
@@ -9081,6 +9095,28 @@
         "summary": "Suspend User",
         "tags": [
           "admin"
+        ]
+      }
+    },
+    "/api/v1/attendance/honors/status": {
+      "get": {
+        "description": "Public feature-flag probe (no auth) \u2014 lets clients hide UI before Phase 2 APIs land.",
+        "operationId": "honors_attendance_status_api_v1_attendance_honors_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HonorsAttendanceFeatureStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Honors Attendance Status",
+        "tags": [
+          "attendance"
         ]
       }
     },

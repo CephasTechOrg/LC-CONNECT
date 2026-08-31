@@ -31,13 +31,29 @@ Table `suspension_appeals`: `user_id`, `message`, `status` (`open` \| `dismissed
 
 User taps **Check if account was restored** on the suspended screen (retries bootstrap). If admin reactivated, they proceed through normal verify/onboarding routing.
 
-## Config
+---
+
+## Production setup
+
+| Step | Action |
+|------|--------|
+| **Migration** | Automatic on API deploy (`alembic upgrade head` in `render.yaml` startCommand) — revision `b1c2d3e4f5a6` |
+| **`SUPPORT_EMAIL`** | Set on Render API service to your real support inbox (default `support@livingstone.edu`) |
+| **Admin training** | Moderation → open appeals; **resolve/dismiss ≠ reactivate** (Users page) |
+| **Mobile** | Release app build with `/suspended` after API is deployed |
+| **Cron** | Not required |
+
+Full launch checklist: [`PRODUCTION_SETUP_CHECKLIST.md`](./PRODUCTION_SETUP_CHECKLIST.md) §6–7.
+
+## Config (local / override)
 
 ```bash
 SUPPORT_EMAIL=support@livingstone.edu   # optional override
 ```
 
-## Migration
+## Migration (manual — local only)
+
+Production uses Alembic on deploy. For local Postgres:
 
 ```bash
 cd backend && .venv/bin/alembic upgrade head

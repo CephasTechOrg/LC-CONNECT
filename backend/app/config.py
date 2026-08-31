@@ -128,6 +128,13 @@ class Settings(BaseSettings):
     # back) without a connection, when enabled.
     staff_messaging_enabled: bool = Field(default=True, alias='STAFF_MESSAGING_ENABLED')
 
+    # Honors attendance (rotating QR check-in). Off by default until pilot-ready.
+    honors_attendance_enabled: bool = Field(default=False, alias='HONORS_ATTENDANCE_ENABLED')
+    attendance_qr_ttl_seconds: int = Field(default=10, alias='ATTENDANCE_QR_TTL_SECONDS')
+    attendance_present_window_seconds: int = Field(default=180, alias='ATTENDANCE_PRESENT_WINDOW_SECONDS')
+    attendance_late_window_seconds: int = Field(default=120, alias='ATTENDANCE_LATE_WINDOW_SECONDS')
+    attendance_qr_signing_secret: str | None = Field(default=None, alias='ATTENDANCE_QR_SIGNING_SECRET')
+
     # Shown to suspended users filing an appeal (mobile + API).
     support_email: str = Field(default='support@livingstone.edu', alias='SUPPORT_EMAIL')
 

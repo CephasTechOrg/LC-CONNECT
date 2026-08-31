@@ -10,6 +10,7 @@ from fastapi.responses import ORJSONResponse
 from app.config import settings
 from app.features.account import router as account_router
 from app.features.activities import router as activities_router
+from app.features.attendance import router as attendance_router
 from app.features.admin import router as admin_router
 from app.features.auth import router as auth_v2_router
 from app.features.campus_hub import router as campus_hub_router
@@ -147,6 +148,7 @@ app.include_router(discovery_router, prefix=settings.api_v1_prefix)
 app.include_router(connections_router, prefix=settings.api_v1_prefix)
 app.include_router(messages_router, prefix=settings.api_v1_prefix)
 app.include_router(activities_router, prefix=settings.api_v1_prefix)
+app.include_router(attendance_router, prefix=settings.api_v1_prefix)
 app.include_router(groups_router, prefix=settings.api_v1_prefix)
 app.include_router(programs_router, prefix=settings.api_v1_prefix)
 app.include_router(scholars_router, prefix=settings.api_v1_prefix)

@@ -17,6 +17,8 @@ This document covers how the LC Connect FastAPI backend is deployed to Render, i
 9. [Deployment Checklist](#9-deployment-checklist)
 10. [Troubleshooting — Deployment Failures We Hit](#10-troubleshooting--deployment-failures-we-hit)
 11. [Scheduled jobs — message retention purge](#11-scheduled-jobs--message-retention-purge)
+12. [Suspension appeals](#12-suspension-appeals)
+13. [Master production checklist](#13-master-production-checklist)
 
 ---
 
@@ -97,6 +99,10 @@ services:
         sync: false
       - key: FIREBASE_CREDENTIALS_JSON
         sync: false
+      - key: SUPPORT_EMAIL
+        value: support@livingstone.edu
+      - key: MESSAGE_SOFT_DELETE_RETENTION_DAYS
+        value: "90"
 ```
 
 Note the start command now runs `alembic upgrade head` before `init_db.py` — schema migrations are
@@ -134,6 +140,7 @@ Set these manually in the Render dashboard for the `lc-connect-api` service:
 | `RESEND_REPLY_TO` | Optional support inbox | |
 | `SUPABASE_SEND_EMAIL_HOOK_SECRET` | Supabase → Authentication → Hooks → Send Email → enable | See `docs/getting-started/send_email_hook.md` — without this the hook endpoint 503s |
 | `FIREBASE_CREDENTIALS_JSON` | Firebase service account JSON (whole file contents) | Push notifications cleanly disable if unset — not required |
+| `SUPPORT_EMAIL` | Campus student-support inbox | Shown to **suspended** users on mobile + `GET /account/suspension-status`; default `support@livingstone.edu` — **set explicitly in production** if different |
 | `MESSAGE_SOFT_DELETE_RETENTION_DAYS` | Optional — default `90` | Soft-deleted message purge window; see retention cron runbook |
 
 Variables set directly in the YAML (no manual step needed):
@@ -146,6 +153,8 @@ Variables set directly in the YAML (no manual step needed):
 | `SUPABASE_PROFILE_BUCKET` | `profile-images` |
 | `MAX_PROFILE_IMAGE_MB` | `5` |
 | `EMAIL_PROVIDER` | `auto` |
+| `SUPPORT_EMAIL` | `support@livingstone.edu` (override in dashboard if needed) |
+| `MESSAGE_SOFT_DELETE_RETENTION_DAYS` | `90` |
 
 ---
 
@@ -353,7 +362,9 @@ Use this before every deployment:
 - [ ] `requirements.txt` is up to date (`pip freeze > requirements.txt` inside `.venv`)
 - [ ] Local `.env` is in `.gitignore` (never commit secrets)
 - [ ] `/health` endpoint returns `{"status": "ok"}`
+- [ ] `SUPPORT_EMAIL` set to the real student-support inbox (or confirm default is correct)
 - [ ] Message retention cron scheduled — [`MESSAGE_RETENTION_CRON_RUNBOOK.md`](../../architecture_review/MESSAGE_RETENTION_CRON_RUNBOOK.md)
+- [ ] Full launch gate — [`PRODUCTION_SETUP_CHECKLIST.md`](../../architecture_review/PRODUCTION_SETUP_CHECKLIST.md) (env, portals, smoke tests, suspension flow)
 
 ### Triggering a deploy
 
@@ -496,4 +507,32 @@ PYTHONPATH=. python scripts/purge_soft_deleted_messages.py
 | `MESSAGE_SOFT_DELETE_RETENTION_DAYS` | `90` | Increase only with policy review |
 
 Add a Render **Cron Job** service (or GitHub Actions schedule) — see the runbook for copy-paste config including an optional `render.yaml` snippet.
+
+---
+
+## 12. Suspension appeals
+
+Suspended users can file an in-app appeal (mobile `/suspended` screen). Admins review open appeals on **Moderation**.
+
+| Item | Production action |
+|------|-------------------|
+| **Database** | Automatic — `suspension_appeals` table created by `alembic upgrade head` on API deploy |
+| **`SUPPORT_EMAIL`** | Set on API service (declared in `render.yaml` with default; override in dashboard) |
+| **Admin UI** | Ships with admin portal — no extra env |
+| **Mobile** | Ship app build that includes `/suspended` route (after API is live) |
+| **Cron** | None |
+
+**Runbook:** [`architecture_review/SUSPENSION_APPEAL_RUNBOOK.md`](../../architecture_review/SUSPENSION_APPEAL_RUNBOOK.md)
+
+**Smoke test:** suspend test account → mobile shows appeal screen → submit → visible in Moderation → reactivate on Users separately.
+
+---
+
+## 13. Master production checklist
+
+For first launch and every release that adds migrations, env vars, or cron jobs, walk through:
+
+→ [`architecture_review/PRODUCTION_SETUP_CHECKLIST.md`](../../architecture_review/PRODUCTION_SETUP_CHECKLIST.md)
+
+That doc consolidates API secrets, portal `NEXT_PUBLIC_*` vars, Supabase one-time setup, retention cron, suspension appeals, mobile release, and post-deploy smoke tests.
 

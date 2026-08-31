@@ -30,6 +30,7 @@ GET /api/v1/admin/reports/{report_id}
 GET /api/v1/admin/suspension-appeals
 GET /api/v1/admin/system-status
 GET /api/v1/admin/users
+GET /api/v1/attendance/honors/status
 GET /api/v1/auth/me
 GET /api/v1/campus-hub/announcements/count
 GET /api/v1/campus-hub/announcements/unread-count

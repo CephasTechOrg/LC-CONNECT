@@ -7,6 +7,7 @@ re-export it below — never let any one file creep back past the line-length so
 """
 
 from app.models.activities import Activity, ActivityParticipant
+from app.models.attendance import AttendanceAuditLog, AttendanceRecord, AttendanceSession
 from app.models.admin import AdminAuditLog, AdminMembership, SuspensionAppeal
 from app.models.campus import CampusPosition, CampusPost, CampusPostRead, CampusResource, VerificationRequest
 from app.models.core import (
@@ -34,6 +35,9 @@ from app.models.social import Block, ConnectionRequest, Match, Report
 __all__ = [
     'Activity',
     'ActivityParticipant',
+    'AttendanceAuditLog',
+    'AttendanceRecord',
+    'AttendanceSession',
     'AdminAuditLog',
     'AdminMembership',
     'Block',

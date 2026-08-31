@@ -38,7 +38,9 @@ The existing Supabase Realtime implementation depends on custom FastAPI JWTs, sh
 10. `SOURCES.md` — primary references.
 11. `AUTH_USER_LINKING_RUNBOOK.md` — existing-user `auth_user_id` backfill (#25).
 12. `MESSAGE_RETENTION_CRON_RUNBOOK.md` — **daily cron setup** for soft-deleted message purge (#21).
-13. `PHASE_0_1_STATUS.md` — live migration status.
+13. `SUSPENSION_APPEAL_RUNBOOK.md` — suspend / appeal / reactivate workflow (#22).
+14. `PRODUCTION_SETUP_CHECKLIST.md` — **master launch checklist** (env, cron, smoke tests).
+15. `PHASE_0_1_STATUS.md` — live migration status.
 
 ## Engineering conventions
 

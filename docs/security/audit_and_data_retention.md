@@ -97,6 +97,7 @@ content). URLs are public (with a cache-buster) — appropriate for display imag
 | "Who reported whom, and why?" | `reports`: `reporter_id`, `reported_user_id`, `reason`, `details`, `created_at` |
 | "Did a moderator open / resolve this report?" | `admin_audit_logs`: actions `report.view`, `report.resolve` |
 | "Why was this account suspended?" | `admin_audit_logs` action `user.suspend` → `after_data.reason` |
+| "Did a suspended user file an appeal?" | Admin **Moderation** → open appeals, or `suspension_appeals` table; audits `suspension_appeal.resolved` / `suspension_appeal.dismissed` |
 | "Was this person ever in the group / how did they leave?" | `conversation_members` row: `status` (`removed`/`banned`), `role`, `joined_at` |
 | "Is a deleted message's original text recoverable?" | `messages` row: `body` is retained even when `deleted_at` is set — **unless** the group was hard-deleted |
 | "Who deleted this message?" | ⚠️ not recorded yet (`deleted_by` deferred) — only `deleted_at` |

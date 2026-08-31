@@ -141,8 +141,8 @@ Discovery cards
 |-------|--------|
 | Report list views not audit-logged | Read access to PII/evidence unrecorded |
 | Suspension reason returned in API but not persisted in audit log | **Resolved (#8)** — stored on `user.suspend` audit `after_data` |
-| No appeal/reactivation product flow | Incomplete moderation lifecycle |
-| Account deletion requires email string match only | **Resolved (#5)** — password step-up via Supabase GoTrue | — |
+| No appeal/reactivation product flow | **Resolved (#22)** — in-app appeal + admin Moderation panel; reactivate stays on Users |
+| Account deletion requires email string match only | **Resolved (#5)** — password step-up via Supabase GoTrue |
 
 ---
 

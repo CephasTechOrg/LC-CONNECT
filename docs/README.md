@@ -38,6 +38,7 @@ First-time Mac setup, daily workflow, Supabase, email, and Render deployment.
 System architecture, database schema, real-time messaging, image storage, folder layout.
 
 ### ✨ [`features/`](./features/) — feature deep-dives
+- [`attendance/`](./features/attendance/) — Honors attendance (rotating QR, V1 spec)
 - [`groups/`](./features/groups/) — campus communities (behavior & policy reference, decision log, API, build log)
 - [`notifications/`](./features/notifications/) — push, the in-app notification center, unread counts
 
@@ -59,11 +60,14 @@ Product overview, full project description, the to-do log, and an archived exter
 | Set up my Mac for the first time | [`getting-started/local_dev_setup.md`](./getting-started/local_dev_setup.md) |
 | Start work today | [`getting-started/daily_dev_start.md`](./getting-started/daily_dev_start.md) |
 | Deploy the backend to Render | [`getting-started/deployment.md`](./getting-started/deployment.md) |
+| Production launch checklist (env, cron, smoke tests) | [`architecture_review/PRODUCTION_SETUP_CHECKLIST.md`](../architecture_review/PRODUCTION_SETUP_CHECKLIST.md) |
 | Understand the database schema | [`architecture/database.md`](./architecture/database.md) |
 | Understand real-time messaging | [`architecture/realtime-messaging.md`](./architecture/realtime-messaging.md) |
 | Know how groups work (policies, roles, limits) | [`features/groups/groups_reference.md`](./features/groups/groups_reference.md) |
 | Understand notifications (push + in-app) | [`features/notifications/`](./features/notifications/) |
+| Build Honors attendance (QR check-in) | [`features/attendance/LC_CONNECT_HONORS_ATTENDANCE_V1_IMPLEMENTATION.md`](./features/attendance/LC_CONNECT_HONORS_ATTENDANCE_V1_IMPLEMENTATION.md) |
 | Review the security & access-control model | [`security/overview.md`](./security/overview.md) |
 | Change a rate limit or the group size cap | [`security/rate_limiting.md`](./security/rate_limiting.md) |
 | Answer a data-deletion / audit question | [`security/audit_and_data_retention.md`](./security/audit_and_data_retention.md) |
 | Set up the daily message retention cron | [`architecture_review/MESSAGE_RETENTION_CRON_RUNBOOK.md`](../architecture_review/MESSAGE_RETENTION_CRON_RUNBOOK.md) |
+| Suspension appeals (moderator + prod setup) | [`architecture_review/SUSPENSION_APPEAL_RUNBOOK.md`](../architecture_review/SUSPENSION_APPEAL_RUNBOOK.md) |

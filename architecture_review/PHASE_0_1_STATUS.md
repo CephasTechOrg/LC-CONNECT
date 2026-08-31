@@ -1,6 +1,6 @@
 # Foundation Status (Phases 0–5+)
 
-**Updated:** 2026-08-26  
+**Updated:** 2026-08-30  
 **Canonical architecture:** [`README.md`](./README.md) · [`01_target_architecture.md`](./01_target_architecture.md) · [`06_enterprise_system_review.md`](./06_enterprise_system_review.md)
 
 This file replaces the July 2026 Phase 0–1 snapshot. It describes **what is live now**, not the
@@ -41,7 +41,7 @@ Flutter (iOS / Android)
 | **2–4 — WebSocket messaging** | ✅ Auth-first WS, persist-before-publish, idempotent sends, sync/cursor, typing, idle/frame limits |
 | **5 — Redis** | ✅ Code (`RedisEventBus`, `RateLimiter.aallow`); **ops deferred** — provision `REDIS_URL` later, right before multi-instance |
 | **6 — Push** | ✅ FCM path when credentials configured |
-| **7 — Privacy** | ✅ Account deletion + `GET /account/export`; soft-delete message purge (cron + script, 90-day default) |
+| **7 — Privacy** | ✅ Account deletion + `GET /account/export`; soft-delete message purge (cron + script, 90-day default); suspension appeals (#22) |
 | **Hardening (Sprint A–C)** | ✅ See [`06_enterprise_system_review.md`](./06_enterprise_system_review.md) |
 
 Live checklist: [`todo_auth_websocket_security.md`](./todo_auth_websocket_security.md).
@@ -70,7 +70,9 @@ Live checklist: [`todo_auth_websocket_security.md`](./todo_auth_websocket_securi
 | Single API instance | Fine without Redis — **current plan**; Redis deferred until workers |
 | 2+ workers / instances | Set `REDIS_URL` on every instance **first**, then scale |
 | Health | `GET /health` liveness · `GET /health/ready` (DB required; Redis when configured) |
-| Message retention cron | [`MESSAGE_RETENTION_CRON_RUNBOOK.md`](./MESSAGE_RETENTION_CRON_RUNBOOK.md) — daily purge of soft-deleted messages |
+| Message retention cron | [`MESSAGE_RETENTION_CRON_RUNBOOK.md`](./MESSAGE_RETENTION_CRON_RUNBOOK.md) — daily purge of soft-deleted messages (**create once on Render/GitHub Actions**) |
+| Suspension appeals | [`SUSPENSION_APPEAL_RUNBOOK.md`](./SUSPENSION_APPEAL_RUNBOOK.md) — `SUPPORT_EMAIL` on API; migration auto on deploy |
+| Production launch | [`PRODUCTION_SETUP_CHECKLIST.md`](./PRODUCTION_SETUP_CHECKLIST.md) — master env + smoke-test gate |
 | Prod OpenAPI | `/docs` disabled when `ENVIRONMENT=production` |
 
 ---

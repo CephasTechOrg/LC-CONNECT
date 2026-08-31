@@ -5,6 +5,8 @@ Report evidence (`reports.message_body`) is **not** purged.
 
 **Policy reference:** [`docs/security/audit_and_data_retention.md`](../docs/security/audit_and_data_retention.md)
 
+**Production:** this cron is **not** created automatically — add it once using this runbook, then check it off in [`PRODUCTION_SETUP_CHECKLIST.md`](./PRODUCTION_SETUP_CHECKLIST.md) §5.
+
 ---
 
 ## Quick reference
