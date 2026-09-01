@@ -26,7 +26,7 @@ async def participants_read(db: AsyncSession, activity: Activity) -> list[Activi
                 Profile.id,
                 Profile.display_name,
                 Profile.avatar_url,
-                User.is_verified,
+                User.campus_verified,
             )
             .outerjoin(Profile, Profile.user_id == ActivityParticipant.user_id)
             .join(User, User.id == ActivityParticipant.user_id)

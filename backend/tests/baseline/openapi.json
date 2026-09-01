@@ -603,6 +603,34 @@
       },
       "AdminUserRead": {
         "properties": {
+          "campus_verified": {
+            "default": false,
+            "title": "Campus Verified",
+            "type": "boolean"
+          },
+          "campus_verified_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Campus Verified At"
+          },
+          "contact_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact Email"
+          },
           "display_name": {
             "anyOf": [
               {
@@ -6231,6 +6259,24 @@
         "title": "ResolveReportRequest",
         "type": "object"
       },
+      "RevokeCampusVerificationRequest": {
+        "properties": {
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "title": "RevokeCampusVerificationRequest",
+        "type": "object"
+      },
       "ScholarProfessionalProfileRead": {
         "properties": {
           "career_interests": {
@@ -9867,6 +9913,52 @@
         ]
       }
     },
+    "/api/v1/admin/users/{user_id}/campus-verify": {
+      "post": {
+        "operationId": "campus_verify_user_api_v1_admin_users__user_id__campus_verify_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Campus Verify User",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
     "/api/v1/admin/users/{user_id}/reactivate": {
       "post": {
         "operationId": "reactivate_user_api_v1_admin_users__user_id__reactivate_post",
@@ -9908,6 +10000,62 @@
           }
         ],
         "summary": "Reactivate User",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/users/{user_id}/revoke-campus-verify": {
+      "post": {
+        "operationId": "revoke_campus_verification_api_v1_admin_users__user_id__revoke_campus_verify_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RevokeCampusVerificationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Revoke Campus Verification",
         "tags": [
           "admin"
         ]

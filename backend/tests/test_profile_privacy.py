@@ -33,7 +33,7 @@ def _profile(role: str, email: str = 'person@livingstone.edu'):
         interests=[],
         languages=[],
         looking_for_options=[],
-        user=SimpleNamespace(email=email, role=role, is_verified=True),
+        user=SimpleNamespace(email=email, role=role, is_verified=True, campus_verified=True),
     )
 
 

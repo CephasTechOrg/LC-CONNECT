@@ -123,7 +123,9 @@ POST /api/v1/admin/programs/{slug}/members/{user_id}/revoke
 POST /api/v1/admin/reports/{report_id}/resolve
 POST /api/v1/admin/suspension-appeals/{appeal_id}/dismiss
 POST /api/v1/admin/suspension-appeals/{appeal_id}/resolve
+POST /api/v1/admin/users/{user_id}/campus-verify
 POST /api/v1/admin/users/{user_id}/reactivate
+POST /api/v1/admin/users/{user_id}/revoke-campus-verify
 POST /api/v1/admin/users/{user_id}/suspend
 POST /api/v1/attendance/sessions/{session_id}/check-in
 POST /api/v1/auth/bootstrap

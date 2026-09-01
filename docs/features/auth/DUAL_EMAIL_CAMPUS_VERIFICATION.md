@@ -1,6 +1,6 @@
 # Dual-Email Signup & Campus Verification
 
-**Status:** Phase 1 implemented (pending manual smoke test)  
+**Status:** Phase 2 implemented (pending manual pilot)  
 **Last updated:** 2026-09-01  
 **Related:** `architecture_review/DECISION_LOG.md` (ADR-008), `02_supabase_auth_migration.md`
 
@@ -109,25 +109,39 @@ Then **Verify email** screen copy references the **personal** address (“We sen
 ### Checklist
 
 #### Backend
-- [ ] Migration: `users.campus_verified` (bool, default `false`), `campus_verified_at`, `campus_verified_by_id`
-- [ ] `ProfilePublic.is_verified` / serializers read `campus_verified` for badge (not `is_verified`)
-- [ ] Admin API: `POST /admin/users/{id}/campus-verify`, `POST .../revoke-campus-verify`
-- [ ] Audit log entries for verify/revoke
-- [ ] DB + API tests; OpenAPI snapshot update (intentional)
+- [x] Migration: `users.campus_verified` (bool, default `false`), `campus_verified_at`, `campus_verified_by_id`
+- [x] `ProfilePublic.is_verified` / serializers read `campus_verified` for badge (not `is_verified`)
+- [x] Admin API: `POST /admin/users/{id}/campus-verify`, `POST .../revoke-campus-verify`
+- [x] Audit log entries for verify/revoke (`user.campus_verify`, `user.campus_verify_revoke`)
+- [x] DB + API tests; OpenAPI snapshot update (intentional)
 
 #### Admin portal
-- [ ] Users table: show campus email, personal email, campus verified status
-- [ ] Actions: **Verify** / **Revoke verification** (distinct from Suspend)
-- [ ] Filter: “Pending campus verification” (active + OTP done + not campus verified)
+- [x] Users table: campus email, personal email, email confirmed, campus badge columns
+- [x] Actions: **Verify campus** / **Revoke badge** (distinct from Suspend)
+- [x] Filter: “Pending campus verification” (active + OTP done + not campus verified)
 
 #### Mobile
-- [ ] Discovery / profile / chat header badge uses `campus_verified` from API
-- [ ] No app gate on badge (full access after OTP); badge is trust signal only
+- [x] Badge reads `is_verified` from API — backend now maps that field to `campus_verified` (no app change)
+- [x] No app gate on badge (full access after OTP); badge is trust signal only
 
 #### Hardening (Phase 2)
-- [ ] Backfill script: existing users `campus_verified=false` (no auto-badge)
-- [ ] Document admin SOP: when to verify vs suspend
+- [x] Backfill: migration defaults `campus_verified=false` for all existing users (no auto-badge)
+- [x] Admin SOP documented below
 - [ ] Manual pilot: verify 5 real students, revoke 1 test account
+
+---
+
+## Admin SOP — campus verification vs suspend
+
+| Action | When to use | Effect |
+|--------|-------------|--------|
+| **Verify campus** | Student completed OTP, you confirmed they are a real LC student/staff member | Profile checkmark appears; trust signal only — full app access was already granted after OTP |
+| **Revoke badge** | Verification was mistaken, or person is no longer affiliated | Checkmark removed; account stays active unless you also suspend |
+| **Suspend** | Policy violation, harassment, fraud — enforcement | User signed out and blocked from the app entirely |
+
+**Pending campus verification** filter shows: `status=active` + email confirmed + no campus badge yet. Work this queue after new signups.
+
+**Do not** use campus verification to gate app access — that is what email OTP (`is_verified`) is for.
 
 ---
 

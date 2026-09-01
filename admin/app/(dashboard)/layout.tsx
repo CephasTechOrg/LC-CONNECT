@@ -177,7 +177,10 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           <div className="sidebar-brand-mark">
             <Image src="/lclogo.png" alt="Livingstone College" width={44} height={44} priority />
           </div>
-          <div className="sidebar-brand-code">LC</div>
+          <div className="sidebar-brand-text">
+            <div className="sidebar-brand-title">LC Connect</div>
+            <div className="sidebar-brand-subtitle">Admin Portal</div>
+          </div>
         </div>
 
         <nav className="sidebar-nav">
@@ -186,6 +189,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               {section.dividerBefore ? <div className="nav-divider" aria-hidden /> : null}
               {section.items.map((item) => {
                 const active = isActive(item.href, pathname);
+                const stroke = active ? '#6F42E8' : 'rgba(255,255,255,0.9)';
                 return (
                   <Link
                     key={item.href}
@@ -195,7 +199,10 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                     aria-current={active ? 'page' : undefined}
                     className={`nav-link${active ? ' active' : ''}`}
                   >
-                    <item.Icon stroke={active ? '#6F42E8' : 'rgba(255,255,255,0.9)'} />
+                    <span className="nav-link-icon" aria-hidden>
+                      <item.Icon stroke={stroke} />
+                    </span>
+                    <span className="nav-link-label">{item.label}</span>
                   </Link>
                 );
               })}
@@ -210,7 +217,10 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           aria-label="Sign out"
           onClick={() => void onLogout()}
         >
-          <IconSignOut stroke="rgba(255,255,255,0.9)" />
+          <span className="nav-link-icon" aria-hidden>
+            <IconSignOut stroke="rgba(255,255,255,0.9)" />
+          </span>
+          <span className="nav-link-label">Sign out</span>
         </button>
       </aside>
 

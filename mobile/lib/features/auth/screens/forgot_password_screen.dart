@@ -36,7 +36,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(
-          'If that email is registered, we sent a 6-digit code.',
+          'If that account exists, we sent a code to your personal email.',
           style: GoogleFonts.dmSans(),
         ),
         backgroundColor: const Color(0xFF059669),
@@ -105,7 +105,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  "Enter your email address and we'll send you a password reset link.",
+                  'Enter your Livingstone email. We send the reset code to the personal email you used at signup.',
                   style: GoogleFonts.dmSans(
                     fontSize: 14,
                     color: const Color(0xFF6B7280),
@@ -116,8 +116,8 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                 // Email field
                 _InputField(
                   controller: _emailCtrl,
-                  hintText: 'Email address',
-                  icon: Icons.mail_outline_rounded,
+                  hintText: 'you@students.livingstone.edu',
+                  icon: Icons.school_outlined,
                   keyboardType: TextInputType.emailAddress,
                   validator: (v) =>
                       v != null && v.contains('@') ? null : 'Enter a valid email',

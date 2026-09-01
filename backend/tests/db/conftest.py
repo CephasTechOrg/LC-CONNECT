@@ -133,8 +133,18 @@ class _Factory:
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
 
-    async def user(self, *, display_name: str = 'Student', is_verified: bool = True) -> User:
-        user = User(email=f'{uuid4().hex[:10]}@livingstone.edu', is_verified=is_verified)
+    async def user(
+        self,
+        *,
+        display_name: str = 'Student',
+        is_verified: bool = True,
+        campus_verified: bool = False,
+    ) -> User:
+        user = User(
+            email=f'{uuid4().hex[:10]}@livingstone.edu',
+            is_verified=is_verified,
+            campus_verified=campus_verified,
+        )
         self.db.add(user)
         await self.db.flush()
         self.db.add(Profile(user_id=user.id, display_name=display_name, profile_completed=True))

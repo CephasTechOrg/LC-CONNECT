@@ -8,6 +8,7 @@ from app.database import get_db
 from app.dependencies import require_admin_aal2
 from app.features.admin import admins as admins_admin
 from app.features.admin import admins_router
+from app.features.admin import campus_verification_router
 from app.features.admin import campus_positions as campus_admin
 from app.features.admin import campus_posts as posts_admin
 from app.features.admin import campus_resources as resources_admin
@@ -62,6 +63,7 @@ router = APIRouter(prefix='/admin', tags=['admin'])
 # The `/admins/...` roster endpoints live in their own module (size); same prefix, so the
 # API surface is identical to when they were declared inline here.
 router.include_router(admins_router.router)
+router.include_router(campus_verification_router.router)
 
 
 def _position_admin_read(position, user: User, profile: Profile) -> CampusPositionAdminRead:
@@ -135,10 +137,13 @@ async def list_users(
         AdminUserRead(
             id=user.id,
             email=user.email,
+            contact_email=user.contact_email,
             role=user.role,
             status=user.status,
             is_active=user.is_active,
             is_verified=user.is_verified,
+            campus_verified=user.campus_verified,
+            campus_verified_at=user.campus_verified_at,
             display_name=profile.display_name,
         )
         for user, profile in result.all()

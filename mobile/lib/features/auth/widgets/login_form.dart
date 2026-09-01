@@ -58,8 +58,8 @@ class _FormSection extends StatelessWidget {
             const SizedBox(height: 22),
             _MockupField(
               controller: emailCtrl,
-              hintText: 'Email address',
-              icon: Icons.mail_outline_rounded,
+              hintText: 'Livingstone email address',
+              icon: Icons.school_outlined,
               keyboardType: TextInputType.emailAddress,
               validator: (v) =>
                   v != null && v.contains('@') ? null : 'Enter a valid email',

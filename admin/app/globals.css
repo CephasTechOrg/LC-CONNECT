@@ -28,7 +28,7 @@
   --shadow-card: 0 1px 3px rgba(52, 38, 104, 0.05);
   --shadow-rail: 0 18px 40px -14px rgba(87, 48, 199, 0.55);
   --font: "Inter", system-ui, -apple-system, sans-serif;
-  --sidebar-width: 96px;
+  --sidebar-width: 248px;
 }
 
 * {
@@ -234,8 +234,8 @@ button {
   box-shadow: var(--shadow-rail);
   display: flex;
   flex-direction: column;
-  align-items: center;
-  padding: 22px 0 24px;
+  align-items: stretch;
+  padding: 20px 14px 24px;
   position: sticky;
   top: 16px;
   align-self: flex-start;
@@ -245,46 +245,63 @@ button {
 
 .sidebar-brand {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  gap: 0;
+  gap: 12px;
+  padding: 4px 8px 8px;
 }
 
 .sidebar-brand-mark {
-  width: 52px;
-  height: 52px;
-  border-radius: 16px;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
   background: #fff;
   display: grid;
   place-items: center;
   box-shadow: 0 6px 16px rgba(30, 20, 60, 0.22);
   overflow: hidden;
+  flex-shrink: 0;
 }
 
 .sidebar-brand-mark img {
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
   object-fit: contain;
 }
 
-.sidebar-brand-code {
-  margin-top: 9px;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  color: rgba(255, 255, 255, 0.85);
+.sidebar-brand-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.sidebar-brand-title {
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #fff;
+  line-height: 1.15;
+}
+
+.sidebar-brand-subtitle {
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.72);
+  line-height: 1.2;
 }
 
 .sidebar-nav {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   gap: 0;
-  margin-top: 26px;
+  margin-top: 18px;
   width: 100%;
   flex: 1;
   overflow-y: auto;
   scrollbar-width: none;
+  padding: 0 4px;
 }
 
 .sidebar-nav::-webkit-scrollbar {
@@ -294,30 +311,50 @@ button {
 .nav-section {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 6px;
+  align-items: stretch;
+  gap: 4px;
   width: 100%;
 }
 
 .nav-divider {
-  width: 44px;
+  width: 100%;
   height: 1px;
   background: rgba(255, 255, 255, 0.18);
-  margin: 8px 0;
+  margin: 10px 0;
 }
 
 .nav-link {
-  width: 52px;
-  height: 52px;
-  border-radius: 16px;
-  display: grid;
-  place-items: center;
-  color: rgba(255, 255, 255, 0.9);
+  width: 100%;
+  min-height: 44px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: rgba(255, 255, 255, 0.92);
   background: transparent;
   border: none;
-  padding: 0;
+  padding: 0 12px;
   flex-shrink: 0;
   transition: background 0.15s ease, box-shadow 0.15s ease;
+  text-decoration: none;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.nav-link-icon {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.nav-link-label {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .nav-link:hover {
@@ -333,6 +370,9 @@ button {
 .nav-signout {
   margin-top: auto;
   cursor: pointer;
+  width: calc(100% - 8px);
+  margin-left: 4px;
+  margin-right: 4px;
 }
 
 .main {
@@ -968,17 +1008,18 @@ table.rows tr:last-child td {
     height: auto;
     position: relative;
     top: 0;
-    flex-direction: row;
-    align-items: center;
-    padding: 12px 14px;
+    flex-direction: column;
+    align-items: stretch;
+    padding: 14px 12px;
     border-radius: 20px;
-    gap: 12px;
+    gap: 10px;
   }
 
   .sidebar-brand {
     flex-direction: row;
-    gap: 8px;
+    gap: 10px;
     flex-shrink: 0;
+    padding: 0 4px;
   }
 
   .sidebar-brand-mark {
@@ -992,8 +1033,8 @@ table.rows tr:last-child td {
     height: 32px;
   }
 
-  .sidebar-brand-code {
-    margin-top: 0;
+  .sidebar-brand-title {
+    font-size: 15px;
   }
 
   .sidebar-nav {
@@ -1004,6 +1045,7 @@ table.rows tr:last-child td {
     flex: 1;
     gap: 4px;
     justify-content: flex-start;
+    padding: 0;
   }
 
   .nav-section {
@@ -1019,14 +1061,27 @@ table.rows tr:last-child td {
   }
 
   .nav-link {
-    width: 44px;
-    height: 44px;
+    width: auto;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0 10px;
     border-radius: 14px;
+  }
+
+  .nav-link-label {
+    display: none;
   }
 
   .nav-signout {
     margin-top: 0;
     margin-left: auto;
+    width: 44px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .nav-signout .nav-link-label {
+    display: none;
   }
 
   .main {

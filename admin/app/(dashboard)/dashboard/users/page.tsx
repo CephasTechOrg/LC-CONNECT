@@ -8,10 +8,13 @@ import { getAccessToken } from '@/lib/auth/session';
 type AdminUser = {
   id: string;
   email: string;
+  contact_email: string | null;
   role: string;
   status: string;
   is_active: boolean;
   is_verified: boolean;
+  campus_verified: boolean;
+  campus_verified_at: string | null;
   display_name: string | null;
 };
 
@@ -84,15 +87,51 @@ export default function UsersPage() {
     }
   }
 
+  async function campusVerify(userId: string, label: string) {
+    if (!window.confirm(`Grant campus verification badge to ${label}?`)) return;
+    try {
+      const token = await getAccessToken();
+      if (!token) return;
+      await apiFetch(`/admin/users/${userId}/campus-verify`, token, { method: 'POST' });
+      setError(null);
+      setFlash(`Campus verified ${label}.`);
+      await load();
+    } catch (err) {
+      setError(toUserMessage(err, 'Could not verify this account. Please try again.'));
+    }
+  }
+
+  async function revokeCampusVerify(userId: string, label: string) {
+    const reason = window.prompt(`Reason for revoking campus verification for ${label}? (optional)`)?.trim();
+    if (!window.confirm(`Revoke campus verification for ${label}? Their profile checkmark will be removed.`)) return;
+    try {
+      const token = await getAccessToken();
+      if (!token) return;
+      await apiFetch(`/admin/users/${userId}/revoke-campus-verify`, token, {
+        method: 'POST',
+        body: JSON.stringify({ reason: reason || null }),
+      });
+      setError(null);
+      setFlash(`Revoked campus verification for ${label}.`);
+      await load();
+    } catch (err) {
+      setError(toUserMessage(err, 'Could not revoke campus verification. Please try again.'));
+    }
+  }
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return users.filter((u) => {
       if (roleFilter !== 'all' && u.role !== roleFilter) return false;
       if (statusFilter !== 'all' && u.status !== statusFilter) return false;
-      if (verifyFilter === 'verified' && !u.is_verified) return false;
-      if (verifyFilter === 'unverified' && u.is_verified) return false;
+      if (verifyFilter === 'campus_verified' && !u.campus_verified) return false;
+      if (verifyFilter === 'pending_campus' && !(u.status === 'active' && u.is_verified && !u.campus_verified)) {
+        return false;
+      }
+      if (verifyFilter === 'email_unconfirmed' && u.is_verified) return false;
       if (!q) return true;
-      return u.email.toLowerCase().includes(q) || (u.display_name || '').toLowerCase().includes(q);
+      const haystack = [u.email, u.contact_email || '', u.display_name || ''].join(' ').toLowerCase();
+      return haystack.includes(q);
     });
   }, [users, query, roleFilter, statusFilter, verifyFilter]);
 
@@ -103,7 +142,7 @@ export default function UsersPage() {
       <header className="ops-top">
         <div>
           <h1>Users</h1>
-          <p>Search every account on LC Connect and manage account access.</p>
+          <p>Search accounts, grant campus verification badges, and manage access.</p>
         </div>
       </header>
       <div className="content" style={{ paddingTop: 8 }}>
@@ -131,8 +170,9 @@ export default function UsersPage() {
           </select>
           <select className="ops-select" value={verifyFilter} onChange={(e) => setVerifyFilter(e.target.value)} aria-label="Verification">
             <option value="all">All verification</option>
-            <option value="verified">Verified</option>
-            <option value="unverified">Unverified</option>
+            <option value="pending_campus">Pending campus verification</option>
+            <option value="campus_verified">Campus verified</option>
+            <option value="email_unconfirmed">Email not confirmed</option>
           </select>
           <span className="ops-count">
             {loading ? '…' : `${filtered.length.toLocaleString()} of ${users.length.toLocaleString()} users`}
@@ -156,16 +196,20 @@ export default function UsersPage() {
               <thead>
                 <tr>
                   <th>User</th>
-                  <th>Email</th>
+                  <th>Campus email</th>
+                  <th>Personal email</th>
                   <th>Role</th>
-                  <th>Verification</th>
-                  <th>Account Status</th>
+                  <th>Email</th>
+                  <th>Campus badge</th>
+                  <th>Account</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((u) => {
                   const label = u.display_name || u.email;
+                  const canCampusVerify =
+                    u.role !== 'admin' && u.is_verified && !u.campus_verified && u.status === 'active';
                   return (
                     <tr key={u.id}>
                       <td>
@@ -175,10 +219,16 @@ export default function UsersPage() {
                         </div>
                       </td>
                       <td>{u.email}</td>
+                      <td>{u.contact_email || '—'}</td>
                       <td style={{ textTransform: 'capitalize' }}>{u.role}</td>
                       <td>
                         <span className={u.is_verified ? 'ops-chip success' : 'ops-chip muted'}>
-                          {u.is_verified ? 'Verified' : 'Unverified'}
+                          {u.is_verified ? 'Confirmed' : 'Pending OTP'}
+                        </span>
+                      </td>
+                      <td>
+                        <span className={u.campus_verified ? 'ops-chip success' : 'ops-chip muted'}>
+                          {u.campus_verified ? 'Verified' : 'Not verified'}
                         </span>
                       </td>
                       <td>
@@ -200,23 +250,44 @@ export default function UsersPage() {
                             <span className="ops-cell-sub" style={{ fontStyle: 'italic' }}>
                               Managed in Admins &amp; Roles
                             </span>
-                          ) : u.status === 'active' ? (
-                            <button
-                              className="ops-btn danger"
-                              type="button"
-                              onClick={() => void suspend(u.id, label)}
-                            >
-                              Suspend
-                            </button>
-                          ) : u.status === 'suspended' ? (
-                            <button
-                              className="ops-btn"
-                              type="button"
-                              onClick={() => void reactivate(u.id, label)}
-                            >
-                              Reactivate
-                            </button>
-                          ) : null}
+                          ) : (
+                            <>
+                              {canCampusVerify ? (
+                                <button
+                                  className="ops-btn"
+                                  type="button"
+                                  onClick={() => void campusVerify(u.id, label)}
+                                >
+                                  Verify campus
+                                </button>
+                              ) : u.campus_verified ? (
+                                <button
+                                  className="ops-btn"
+                                  type="button"
+                                  onClick={() => void revokeCampusVerify(u.id, label)}
+                                >
+                                  Revoke badge
+                                </button>
+                              ) : null}
+                              {u.status === 'active' ? (
+                                <button
+                                  className="ops-btn danger"
+                                  type="button"
+                                  onClick={() => void suspend(u.id, label)}
+                                >
+                                  Suspend
+                                </button>
+                              ) : u.status === 'suspended' ? (
+                                <button
+                                  className="ops-btn"
+                                  type="button"
+                                  onClick={() => void reactivate(u.id, label)}
+                                >
+                                  Reactivate
+                                </button>
+                              ) : null}
+                            </>
+                          )}
                         </div>
                       </td>
                     </tr>

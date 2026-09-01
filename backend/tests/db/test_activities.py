@@ -114,8 +114,8 @@ async def test_cancelled_activity_is_hidden(db, factory):
 
 
 async def test_participants_roster_lists_creator_first(db, factory):
-    creator = await factory.user(display_name='Organizer')
-    joiner = await factory.user(display_name='Joiner', is_verified=False)
+    creator = await factory.user(display_name='Organizer', campus_verified=True)
+    joiner = await factory.user(display_name='Joiner', is_verified=False, campus_verified=False)
     activity = await _activity(db, creator)
     await join_activity(db, activity.id, joiner.id)
     await db.commit()
