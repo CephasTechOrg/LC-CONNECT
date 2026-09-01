@@ -12,7 +12,7 @@ import type {
 } from '@/lib/api/attendance';
 import { apiFetch, toUserMessage } from '@/lib/api/client';
 import { getAccessToken } from '@/lib/auth/session';
-import './attendance.css';
+import '../attendance.css';
 
 const ROSTER_POLL_MS = 3000;
 const QR_POLL_MS = 8000;
