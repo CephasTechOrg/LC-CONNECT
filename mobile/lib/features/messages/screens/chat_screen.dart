@@ -95,12 +95,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       _loading = false;
       return;
     }
+    // Must run after the first frame — Riverpod forbids notifier writes during build.
     Future.microtask(() {
       if (!mounted) return;
       _unread.enterConversation(widget.matchId);
       _unread.clearConversation(widget.matchId);
+      _rt.subscribe(widget.matchId);
     });
-    _rt.subscribe(widget.matchId);
     _eventsSub = _rt.events.listen(_onEvent);
     _reconnectSub = _rt.reconnected.listen((_) => _syncAfterReconnect());
     _scrollController.addListener(_onScroll);
@@ -206,22 +207,30 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final newest = _newestServerMessage();
     if (newest == null) return _loadInitial();
     try {
-      final resp = await ref.read(apiClientProvider).dio.get(
-        '/messages/threads/${widget.matchId}/sync',
-        queryParameters: {
-          'after_created_at': newest.createdAt.toUtc().toIso8601String(),
-          'after_id': newest.id,
-          'limit': 100,
-        },
-      );
-      if (!mounted) return;
-      final missed = _parseAscending(resp.data as List);
-      if (missed.isNotEmpty) {
+      var cursor = newest;
+      var totalMissed = 0;
+      while (mounted) {
+        final resp = await ref.read(apiClientProvider).dio.get(
+          '/messages/threads/${widget.matchId}/sync',
+          queryParameters: {
+            'after_created_at': cursor.createdAt.toUtc().toIso8601String(),
+            'after_id': cursor.id,
+            'limit': 100,
+          },
+        );
+        if (!mounted) return;
+        final missed = _parseAscending(resp.data as List);
+        if (missed.isEmpty) break;
         setState(() => _absorb(missed));
+        totalMissed += missed.length;
+        if (missed.length < 100) break;
+        cursor = missed.last;
+      }
+      if (totalMissed > 0) {
         if (_isNearBottom) {
           _scrollToBottom();
         } else {
-          setState(() => _newWhileAway += missed.length);
+          setState(() => _newWhileAway += totalMissed);
         }
         _scheduleCacheSave();
       }
@@ -265,6 +274,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     _messages
       ..clear()
       ..addAll(merged);
+    final liveIds = merged.map((m) => m.id).toSet();
+    _seenServerIds.removeWhere((id) => !liveIds.contains(id));
   }
 
   void _scheduleCacheSave() {
@@ -295,9 +306,36 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         _markMineRead();
       case MessageDeleted(:final conversationId, :final messageId) when conversationId == widget.matchId:
         _markDeleted(messageId);
+      case WsError(:final code, :final message):
+        _handleWsError(code, message);
       default:
         break;
     }
+  }
+
+  void _handleWsError(String code, String message) {
+    if (code != 'rate_limited' && code != 'forbidden') return;
+    var failed = false;
+    setState(() {
+      for (var i = 0; i < _messages.length; i++) {
+        if (_messages[i].status == MessageStatus.sending) {
+          _messages[i] = _messages[i].copyWith(status: MessageStatus.failed);
+          failed = true;
+        }
+      }
+    });
+    if (!failed || !mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          code == 'rate_limited' ? 'Sending too fast — please wait a moment.' : message,
+          style: GoogleFonts.dmSans(color: Colors.white),
+        ),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
   }
 
   void _markDeleted(String messageId) {

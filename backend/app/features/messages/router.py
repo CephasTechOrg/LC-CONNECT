@@ -30,10 +30,11 @@ from app.models import User
 from app.shared.conversations import (
     accessible_conversation,
     active_member_ids,
+    active_members_with_mute,
     addressing_ids_for_conversations,
 )
 from app.shared.policies import can_message_as_staff
-from app.shared.rate_limit import recipient_search_limit, staff_thread_limit
+from app.shared.rate_limit import message_send_limit, recipient_search_limit, staff_thread_limit
 
 router = APIRouter(prefix='/messages', tags=['messages'])
 
@@ -130,9 +131,14 @@ async def sync_thread_endpoint(
 
 
 @router.post('/threads/{match_id}', response_model=MessageRead, status_code=status.HTTP_201_CREATED)
-async def send_message(match_id: UUID, payload: MessageCreate, current_user: User = Depends(require_verified_user), db: AsyncSession = Depends(get_db)):
+async def send_message(
+    match_id: UUID,
+    payload: MessageCreate,
+    current_user: User = Depends(message_send_limit),
+    db: AsyncSession = Depends(get_db),
+):
     conversation = await accessible_conversation(db, match_id, current_user.id)
-    message, _ = await persist_message_idempotent(
+    message, created = await persist_message_idempotent(
         db,
         sender_id=current_user.id,
         match_id=conversation.match_id,
@@ -140,6 +146,15 @@ async def send_message(match_id: UUID, payload: MessageCreate, current_user: Use
         body=payload.body.strip(),
         client_message_id=payload.client_message_id,
     )
+    if created:
+        from app.features.realtime.runtime import emit_message_created
+
+        recipients = await active_members_with_mute(db, conversation.id, exclude=current_user.id)
+        await emit_message_created(
+            message,
+            sender_id=current_user.id,
+            recipients=recipients,
+        )
     return message_read(message)
 
 

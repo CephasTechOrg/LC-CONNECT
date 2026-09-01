@@ -1,3 +1,19 @@
+import { apiFetch } from '@/lib/api/client';
+
+export type HonorsAttendanceFeatureStatus = {
+  enabled: boolean;
+};
+
+export const ATTENDANCE_DISABLED_MESSAGE = 'Honors attendance is not enabled';
+
+export function isAttendanceDisabledError(err: unknown): boolean {
+  return err instanceof Error && err.message === ATTENDANCE_DISABLED_MESSAGE;
+}
+
+export async function fetchHonorsAttendanceStatus(): Promise<HonorsAttendanceFeatureStatus> {
+  return apiFetch<HonorsAttendanceFeatureStatus>('/attendance/honors/status', null);
+}
+
 export type AttendanceSession = {
   id: string;
   program_id: string;

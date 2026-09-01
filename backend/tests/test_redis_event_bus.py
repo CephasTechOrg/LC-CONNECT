@@ -125,7 +125,12 @@ async def test_apply_control_pair_revoked():
 
     await apply_control_event(
         manager,
-        {'event': 'pair.revoked', 'user_a': str(a), 'user_b': str(b)},
+        {
+            'event': 'pair.revoked',
+            'user_a': str(a),
+            'user_b': str(b),
+            'conversation_ids': [str(conv)],
+        },
     )
     assert manager.conversation_subscriber_count(conv) == 0
     await ca.stop()

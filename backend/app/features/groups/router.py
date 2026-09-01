@@ -291,11 +291,7 @@ async def remove_member(
     await service.remove_member(db, group, member, user_id, ban=ban)
     await db.commit()
     # Close the removed member's live subscription so they stop receiving the group's messages.
-    # Lazy import avoids a module-load cycle with the realtime package.
-    from app.features.realtime.protocol import ErrorCode, error
-    from app.features.realtime.runtime import manager as ws_manager
+    from app.features.realtime.runtime import revoke_member_from_conversation
 
-    await ws_manager.revoke_member(
-        group.conversation_id, user_id, error(ErrorCode.FORBIDDEN, 'Removed from group')
-    )
+    await revoke_member_from_conversation(group.conversation_id, user_id)
     await _notify(user_id, 'group_removed', group, current_user.id)

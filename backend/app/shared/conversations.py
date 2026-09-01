@@ -179,6 +179,30 @@ async def addressing_ids_for_conversations(
     return {conversation_id: (match_id or conversation_id) for conversation_id, match_id in rows}
 
 
+async def blockable_conversation_ids_between(
+    db: AsyncSession, user_a: UUID, user_b: UUID
+) -> list[UUID]:
+    """DM + staff_dm conversations shared by exactly these two users — never groups."""
+    member_a = aliased(ConversationMember)
+    member_b = aliased(ConversationMember)
+    return list(
+        (
+            await db.execute(
+                select(Conversation.id)
+                .join(member_a, member_a.conversation_id == Conversation.id)
+                .join(member_b, member_b.conversation_id == Conversation.id)
+                .where(
+                    Conversation.kind.in_(_BLOCKABLE_KINDS),
+                    member_a.user_id == user_a,
+                    member_a.status == ACTIVE,
+                    member_b.user_id == user_b,
+                    member_b.status == ACTIVE,
+                )
+            )
+        ).scalars().all()
+    )
+
+
 async def member_role(db: AsyncSession, conversation_id: UUID, user_id: UUID) -> str | None:
     """The user's role in a conversation if they're an active member, else None. DM members are
     always 'member', so an `admin`/`owner` result only ever comes from a group."""

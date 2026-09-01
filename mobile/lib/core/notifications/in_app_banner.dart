@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../router/app_router.dart';
+import '../../features/messages/providers/messages_provider.dart';
+import '../../features/messages/utils/message_navigation.dart';
 import '../theme/app_theme.dart';
 import '../widgets/avatar_widget.dart';
 
@@ -85,7 +87,11 @@ class _BannerCard extends ConsumerWidget {
 
   void _open(WidgetRef ref) {
     ref.read(currentBannerProvider.notifier).dismiss();
-    ref.read(routerProvider).push('/messages/${data.conversationId}');
+    openMessageConversation(
+      router: ref.read(routerProvider),
+      conversationId: data.conversationId,
+      threads: ref.read(threadsNotifierProvider).asData?.value,
+    );
   }
 
   @override

@@ -3,8 +3,13 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { FormEvent, useCallback, useEffect, useState } from 'react';
+import { AttendanceFeatureDisabled } from '@/components/attendance/AttendanceFeatureDisabled';
 import { OpsEmpty, OpsLoading } from '@/components/ops-states';
 import type { AttendanceDashboard, AttendanceHistoryItem } from '@/lib/api/attendance';
+import {
+  fetchHonorsAttendanceStatus,
+  isAttendanceDisabledError,
+} from '@/lib/api/attendance';
 import { apiFetch, toUserMessage } from '@/lib/api/client';
 import { getAccessToken } from '@/lib/auth/session';
 import './attendance.css';
@@ -17,6 +22,7 @@ function formatDate(iso: string): string {
 export default function AttendanceLandingPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
+  const [featureEnabled, setFeatureEnabled] = useState<boolean | null>(null);
   const [error, setError] = useState('');
   const [dashboard, setDashboard] = useState<AttendanceDashboard | null>(null);
   const [history, setHistory] = useState<AttendanceHistoryItem[]>([]);
@@ -30,7 +36,12 @@ export default function AttendanceLandingPage() {
   const load = useCallback(async () => {
     setLoading(true);
     setError('');
+    setFeatureEnabled(null);
     try {
+      const status = await fetchHonorsAttendanceStatus();
+      setFeatureEnabled(status.enabled);
+      if (!status.enabled) return;
+
       const token = await getAccessToken();
       if (!token) throw new Error('Not signed in');
       const [dash, items] = await Promise.all([
@@ -40,6 +51,10 @@ export default function AttendanceLandingPage() {
       setDashboard(dash);
       setHistory(items);
     } catch (err) {
+      if (isAttendanceDisabledError(err)) {
+        setFeatureEnabled(false);
+        return;
+      }
       setError(toUserMessage(err, 'Could not load attendance.'));
     } finally {
       setLoading(false);
@@ -68,6 +83,11 @@ export default function AttendanceLandingPage() {
       setDialogOpen(false);
       router.push(`/dashboard/attendance/${session.id}`);
     } catch (err) {
+      if (isAttendanceDisabledError(err)) {
+        setFeatureEnabled(false);
+        setDialogOpen(false);
+        return;
+      }
       setFlash(toUserMessage(err, 'Could not start attendance.'));
     } finally {
       setBusy(false);
@@ -75,6 +95,20 @@ export default function AttendanceLandingPage() {
   }
 
   if (loading) return <OpsLoading label="Loading attendance…" />;
+
+  if (featureEnabled === false) {
+    return (
+      <div>
+        <div className="ops-top">
+          <div>
+            <h1>Honors Attendance</h1>
+            <p>Start a session, display the classroom QR, and review Honors student check-ins.</p>
+          </div>
+        </div>
+        <AttendanceFeatureDisabled />
+      </div>
+    );
+  }
 
   return (
     <div>

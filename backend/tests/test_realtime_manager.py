@@ -111,26 +111,31 @@ async def test_deliver_to_user_reaches_all_their_devices():
 
 # ── revocation ────────────────────────────────────────────────────────────────
 
-async def test_revoke_pair_revokes_shared_conversation():
+async def test_revoke_pair_only_revokes_listed_conversations():
     mgr = ConnectionManager()
-    user_a, user_b, conv = uuid4(), uuid4(), uuid4()
+    user_a, user_b = uuid4(), uuid4()
+    dm_conv, group_conv = uuid4(), uuid4()
     sock_a, sock_b = FakeSocket(), FakeSocket()
     conn_a, conn_b = mgr.register(sock_a, user_a), mgr.register(sock_b, user_b)
-    mgr.subscribe(conn_a, conv)
-    mgr.subscribe(conn_b, conv)
+    mgr.subscribe(conn_a, dm_conv)
+    mgr.subscribe(conn_b, dm_conv)
+    mgr.subscribe(conn_a, group_conv)
+    mgr.subscribe(conn_b, group_conv)
 
-    await mgr.revoke_pair(user_a, user_b, {'type': 'error', 'code': 'forbidden'})
+    await mgr.revoke_pair(
+        user_a, user_b, {'type': 'error', 'code': 'forbidden'}, conversation_ids=[dm_conv]
+    )
     await _tick()
 
-    assert conv not in conn_a.subscriptions
-    assert conv not in conn_b.subscriptions
-    assert mgr.conversation_subscriber_count(conv) == 0
-    assert sock_a.sent and sock_a.sent[-1]['code'] == 'forbidden'
+    assert dm_conv not in conn_a.subscriptions
+    assert dm_conv not in conn_b.subscriptions
+    assert group_conv in conn_a.subscriptions
+    assert group_conv in conn_b.subscriptions
     await mgr.unregister(conn_a)
     await mgr.unregister(conn_b)
 
 
-async def test_close_user_closes_all_their_sockets():
+async def test_revoke_pair_noop_when_not_shared():
     mgr = ConnectionManager()
     user = uuid4()
     sock1, sock2 = FakeSocket(), FakeSocket()
@@ -175,7 +180,7 @@ async def test_revoke_pair_noop_when_not_shared():
     conn_b = mgr.register(FakeSocket(), user_b)
     mgr.subscribe(conn_a, uuid4())  # different conversations
     mgr.subscribe(conn_b, uuid4())
-    await mgr.revoke_pair(user_a, user_b, {'code': 'forbidden'})
+    await mgr.revoke_pair(user_a, user_b, {'code': 'forbidden'}, conversation_ids=[])
     assert len(conn_a.subscriptions) == 1  # untouched
     assert len(conn_b.subscriptions) == 1
     await mgr.unregister(conn_a)

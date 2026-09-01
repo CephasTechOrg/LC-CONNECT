@@ -24,10 +24,10 @@ from app.features.realtime import protocol, service
 from app.features.realtime.manager import Connection
 from app.features.realtime.protocol import CloseCode, ErrorCode
 from app.features.realtime.runtime import (
+    emit_message_created,
     event_bus,
     malformed_limiter,
     manager,
-    schedule_offline_push,
     send_limiter,
     subscribe_limiter,
     typing_limiter,
@@ -226,23 +226,11 @@ async def _on_send(conn: Connection, frame: protocol.SendFrame) -> None:
         )
     manager.send(conn, protocol.message_ack(frame.request_id, message, duplicate=not created))
     if created:
-        # Conversation channel: live message stream to subscribers (they dedupe against
-        # the ack by client_message_id — the canonical merge behavior).
-        await event_bus.publish_to_conversation(frame.conversation_id, protocol.message_created(message))
-        # User channels: thread-list update for both participants (regardless of open chat).
-        updated = protocol.conversation_updated(message)
-        await event_bus.publish_to_user(conn.user_id, updated)
-        for recipient_id, muted in recipients:
-            await event_bus.publish_to_user(recipient_id, updated)  # live to all (even muted)
-            # Offline push: only for members who are muted-off and have no live socket.
-            open_sockets = manager.user_socket_count(recipient_id)
-            if muted or open_sockets != 0:
-                continue
-            logger.info('send: recipient=%s offline+unmuted -> scheduling offline push', recipient_id)
-            if open_sockets == 0:
-                asyncio.create_task(
-                    schedule_offline_push(recipient_id, conn.user_id, frame.conversation_id)
-                )
+        await emit_message_created(
+            message,
+            sender_id=conn.user_id,
+            recipients=recipients,
+        )
 
 
 async def _on_typing(conn: Connection, conversation_id: UUID, active: bool) -> None:
@@ -263,6 +251,7 @@ async def _on_typing(conn: Connection, conversation_id: UUID, active: bool) -> N
 async def _on_read(conn: Connection, frame: protocol.ReadFrame) -> None:
     async with AsyncSessionLocal() as db:
         try:
+            await service.recheck_account(db, conn.user_id)
             await service.authorize_conversation(db, conn.user_id, frame.conversation_id)
         except service.WsForbidden:
             return

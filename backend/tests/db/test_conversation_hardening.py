@@ -14,7 +14,9 @@ from sqlalchemy import func, select
 from app.features.messages.service import unread_summary
 from app.features.realtime.service import mark_read
 from app.models import Conversation, ConversationMember
-from app.shared.conversations import ensure_dm_conversation
+from app.features.groups import service as group_service
+from app.features.groups.schema import GroupCreate
+from app.shared.conversations import blockable_conversation_ids_between, ensure_dm_conversation
 
 BASE = datetime(2026, 1, 1, 12, 0, 0, tzinfo=UTC)
 
@@ -55,6 +57,24 @@ async def test_ensure_dm_conversation_is_idempotent(db, factory):
     ).scalar()
     assert conv_count == 1  # never a duplicate conversation
     assert member_count == 2  # exactly the two members, not doubled
+
+
+async def test_blockable_conversation_ids_between_ignores_shared_groups(db, factory):
+    a = await factory.user()
+    b = await factory.user()
+    c = await factory.user()
+    match = await factory.match(a, b)
+    dm = await ensure_dm_conversation(db, match)
+    group = await group_service.create_group(
+        db, c, GroupCreate(name='Study Hall', category='club', visibility='public', join_policy='open')
+    )
+    await group_service.join_group(db, group, a)
+    await group_service.join_group(db, group, b)
+    await db.commit()
+
+    ids = await blockable_conversation_ids_between(db, a.id, b.id)
+    assert dm.id in ids
+    assert group.conversation_id not in ids
 
 
 async def test_new_matches_are_provisioned_with_a_conversation(db, factory):

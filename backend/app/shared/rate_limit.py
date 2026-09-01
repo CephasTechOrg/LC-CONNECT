@@ -198,6 +198,10 @@ attendance_check_in_limiter = RateLimiter(
     60,
     name='attendance_check_in',
 )
+message_send_limit = UserRateLimit(
+    'message_send', settings.rate_limit_message_sends_per_minute, 60,
+    'Slow down — too many messages sent.',
+)
 
 
 # ── Public (unauthenticated) abuse limits ──────────────────────────────────────────

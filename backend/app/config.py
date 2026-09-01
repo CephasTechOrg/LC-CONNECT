@@ -86,6 +86,9 @@ class Settings(BaseSettings):
     rate_limit_attendance_check_ins_per_minute: int = Field(
         default=30, alias='RATE_LIMIT_ATTENDANCE_CHECK_INS_PER_MINUTE'
     )
+    rate_limit_message_sends_per_minute: int = Field(
+        default=60, alias='RATE_LIMIT_MESSAGE_SENDS_PER_MINUTE'
+    )
 
     allowed_email_domains: str = Field(
         default='students.livingstone.edu,livingstone.edu',

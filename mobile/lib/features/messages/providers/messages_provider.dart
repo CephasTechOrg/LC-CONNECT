@@ -203,7 +203,7 @@ class ThreadsNotifier extends AsyncNotifier<List<MessageThread>> {
 
   @override
   Future<List<MessageThread>> build() async {
-    ref.watch(authNotifierProvider);
+    ref.watch(authNotifierProvider.select((auth) => auth.asData?.value?.id));
     final client = ref.watch(apiClientProvider);
     // Watching the client ensures the socket connects; user-channel
     // `conversation.updated` + `typing` events keep this list live.

@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -9,6 +11,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../api/api_client.dart';
 import '../router/app_router.dart';
+import '../../features/messages/providers/messages_provider.dart';
+import '../../features/messages/utils/message_navigation.dart';
 
 /// Guarded FCM wrapper. If Firebase isn't configured yet (no google-services files),
 /// `initialize()` no-ops and push stays disabled — the app runs normally. Once the
@@ -19,6 +23,9 @@ class NotificationService {
 
   bool _available = false;
   String? _token;
+  StreamSubscription<String>? _tokenRefreshSub;
+  StreamSubscription<RemoteMessage>? _messageOpenedSub;
+  bool _listenersAttached = false;
 
   bool get available => _available;
 
@@ -40,6 +47,7 @@ class NotificationService {
     required VoidCallback onOpenAttendanceScanner,
   }) async {
     if (!_available) return;
+    if (_listenersAttached) return;
     final messaging = FirebaseMessaging.instance;
     try {
       await messaging.requestPermission();
@@ -48,15 +56,16 @@ class NotificationService {
         _token = token;
         await _register(dio, token);
       }
-      messaging.onTokenRefresh.listen((refreshed) {
+      _tokenRefreshSub = messaging.onTokenRefresh.listen((refreshed) {
         _token = refreshed;
         _register(dio, refreshed);
       });
       void open(RemoteMessage m) =>
           _open(m, onOpenConversation, onOpenCampusPost, onOpenNotifications, onOpenAttendanceScanner);
-      FirebaseMessaging.onMessageOpenedApp.listen(open);
+      _messageOpenedSub = FirebaseMessaging.onMessageOpenedApp.listen(open);
       final initial = await messaging.getInitialMessage();
       if (initial != null) open(initial);
+      _listenersAttached = true;
     } catch (e) {
       if (kDebugMode) debugPrint('Push registration failed: $e');
     }
@@ -104,6 +113,11 @@ class NotificationService {
   /// Called on logout: unregister the token so this device stops receiving pushes.
   Future<void> clear(Dio dio) async {
     if (!_available) return;
+    await _tokenRefreshSub?.cancel();
+    await _messageOpenedSub?.cancel();
+    _tokenRefreshSub = null;
+    _messageOpenedSub = null;
+    _listenersAttached = false;
     final token = _token;
     if (token != null) {
       try {
@@ -131,7 +145,11 @@ final notificationRegistrarProvider = Provider<void>((ref) {
       NotificationService.instance.registerForUser(
         dio,
         onOpenConversation: (conversationId) {
-          ref.read(routerProvider).push('/messages/$conversationId');
+          openMessageConversation(
+            router: ref.read(routerProvider),
+            conversationId: conversationId,
+            threads: ref.read(threadsNotifierProvider).asData?.value,
+          );
         },
         onOpenCampusPost: (postId) {
           ref.read(routerProvider).push('/home/posts/$postId');

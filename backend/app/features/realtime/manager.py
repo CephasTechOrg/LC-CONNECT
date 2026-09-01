@@ -202,17 +202,17 @@ class ConnectionManager:
                 conn.enqueue(frame)
                 self.unsubscribe(conn, conversation_id)
 
-    async def revoke_pair(self, user_a: UUID, user_b: UUID, frame: dict[str, Any]) -> None:
-        """Revoke conversations both users are actively subscribed to (a block).
-
-        No DB/match lookup needed: a conversation is a match between exactly two
-        users, so any conversation both currently subscribe to is theirs.
-        """
-        convs_a = {cid for conn in self._by_user.get(user_a, ()) for cid in conn.subscriptions}
-        if not convs_a:
-            return
-        convs_b = {cid for conn in self._by_user.get(user_b, ()) for cid in conn.subscriptions}
-        for conversation_id in convs_a & convs_b:
+    async def revoke_pair(
+        self,
+        user_a: UUID,
+        user_b: UUID,
+        frame: dict[str, Any],
+        *,
+        conversation_ids: list[UUID],
+    ) -> None:
+        """Revoke only the listed dm/staff_dm conversations between two users."""
+        _ = (user_a, user_b)  # kept for call-site clarity and legacy control envelopes
+        for conversation_id in conversation_ids:
             await self.revoke_conversation(conversation_id, frame)
 
     async def close_user(self, user_id: UUID, frame: dict[str, Any], code: int) -> None:

@@ -119,14 +119,16 @@ def addressing_id(message: Message) -> str:
 
 
 def serialize_message(message: Message) -> dict[str, Any]:
+    deleted = message.deleted_at is not None
     return {
         'id': str(message.id),
         'conversation_id': addressing_id(message),
         'sender_id': str(message.sender_id),
         'client_message_id': str(message.client_message_id) if message.client_message_id else None,
-        'body': message.body,
+        'body': '' if deleted else message.body,
         'created_at': message.created_at.isoformat(),
         'read_at': message.read_at.isoformat() if message.read_at else None,
+        'deleted': deleted,
     }
 
 

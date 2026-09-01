@@ -3,12 +3,17 @@
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { AttendanceFeatureDisabled } from '@/components/attendance/AttendanceFeatureDisabled';
 import { AttendanceQrDisplay } from '@/components/attendance/AttendanceQrDisplay';
 import { OpsEmpty, OpsLoading } from '@/components/ops-states';
 import type {
   AttendanceQRPayload,
   AttendanceRoster,
   AttendanceRosterEntry,
+} from '@/lib/api/attendance';
+import {
+  fetchHonorsAttendanceStatus,
+  isAttendanceDisabledError,
 } from '@/lib/api/attendance';
 import { apiFetch, toUserMessage } from '@/lib/api/client';
 import { getAccessToken } from '@/lib/auth/session';
@@ -50,6 +55,7 @@ export default function AttendanceSessionPage() {
   const sessionId = params.sessionId;
 
   const [loading, setLoading] = useState(true);
+  const [featureEnabled, setFeatureEnabled] = useState<boolean | null>(null);
   const [error, setError] = useState('');
   const [roster, setRoster] = useState<AttendanceRoster | null>(null);
   const [qr, setQr] = useState<AttendanceQRPayload | null>(null);
@@ -77,13 +83,22 @@ export default function AttendanceSessionPage() {
     void (async () => {
       setLoading(true);
       setError('');
+      setFeatureEnabled(null);
       try {
+        const status = await fetchHonorsAttendanceStatus();
+        setFeatureEnabled(status.enabled);
+        if (!status.enabled) return;
+
         const data = await loadRoster();
         setRoster(data);
         if (data.session.status === 'open') {
           setQr(await loadQr());
         }
       } catch (err) {
+        if (isAttendanceDisabledError(err)) {
+          setFeatureEnabled(false);
+          return;
+        }
         setError(toUserMessage(err, 'Could not load this session.'));
       } finally {
         setLoading(false);
@@ -182,6 +197,23 @@ export default function AttendanceSessionPage() {
   }
 
   if (loading) return <OpsLoading label="Loading session…" />;
+
+  if (featureEnabled === false) {
+    return (
+      <div>
+        <div className="ops-top">
+          <div>
+            <Link href="/dashboard/attendance" style={{ fontSize: 13, color: 'var(--muted)' }}>
+              ← Honors Attendance
+            </Link>
+            <h1 style={{ marginTop: 8 }}>Honors Attendance</h1>
+          </div>
+        </div>
+        <AttendanceFeatureDisabled />
+      </div>
+    );
+  }
+
   if (!roster) return <OpsEmpty title="Session not found">{error || 'This attendance session could not be loaded.'}</OpsEmpty>;
 
   return (

@@ -18,7 +18,8 @@ from app.features.notifications.push import push_sender
 from app.features.realtime import protocol
 from app.features.realtime.event_bus import InMemoryEventBus, RedisEventBus
 from app.features.realtime.manager import ConnectionManager
-from app.models import Conversation, ConversationMember, Profile
+from app.models import Conversation, ConversationMember, Message, Profile
+from app.shared.conversations import blockable_conversation_ids_between
 from app.shared.rate_limit import RateLimiter
 from app.shared.redis_client import get_redis, redis_configured
 
@@ -136,18 +137,52 @@ async def broadcast_announcement(audience: str) -> None:
         logger.warning('broadcast_announcement failed (audience=%s): %s', audience, exc)
 
 
+async def emit_message_created(
+    message: Message,
+    *,
+    sender_id: UUID,
+    recipients: list[tuple[UUID, bool]],
+) -> None:
+    """Fan out a persisted message to live subscribers — shared by WS and REST send paths."""
+    await event_bus.publish_to_conversation(message.conversation_id, protocol.message_created(message))
+    updated = protocol.conversation_updated(message)
+    await event_bus.publish_to_user(sender_id, updated)
+    for recipient_id, muted in recipients:
+        await event_bus.publish_to_user(recipient_id, updated)
+        if muted or manager.user_socket_count(recipient_id) != 0:
+            continue
+        asyncio.create_task(
+            schedule_offline_push(recipient_id, sender_id, message.conversation_id)
+        )
+
+
 async def broadcast_message_deleted(conversation_id: UUID, message_id: UUID, member_ids: list[UUID]) -> None:
     frame = protocol.message_deleted(conversation_id, message_id)
+    await event_bus.publish_to_conversation(conversation_id, frame)
     for user_id in member_ids:
         await event_bus.publish_to_user(user_id, frame)
 
 
 async def revoke_pair_access(user_a: UUID, user_b: UUID) -> None:
-    """A block happened — drop shared live conversations on every instance."""
+    """A block happened — drop only dm/staff_dm threads on every instance (never shared groups)."""
+    try:
+        async with AsyncSessionLocal() as db:
+            conversation_ids = await blockable_conversation_ids_between(db, user_a, user_b)
+        for conversation_id in conversation_ids:
+            await event_bus.publish_control({
+                'event': 'conversation.revoked',
+                'conversation_id': str(conversation_id),
+            })
+    except Exception as exc:  # noqa: BLE001 — revocation must never break the block action
+        logger.warning('revoke_pair_access failed (%s, %s): %s', user_a, user_b, exc)
+
+
+async def revoke_member_from_conversation(conversation_id: UUID, user_id: UUID) -> None:
+    """A member was removed/banned — drop their live subscription on every instance."""
     await event_bus.publish_control({
-        'event': 'pair.revoked',
-        'user_a': str(user_a),
-        'user_b': str(user_b),
+        'event': 'member.revoked',
+        'conversation_id': str(conversation_id),
+        'user_id': str(user_id),
     })
 
 

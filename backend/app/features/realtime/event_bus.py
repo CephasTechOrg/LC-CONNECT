@@ -181,7 +181,22 @@ async def apply_control_event(manager: ConnectionManager, payload: dict[str, Any
         await manager.close_user(user_id, frame, protocol.CloseCode.FORBIDDEN)
     elif event == 'pair.revoked':
         frame = protocol.error(protocol.ErrorCode.FORBIDDEN, 'Conversation access revoked')
-        await manager.revoke_pair(UUID(payload['user_a']), UUID(payload['user_b']), frame)
+        raw_ids = payload.get('conversation_ids') or []
+        conversation_ids = [UUID(value) for value in raw_ids]
+        if conversation_ids:
+            await manager.revoke_pair(
+                UUID(payload['user_a']),
+                UUID(payload['user_b']),
+                frame,
+                conversation_ids=conversation_ids,
+            )
+    elif event == 'member.revoked':
+        frame = protocol.error(protocol.ErrorCode.FORBIDDEN, 'Removed from conversation')
+        await manager.revoke_member(
+            UUID(payload['conversation_id']),
+            UUID(payload['user_id']),
+            frame,
+        )
     elif event == 'conversation.revoked':
         frame = protocol.error(protocol.ErrorCode.FORBIDDEN, 'Conversation access revoked')
         await manager.revoke_conversation(UUID(payload['conversation_id']), frame)

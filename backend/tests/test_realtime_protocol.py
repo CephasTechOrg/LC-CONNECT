@@ -25,16 +25,20 @@ def test_frames_address_dm_by_match_id_and_group_by_conversation_id():
     now = __import__('datetime').datetime(2026, 1, 1, tzinfo=__import__('datetime').UTC)
     match_id, conv_id = uuid4(), uuid4()
 
-    def _msg(match, conversation):
+    def _msg(match, conversation, *, deleted=False):
         return SimpleNamespace(
             id=uuid4(), match_id=match, conversation_id=conversation, sender_id=uuid4(),
-            client_message_id=None, body='hi', created_at=now, read_at=None,
+            client_message_id=None, body='secret', created_at=now, read_at=None,
+            deleted_at=now if deleted else None,
         )
 
     dm = _msg(match_id, conv_id)
     group = _msg(None, conv_id)
+    deleted_dm = _msg(match_id, conv_id, deleted=True)
 
     assert serialize_message(dm)['conversation_id'] == str(match_id)          # DM → match id
+    assert serialize_message(deleted_dm)['body'] == ''
+    assert serialize_message(deleted_dm)['deleted'] is True
     assert message_created(group)['conversation_id'] == str(conv_id)          # group → conv id
     assert conversation_updated(group)['conversation_id'] == str(conv_id)
     assert 'None' not in message_created(group)['conversation_id']            # never str(None)
