@@ -23,6 +23,41 @@
   text-align: center;
 }
 
+.attendance-live-dot {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.attendance-live-dot::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.attendance-live-dot.live {
+  color: #1f9160;
+}
+
+.attendance-live-dot.live::before {
+  background: #1f9160;
+  box-shadow: 0 0 0 3px rgba(31, 145, 96, 0.16);
+}
+
+.attendance-live-dot.stale {
+  color: #b98a0c;
+}
+
+.attendance-live-dot.stale::before {
+  background: #b98a0c;
+  box-shadow: 0 0 0 3px rgba(185, 138, 12, 0.16);
+}
+
 .attendance-live-grid {
   display: grid;
   grid-template-columns: minmax(280px, 1fr) minmax(320px, 1.2fr);

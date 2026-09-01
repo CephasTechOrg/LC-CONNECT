@@ -59,6 +59,7 @@ export default function AttendanceSessionPage() {
   const [editing, setEditing] = useState<AttendanceRosterEntry | null>(null);
   const [newStatus, setNewStatus] = useState<'present' | 'late' | 'absent' | 'excused'>('present');
   const [reason, setReason] = useState('');
+  const [liveStale, setLiveStale] = useState(false);
 
   const loadRoster = useCallback(async () => {
     const token = await getAccessToken();
@@ -94,15 +95,23 @@ export default function AttendanceSessionPage() {
 
   useEffect(() => {
     if (!isOpen) return;
+    // Polls keep the last good data on failure (the screen never wipes mid-class); a transient
+    // network blip just flags the live feed as stale until the next poll succeeds.
     const rosterTimer = setInterval(() => {
       void loadRoster()
-        .then(setRoster)
-        .catch(() => undefined);
+        .then((data) => {
+          setRoster(data);
+          setLiveStale(false);
+        })
+        .catch(() => setLiveStale(true));
     }, ROSTER_POLL_MS);
     const qrTimer = setInterval(() => {
       void loadQr()
-        .then(setQr)
-        .catch(() => undefined);
+        .then((data) => {
+          setQr(data);
+          setLiveStale(false);
+        })
+        .catch(() => setLiveStale(true));
     }, QR_POLL_MS);
     return () => {
       clearInterval(rosterTimer);
@@ -188,6 +197,11 @@ export default function AttendanceSessionPage() {
               ? `Attendance open · ${remainingLabel(roster.session)}`
               : `Session closed · ${formatTime(roster.session.closed_at)}`}
           </p>
+          {isOpen ? (
+            <span className={`attendance-live-dot ${liveStale ? 'stale' : 'live'}`}>
+              {liveStale ? 'Live updates paused — retrying…' : 'Live'}
+            </span>
+          ) : null}
         </div>
         {isOpen ? (
           <button className="ops-btn danger" type="button" onClick={() => void endSession()} disabled={busy}>

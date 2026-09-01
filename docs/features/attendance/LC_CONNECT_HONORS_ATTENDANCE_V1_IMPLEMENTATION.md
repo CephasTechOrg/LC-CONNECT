@@ -1564,13 +1564,15 @@ Integrate:
 
 ---
 
-## Phase 6 — Live admin UX (polling)
+## Phase 6 — Live admin UX (polling) — DONE
 
 Integrate:
 
-- admin QR polling loop
-- admin roster/count polling loop
-- stable loading/error states when polls fail
+- admin QR polling loop — QR refetched every ~8s on the live session page
+- admin roster/count polling loop — roster/counts refetched every ~3s
+- stable loading/error states when polls fail — polls keep the last good data on failure
+  (the screen never wipes mid-class) and surface a `Live` / `Live updates paused — retrying…`
+  indicator that clears on the next successful poll
 
 (Optional follow-up: WebSocket attendance events — not required for V1 acceptance.)
 
@@ -1578,18 +1580,22 @@ Integrate:
 
 ## Phase 7 — Testing and Pilot Hardening
 
-Run:
+Automated (green in CI):
 
-- backend tests
-- Flutter analyze/tests
-- admin lint/build/tests
-- concurrency test
-- 200+ simulated student check-ins
+- backend tests — `tests/db/test_attendance_*.py`, `tests/test_attendance_{qr,push,status}.py`
+- Flutter analyze/tests — `mobile/test/features/attendance/attendance_test.dart`
+- admin lint/build/tests — `npm run lint` + `tsc --noEmit`
+- concurrency test — `test_concurrent_check_ins_keep_single_row`
+- 200+ simulated student check-ins — `tests/db/test_attendance_load.py`
+  (burst of distinct students; asserts one row each, all persisted, roster count accurate)
+- duplicate scan test — `test_duplicate_burst_for_one_student_keeps_single_row`
+- notification-open test — mobile `honors_attendance_open` deep-link routing test
+
+Manual pilot checklist (device/room, not automatable in CI):
+
 - real-device QR scanning
 - projector QR test
 - expired QR screenshot test
-- duplicate scan test
-- notification-open test
 
 ---
 
