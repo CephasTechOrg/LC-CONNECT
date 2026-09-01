@@ -11,6 +11,7 @@ from app.config import settings
 from app.features.account import router as account_router
 from app.features.activities import router as activities_router
 from app.features.attendance import router as attendance_router
+from app.features.attendance.admin_router import router as attendance_admin_router
 from app.features.admin import router as admin_router
 from app.features.auth import router as auth_v2_router
 from app.features.campus_hub import router as campus_hub_router
@@ -155,6 +156,7 @@ app.include_router(scholars_router, prefix=settings.api_v1_prefix)
 app.include_router(employers_router, prefix=settings.api_v1_prefix)
 app.include_router(safety_router, prefix=settings.api_v1_prefix)
 app.include_router(admin_router, prefix=settings.api_v1_prefix)
+app.include_router(attendance_admin_router, prefix=f'{settings.api_v1_prefix}/admin')
 app.include_router(account_router, prefix=settings.api_v1_prefix)
 app.include_router(notifications_router, prefix=settings.api_v1_prefix)
 app.include_router(notifications_inbox_router, prefix=settings.api_v1_prefix)

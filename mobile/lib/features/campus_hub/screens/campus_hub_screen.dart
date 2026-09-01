@@ -15,6 +15,8 @@ import '../../discovery/providers/discovery_provider.dart';
 import '../../notifications/providers/notifications_provider.dart';
 import '../../profile/providers/profile_provider.dart';
 import '../../scholars/widgets/blueprint_bond_card.dart';
+import '../../attendance/providers/attendance_provider.dart';
+import '../../attendance/widgets/attendance_open_card.dart';
 import '../data/campus_spotlights.dart';
 import '../models/campus_post.dart';
 import '../providers/campus_hub_provider.dart';
@@ -63,12 +65,16 @@ class CampusHubScreen extends ConsumerWidget {
       body: SafeArea(
         child: RefreshIndicator(
           color: AppColors.primary,
-          onRefresh: () async => ref.invalidate(campusHubOverviewProvider),
+          onRefresh: () async {
+            ref.invalidate(campusHubOverviewProvider);
+            ref.invalidate(activeAttendanceProvider);
+          },
           child: ListView(
             children: [
               _HomeGreetingHeader(greeting: greeting),
               const SizedBox(height: 8),
               const BlueprintBondCard(style: BlueprintBondStyle.prompt),
+              const AttendanceOpenCard(),
               const _SpotlightCarousel(),
               const _QuickActionsRow(),
               const _PublisherCta(),

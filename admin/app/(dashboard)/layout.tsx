@@ -9,6 +9,7 @@ import { createClient } from '@/lib/supabase/client';
 import { signOut } from '@/lib/auth/session';
 import {
   IconAdmins,
+  IconAttendance,
   IconAudit,
   IconBell,
   IconCampusHub,
@@ -46,6 +47,7 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { href: '/dashboard/scholars', label: 'Presidential Scholars', Icon: IconScholars },
       { href: '/dashboard/employers', label: 'Employer Partners', Icon: IconEmployers },
+      { href: '/dashboard/attendance', label: 'Attendance', Icon: IconAttendance },
     ],
   },
   {

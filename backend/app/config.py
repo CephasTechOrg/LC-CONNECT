@@ -83,6 +83,9 @@ class Settings(BaseSettings):
     rate_limit_employer_opportunity_submissions_per_day: int = Field(
         default=10, alias='RATE_LIMIT_EMPLOYER_OPPORTUNITY_SUBMISSIONS_PER_DAY'
     )
+    rate_limit_attendance_check_ins_per_minute: int = Field(
+        default=30, alias='RATE_LIMIT_ATTENDANCE_CHECK_INS_PER_MINUTE'
+    )
 
     allowed_email_domains: str = Field(
         default='students.livingstone.edu,livingstone.edu',

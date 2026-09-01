@@ -16,6 +16,10 @@ GET /api/v1/activities/{activity_id}
 GET /api/v1/activities/{activity_id}/participants
 GET /api/v1/admin/admins
 GET /api/v1/admin/admins/me/scopes
+GET /api/v1/admin/attendance/honors
+GET /api/v1/admin/attendance/honors/history
+GET /api/v1/admin/attendance/sessions/{session_id}/qr
+GET /api/v1/admin/attendance/sessions/{session_id}/roster
 GET /api/v1/admin/campus-positions
 GET /api/v1/admin/campus-positions/pending
 GET /api/v1/admin/campus-positions/{position_id}
@@ -30,6 +34,7 @@ GET /api/v1/admin/reports/{report_id}
 GET /api/v1/admin/suspension-appeals
 GET /api/v1/admin/system-status
 GET /api/v1/admin/users
+GET /api/v1/attendance/honors/active
 GET /api/v1/attendance/honors/status
 GET /api/v1/auth/me
 GET /api/v1/campus-hub/announcements/count
@@ -79,6 +84,7 @@ GET /api/v1/scholars/me/resume-url
 GET /health
 GET /health/ready
 PATCH /api/v1/activities/{activity_id}
+PATCH /api/v1/admin/attendance/records/{record_id}
 PATCH /api/v1/admin/campus-posts/{post_id}
 PATCH /api/v1/admin/campus-resources/{resource_id}
 PATCH /api/v1/campus-hub/my-posts/{post_id}
@@ -98,6 +104,8 @@ POST /api/v1/admin/admins/invite
 POST /api/v1/admin/admins/me/resign
 POST /api/v1/admin/admins/{membership_id}/resend-invite
 POST /api/v1/admin/admins/{membership_id}/revoke
+POST /api/v1/admin/attendance/honors/sessions
+POST /api/v1/admin/attendance/sessions/{session_id}/close
 POST /api/v1/admin/campus-positions/{position_id}/approve
 POST /api/v1/admin/campus-positions/{position_id}/reject
 POST /api/v1/admin/campus-positions/{position_id}/revoke
@@ -117,6 +125,7 @@ POST /api/v1/admin/suspension-appeals/{appeal_id}/dismiss
 POST /api/v1/admin/suspension-appeals/{appeal_id}/resolve
 POST /api/v1/admin/users/{user_id}/reactivate
 POST /api/v1/admin/users/{user_id}/suspend
+POST /api/v1/attendance/sessions/{session_id}/check-in
 POST /api/v1/auth/bootstrap
 POST /api/v1/auth/forgot-password
 POST /api/v1/auth/webhooks/send-email

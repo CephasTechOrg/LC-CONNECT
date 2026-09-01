@@ -75,6 +75,18 @@ export function IconEmployers({ stroke = defaults.stroke, size = defaults.size }
   );
 }
 
+export function IconAttendance({ stroke = defaults.stroke, size = defaults.size }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <rect x="4" y="4" width="7" height="7" rx="1.5" />
+      <rect x="13" y="4" width="7" height="7" rx="1.5" />
+      <rect x="4" y="13" width="7" height="7" rx="1.5" />
+      <path d="M14 16h5" />
+      <path d="M14 19h3" />
+    </svg>
+  );
+}
+
 export function IconAdmins({ stroke = defaults.stroke, size = defaults.size }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>

@@ -37,6 +37,7 @@ class NotificationService {
     required void Function(String conversationId) onOpenConversation,
     required void Function(String postId) onOpenCampusPost,
     required VoidCallback onOpenNotifications,
+    required VoidCallback onOpenAttendanceScanner,
   }) async {
     if (!_available) return;
     final messaging = FirebaseMessaging.instance;
@@ -51,7 +52,8 @@ class NotificationService {
         _token = refreshed;
         _register(dio, refreshed);
       });
-      void open(RemoteMessage m) => _open(m, onOpenConversation, onOpenCampusPost, onOpenNotifications);
+      void open(RemoteMessage m) =>
+          _open(m, onOpenConversation, onOpenCampusPost, onOpenNotifications, onOpenAttendanceScanner);
       FirebaseMessaging.onMessageOpenedApp.listen(open);
       final initial = await messaging.getInitialMessage();
       if (initial != null) open(initial);
@@ -65,9 +67,14 @@ class NotificationService {
     void Function(String) onOpenConversation,
     void Function(String) onOpenCampusPost,
     VoidCallback onOpenNotifications,
+    VoidCallback onOpenAttendanceScanner,
   ) {
     final data = message.data;
     final type = data['type'];
+    if (type == 'honors_attendance_open') {
+      onOpenAttendanceScanner();
+      return;
+    }
     if (type == 'campus_post') {
       final postId = data['post_id'];
       if (postId is String && postId.isNotEmpty) {
@@ -131,6 +138,9 @@ final notificationRegistrarProvider = Provider<void>((ref) {
         },
         onOpenNotifications: () {
           ref.read(routerProvider).push('/notifications');
+        },
+        onOpenAttendanceScanner: () {
+          ref.read(routerProvider).push('/attendance/scan');
         },
       );
     } else {

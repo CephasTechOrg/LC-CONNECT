@@ -34,6 +34,7 @@ import '../../features/profile/screens/profile_screen.dart';
 import '../../features/profile/screens/public_profile_screen.dart';
 import '../../features/profile/screens/edit_profile_screen.dart';
 import '../../features/scholars/screens/blueprint_bond_screen.dart';
+import '../../features/attendance/screens/attendance_scanner_screen.dart';
 import '../../features/connections/screens/connections_screen.dart';
 import '../../features/onboarding/screens/onboarding_screen.dart';
 import '../../shared/widgets/nav_shell.dart';
@@ -174,6 +175,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/profile/blueprint-bond',
         builder: (context, state) => const BlueprintBondScreen(),
+      ),
+      // Top-level scanner route — opened from push notifications and the Campus Hub card.
+      GoRoute(
+        path: '/attendance/scan',
+        builder: (context, state) => const AttendanceScannerScreen(),
       ),
       ShellRoute(
         builder: (context, state, child) => NavShell(child: child),

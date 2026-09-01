@@ -8,11 +8,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.database import get_db
 from app.dependencies import require_verified_connect_student
-from app.features.admin import admins as admins_admin
+from app.features.admin.admins import require_admin_scope
 from app.models import User
 from app.shared.programs import PRESIDENTIAL_SCHOLARS_SLUG, is_active_program_member
 
-_honors_admin_gate = admins_admin.require_admin_scope('honors_admin')
+_honors_admin_gate = require_admin_scope('honors_admin')
 
 
 def honors_attendance_enabled() -> bool:
@@ -47,3 +47,17 @@ async def require_honors_attendance_admin(
 ) -> User:
     ensure_honors_attendance_enabled()
     return actor
+
+
+async def require_honors_check_in_student(
+    current_user: User = Depends(require_honors_student),
+) -> User:
+    """Honors student gate + per-minute check-in rate limit."""
+    from app.shared.rate_limit import attendance_check_in_limiter
+
+    if not await attendance_check_in_limiter.aallow(current_user.id):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail='Too many check-in attempts — please wait a moment.',
+        )
+    return current_user

@@ -191,6 +191,49 @@ class PushSender:
         logger.info('Campus post push: tokens=%d pruned=%d', len(tokens), len(invalid))
         return invalid
 
+    async def notify_honors_attendance_open(
+        self,
+        db: AsyncSession,
+        *,
+        tokens: list[str],
+        session_id: UUID,
+    ) -> None:
+        """Bulk push telling active Honors students a session just opened. The payload carries
+        only the session id (never the rotating QR secret) so tapping opens the scanner."""
+        if not self._ready or not tokens:
+            return
+        try:
+            invalid = await asyncio.to_thread(self._send_attendance_open, tokens, session_id)
+        except Exception as exc:  # noqa: BLE001 - push must never break starting attendance
+            logger.warning('Attendance open push failed for session %s: %s', session_id, exc)
+            return
+        if invalid:
+            await prune_tokens(db, invalid)
+
+    def _send_attendance_open(self, tokens: list[str], session_id: UUID) -> list[str]:
+        from firebase_admin import messaging
+
+        invalid: list[str] = []
+        for start in range(0, len(tokens), 500):
+            chunk = tokens[start : start + 500]
+            message = messaging.MulticastMessage(
+                tokens=chunk,
+                notification=messaging.Notification(
+                    title='Honors attendance is open',
+                    body='Tap to scan the classroom QR.',
+                ),
+                data={'type': 'honors_attendance_open', 'session_id': str(session_id)},
+                apns=messaging.APNSConfig(payload=messaging.APNSPayload(aps=messaging.Aps(sound='default'))),
+            )
+            response = messaging.send_each_for_multicast(message, app=self._app)
+            invalid.extend(
+                token
+                for token, result in zip(chunk, response.responses, strict=False)
+                if not result.success and isinstance(result.exception, messaging.UnregisteredError)
+            )
+        logger.info('Attendance open push: tokens=%d pruned=%d', len(tokens), len(invalid))
+        return invalid
+
     def _send(self, tokens: list[str], sender_name: str, conversation_id: UUID, sender_id: UUID) -> list[str]:
         from firebase_admin import messaging
 

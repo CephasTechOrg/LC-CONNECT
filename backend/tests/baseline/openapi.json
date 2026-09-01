@@ -72,6 +72,52 @@
         "title": "AccountExportResponse",
         "type": "object"
       },
+      "ActiveAttendanceStudentRead": {
+        "properties": {
+          "checked_in_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checked In At"
+          },
+          "open": {
+            "title": "Open",
+            "type": "boolean"
+          },
+          "session": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AttendanceSessionRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "student_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Student Status"
+          }
+        },
+        "required": [
+          "open"
+        ],
+        "title": "ActiveAttendanceStudentRead",
+        "type": "object"
+      },
       "ActivityCreate": {
         "properties": {
           "category": {
@@ -617,6 +663,468 @@
           "count"
         ],
         "title": "AnnouncementUnreadCount",
+        "type": "object"
+      },
+      "AttendanceCheckInRequest": {
+        "properties": {
+          "challenge_id": {
+            "format": "uuid",
+            "title": "Challenge Id",
+            "type": "string"
+          },
+          "expires_at": {
+            "maxLength": 40,
+            "minLength": 10,
+            "title": "Expires At",
+            "type": "string"
+          },
+          "token": {
+            "maxLength": 128,
+            "minLength": 16,
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "challenge_id",
+          "expires_at",
+          "token"
+        ],
+        "title": "AttendanceCheckInRequest",
+        "type": "object"
+      },
+      "AttendanceCheckInResponse": {
+        "properties": {
+          "already_checked_in": {
+            "default": false,
+            "title": "Already Checked In",
+            "type": "boolean"
+          },
+          "checked_in_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checked In At"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "session_id": {
+            "format": "uuid",
+            "title": "Session Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "checked_in_at",
+          "session_id",
+          "message"
+        ],
+        "title": "AttendanceCheckInResponse",
+        "type": "object"
+      },
+      "AttendanceDashboardRead": {
+        "properties": {
+          "active_session": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AttendanceSessionRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "checked_in_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checked In Count"
+          },
+          "honors_student_count": {
+            "title": "Honors Student Count",
+            "type": "integer"
+          },
+          "remaining_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remaining Count"
+          }
+        },
+        "required": [
+          "honors_student_count"
+        ],
+        "title": "AttendanceDashboardRead",
+        "type": "object"
+      },
+      "AttendanceHistoryItemRead": {
+        "properties": {
+          "absent_count": {
+            "title": "Absent Count",
+            "type": "integer"
+          },
+          "checked_in_count": {
+            "title": "Checked In Count",
+            "type": "integer"
+          },
+          "excused_count": {
+            "title": "Excused Count",
+            "type": "integer"
+          },
+          "honors_student_count": {
+            "title": "Honors Student Count",
+            "type": "integer"
+          },
+          "late_count": {
+            "title": "Late Count",
+            "type": "integer"
+          },
+          "present_count": {
+            "title": "Present Count",
+            "type": "integer"
+          },
+          "session": {
+            "$ref": "#/components/schemas/AttendanceSessionRead"
+          }
+        },
+        "required": [
+          "session",
+          "honors_student_count",
+          "checked_in_count",
+          "present_count",
+          "late_count",
+          "absent_count",
+          "excused_count"
+        ],
+        "title": "AttendanceHistoryItemRead",
+        "type": "object"
+      },
+      "AttendanceQRPayloadRead": {
+        "properties": {
+          "challenge_id": {
+            "format": "uuid",
+            "title": "Challenge Id",
+            "type": "string"
+          },
+          "expires_at": {
+            "title": "Expires At",
+            "type": "string"
+          },
+          "session_id": {
+            "format": "uuid",
+            "title": "Session Id",
+            "type": "string"
+          },
+          "token": {
+            "title": "Token",
+            "type": "string"
+          },
+          "v": {
+            "title": "V",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "v",
+          "session_id",
+          "challenge_id",
+          "expires_at",
+          "token"
+        ],
+        "title": "AttendanceQRPayloadRead",
+        "type": "object"
+      },
+      "AttendanceRecordRead": {
+        "properties": {
+          "checked_in_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checked In At"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "manually_modified": {
+            "title": "Manually Modified",
+            "type": "boolean"
+          },
+          "modification_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Modification Reason"
+          },
+          "session_id": {
+            "format": "uuid",
+            "title": "Session Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "student_id": {
+            "format": "uuid",
+            "title": "Student Id",
+            "type": "string"
+          },
+          "verification_method": {
+            "title": "Verification Method",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "session_id",
+          "student_id",
+          "status",
+          "verification_method",
+          "checked_in_at",
+          "manually_modified",
+          "modification_reason"
+        ],
+        "title": "AttendanceRecordRead",
+        "type": "object"
+      },
+      "AttendanceRosterEntryRead": {
+        "properties": {
+          "checked_in_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checked In At"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "record_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Record Id"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "student_id": {
+            "format": "uuid",
+            "title": "Student Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "student_id",
+          "display_name",
+          "email",
+          "status",
+          "checked_in_at"
+        ],
+        "title": "AttendanceRosterEntryRead",
+        "type": "object"
+      },
+      "AttendanceRosterRead": {
+        "properties": {
+          "absent_count": {
+            "default": 0,
+            "title": "Absent Count",
+            "type": "integer"
+          },
+          "checked_in_count": {
+            "title": "Checked In Count",
+            "type": "integer"
+          },
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/AttendanceRosterEntryRead"
+            },
+            "title": "Entries",
+            "type": "array"
+          },
+          "excused_count": {
+            "default": 0,
+            "title": "Excused Count",
+            "type": "integer"
+          },
+          "late_count": {
+            "title": "Late Count",
+            "type": "integer"
+          },
+          "present_count": {
+            "title": "Present Count",
+            "type": "integer"
+          },
+          "remaining_count": {
+            "title": "Remaining Count",
+            "type": "integer"
+          },
+          "session": {
+            "$ref": "#/components/schemas/AttendanceSessionRead"
+          },
+          "session_id": {
+            "format": "uuid",
+            "title": "Session Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "session",
+          "session_id",
+          "checked_in_count",
+          "present_count",
+          "late_count",
+          "remaining_count",
+          "entries"
+        ],
+        "title": "AttendanceRosterRead",
+        "type": "object"
+      },
+      "AttendanceSessionRead": {
+        "properties": {
+          "closed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closed At"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "late_until": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Late Until"
+          },
+          "opened_at": {
+            "format": "date-time",
+            "title": "Opened At",
+            "type": "string"
+          },
+          "present_until": {
+            "format": "date-time",
+            "title": "Present Until",
+            "type": "string"
+          },
+          "program_id": {
+            "format": "uuid",
+            "title": "Program Id",
+            "type": "string"
+          },
+          "started_by_id": {
+            "format": "uuid",
+            "title": "Started By Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "program_id",
+          "title",
+          "started_by_id",
+          "opened_at",
+          "present_until",
+          "late_until",
+          "closed_at",
+          "status",
+          "created_at"
+        ],
+        "title": "AttendanceSessionRead",
         "type": "object"
       },
       "AuthorCampusPostRead": {
@@ -3689,7 +4197,6 @@
         "type": "object"
       },
       "HonorsAttendanceFeatureStatus": {
-        "description": "Phase 1 stub \u2014 confirms feature flag wiring (routes arrive in Phase 2).",
         "properties": {
           "enabled": {
             "title": "Enabled",
@@ -3760,6 +4267,27 @@
           }
         },
         "title": "LivenessResponse",
+        "type": "object"
+      },
+      "ManualAttendanceCorrectionRequest": {
+        "properties": {
+          "reason": {
+            "maxLength": 500,
+            "minLength": 3,
+            "title": "Reason",
+            "type": "string"
+          },
+          "status": {
+            "pattern": "^(present|late|absent|excused)$",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "reason"
+        ],
+        "title": "ManualAttendanceCorrectionRequest",
         "type": "object"
       },
       "MatchRead": {
@@ -5920,6 +6448,45 @@
         "title": "StaffThreadCreate",
         "type": "object"
       },
+      "StartAttendanceSessionRequest": {
+        "properties": {
+          "late_window_seconds": {
+            "anyOf": [
+              {
+                "maximum": 3600.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Late Window Seconds"
+          },
+          "present_window_seconds": {
+            "anyOf": [
+              {
+                "maximum": 3600.0,
+                "minimum": 30.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Present Window Seconds"
+          },
+          "title": {
+            "default": "Honors Class",
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "title": "StartAttendanceSessionRequest",
+        "type": "object"
+      },
       "StudentDirectoryEntry": {
         "description": "A student as seen by a staff member browsing the student directory \u2014 enough to recognise\nand reach out, no matching signals. Staff-only surface (mirrors the staff directory).",
         "properties": {
@@ -7270,6 +7837,310 @@
         "summary": "Revoke Admin",
         "tags": [
           "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/attendance/honors": {
+      "get": {
+        "operationId": "honors_attendance_dashboard_api_v1_admin_attendance_honors_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttendanceDashboardRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Honors Attendance Dashboard",
+        "tags": [
+          "admin-attendance"
+        ]
+      }
+    },
+    "/api/v1/admin/attendance/honors/history": {
+      "get": {
+        "operationId": "honors_attendance_history_api_v1_admin_attendance_honors_history_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AttendanceHistoryItemRead"
+                  },
+                  "title": "Response Honors Attendance History Api V1 Admin Attendance Honors History Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Honors Attendance History",
+        "tags": [
+          "admin-attendance"
+        ]
+      }
+    },
+    "/api/v1/admin/attendance/honors/sessions": {
+      "post": {
+        "operationId": "start_honors_attendance_session_api_v1_admin_attendance_honors_sessions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartAttendanceSessionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttendanceSessionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Start Honors Attendance Session",
+        "tags": [
+          "admin-attendance"
+        ]
+      }
+    },
+    "/api/v1/admin/attendance/records/{record_id}": {
+      "patch": {
+        "operationId": "correct_attendance_record_api_v1_admin_attendance_records__record_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "record_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Record Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManualAttendanceCorrectionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttendanceRecordRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Correct Attendance Record",
+        "tags": [
+          "admin-attendance"
+        ]
+      }
+    },
+    "/api/v1/admin/attendance/sessions/{session_id}/close": {
+      "post": {
+        "operationId": "close_attendance_session_api_v1_admin_attendance_sessions__session_id__close_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttendanceSessionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Close Attendance Session",
+        "tags": [
+          "admin-attendance"
+        ]
+      }
+    },
+    "/api/v1/admin/attendance/sessions/{session_id}/qr": {
+      "get": {
+        "operationId": "get_session_qr_challenge_api_v1_admin_attendance_sessions__session_id__qr_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttendanceQRPayloadRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Session Qr Challenge",
+        "tags": [
+          "admin-attendance"
+        ]
+      }
+    },
+    "/api/v1/admin/attendance/sessions/{session_id}/roster": {
+      "get": {
+        "operationId": "get_session_roster_api_v1_admin_attendance_sessions__session_id__roster_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttendanceRosterRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Session Roster",
+        "tags": [
+          "admin-attendance"
         ]
       }
     },
@@ -9098,9 +9969,34 @@
         ]
       }
     },
+    "/api/v1/attendance/honors/active": {
+      "get": {
+        "operationId": "get_active_honors_attendance_api_v1_attendance_honors_active_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActiveAttendanceStudentRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Active Honors Attendance",
+        "tags": [
+          "attendance"
+        ]
+      }
+    },
     "/api/v1/attendance/honors/status": {
       "get": {
-        "description": "Public feature-flag probe (no auth) \u2014 lets clients hide UI before Phase 2 APIs land.",
         "operationId": "honors_attendance_status_api_v1_attendance_honors_status_get",
         "responses": {
           "200": {
@@ -9115,6 +10011,64 @@
           }
         },
         "summary": "Honors Attendance Status",
+        "tags": [
+          "attendance"
+        ]
+      }
+    },
+    "/api/v1/attendance/sessions/{session_id}/check-in": {
+      "post": {
+        "operationId": "check_in_to_session_api_v1_attendance_sessions__session_id__check_in_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AttendanceCheckInRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttendanceCheckInResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Check In To Session",
         "tags": [
           "attendance"
         ]

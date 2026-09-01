@@ -193,6 +193,11 @@ campus_post_publish_limit = UserRateLimit(
     'campus_post_publish', settings.rate_limit_campus_post_publishes_per_day, _DAY,
     "You've published too many campus posts today — try again tomorrow.",
 )
+attendance_check_in_limiter = RateLimiter(
+    settings.rate_limit_attendance_check_ins_per_minute,
+    60,
+    name='attendance_check_in',
+)
 
 
 # ── Public (unauthenticated) abuse limits ──────────────────────────────────────────

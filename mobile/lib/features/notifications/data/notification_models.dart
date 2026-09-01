@@ -53,6 +53,7 @@ class AppNotification {
         'admin_membership_invited' => "You've been granted admin access — sign in to the Admin Portal",
         'program_membership_verified' =>
           "You're a verified Presidential Scholar — complete your professional profile",
+        'honors_attendance_open' => 'Honors attendance is open — tap to scan the classroom QR',
         _ => 'You have a new notification',
       };
 
@@ -63,6 +64,7 @@ class AppNotification {
     // Verification is only useful if it takes them to the thing it unlocked — the professional
     // extension they can now fill in.
     if (type == 'program_membership_verified') return '/profile/blueprint-bond';
+    if (type == 'honors_attendance_open') return '/attendance/scan';
     if (groupId != null) return '/groups/$groupId';
     return null;
   }
