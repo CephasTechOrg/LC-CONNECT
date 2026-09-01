@@ -305,6 +305,11 @@ async def check_in(
         existing = await _existing_record(db, session_id=session_id, student_id=student_id)
         if existing is None:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail='Check-in failed')
+        if existing.status not in RECORD_CHECKED_IN:
+            # A concurrent close materialized an absent (or a manual excused) row for this
+            # student the instant this scan landed. Report it honestly as closed rather than
+            # claiming a check-in that never happened.
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='Attendance is closed')
         return existing, False
 
     await db.commit()
@@ -444,9 +449,9 @@ async def _record_status_counts(db: AsyncSession, *, session_id: UUID) -> dict[s
             .group_by(AttendanceRecord.status)
         )
     ).all()
-    counts = {status: 0 for status in RECORD_STATUSES}
-    for status, count in rows:
-        counts[status] = count
+    counts = {record_status: 0 for record_status in RECORD_STATUSES}
+    for record_status, count in rows:
+        counts[record_status] = count
     checked_in = counts[RECORD_PRESENT] + counts[RECORD_LATE]
     return {
         'present': counts[RECORD_PRESENT],
@@ -509,7 +514,8 @@ async def manual_correct_record(
     if record is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Attendance record not found')
 
-    session = await get_session_or_404(db, record.session_id)
+    # Validates the record's session exists (404 otherwise); the row itself isn't needed here.
+    await get_session_or_404(db, record.session_id)
     previous_status = record.status
     if previous_status == new_status:
         return record

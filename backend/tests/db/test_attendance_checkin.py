@@ -219,6 +219,37 @@ async def test_concurrent_check_ins_keep_single_row(db, factory, sessions):
     assert count == 1
 
 
+async def test_check_in_loses_close_race_reports_closed(db, factory):
+    """A scan that lands the instant a session closes conflicts with the absent row the close
+    just materialized — the student must be told the session is closed, not "already checked in"."""
+    program, session = await _open_session(db, factory)
+    student = await _honors_student(db, factory, program)
+    challenge, expires_at, token = await _valid_challenge(db, session.id)
+
+    # Simulate the close-race outcome: an absent row already exists for this student while the
+    # in-memory session still looks open to the in-flight check-in.
+    db.add(
+        AttendanceRecord(
+            session_id=session.id,
+            student_id=student.id,
+            status='absent',
+            verification_method='qr',
+        )
+    )
+    await db.commit()
+
+    with pytest.raises(HTTPException) as exc:
+        await service.check_in(
+            db,
+            student_id=student.id,
+            session_id=session.id,
+            challenge_id=challenge.challenge_id,
+            expires_at_raw=expires_at,
+            token=token,
+        )
+    assert exc.value.status_code == 409
+
+
 async def test_check_in_rejects_unknown_challenge(db, factory):
     program, session = await _open_session(db, factory)
     student = await _honors_student(db, factory, program)
