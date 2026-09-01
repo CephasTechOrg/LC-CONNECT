@@ -30,9 +30,17 @@ def _signed_headers(secret: str, body: bytes) -> dict[str, str]:
     return {'webhook-id': msg_id, 'webhook-timestamp': str(int(now)), 'webhook-signature': signature}
 
 
-def _payload(action_type: str, email: str = 'a@b.com') -> dict:
+def _payload(
+    action_type: str,
+    email: str = 'a@b.com',
+    *,
+    contact_email: str | None = None,
+) -> dict:
+    user: dict = {'id': str(uuid4()), 'email': email}
+    if contact_email is not None:
+        user['user_metadata'] = {'contact_email': contact_email}
     return {
-        'user': {'id': str(uuid4()), 'email': email},
+        'user': user,
         'email_data': {
             'token': '12345678',
             'token_hash': 'hashedtoken',
@@ -105,6 +113,43 @@ def test_send_for_payload_invite_uses_invite_email(monkeypatch):
     calls = _capture(monkeypatch, 'send_invite_email')
     email_hook.send_for_payload(_payload('invite'))
     assert calls[0]['context'] == 'admin'
+
+
+def test_send_for_payload_signup_routes_to_contact_email(monkeypatch):
+    calls = _capture(monkeypatch, 'send_signup_confirmation_email')
+    email_hook.send_for_payload(
+        _payload(
+            'signup',
+            email='student@students.livingstone.edu',
+            contact_email='student.personal@gmail.com',
+        )
+    )
+    assert calls[0]['to_email'] == 'student.personal@gmail.com'
+    assert calls[0]['campus_email'] == 'student@students.livingstone.edu'
+
+
+def test_send_for_payload_recovery_routes_to_contact_email(monkeypatch):
+    calls = _capture(monkeypatch, 'send_password_reset_email')
+    email_hook.send_for_payload(
+        _payload(
+            'recovery',
+            email='student@students.livingstone.edu',
+            contact_email='student.personal@gmail.com',
+        )
+    )
+    assert calls[0]['to_email'] == 'student.personal@gmail.com'
+
+
+def test_send_for_payload_falls_back_when_contact_is_campus_domain(monkeypatch):
+    calls = _capture(monkeypatch, 'send_signup_confirmation_email')
+    email_hook.send_for_payload(
+        _payload(
+            'signup',
+            email='student@students.livingstone.edu',
+            contact_email='other@students.livingstone.edu',
+        )
+    )
+    assert calls[0]['to_email'] == 'student@students.livingstone.edu'
 
 
 def test_send_for_payload_signup_uses_confirmation_email(monkeypatch):

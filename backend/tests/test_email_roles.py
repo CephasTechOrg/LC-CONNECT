@@ -85,3 +85,21 @@ def test_sync_user_role_updates_non_admin() -> None:
     user = _User()
     email_roles.sync_user_role_from_email(user, 'dean@livingstone.edu')
     assert user.role == 'staff'
+
+
+def test_normalize_personal_contact_email_accepts_external_inbox() -> None:
+    assert email_roles.normalize_personal_contact_email('  Student@gmail.com ') == 'student@gmail.com'
+
+
+@pytest.mark.parametrize(
+    'email',
+    [
+        'student@students.livingstone.edu',
+        'prof@livingstone.edu',
+        'not-an-email',
+        'missingdot@domain',
+    ],
+)
+def test_normalize_personal_contact_email_rejects_campus_and_invalid(email: str) -> None:
+    with pytest.raises(ValueError):
+        email_roles.normalize_personal_contact_email(email)

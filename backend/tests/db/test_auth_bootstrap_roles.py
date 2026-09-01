@@ -9,20 +9,55 @@ from app.models import User
 from app.security import SupabaseClaims
 
 
-def _claims(email: str) -> SupabaseClaims:
+def _claims(email: str, *, contact_email: str | None = None) -> SupabaseClaims:
+    raw: dict = {}
+    if contact_email is not None:
+        raw['user_metadata'] = {'contact_email': contact_email}
     return SupabaseClaims(
         sub=uuid4(),
         email=email,
         role='authenticated',
         aal='aal1',
         email_verified=True,
-        raw={},
+        raw=raw,
     )
 
 
 async def test_bootstrap_assigns_student_role(db):
     user = await bootstrap_user(db, _claims('new.student@students.livingstone.edu'))
     assert user.role == 'student'
+
+
+async def test_bootstrap_persists_contact_email_from_metadata(db):
+    user = await bootstrap_user(
+        db,
+        _claims(
+            'new.student@students.livingstone.edu',
+            contact_email='student.personal@gmail.com',
+        ),
+    )
+    assert user.email == 'new.student@students.livingstone.edu'
+    assert user.contact_email == 'student.personal@gmail.com'
+
+
+async def test_bootstrap_syncs_contact_email_on_returning_user(db, factory):
+    user = await factory.user(display_name='Returning')
+    user.email = 'returning@students.livingstone.edu'
+    user.auth_user_id = uuid4()
+    await db.commit()
+
+    refreshed = await bootstrap_user(
+        db,
+        SupabaseClaims(
+            sub=user.auth_user_id,
+            email=user.email,
+            role='authenticated',
+            aal='aal1',
+            email_verified=True,
+            raw={'user_metadata': {'contact_email': 'returning.personal@gmail.com'}},
+        ),
+    )
+    assert refreshed.contact_email == 'returning.personal@gmail.com'
 
 
 async def test_bootstrap_assigns_staff_role(db):

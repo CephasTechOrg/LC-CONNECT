@@ -70,7 +70,7 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
       await notifier.resendSignupOtp(email);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        _snackBar('Code resent. Check your Livingstone email.', isError: false),
+        _snackBar('Code resent. Check your personal email inbox.', isError: false),
       );
       _startCooldown(60);
     } catch (e) {
@@ -110,7 +110,8 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
   @override
   Widget build(BuildContext context) {
     final notifier = ref.watch(authNotifierProvider.notifier);
-    final email = notifier.pendingEmail ??
+    final displayEmail = notifier.pendingContactEmail ??
+        notifier.pendingEmail ??
         ref.watch(authNotifierProvider).value?.email ??
         '';
 
@@ -177,7 +178,7 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
                     children: [
                       const TextSpan(text: 'We sent an 8-digit verification code to\n'),
                       TextSpan(
-                        text: email.isEmpty ? 'your email' : email,
+                        text: displayEmail.isEmpty ? 'your personal email' : displayEmail,
                         style: const TextStyle(
                           fontWeight: FontWeight.w700,
                           color: Color(0xFF111827),

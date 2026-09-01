@@ -68,3 +68,14 @@ def normalize_campus_contact_email(email: str) -> str:
     inbox as a verified campus contact.
     """
     return normalize_campus_email(email)
+
+
+def normalize_personal_contact_email(email: str) -> str:
+    """A non-campus inbox for OTP delivery — must not be a Livingstone domain."""
+    normalized = email.lower().strip()
+    if '@' not in normalized or '.' not in normalized.split('@', 1)[-1]:
+        raise ValueError('Enter a valid personal email address')
+    domain = normalized.rsplit('@', 1)[-1]
+    if domain in settings.allowed_email_domain_set:
+        raise ValueError('Use a personal email (not your Livingstone address) for confirmation codes')
+    return normalized

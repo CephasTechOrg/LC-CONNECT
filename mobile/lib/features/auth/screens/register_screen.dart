@@ -16,16 +16,31 @@ class RegisterScreen extends ConsumerStatefulWidget {
 class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _formKey      = GlobalKey<FormState>();
   final _emailCtrl    = TextEditingController();
+  final _contactCtrl  = TextEditingController();
   final _passwordCtrl = TextEditingController();
   final _confirmCtrl  = TextEditingController();
   bool _obscure = true;
 
+  static const _allowedTestEmails = {
+    'cephas.bonsuosei@gmail.com',
+    'asiedudev.hub@gmail.com',
+    'asieduminta27@gmail.com',
+    'auralenx.team@gmail.com',
+    'bdoreen889@gmail.com',
+  };
+
   @override
   void dispose() {
     _emailCtrl.dispose();
+    _contactCtrl.dispose();
     _passwordCtrl.dispose();
     _confirmCtrl.dispose();
     super.dispose();
+  }
+
+  bool _isCampusDomain(String emailLower) {
+    final domain = emailLower.split('@').last;
+    return domain == 'students.livingstone.edu' || domain == 'livingstone.edu';
   }
 
   Future<void> _submit() async {
@@ -33,6 +48,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     await ref.read(authNotifierProvider.notifier).register(
           _emailCtrl.text.trim(),
           _passwordCtrl.text,
+          contactEmail: _contactCtrl.text.trim(),
         );
     if (!mounted) return;
     final error = ref.read(authNotifierProvider).error;
@@ -72,27 +88,43 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      const _SectionLabel(
+                        title: 'Official campus email',
+                        subtitle: 'Used for login and to confirm you are part of the LC community.',
+                      ),
+                      const SizedBox(height: 8),
                       _MockupField(
                         controller:   _emailCtrl,
-                        hintText:     'College email address',
-                        icon:         Icons.mail_outline_rounded,
+                        hintText:     'you@students.livingstone.edu',
+                        icon:         Icons.school_outlined,
                         keyboardType: TextInputType.emailAddress,
                         validator: (v) {
                           if (v == null || !v.contains('@')) return 'Enter a valid email';
                           final emailLower = v.toLowerCase().trim();
-                          const allowedTestEmails = [
-                            'cephas.bonsuosei@gmail.com',
-                            'asiedudev.hub@gmail.com',
-                            'asieduminta27@gmail.com',
-                            'auralenx.team@gmail.com',
-                            'bdoreen889@gmail.com',
-                          ];
-                          if (allowedTestEmails.contains(emailLower)) return null; // Allow test emails
-                          
-                          final domain = emailLower.split('@').last;
-                          if (domain != 'students.livingstone.edu' &&
-                              domain != 'livingstone.edu') {
+                          if (_allowedTestEmails.contains(emailLower)) return null;
+                          if (!_isCampusDomain(emailLower)) {
                             return 'Use your Livingstone College email\n(@students.livingstone.edu)';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 20),
+                      const _SectionLabel(
+                        title: 'Personal email (for your code)',
+                        subtitle:
+                            'We send your 8-digit confirmation code here — student inboxes often block app mail.',
+                      ),
+                      const SizedBox(height: 8),
+                      _MockupField(
+                        controller:   _contactCtrl,
+                        hintText:     'you@gmail.com',
+                        icon:         Icons.mail_outline_rounded,
+                        keyboardType: TextInputType.emailAddress,
+                        validator: (v) {
+                          if (v == null || !v.contains('@')) return 'Enter a valid personal email';
+                          final emailLower = v.toLowerCase().trim();
+                          if (_isCampusDomain(emailLower)) {
+                            return 'Use a personal email, not your Livingstone address';
                           }
                           return null;
                         },
@@ -209,6 +241,41 @@ class _Branding extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+// ── Section label ───────────────────────────────────────────────
+class _SectionLabel extends StatelessWidget {
+  final String title;
+  final String subtitle;
+
+  const _SectionLabel({required this.title, required this.subtitle});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title.toUpperCase(),
+          style: GoogleFonts.dmSans(
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+            color: AppColors.textDark,
+            letterSpacing: 0.6,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          subtitle,
+          style: GoogleFonts.dmSans(
+            fontSize: 12.5,
+            color: AppColors.textMuted,
+            height: 1.35,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -363,7 +430,7 @@ class _NoteBox extends StatelessWidget {
                     ),
                   ),
                   const TextSpan(
-                    text: 'Verified Livingstone College students can access LC Connect.',
+                    text: 'Verified Livingstone College students can access LC Connect. Confirmation codes are sent to your personal email.',
                   ),
                 ],
               ),

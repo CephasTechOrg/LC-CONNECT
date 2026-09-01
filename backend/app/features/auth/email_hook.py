@@ -26,6 +26,7 @@ from standardwebhooks.webhooks import Webhook, WebhookVerificationError
 
 from app import email as email_service
 from app.config import settings
+from app.shared.email_roles import normalize_personal_contact_email
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +65,29 @@ async def verify_and_parse(request: Request) -> dict[str, Any]:
     return payload
 
 
+def _resolve_delivery_email(user: dict, action_type: str) -> str:
+    """Campus email is the auth identity; personal inbox receives OTP when set."""
+    auth_email = user.get('email')
+    if not auth_email:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Missing user email in hook payload')
+
+    metadata = user.get('user_metadata') or {}
+    if not isinstance(metadata, dict):
+        metadata = {}
+    contact_raw = metadata.get('contact_email') or metadata.get('personal_email')
+    if not isinstance(contact_raw, str) or not contact_raw.strip():
+        return auth_email
+
+    try:
+        contact = normalize_personal_contact_email(contact_raw)
+    except ValueError:
+        return auth_email
+
+    if action_type in {'signup', 'magiclink', 'email_change', 'recovery'}:
+        return contact
+    return auth_email
+
+
 def send_for_payload(payload: dict[str, Any]) -> None:
     """Always raises HTTPException on failure (400 for a malformed payload, 500 for a send
     failure) — never a bare exception — so the caller (the webhook endpoint) can uniformly turn
@@ -72,11 +96,12 @@ def send_for_payload(payload: dict[str, Any]) -> None:
     confirm."""
     user = payload.get('user') or {}
     email_data = payload.get('email_data') or {}
-    to_email = user.get('email')
-    if not to_email:
+    auth_email = user.get('email')
+    if not auth_email:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Missing user email in hook payload')
 
     action_type = email_data.get('email_action_type')
+    to_email = _resolve_delivery_email(user, action_type or '')
     code = email_data.get('token', '')
     # The plain destination page Supabase was told to return to — deliberately NOT the
     # `/auth/v1/verify?token=...` magic link, which encodes the same single-use token as `code`
@@ -91,7 +116,9 @@ def send_for_payload(payload: dict[str, Any]) -> None:
         else:
             # 'signup', 'magiclink', 'email_change', or anything Supabase adds later — all of
             # these are "confirm this address" in spirit, so the signup-confirmation copy fits.
-            email_service.send_signup_confirmation_email(to_email, code=code)
+            email_service.send_signup_confirmation_email(
+                to_email, code=code, campus_email=auth_email if to_email != auth_email else None
+            )
     except HTTPException:
         raise
     except Exception as exc:  # noqa: BLE001 — any send failure (Resend down, etc.) must still

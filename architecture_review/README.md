@@ -41,6 +41,7 @@ The existing Supabase Realtime implementation depends on custom FastAPI JWTs, sh
 13. `SUSPENSION_APPEAL_RUNBOOK.md` — suspend / appeal / reactivate workflow (#22).
 14. `PRODUCTION_SETUP_CHECKLIST.md` — **master launch checklist** (env, cron, smoke tests).
 15. `PHASE_0_1_STATUS.md` — live migration status.
+16. `docs/features/auth/DUAL_EMAIL_CAMPUS_VERIFICATION.md` — dual-email signup + campus verification (ADR-008).
 
 ## Engineering conventions
 

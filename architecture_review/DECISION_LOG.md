@@ -33,3 +33,11 @@
 ## ADR-007 — Supabase Realtime removal
 
 **Decision:** Remove Supabase Realtime from messaging after the FastAPI WebSocket path is complete and tested. Supabase Auth, PostgreSQL, and Storage remain.
+
+## ADR-008 — Dual-email signup & campus verification
+
+**Decision:** Keep the **campus email** as the Supabase auth identity (`users.email`, login). Collect a **personal contact email** at signup; route signup/recovery OTP delivery to `contact_email` via the Send Email hook and `user_metadata.contact_email`. Introduce a separate **`campus_verified`** admin flag for the profile checkmark (Phase 2); do not use `is_verified` for the badge.
+
+**Reason:** Student campus inboxes frequently block transactional mail; personal inboxes are reliable. OTP proves inbox control; admin verification proves community membership.
+
+**Spec:** `docs/features/auth/DUAL_EMAIL_CAMPUS_VERIFICATION.md`

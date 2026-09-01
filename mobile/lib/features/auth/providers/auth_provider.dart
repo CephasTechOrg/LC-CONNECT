@@ -61,8 +61,10 @@ final authNotifierProvider = AsyncNotifierProvider<AuthNotifier, AuthUser?>(
 class AuthNotifier extends AsyncNotifier<AuthUser?> {
   GoTrueClient get _auth => Supabase.instance.client.auth;
   String? _pendingEmail;
+  String? _pendingContactEmail;
 
   String? get pendingEmail => _pendingEmail;
+  String? get pendingContactEmail => _pendingContactEmail;
 
   @override
   Future<AuthUser?> build() async {
@@ -124,20 +126,28 @@ class AuthNotifier extends AsyncNotifier<AuthUser?> {
     });
   }
 
-  Future<void> register(String email, String password) async {
+  Future<void> register(
+    String email,
+    String password, {
+    required String contactEmail,
+  }) async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
       final normalized = email.trim().toLowerCase();
+      final normalizedContact = contactEmail.trim().toLowerCase();
       final result = await _auth.signUp(
         email: normalized,
         password: password,
+        data: {'contact_email': normalizedContact},
       );
       final session = result.session;
       if (session == null) {
         _pendingEmail = normalized;
+        _pendingContactEmail = normalizedContact;
         return null;
       }
       _pendingEmail = null;
+      _pendingContactEmail = null;
       return _bootstrap();
     });
   }
@@ -160,6 +170,7 @@ class AuthNotifier extends AsyncNotifier<AuthUser?> {
         throw AuthException('Verification succeeded but no session was created.');
       }
       _pendingEmail = null;
+      _pendingContactEmail = null;
       return _bootstrap();
     });
   }
@@ -230,6 +241,7 @@ class AuthNotifier extends AsyncNotifier<AuthUser?> {
 
   Future<void> logout() async {
     _pendingEmail = null;
+    _pendingContactEmail = null;
     ref.read(suspendedSessionProvider.notifier).set(null);
     await _auth.signOut();
     state = const AsyncLoading();

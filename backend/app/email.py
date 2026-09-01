@@ -217,15 +217,24 @@ def send_password_reset_email(to_email: str, *, page_url: str | None, code: str)
     _send_email(to_email=to_email, subject='Reset your LC Connect password', text=text, html=html)
 
 
-def _build_signup_confirmation_content(code: str) -> tuple[str, str]:
+def _build_signup_confirmation_content(code: str, *, campus_email: str | None = None) -> tuple[str, str]:
     """Code-only by design: this one is triggered by the *mobile* app's own signup, so the
     recipient is already sitting in front of the verification screen. There is no web page worth
     linking them to, and a magic link would consume the same token the app is about to ask for."""
+    campus_line = ''
+    campus_html = ''
+    if campus_email:
+        campus_line = f'\nThis code confirms your LC Connect account for {campus_email}.\n'
+        campus_html = (
+            f'  <p style="margin-bottom:24px">This code confirms your LC Connect account for '
+            f'<strong>{campus_email}</strong>.</p>\n'
+        )
+
     text = f"""\
 Confirm your LC Connect account
 
 Welcome to LC Connect! Enter this code in the app to confirm your email address:
-
+{campus_line}
     {code}
 
 This code can only be used once and expires shortly. If you didn't create this account, you can
@@ -240,7 +249,7 @@ safely ignore this email.
   </div>
   <p style="margin-bottom:8px;font-weight:700;font-size:18px">Welcome to LC Connect!</p>
   <p style="margin-bottom:24px">Confirm your email address to finish setting up your account.</p>
-  <p style="font-size:14px;margin-bottom:8px">Enter this code in the app:</p>
+{campus_html}  <p style="font-size:14px;margin-bottom:8px">Enter this code in the app:</p>
   <div style="font-size:28px;font-weight:700;letter-spacing:6px;
               padding:16px 20px;background:#F0F7FF;border-radius:12px;
               text-align:center;color:#111827;margin-bottom:24px">
@@ -304,9 +313,11 @@ def send_branded_email(
     _send_email(to_email=to_email, subject=subject, text=text, html=html_body)
 
 
-def send_signup_confirmation_email(to_email: str, *, code: str) -> None:
+def send_signup_confirmation_email(
+    to_email: str, *, code: str, campus_email: str | None = None
+) -> None:
     """Covers the mobile app's direct `supabase.auth.signUp()`/`resend()` calls, which never touch
     this backend — see `app/features/auth/email_hook.py` (the Supabase 'Send Email' Auth Hook),
     which is what actually invokes this for those flows."""
-    text, html = _build_signup_confirmation_content(code)
+    text, html = _build_signup_confirmation_content(code, campus_email=campus_email)
     _send_email(to_email=to_email, subject='Confirm your LC Connect account', text=text, html=html)
