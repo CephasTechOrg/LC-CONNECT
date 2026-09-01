@@ -85,12 +85,22 @@ class RequestIdFilter(logging.Filter):
         return True
 
 
+class RequestIdFormatter(logging.Formatter):
+    """Formatter that always has ``request_id`` — safe for background tasks and child loggers."""
+
+    def format(self, record: logging.LogRecord) -> str:
+        if not hasattr(record, 'request_id'):
+            record.request_id = get_request_id() or '-'  # type: ignore[attr-defined]
+        return super().format(record)
+
+
 def configure_request_id_logging(logger: logging.Logger) -> None:
-    """Attach the filter + a formatter that prints ``[req=…]`` on ``lc_connect`` logs."""
+    """Attach filter + ``[req=…]`` formatter on ``lc_connect`` log handlers."""
     if any(isinstance(f, RequestIdFilter) for f in logger.filters):
         return
     logger.addFilter(RequestIdFilter())
+    formatter = RequestIdFormatter('%(levelname)s:     [%(name)s] [req=%(request_id)s] %(message)s')
     for handler in logger.handlers:
-        handler.setFormatter(
-            logging.Formatter('%(levelname)s:     [%(name)s] [req=%(request_id)s] %(message)s')
-        )
+        handler.setFormatter(formatter)
+    # Child loggers (e.g. ``lc_connect.realtime``) propagate here — ensure they inherit the filter.
+    logger.propagate = False

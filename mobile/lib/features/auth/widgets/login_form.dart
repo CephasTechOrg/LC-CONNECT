@@ -46,16 +46,7 @@ class _FormSection extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 10),
-            Text(
-              'Find friends, study partners, and campus groups.',
-              style: GoogleFonts.dmSans(
-                fontSize: 13.5,
-                color: AppColors.textMuted,
-                height: 1.4,
-              ),
-            ),
-            const SizedBox(height: 22),
+            const SizedBox(height: 24),
             _MockupField(
               controller: emailCtrl,
               hintText: 'Livingstone email address',

@@ -100,10 +100,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       }
       if (!isSuspended && isSuspendedScreen) return '/login';
 
-      // Pending Supabase email confirmation — allow verify + public auth screens
-      // so the user can go back to login/register after canceling.
+      // Pending Supabase email confirmation — only verify + login (back/cancel path).
       if (!isLoggedIn && awaitingEmailConfirmation) {
-        if (isVerifyScreen || isPublicScreen) return null;
+        if (isVerifyScreen || loc == '/login') return null;
         return '/verify-email';
       }
 

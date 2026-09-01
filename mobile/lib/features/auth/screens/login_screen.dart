@@ -56,7 +56,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget build(BuildContext context) {
     final isLoading = ref.watch(authNotifierProvider).isLoading;
     final screenH = MediaQuery.sizeOf(context).height;
-    final heroH = (screenH * 0.42).clamp(250.0, 320.0);
+    final heroH = (screenH * 0.34).clamp(200.0, 260.0);
 
     return Scaffold(
       backgroundColor: AppColors.surface,

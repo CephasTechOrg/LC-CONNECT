@@ -1,3 +1,4 @@
+import logging
 import smtplib
 import ssl
 from email.mime.multipart import MIMEMultipart
@@ -6,6 +7,8 @@ from email.mime.text import MIMEText
 import resend
 
 from app.config import settings
+
+logger = logging.getLogger('lc_connect.email')
 
 
 def _send_via_resend(to_email: str, subject: str, text: str, html: str) -> None:
@@ -19,7 +22,12 @@ def _send_via_resend(to_email: str, subject: str, text: str, html: str) -> None:
     }
     if settings.resend_reply_to:
         params['reply_to'] = settings.resend_reply_to
-    resend.Emails.send(params)
+    try:
+        resend.Emails.send(params)
+    except Exception as exc:
+        # Resend marks addresses as "suppressed" after bounces/spam complaints or rapid repeats.
+        logger.error('resend: failed to send to %s (%s)', to_email, exc)
+        raise
 
 
 def _send_via_smtp(to_email: str, subject: str, text: str, html: str) -> None:

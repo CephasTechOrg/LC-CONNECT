@@ -64,8 +64,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       );
+      return;
     }
-    // On success the router redirect handles navigation based on isVerified/profileCompleted.
+    if (ref.read(authNotifierProvider.notifier).awaitingEmailConfirmation) {
+      context.go('/verify-email');
+    }
   }
 
   @override
@@ -88,10 +91,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const _SectionLabel(
-                        title: 'Official campus email',
-                        subtitle: 'Used for login and to confirm you are part of the LC community.',
-                      ),
+                      const _FieldLabel(title: 'Official campus email'),
                       const SizedBox(height: 8),
                       _MockupField(
                         controller:   _emailCtrl,
@@ -108,12 +108,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           return null;
                         },
                       ),
-                      const SizedBox(height: 20),
-                      const _SectionLabel(
-                        title: 'Personal email (for your code)',
-                        subtitle:
-                            'We send your 8-digit confirmation code here — student inboxes often block app mail.',
-                      ),
+                      const SizedBox(height: 16),
+                      const _FieldLabel(title: 'Personal email (for your code)'),
                       const SizedBox(height: 8),
                       _MockupField(
                         controller:   _contactCtrl,
@@ -185,8 +181,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 24),
-                      _NoteBox(),
                     ],
                   ),
                 ),
@@ -229,7 +223,7 @@ class _Branding extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Join the Livingstone College network',
+                  'Create your account',
                   style: GoogleFonts.dmSans(
                     fontSize: 14,
                     color: AppColors.textMuted,
@@ -245,37 +239,21 @@ class _Branding extends StatelessWidget {
   }
 }
 
-// ── Section label ───────────────────────────────────────────────
-class _SectionLabel extends StatelessWidget {
+// ── Field label ─────────────────────────────────────────────────
+class _FieldLabel extends StatelessWidget {
   final String title;
-  final String subtitle;
 
-  const _SectionLabel({required this.title, required this.subtitle});
+  const _FieldLabel({required this.title});
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title.toUpperCase(),
-          style: GoogleFonts.dmSans(
-            fontSize: 11,
-            fontWeight: FontWeight.w800,
-            color: AppColors.textDark,
-            letterSpacing: 0.6,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          subtitle,
-          style: GoogleFonts.dmSans(
-            fontSize: 12.5,
-            color: AppColors.textMuted,
-            height: 1.35,
-          ),
-        ),
-      ],
+    return Text(
+      title,
+      style: GoogleFonts.dmSans(
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
+        color: AppColors.textDark,
+      ),
     );
   }
 }
@@ -392,51 +370,6 @@ class _ActionButton extends StatelessWidget {
                   ),
                 ),
         ),
-      ),
-    );
-  }
-}
-
-// ── Note Box (same as Login) ─────────────────────────────────────
-class _NoteBox extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.background,
-        border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(15),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(Icons.shield_outlined, size: 24, color: AppColors.primary),
-          const SizedBox(width: 10),
-          Expanded(
-            child: RichText(
-              text: TextSpan(
-                style: GoogleFonts.dmSans(
-                  fontSize: 12.5,
-                  color: AppColors.textMuted,
-                  height: 1.3,
-                ),
-                children: [
-                  TextSpan(
-                    text: 'Students only. ',
-                    style: GoogleFonts.dmSans(
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textDark,
-                    ),
-                  ),
-                  const TextSpan(
-                    text: 'Verified Livingstone College students can access LC Connect. Confirmation codes are sent to your personal email.',
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
