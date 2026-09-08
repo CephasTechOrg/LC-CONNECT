@@ -35,6 +35,18 @@ class AnnouncementUnreadCount(BaseModel):
     count: int
 
 
+class LinkPreviewRead(BaseModel):
+    """Server-stored Open Graph / meta preview for `external_url` (null until unfurl runs)."""
+
+    domain: str | None = None
+    site_name: str | None = None
+    title: str | None = None
+    description: str | None = None
+    image_url: str | None = None
+    fetched_at: datetime | None = None
+    status: str  # ok | failed
+
+
 class StudentDirectoryEntry(BaseModel):
     """A student as seen by a staff member browsing the student directory — enough to recognise
     and reach out, no matching signals. Staff-only surface (mirrors the staff directory)."""
@@ -57,6 +69,7 @@ class CampusPostSummaryRead(BaseModel):
     publish_at: datetime
     expires_at: datetime | None
     external_url: str | None
+    link_preview: LinkPreviewRead | None = None
     read: bool = False  # whether the requesting user has read this post
     source: str = 'campus'  # 'campus' (staff/admin-authored) or 'employer' (Blueprint Bond partner)
     is_blueprint_bond: bool = False  # drives the Blueprint Bond opportunity filter on the client
@@ -84,6 +97,7 @@ class AuthorCampusPostRead(BaseModel):
     publish_at: datetime | None
     expires_at: datetime | None
     external_url: str | None
+    link_preview: LinkPreviewRead | None = None
     created_at: datetime
     updated_at: datetime
 

@@ -6,9 +6,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.dependencies import require_admin_aal2
+from app.features.account import suspension as suspension_service
+from app.features.account.schema import SuspensionAppealRead
 from app.features.admin import admins as admins_admin
-from app.features.admin import admins_router
-from app.features.admin import campus_verification_router
+from app.features.admin import admins_router, campus_verification_router
 from app.features.admin import campus_positions as campus_admin
 from app.features.admin import campus_posts as posts_admin
 from app.features.admin import campus_resources as resources_admin
@@ -37,8 +38,6 @@ from app.features.admin.schema import (
     SuspensionAppealReviewRequest,
     SystemStatusRead,
 )
-from app.features.account import suspension as suspension_service
-from app.features.account.schema import SuspensionAppealRead
 from app.features.admin.service import get_report_for_moderation as do_get_report
 from app.features.admin.service import reactivate_user as do_reactivate_user
 from app.features.admin.service import remove_activity as do_remove_activity
@@ -255,7 +254,7 @@ async def list_campus_posts(
     db: AsyncSession = Depends(get_db),
 ) -> list[CampusPostAdminRead]:
     posts = await posts_admin.list_posts(db)
-    return [CampusPostAdminRead.model_validate(post) for post in posts]
+    return [posts_admin.to_admin_read(post) for post in posts]
 
 
 @router.post('/campus-posts', response_model=CampusPostAdminRead, status_code=201)
@@ -265,7 +264,7 @@ async def create_campus_post(
     db: AsyncSession = Depends(get_db),
 ) -> CampusPostAdminRead:
     post = await posts_admin.create_post(db, actor=actor, payload=payload)
-    return CampusPostAdminRead.model_validate(post)
+    return posts_admin.to_admin_read(post)
 
 
 @router.patch('/campus-posts/{post_id}', response_model=CampusPostAdminRead)
@@ -276,7 +275,7 @@ async def update_campus_post(
     db: AsyncSession = Depends(get_db),
 ) -> CampusPostAdminRead:
     post = await posts_admin.update_post(db, actor=actor, post_id=post_id, payload=payload)
-    return CampusPostAdminRead.model_validate(post)
+    return posts_admin.to_admin_read(post)
 
 
 @router.post('/campus-posts/{post_id}/publish', response_model=CampusPostAdminRead)
@@ -290,7 +289,7 @@ async def publish_campus_post(
     # Only fan out push for posts that are live now — scheduled posts wait for a future job.
     if publishing.should_push_on_publish(post):
         background_tasks.add_task(publishing.push_published_post, post.id)
-    return CampusPostAdminRead.model_validate(post)
+    return posts_admin.to_admin_read(post)
 
 
 @router.post('/campus-posts/{post_id}/archive', response_model=CampusPostAdminRead)
@@ -300,7 +299,7 @@ async def archive_campus_post(
     db: AsyncSession = Depends(get_db),
 ) -> CampusPostAdminRead:
     post = await posts_admin.archive_post(db, actor=actor, post_id=post_id)
-    return CampusPostAdminRead.model_validate(post)
+    return posts_admin.to_admin_read(post)
 
 
 @router.delete('/campus-posts/{post_id}')

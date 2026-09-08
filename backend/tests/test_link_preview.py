@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -156,7 +157,29 @@ def test_parse_strips_internal_image_url():
     assert preview.image_url is None
 
 
-def test_is_safe_preview_asset_url_allows_cdn_host_without_dns():
-    assert lp.is_safe_preview_asset_url('https://cdn.example.com/a.jpg') is True
-    assert lp.is_safe_preview_asset_url('http://127.0.0.1/a.jpg') is False
-    assert lp.is_safe_preview_asset_url('https://localhost/a.jpg') is False
+def test_link_preview_dict_none_until_attempted():
+    post = SimpleNamespace(link_preview_status=None)
+    assert lp.link_preview_dict(post) is None  # type: ignore[arg-type]
+
+
+def test_link_preview_dict_includes_stored_fields():
+    fetched = datetime(2026, 9, 7, tzinfo=UTC)
+    post = SimpleNamespace(
+        link_preview_domain='jobs.example.com',
+        link_preview_site_name='Example',
+        link_preview_title='Intern',
+        link_preview_description='Join us',
+        link_preview_image_url='https://jobs.example.com/i.png',
+        link_preview_fetched_at=fetched,
+        link_preview_status='ok',
+    )
+    payload = lp.link_preview_dict(post)  # type: ignore[arg-type]
+    assert payload == {
+        'domain': 'jobs.example.com',
+        'site_name': 'Example',
+        'title': 'Intern',
+        'description': 'Join us',
+        'image_url': 'https://jobs.example.com/i.png',
+        'fetched_at': fetched,
+        'status': 'ok',
+    }

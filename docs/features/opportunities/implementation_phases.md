@@ -104,11 +104,11 @@ link_preview: {
 
 ## P2 — API schemas + backfill
 
-- [ ] Extend Pydantic schemas in `campus_hub/schema.py`; serializers in `posts.py`
-- [ ] Include preview on list + detail + hub summary payloads that already expose posts
-- [ ] One-shot backfill script or admin-safe management command for rows that already have `external_url` and null preview
-- [ ] `UPDATE_SNAPSHOTS=1 .venv/bin/pytest` for intentional OpenAPI change
-- [ ] DB/integration coverage: create opportunity with mocked unfurl → summary includes preview
+- [x] Extend Pydantic schemas in `campus_hub/schema.py`; serializers in `posts.py`
+- [x] Include preview on list + detail + hub summary payloads that already expose posts
+- [x] One-shot backfill script or admin-safe management command for rows that already have `external_url` and null preview
+- [x] `UPDATE_SNAPSHOTS=1 .venv/bin/pytest` for intentional OpenAPI change
+- [x] DB/integration coverage: create opportunity with mocked unfurl → summary includes preview
 
 **Gate:** Snapshot updated intentionally; list endpoint returns preview for seeded URL posts.
 

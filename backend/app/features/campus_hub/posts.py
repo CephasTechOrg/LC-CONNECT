@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.campus_hub.content_visibility import is_post_visible, published_posts_stmt
 from app.models import CampusPost, CampusPostRead, User
+from app.shared.link_preview import link_preview_dict
 
 
 def _summary(post: CampusPost, *, read: bool = False) -> dict:
@@ -25,6 +26,7 @@ def _summary(post: CampusPost, *, read: bool = False) -> dict:
         'publish_at': post.publish_at,
         'expires_at': post.expires_at,
         'external_url': post.external_url,
+        'link_preview': link_preview_dict(post),
         'read': read,
         'source': post.source,
         'is_blueprint_bond': post.eligible_program_slug is not None,

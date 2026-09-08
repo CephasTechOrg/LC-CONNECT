@@ -1214,6 +1214,16 @@
             "title": "Kind",
             "type": "string"
           },
+          "link_preview": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LinkPreviewRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "priority": {
             "title": "Priority",
             "type": "string"
@@ -2007,6 +2017,16 @@
             "title": "Kind",
             "type": "string"
           },
+          "link_preview": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LinkPreviewRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "priority": {
             "title": "Priority",
             "type": "string"
@@ -2228,6 +2248,16 @@
             "title": "Kind",
             "type": "string"
           },
+          "link_preview": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LinkPreviewRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "priority": {
             "title": "Priority",
             "type": "string"
@@ -2328,6 +2358,16 @@
           "kind": {
             "title": "Kind",
             "type": "string"
+          },
+          "link_preview": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LinkPreviewRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "priority": {
             "title": "Priority",
@@ -4278,6 +4318,87 @@
           "group_id"
         ],
         "title": "JoinResult",
+        "type": "object"
+      },
+      "LinkPreviewRead": {
+        "description": "Server-stored Open Graph / meta preview for `external_url` (null until unfurl runs).",
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "domain": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Domain"
+          },
+          "fetched_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fetched At"
+          },
+          "image_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Url"
+          },
+          "site_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Site Name"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "LinkPreviewRead",
         "type": "object"
       },
       "LivenessResponse": {

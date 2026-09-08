@@ -6,12 +6,20 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.features.admin.schema import CampusPostAdminRead
 from app.features.campus_hub import publishing
 from app.features.campus_hub.schema import CampusPostCreate, CampusPostUpdate
 from app.models import CampusPost, User
 from app.shared.audit import record_audit
+from app.shared.link_preview import link_preview_dict
 
 get_post_or_404 = publishing.get_post_or_404
+
+
+def to_admin_read(post: CampusPost) -> CampusPostAdminRead:
+    data = CampusPostAdminRead.model_validate(post).model_dump()
+    data['link_preview'] = link_preview_dict(post)
+    return CampusPostAdminRead.model_validate(data)
 
 
 async def list_posts(db: AsyncSession, *, limit: int = 100) -> list[CampusPost]:

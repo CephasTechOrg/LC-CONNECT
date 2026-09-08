@@ -18,13 +18,16 @@ from app.features.campus_hub.schema import (
     PublishingCapabilitiesRead,
 )
 from app.models import CampusPost, User
+from app.shared.link_preview import link_preview_dict
 from app.shared.rate_limit import campus_post_create_limit, campus_post_publish_limit
 
 router = APIRouter(tags=['campus-hub'])
 
 
 def _author_read(post: CampusPost) -> AuthorCampusPostRead:
-    return AuthorCampusPostRead.model_validate(post)
+    data = AuthorCampusPostRead.model_validate(post).model_dump()
+    data['link_preview'] = link_preview_dict(post)
+    return AuthorCampusPostRead.model_validate(data)
 
 
 @router.get('/publishing/capabilities', response_model=PublishingCapabilitiesRead)

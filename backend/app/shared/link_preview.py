@@ -84,6 +84,21 @@ def failed_preview_for(url: str) -> LinkPreview:
     )
 
 
+def link_preview_dict(post: CampusPost) -> dict | None:
+    """API payload for stored preview columns. ``None`` until an unfurl has been attempted."""
+    if post.link_preview_status is None:
+        return None
+    return {
+        'domain': post.link_preview_domain,
+        'site_name': post.link_preview_site_name,
+        'title': post.link_preview_title,
+        'description': post.link_preview_description,
+        'image_url': post.link_preview_image_url,
+        'fetched_at': post.link_preview_fetched_at,
+        'status': post.link_preview_status,
+    }
+
+
 async def sync_post_link_preview(post: CampusPost) -> None:
     """Refresh preview fields from `post.external_url`. Never raises."""
     url = (post.external_url or '').strip()
