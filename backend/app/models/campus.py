@@ -80,6 +80,15 @@ class CampusPost(Base):
     publish_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True, nullable=True)
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True, nullable=True)
     external_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Server-side OG/meta unfurl of `external_url` (opportunities link preview). Soft-fail fields —
+    # publish never depends on a successful fetch. See `app/shared/link_preview.py`.
+    link_preview_domain: Mapped[str | None] = mapped_column(String(253), nullable=True)
+    link_preview_site_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    link_preview_title: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    link_preview_description: Mapped[str | None] = mapped_column(String(400), nullable=True)
+    link_preview_image_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    link_preview_fetched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    link_preview_status: Mapped[str | None] = mapped_column(String(20), nullable=True)  # ok | failed
     # Blueprint Bond (Phase 5): 'campus' (staff/admin-authored, the default) or 'employer' (an
     # approved employer's opportunity submission, published via app/features/admin/employers.py).
     # Drives the "Campus Opportunity" vs "Employer Partner" source badge on the client.

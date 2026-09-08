@@ -23,6 +23,7 @@ from app.features.campus_hub.schema import CampusPostCreate, CampusPostUpdate, c
 from app.features.campus_positions.service import get_primary_position
 from app.models import CampusPost, DeviceToken, Program, ProgramMembership, User
 from app.shared.audit import record_audit
+from app.shared.link_preview import sync_post_link_preview
 
 
 def _post_snapshot(post: CampusPost) -> dict[str, str | None]:
@@ -119,6 +120,8 @@ async def create_post(
     if data.get('external_url') is not None:
         data['external_url'] = str(data['external_url'])
     post = CampusPost(author_id=actor.id, status='draft', **data)
+    # Unfurl before flush so the draft row already carries preview fields (soft-fail).
+    await sync_post_link_preview(post)
     db.add(post)
     await db.flush()
     await record_audit(
@@ -167,8 +170,11 @@ async def update_post(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"category for kind={resolved_kind} must be one of: {allowed}",
             )
+    url_changed = 'external_url' in updates
     for key, value in updates.items():
         setattr(post, key, value)
+    if url_changed:
+        await sync_post_link_preview(post)
 
     await record_audit(
         db,
