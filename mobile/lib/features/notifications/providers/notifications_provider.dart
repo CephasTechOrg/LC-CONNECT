@@ -9,10 +9,14 @@ import '../../../core/realtime/ws_protocol.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../data/notification_models.dart';
 
-/// The unread-notifications badge counter. Mirrors the message unread pattern: seed from
-/// `GET /notifications/unread-count` once a verified session exists, bump on live WS
-/// `notification` events, re-seed on reconnect/app-resume, and zero it when the user opens the
-/// notifications screen (mark-all-read).
+/// The unread-notifications badge counter.
+///
+/// Product model (same family as Opportunities, not Announcements):
+/// - Opening the inbox marks **all** read and clears the badge.
+/// - Unlike announcements, you do **not** need to tap each row for the count to drop.
+///
+/// Reliability: keepAlive so WS +1 still works when the bell isn't mounted; invalidate the
+/// list on a live event so an open inbox updates without pull-to-refresh.
 final notificationCountProvider =
     NotifierProvider<NotificationCountNotifier, int>(NotificationCountNotifier.new);
 
@@ -23,6 +27,9 @@ class NotificationCountNotifier extends Notifier<int> {
 
   @override
   int build() {
+    // Same trap as announcementCountProvider: without keepAlive the listener dies when the
+    // Campus Hub header unmounts, and the next WS ping never increments until something re-watches.
+    ref.keepAlive();
     final userId = ref.watch(authNotifierProvider.select((a) => a.asData?.value?.id));
     final RealtimeClient client;
     try {
@@ -57,7 +64,10 @@ class NotificationCountNotifier extends Notifier<int> {
   }
 
   void _onEvent(InboundEvent event) {
-    if (event is NotificationEvent) state = state + 1;
+    if (event is! NotificationEvent) return;
+    state = state + 1;
+    // Inbox open? Pull the new row in without waiting for pull-to-refresh.
+    ref.invalidate(notificationsListProvider);
   }
 
   /// Called when the notifications screen opens: clear the badge locally and mark all read
@@ -66,6 +76,7 @@ class NotificationCountNotifier extends Notifier<int> {
     state = 0;
     try {
       await ref.read(apiClientProvider).dio.post('/notifications/read');
+      ref.invalidate(notificationsListProvider);
     } catch (_) {/* re-seed will correct on next reconnect/resume */}
   }
 }

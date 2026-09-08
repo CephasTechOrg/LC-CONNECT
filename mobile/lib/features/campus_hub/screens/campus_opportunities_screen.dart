@@ -9,6 +9,7 @@ import '../../../shared/widgets/app_states.dart';
 import '../../programs/providers/programs_provider.dart';
 import '../models/campus_post.dart';
 import '../providers/campus_hub_provider.dart';
+import '../providers/opportunity_badge_provider.dart';
 import '../widgets/campus_subpage_header.dart';
 import '../widgets/opportunity_card.dart';
 
@@ -33,6 +34,15 @@ class CampusOpportunitiesScreen extends ConsumerStatefulWidget {
 class _OpportunitiesState extends ConsumerState<CampusOpportunitiesScreen> {
   String _category = 'all';
   _SourceTab _source = _SourceTab.all;
+
+  @override
+  void initState() {
+    super.initState();
+    // Opening the list clears the hub Opportunities badge (separate from announcement unread).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(opportunityNewCountProvider.notifier).markSeen();
+    });
+  }
 
   CampusPostsQuery get _query => CampusPostsQuery(
         kind: 'opportunity',

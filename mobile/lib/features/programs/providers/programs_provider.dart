@@ -33,7 +33,11 @@ class ProgramMembership {
 
 /// Every program this user is currently an active member of (server only ever returns active
 /// rows — see `GET /programs/me`).
-final myProgramMembershipsProvider = FutureProvider.autoDispose<List<ProgramMembership>>((ref) async {
+///
+/// Kept alive (not autoDispose): Campus Hub remounts often on tab/nav, and disposing this made
+/// [isVerifiedScholarProvider] flip false→true while reloading — the Blueprint Bond prompt
+/// blinked off and on every time the student came back to Home.
+final myProgramMembershipsProvider = FutureProvider<List<ProgramMembership>>((ref) async {
   ref.watch(authNotifierProvider);
   final client = ref.watch(apiClientProvider);
   final response = await client.dio.get('/programs/me');
@@ -44,7 +48,9 @@ final myProgramMembershipsProvider = FutureProvider.autoDispose<List<ProgramMemb
 
 /// Whether the current user is a verified Presidential Scholar — drives every Blueprint Bond
 /// surface (completion card, professional-profile screen access).
-final isVerifiedScholarProvider = Provider.autoDispose<bool>((ref) {
-  final memberships = ref.watch(myProgramMembershipsProvider).value ?? const [];
-  return memberships.any((m) => m.programSlug == presidentialScholarsSlug && m.isActive);
+final isVerifiedScholarProvider = Provider<bool>((ref) {
+  final memberships = ref.watch(myProgramMembershipsProvider);
+  // Prefer the last known list while a refresh is in flight so the prompt doesn't vanish.
+  final list = memberships.asData?.value ?? memberships.value ?? const <ProgramMembership>[];
+  return list.any((m) => m.programSlug == presidentialScholarsSlug && m.isActive);
 });

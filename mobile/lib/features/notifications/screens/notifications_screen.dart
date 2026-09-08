@@ -108,8 +108,10 @@ class _NotificationTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final route = notification.route;
+    final unread = !notification.read;
     return ListTile(
       onTap: route != null ? () => context.push(route) : null,
+      tileColor: unread ? AppColors.primarySoft.withValues(alpha: 0.35) : null,
       leading: notification.isActorCentric
           ? AvatarWidget(imageUrl: notification.actorAvatarUrl, size: 40, cacheScope: notification.actorName)
           : CircleAvatar(
@@ -118,15 +120,30 @@ class _NotificationTile extends StatelessWidget {
             ),
       title: Text(
         notification.message,
-        style: GoogleFonts.dmSans(fontSize: 14, color: AppColors.textDark, height: 1.3),
+        style: GoogleFonts.dmSans(
+          fontSize: 14,
+          fontWeight: unread ? FontWeight.w700 : FontWeight.w500,
+          color: AppColors.textDark,
+          height: 1.3,
+        ),
       ),
       subtitle: Text(
         _timeAgo(notification.createdAt),
         style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textMuted),
       ),
-      trailing: route != null
-          ? const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted)
-          : null,
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (unread)
+            Container(
+              width: 8,
+              height: 8,
+              margin: const EdgeInsets.only(right: 6),
+              decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
+            ),
+          if (route != null) const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
+        ],
+      ),
     );
   }
 }

@@ -66,6 +66,9 @@ class AnnouncementCountNotifier extends Notifier<int> {
 
   @override
   int build() {
+    // Keep alive even when Latest Updates isn't on screen — otherwise the badge dies when
+    // leaving Hub and the next WS ping never increments until something re-watches.
+    ref.keepAlive();
     _role = ref.watch(authNotifierProvider.select((a) => a.asData?.value?.role)) ?? 'student';
     final userId = ref.watch(authNotifierProvider.select((a) => a.asData?.value?.id));
     final RealtimeClient client;
@@ -101,7 +104,11 @@ class AnnouncementCountNotifier extends Notifier<int> {
   }
 
   void _onEvent(InboundEvent event) {
-    if (event is AnnouncementEvent && _appliesTo(event.audience, _role)) state = state + 1;
+    if (event is AnnouncementEvent && _appliesTo(event.audience, _role)) {
+      state = state + 1;
+      // Featured card on Hub is from overview — bump the badge and refresh the card together.
+      ref.invalidate(campusHubOverviewProvider);
+    }
   }
 
   bool _appliesTo(String audience, String role) {

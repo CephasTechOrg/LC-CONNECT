@@ -1,10 +1,11 @@
 part of '../screens/campus_hub_screen.dart';
 
-class _QuickActionsRow extends StatelessWidget {
+class _QuickActionsRow extends ConsumerWidget {
   const _QuickActionsRow();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final opportunityNew = ref.watch(opportunityNewCountProvider);
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 10, 20, 2),
       child: Row(
@@ -24,6 +25,7 @@ class _QuickActionsRow extends StatelessWidget {
           CampusQuickAction(
             icon: Icons.work_outline,
             label: 'Opportunities',
+            badgeCount: opportunityNew,
             onTap: () => context.push('/home/opportunities'),
           ),
         ],

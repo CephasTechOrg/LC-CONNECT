@@ -21,6 +21,7 @@ import '../data/campus_spotlights.dart';
 import '../models/campus_post.dart';
 import '../providers/campus_hub_provider.dart';
 import '../providers/campus_publishing_provider.dart';
+import '../providers/opportunity_badge_provider.dart';
 
 part '../widgets/urgent_update_banner.dart';
 part '../widgets/campus_home_header.dart';
@@ -59,6 +60,9 @@ class CampusHubScreen extends ConsumerWidget {
     final firstName = _greetingName(displayName: profile?.displayName, email: user?.email);
     final greeting = '${_greeting()}, $firstName';
     final overviewAsync = ref.watch(campusHubOverviewProvider);
+    // Keep badge notifiers alive while Hub is visible (announcements WS + opportunities cursor).
+    ref.watch(announcementCountProvider);
+    ref.watch(opportunityNewCountProvider);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -68,6 +72,7 @@ class CampusHubScreen extends ConsumerWidget {
           onRefresh: () async {
             ref.invalidate(campusHubOverviewProvider);
             ref.invalidate(activeAttendanceProvider);
+            await ref.read(opportunityNewCountProvider.notifier).refresh();
           },
           child: ListView(
             children: [

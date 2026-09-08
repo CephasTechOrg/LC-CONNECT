@@ -30,7 +30,10 @@ class BlueprintBondCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     if (!ref.watch(isVerifiedScholarProvider)) return const SizedBox.shrink();
 
-    final profile = ref.watch(scholarProfileNotifierProvider).value;
+    final profileAsync = ref.watch(scholarProfileNotifierProvider);
+    // Keep the last known profile across reloads so the prompt doesn't shrink→grow (blink)
+    // every time Campus Hub remounts and the notifier briefly looks empty.
+    final profile = profileAsync.asData?.value ?? profileAsync.value;
 
     final isComplete = profile != null &&
         (profile.summary?.isNotEmpty ?? false) &&
@@ -39,8 +42,8 @@ class BlueprintBondCard extends ConsumerWidget {
     if (style == BlueprintBondStyle.prompt) {
       // Nothing left to nudge about — Profile keeps the permanent way in.
       if (isComplete) return const SizedBox.shrink();
-      // Still loading: staying silent avoids flashing "finish your profile" at someone who
-      // already did, only to yank it away a moment later.
+      // First load only: stay silent until we know the profile isn't already complete.
+      // Once we've shown the prompt, remounts keep [profile] via asData and don't flicker.
       if (profile == null) return const SizedBox.shrink();
       return _PromptCard(onTap: () => context.push('/profile/blueprint-bond'));
     }

@@ -4,12 +4,15 @@ class CampusQuickAction extends StatelessWidget {
   final IconData icon;
   final String label;
   final VoidCallback onTap;
+  /// Optional "new" count — used by Opportunities (separate from Latest Updates announcements).
+  final int badgeCount;
 
   const CampusQuickAction({
     super.key,
     required this.icon,
     required this.label,
     required this.onTap,
+    this.badgeCount = 0,
   });
 
   @override
@@ -30,14 +33,46 @@ class CampusQuickAction extends StatelessWidget {
             ),
             child: Column(
               children: [
-                Container(
+                SizedBox(
                   width: 46,
                   height: 46,
-                  decoration: BoxDecoration(
-                    color: AppColors.primarySoft,
-                    borderRadius: BorderRadius.circular(13),
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Container(
+                        width: 46,
+                        height: 46,
+                        decoration: BoxDecoration(
+                          color: AppColors.primarySoft,
+                          borderRadius: BorderRadius.circular(13),
+                        ),
+                        child: Icon(icon, color: AppColors.primary, size: 24),
+                      ),
+                      if (badgeCount > 0)
+                        Positioned(
+                          top: -4,
+                          right: -4,
+                          child: Container(
+                            constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+                            padding: const EdgeInsets.symmetric(horizontal: 5),
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: AppColors.error,
+                              borderRadius: BorderRadius.circular(9),
+                            ),
+                            child: Text(
+                              badgeCount > 99 ? '99+' : '$badgeCount',
+                              style: GoogleFonts.dmSans(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                                height: 1,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
-                  child: Icon(icon, color: AppColors.primary, size: 24),
                 ),
                 const SizedBox(height: 8),
                 Text(
