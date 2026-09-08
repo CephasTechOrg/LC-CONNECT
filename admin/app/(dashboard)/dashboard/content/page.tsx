@@ -24,14 +24,22 @@ export default function ContentPage() {
       <header className="ops-top">
         <div>
           <h1>Campus Hub</h1>
-          <p>Publish campus posts and maintain the resource directory.</p>
+          <p>Publish posts and keep the campus resource directory up to date.</p>
         </div>
-        <div className="seg-tabs">
-          <button type="button" className={`seg-tab${tab === 'posts' ? ' active' : ''}`} onClick={() => setTab('posts')}>
+        <div className="seg-tabs" role="tablist" aria-label="Campus Hub sections">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === 'posts'}
+            className={`seg-tab${tab === 'posts' ? ' active' : ''}`}
+            onClick={() => setTab('posts')}
+          >
             Posts
           </button>
           <button
             type="button"
+            role="tab"
+            aria-selected={tab === 'resources'}
             className={`seg-tab${tab === 'resources' ? ' active' : ''}`}
             onClick={() => setTab('resources')}
           >

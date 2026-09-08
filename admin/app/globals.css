@@ -1110,6 +1110,7 @@ table.rows tr:last-child td {
   background: var(--bg-soft);
   border: 1px solid var(--border);
   border-radius: 14px;
+  flex-shrink: 0;
 }
 
 .seg-tab {
@@ -1121,6 +1122,7 @@ table.rows tr:last-child td {
   font-weight: 600;
   font-size: 13.5px;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .seg-tab.active {

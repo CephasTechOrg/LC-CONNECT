@@ -69,9 +69,17 @@
   overflow: hidden;
 }
 
+/* Horizontal scroll must win over overflow:hidden so sticky action columns work. */
+.ops-table-wrap.table-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
 .ops-table {
   width: 100%;
   border-collapse: collapse;
+  min-width: 680px;
 }
 
 .ops-table th,
@@ -100,15 +108,50 @@
   background: #faf9fd;
 }
 
+/* Keep row actions visible while scrolling wide tables sideways. */
+.ops-table th.ops-col-actions,
+.ops-table td.ops-col-actions {
+  position: sticky;
+  right: 0;
+  min-width: 168px;
+  background: #fff;
+  box-shadow: -10px 0 16px -12px rgba(52, 38, 104, 0.35);
+  z-index: 1;
+}
+
+.ops-table th.ops-col-actions {
+  background: #faf9fd;
+  z-index: 2;
+}
+
+.ops-table tbody tr:hover td.ops-col-actions {
+  background: #faf9fd;
+}
+
+.ops-col-hide-md {
+  /* shown by default; hidden in the 900px breakpoint below */
+}
+
 .ops-cell-title {
   font-weight: 700;
   color: var(--text);
+  word-break: break-word;
 }
 
 .ops-cell-sub {
   margin-top: 2px;
   font-size: 12.5px;
   color: var(--muted);
+  word-break: break-word;
+}
+
+.ops-cell-link {
+  display: inline-block;
+  max-width: min(280px, 40vw);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
 }
 
 .ops-user-cell {
@@ -150,6 +193,13 @@
 .ops-chip.cyan { background: #e1f2f6; color: #2f8ea3; }
 .ops-chip.orange { background: #fceee3; color: #d96b36; }
 
+.ops-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
 .ops-row-actions {
   display: flex;
   flex-wrap: wrap;
@@ -171,6 +221,7 @@
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .ops-btn:hover:not(:disabled) {
@@ -196,6 +247,64 @@
 .ops-btn:disabled {
   opacity: 0.55;
   cursor: not-allowed;
+}
+
+/* Mobile/tablet card list — used by Campus Hub posts & resources */
+.ops-card-list {
+  display: none;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ops-card {
+  background: #fff;
+  border: 1px solid #eeebf3;
+  border-radius: 16px;
+  padding: 14px 16px;
+  box-shadow: 0 6px 18px -14px rgba(52, 38, 104, 0.35);
+}
+
+.ops-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.ops-card-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.3;
+  word-break: break-word;
+}
+
+.ops-card-sub {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.ops-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid #efecf5;
+}
+
+.ops-card-actions .ops-row-actions {
+  width: 100%;
+  justify-content: flex-start;
+}
+
+.ops-card-actions .ops-btn {
+  flex: 1 1 calc(50% - 8px);
+  min-width: 120px;
 }
 
 .ops-empty {
@@ -261,6 +370,19 @@
   margin: 0 0 14px;
   font-size: 16px;
   font-weight: 700;
+}
+
+.ops-form .grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.ops-form .actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 8px;
 }
 
 .ops-drawer-backdrop {
@@ -350,9 +472,33 @@
   flex: 1;
 }
 
+@media (max-width: 1100px) {
+  .ops-col-hide-md {
+    display: none;
+  }
+
+  .ops-table {
+    min-width: 560px;
+  }
+}
+
 @media (max-width: 900px) {
+  .ops-top {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
   .ops-top h1 {
     font-size: 22px;
+  }
+
+  .ops-top .seg-tabs {
+    width: 100%;
+  }
+
+  .ops-top .seg-tabs .seg-tab {
+    flex: 1;
+    text-align: center;
   }
 
   .ops-count {
@@ -369,6 +515,11 @@
     flex: 1 1 140px;
   }
 
+  .ops-toolbar .ops-btn.primary {
+    flex: 1 1 100%;
+    height: 42px;
+  }
+
   .ops-drawer {
     width: 100%;
   }
@@ -379,6 +530,19 @@
 
   .ops-form {
     padding: 16px;
+  }
+
+  .ops-form .grid-2 {
+    grid-template-columns: 1fr;
+  }
+
+  /* Swap wide tables for stacked cards on Campus Hub (and any page using both). */
+  .ops-responsive-desktop {
+    display: none;
+  }
+
+  .ops-card-list {
+    display: flex;
   }
 
   .ops-table th,
@@ -392,7 +556,15 @@
     justify-content: flex-start;
   }
 
+  .ops-card-actions .ops-btn {
+    flex: 1 1 100%;
+  }
+
   .ops-drawer-footer {
     flex-direction: column-reverse;
+  }
+
+  .ops-cell-link {
+    max-width: 100%;
   }
 }

@@ -276,7 +276,7 @@ export default function ResourcesPanel() {
         </form>
       ) : null}
 
-      <div className="ops-table-wrap table-scroll">
+      <div className="ops-table-wrap table-scroll ops-responsive-desktop">
         {loading ? (
           <OpsLoading label="Loading resources…" />
         ) : filtered.length === 0 ? (
@@ -291,10 +291,10 @@ export default function ResourcesPanel() {
               <tr>
                 <th>Resource</th>
                 <th>Category</th>
-                <th>Location</th>
-                <th>Contact</th>
+                <th className="ops-col-hide-md">Location</th>
+                <th className="ops-col-hide-md">Contact</th>
                 <th>Status</th>
-                <th />
+                <th className="ops-col-actions">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -305,23 +305,21 @@ export default function ResourcesPanel() {
                     <div className="ops-cell-sub">{item.description.slice(0, 90)}</div>
                   </td>
                   <td style={{ textTransform: 'capitalize' }}>{labelCat(item.category)}</td>
-                  <td>{item.location || '—'}</td>
-                  <td>{item.contact_email || item.phone || '—'}</td>
+                  <td className="ops-col-hide-md">{item.location || '—'}</td>
+                  <td className="ops-col-hide-md">{item.contact_email || item.phone || '—'}</td>
                   <td>
                     <span className={item.is_active ? 'ops-chip success' : 'ops-chip muted'}>
                       {item.is_active ? 'Active' : 'Inactive'}
                     </span>
                   </td>
-                  <td>
-                    <div className="ops-row-actions">
-                      <button className="ops-btn" type="button" disabled={busy === item.id} onClick={() => startEdit(item)}>Edit</button>
-                      {item.is_active ? (
-                        <button className="ops-btn" type="button" disabled={busy === item.id} onClick={() => setActive(item, false)}>Deactivate</button>
-                      ) : (
-                        <button className="ops-btn primary" type="button" disabled={busy === item.id} onClick={() => setActive(item, true)}>Restore</button>
-                      )}
-                      <button className="ops-btn danger" type="button" disabled={busy === item.id} onClick={() => remove(item)}>Delete</button>
-                    </div>
+                  <td className="ops-col-actions">
+                    <ResourceActions
+                      item={item}
+                      busy={busy === item.id}
+                      onEdit={() => startEdit(item)}
+                      onToggle={() => setActive(item, !item.is_active)}
+                      onDelete={() => remove(item)}
+                    />
                   </td>
                 </tr>
               ))}
@@ -329,6 +327,79 @@ export default function ResourcesPanel() {
           </table>
         )}
       </div>
+
+      <div className="ops-card-list" aria-label="Resources">
+        {loading ? (
+          <OpsLoading label="Loading resources…" />
+        ) : filtered.length === 0 ? (
+          <OpsEmpty title={items.length === 0 ? 'No resources' : 'No matches'}>
+            {items.length === 0
+              ? 'Add campus resources for students to find in Campus Hub.'
+              : 'No resources match these filters.'}
+          </OpsEmpty>
+        ) : (
+          filtered.map((item) => (
+            <article key={item.id} className="ops-card">
+              <h3 className="ops-card-title">{item.title}</h3>
+              <p className="ops-card-sub">{item.description.slice(0, 140)}</p>
+              <div className="ops-chip-row">
+                <span className="ops-chip muted">{labelCat(item.category)}</span>
+                <span className={item.is_active ? 'ops-chip success' : 'ops-chip muted'}>
+                  {item.is_active ? 'Active' : 'Inactive'}
+                </span>
+              </div>
+              {(item.location || item.contact_email || item.phone) && (
+                <p className="ops-card-sub">
+                  {[item.location, item.contact_email || item.phone].filter(Boolean).join(' · ')}
+                </p>
+              )}
+              <div className="ops-card-actions">
+                <ResourceActions
+                  item={item}
+                  busy={busy === item.id}
+                  onEdit={() => startEdit(item)}
+                  onToggle={() => setActive(item, !item.is_active)}
+                  onDelete={() => remove(item)}
+                />
+              </div>
+            </article>
+          ))
+        )}
+      </div>
     </>
+  );
+}
+
+function ResourceActions({
+  item,
+  busy,
+  onEdit,
+  onToggle,
+  onDelete,
+}: {
+  item: Resource;
+  busy: boolean;
+  onEdit: () => void;
+  onToggle: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <div className="ops-row-actions">
+      <button className="ops-btn" type="button" disabled={busy} onClick={onEdit}>
+        Edit
+      </button>
+      {item.is_active ? (
+        <button className="ops-btn" type="button" disabled={busy} onClick={onToggle}>
+          Deactivate
+        </button>
+      ) : (
+        <button className="ops-btn primary" type="button" disabled={busy} onClick={onToggle}>
+          Restore
+        </button>
+      )}
+      <button className="ops-btn danger" type="button" disabled={busy} onClick={onDelete}>
+        Delete
+      </button>
+    </div>
   );
 }

@@ -356,7 +356,7 @@ export default function PostsPanel() {
         </form>
       ) : null}
 
-      <div className="ops-table-wrap table-scroll">
+      <div className="ops-table-wrap table-scroll ops-responsive-desktop">
         {loading ? (
           <OpsLoading label="Loading posts…" />
         ) : filtered.length === 0 ? (
@@ -371,11 +371,11 @@ export default function PostsPanel() {
               <tr>
                 <th>Title</th>
                 <th>Kind</th>
-                <th>Category</th>
-                <th>Audience</th>
+                <th className="ops-col-hide-md">Category</th>
+                <th className="ops-col-hide-md">Audience</th>
                 <th>Priority</th>
                 <th>Status</th>
-                <th />
+                <th className="ops-col-actions">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -386,24 +386,31 @@ export default function PostsPanel() {
                     <div className="ops-cell-sub">{item.summary || item.body.slice(0, 80)}</div>
                     {item.external_url ? (
                       <div className="ops-cell-sub">
-                        <a href={item.external_url} target="_blank" rel="noopener noreferrer">
+                        <a
+                          className="ops-cell-link"
+                          href={item.external_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
                           {item.external_url}
                         </a>
                       </div>
                     ) : null}
                   </td>
                   <td style={{ textTransform: 'capitalize' }}>{item.kind}</td>
-                  <td>{categoriesForKind(item.kind)[item.category ?? ''] ?? '—'}</td>
-                  <td style={{ textTransform: 'capitalize' }}>{item.audience}</td>
+                  <td className="ops-col-hide-md">{categoriesForKind(item.kind)[item.category ?? ''] ?? '—'}</td>
+                  <td className="ops-col-hide-md" style={{ textTransform: 'capitalize' }}>{item.audience}</td>
                   <td><span className={priorityChip(item.priority)}>{item.priority}</span></td>
                   <td><span className={statusChip(item.status)}>{item.status}</span></td>
-                  <td>
-                    <div className="ops-row-actions">
-                      <button className="ops-btn primary" type="button" disabled={busy === item.id || item.status === 'published'} onClick={() => publish(item)}>Publish</button>
-                      <button className="ops-btn" type="button" disabled={busy === item.id || item.status === 'archived'} onClick={() => startEdit(item)}>Edit</button>
-                      <button className="ops-btn" type="button" disabled={busy === item.id || item.status === 'archived'} onClick={() => archive(item)}>Archive</button>
-                      <button className="ops-btn danger" type="button" disabled={busy === item.id} onClick={() => remove(item)}>Delete</button>
-                    </div>
+                  <td className="ops-col-actions">
+                    <PostActions
+                      item={item}
+                      busy={busy === item.id}
+                      onPublish={() => publish(item)}
+                      onEdit={() => startEdit(item)}
+                      onArchive={() => archive(item)}
+                      onDelete={() => remove(item)}
+                    />
                   </td>
                 </tr>
               ))}
@@ -411,6 +418,104 @@ export default function PostsPanel() {
           </table>
         )}
       </div>
+
+      <div className="ops-card-list" aria-label="Posts">
+        {loading ? (
+          <OpsLoading label="Loading posts…" />
+        ) : filtered.length === 0 ? (
+          <OpsEmpty title={items.length === 0 ? 'No posts' : 'No matches'}>
+            {items.length === 0
+              ? 'Create a draft to publish campus announcements and opportunities.'
+              : 'No posts match these filters.'}
+          </OpsEmpty>
+        ) : (
+          filtered.map((item) => (
+            <article key={item.id} className="ops-card">
+              <div className="ops-card-top">
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <h3 className="ops-card-title">{item.title}</h3>
+                  <p className="ops-card-sub">{item.summary || item.body.slice(0, 120)}</p>
+                  {item.external_url ? (
+                    <p className="ops-card-sub">
+                      <a href={item.external_url} target="_blank" rel="noopener noreferrer">
+                        Open link
+                      </a>
+                    </p>
+                  ) : null}
+                  <div className="ops-chip-row">
+                    <span className="ops-chip muted">{item.kind}</span>
+                    <span className={priorityChip(item.priority)}>{item.priority}</span>
+                    <span className={statusChip(item.status)}>{item.status}</span>
+                    {item.category ? (
+                      <span className="ops-chip cyan">
+                        {categoriesForKind(item.kind)[item.category] ?? item.category}
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+              <div className="ops-card-actions">
+                <PostActions
+                  item={item}
+                  busy={busy === item.id}
+                  onPublish={() => publish(item)}
+                  onEdit={() => startEdit(item)}
+                  onArchive={() => archive(item)}
+                  onDelete={() => remove(item)}
+                />
+              </div>
+            </article>
+          ))
+        )}
+      </div>
     </>
+  );
+}
+
+function PostActions({
+  item,
+  busy,
+  onPublish,
+  onEdit,
+  onArchive,
+  onDelete,
+}: {
+  item: Post;
+  busy: boolean;
+  onPublish: () => void;
+  onEdit: () => void;
+  onArchive: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <div className="ops-row-actions">
+      <button
+        className="ops-btn primary"
+        type="button"
+        disabled={busy || item.status === 'published'}
+        onClick={onPublish}
+      >
+        Publish
+      </button>
+      <button
+        className="ops-btn"
+        type="button"
+        disabled={busy || item.status === 'archived'}
+        onClick={onEdit}
+      >
+        Edit
+      </button>
+      <button
+        className="ops-btn"
+        type="button"
+        disabled={busy || item.status === 'archived'}
+        onClick={onArchive}
+      >
+        Archive
+      </button>
+      <button className="ops-btn danger" type="button" disabled={busy} onClick={onDelete}>
+        Delete
+      </button>
+    </div>
   );
 }
