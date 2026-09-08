@@ -125,12 +125,12 @@ link_preview: {
 
 **Work:**
 
-- [ ] Parse `linkPreview` from API
-- [ ] Compact strip: image thumb (or icon), site/domain, OG title (1 line)
-- [ ] Expanded: image, title, description (2 lines), domain, tap → `launchUrl` external
-- [ ] Fallback when URL present but preview failed/null: hostname chip + Apply
-- [ ] Loading/error placeholders for broken images (`errorBuilder`)
-- [ ] Widget tests for compact/expanded/fallback
+- [x] Parse `linkPreview` from API
+- [x] Compact strip: image thumb (or icon), site/domain, OG title (1 line)
+- [x] Expanded: image, title, description (2 lines), domain, tap → `launchUrl` external
+- [x] Fallback when URL present but preview failed/null: hostname chip + Apply
+- [x] Loading/error placeholders for broken images (`errorBuilder`)
+- [x] Widget tests for compact/expanded/fallback
 
 **Gate:** `flutter analyze` clean; preview renders from fixture JSON; tap still opens `external_url`.
 
@@ -140,11 +140,11 @@ link_preview: {
 
 Polish the page **after** preview lands so cards don’t get redesigned twice.
 
-- [ ] Card hierarchy: category/source badges → title → one-line summary → **link preview** → deadline
-- [ ] Clear apply affordance when `externalUrl != null` (don’t hide the link until detail)
-- [ ] Tighten spacing; reuse `CampusBadge` / `campusCategoryStyle`; avoid a second card system
-- [ ] Extract `_OpportunityCard` to `widgets/` if the screen approaches line limits (`part`/`part of` or shared widget)
-- [ ] Keep source tabs (All / Campus / Blueprint Bond) + category chips; improve empty states only if needed
+- [x] Card hierarchy: category/source badges → title → one-line summary → **link preview** → deadline
+- [x] Clear apply affordance when `externalUrl != null` (don’t hide the link until detail)
+- [x] Tighten spacing; reuse `CampusBadge` / `campusCategoryStyle`; avoid a second card system
+- [x] Extract `_OpportunityCard` to `widgets/` if the screen approaches line limits (`part`/`part of` or shared widget)
+- [x] Keep source tabs (All / Campus / Blueprint Bond) + category chips; improve empty states only if needed
 - [ ] Optional later: employer org display name on list (may need API field — out of V1 unless already available)
 
 **Gate:** Opportunities screen reads as one clean list; filters still work; no dead affordances.
@@ -155,10 +155,10 @@ Polish the page **after** preview lands so cards don’t get redesigned twice.
 
 Without this, most campus-authored opportunities still have **no** URL to preview.
 
-- [ ] Staff mobile compose (`compose_campus_post_screen.dart` + publishing provider): optional URL + expires
-- [ ] Admin `PostsPanel.tsx`: optional external link + expires (API already accepts)
-- [ ] Validate URL client-side; server already uses `HttpUrl`
-- [ ] Confirm employer portal path still copies URL → publish → unfurl
+- [x] Staff mobile compose (`compose_campus_post_screen.dart` + publishing provider): optional URL + expires
+- [x] Admin `PostsPanel.tsx`: optional external link + expires (API already accepts)
+- [x] Validate URL client-side; server already uses `HttpUrl`
+- [x] Confirm employer portal path still copies URL → publish → unfurl
 
 **Gate:** Campus staff can create an opportunity with a link end-to-end; preview appears after publish.
 
@@ -166,17 +166,25 @@ Without this, most campus-authored opportunities still have **no** URL to previe
 
 ## P6 — Verify + pilot smoke
 
-- [ ] Backend: unit + relevant `tests/db` if added
-- [ ] Mobile: `flutter analyze` + widget tests
-- [ ] `python scripts/check_line_limits.py`
-- [ ] Manual smoke:
-  1. Employer (or staff) opportunity with public https URL → list shows preview
-  2. Bad/unreachable URL → post still publishes; fallback chip
-  3. Clear URL → preview cleared
-  4. Tap preview / Apply → external browser
-  5. Scholar filters (Campus / Blueprint Bond) unchanged
+- [x] Backend: unit + relevant `tests/db` if added
+- [x] Mobile: `flutter analyze` + widget tests
+- [x] `python scripts/check_line_limits.py` (no hard-cap failures; compose soft-warn at 415)
+- [ ] Manual smoke (run once against staging/prod after deploy):
 
-**Gate:** Ready to merge for pilot.
+### Pilot smoke checklist
+
+| # | Step | Pass? |
+|---|------|:-----:|
+| 1 | Admin or staff creates opportunity with a public `https://` URL → Opportunities list shows compact link preview | ☐ |
+| 2 | Open detail → expanded preview + **Apply now** open the external URL | ☐ |
+| 3 | Create/publish with a bad or unreachable URL → post still saves; list shows hostname fallback | ☐ |
+| 4 | Edit post, clear the link, save → preview disappears on list/detail | ☐ |
+| 5 | Set **Closes on** → card shows “Closes …” date | ☐ |
+| 6 | Scholar with Blueprint Bond: All / Campus / Blueprint Bond filters still work | ☐ |
+| 7 | Employer-submitted opportunity with link still previews after publish | ☐ |
+| 8 | Optional: `cd backend && .venv/bin/python scripts/backfill_campus_post_link_previews.py --apply` for any legacy rows | ☐ |
+
+**Gate:** Automated checks green; manual smoke before inviting pilot users.
 
 ---
 

@@ -2097,8 +2097,8 @@
             "type": "string"
           },
           "body": {
+            "default": "",
             "maxLength": 8000,
-            "minLength": 1,
             "title": "Body",
             "type": "string"
           },
@@ -2184,8 +2184,7 @@
         },
         "required": [
           "kind",
-          "title",
-          "body"
+          "title"
         ],
         "title": "CampusPostCreate",
         "type": "object"
@@ -2436,7 +2435,6 @@
             "anyOf": [
               {
                 "maxLength": 8000,
-                "minLength": 1,
                 "type": "string"
               },
               {

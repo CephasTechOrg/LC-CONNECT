@@ -11,6 +11,7 @@ import '../models/campus_post.dart';
 import '../providers/campus_hub_provider.dart';
 import '../widgets/campus_post_style.dart';
 import '../widgets/campus_subpage_header.dart';
+import '../widgets/link_preview_card.dart';
 
 class CampusPostDetailScreen extends ConsumerStatefulWidget {
   final String postId;
@@ -185,12 +186,27 @@ class _PostBody extends StatelessWidget {
         const SizedBox(height: 20),
         Container(height: 1, color: AppColors.border),
         const SizedBox(height: 20),
-        Text(
-          post.body,
-          style: GoogleFonts.dmSans(fontSize: 15, height: 1.55, color: AppColors.textMid),
-        ),
+        // Opportunities are title + summary (+ link). When body was auto-filled from summary,
+        // show the summary once (not a duplicated body block).
+        if (_opportunityBodyRedundant(post))
+          Text(
+            post.summary!,
+            style: GoogleFonts.dmSans(fontSize: 15, height: 1.55, color: AppColors.textMid),
+          )
+        else
+          Text(
+            post.body,
+            style: GoogleFonts.dmSans(fontSize: 15, height: 1.55, color: AppColors.textMid),
+          ),
         if (post.externalUrl != null && post.externalUrl!.isNotEmpty) ...[
           const SizedBox(height: 24),
+          LinkPreviewCard(
+            url: post.externalUrl!,
+            preview: post.linkPreview,
+            compact: false,
+            onTap: () => onLaunch(post.externalUrl!),
+          ),
+          const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(
@@ -211,4 +227,11 @@ class _PostBody extends StatelessWidget {
       ],
     );
   }
+}
+
+bool _opportunityBodyRedundant(CampusPost post) {
+  if (post.kind != 'opportunity') return false;
+  final summary = post.summary?.trim() ?? '';
+  final body = post.body.trim();
+  return summary.isNotEmpty && body == summary;
 }

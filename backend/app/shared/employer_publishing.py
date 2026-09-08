@@ -43,6 +43,7 @@ async def publish_submission(
         payload = CampusPostCreate(
             kind='opportunity',
             title=submission.title,
+            summary=(submission.description or '')[:400] or submission.title,
             body=submission.description,
             category=submission.category,
             external_url=submission.external_url,

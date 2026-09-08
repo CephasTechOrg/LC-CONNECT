@@ -102,6 +102,8 @@ class CampusPublishingService {
     String audience = 'all',
     String priority = 'normal',
     String? category,
+    String? externalUrl,
+    DateTime? expiresAt,
   }) async {
     final response = await _client.dio.post('/campus-hub/my-posts', data: {
       'kind': kind,
@@ -110,7 +112,9 @@ class CampusPublishingService {
       if (summary != null && summary.isNotEmpty) 'summary': summary,
       'audience': audience,
       'priority': priority,
-      if (category != null) 'category': category,
+      'category': ?category,
+      if (externalUrl != null && externalUrl.isNotEmpty) 'external_url': externalUrl,
+      if (expiresAt != null) 'expires_at': expiresAt.toUtc().toIso8601String(),
     });
     return AuthorCampusPost.fromJson(response.data as Map<String, dynamic>);
   }
@@ -124,6 +128,8 @@ class CampusPublishingService {
     String audience = 'all',
     String priority = 'normal',
     String? category,
+    String? externalUrl,
+    DateTime? expiresAt,
   }) async {
     final response = await _client.dio.patch('/campus-hub/my-posts/$postId', data: {
       'kind': kind,
@@ -132,7 +138,10 @@ class CampusPublishingService {
       'summary': summary ?? '',
       'audience': audience,
       'priority': priority,
-      if (category != null) 'category': category,
+      'category': ?category,
+      // Always send so clearing the field removes the link / deadline on the server.
+      'external_url': (externalUrl == null || externalUrl.isEmpty) ? null : externalUrl,
+      'expires_at': expiresAt?.toUtc().toIso8601String(),
     });
     return AuthorCampusPost.fromJson(response.data as Map<String, dynamic>);
   }

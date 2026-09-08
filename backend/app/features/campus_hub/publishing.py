@@ -173,6 +173,24 @@ async def update_post(
     url_changed = 'external_url' in updates
     for key, value in updates.items():
         setattr(post, key, value)
+
+    # Opportunities are title + brief summary; keep body non-empty (copy summary if cleared).
+    if post.kind == 'opportunity':
+        summary = (post.summary or '').strip()
+        if not summary:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail='summary is required for opportunities',
+            )
+        post.summary = summary
+        if not (post.body or '').strip():
+            post.body = summary
+    elif not (post.body or '').strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail='body is required for announcements',
+        )
+
     if url_changed:
         await sync_post_link_preview(post)
 

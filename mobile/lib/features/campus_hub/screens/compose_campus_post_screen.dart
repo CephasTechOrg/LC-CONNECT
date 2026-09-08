@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 
 import '../../../core/api/api_error.dart';
 import '../../../core/theme/app_theme.dart';
@@ -24,10 +25,12 @@ class _ComposeCampusPostScreenState extends ConsumerState<ComposeCampusPostScree
   final _titleCtrl = TextEditingController();
   final _summaryCtrl = TextEditingController();
   final _bodyCtrl = TextEditingController();
+  final _urlCtrl = TextEditingController();
   late String _kind;
   late String _category;
   late String _audience;
   late String _priority;
+  DateTime? _expiresAt;
   bool _loading = false;
 
   bool get _isEditing => widget.existing != null;
@@ -48,6 +51,8 @@ class _ComposeCampusPostScreenState extends ConsumerState<ComposeCampusPostScree
     _titleCtrl.text = p?.title ?? '';
     _summaryCtrl.text = p?.summary ?? '';
     _bodyCtrl.text = p?.body ?? '';
+    _urlCtrl.text = p?.externalUrl ?? '';
+    _expiresAt = p?.expiresAt?.toLocal();
   }
 
   /// Switching type changes the category vocabulary — reset to that vocabulary's first option so
@@ -64,12 +69,54 @@ class _ComposeCampusPostScreenState extends ConsumerState<ComposeCampusPostScree
     _titleCtrl.dispose();
     _summaryCtrl.dispose();
     _bodyCtrl.dispose();
+    _urlCtrl.dispose();
     super.dispose();
   }
 
+  bool _isHttpUrl(String raw) {
+    final uri = Uri.tryParse(raw.trim());
+    return uri != null &&
+        (uri.scheme == 'http' || uri.scheme == 'https') &&
+        uri.host.isNotEmpty;
+  }
+
+  Future<void> _pickExpires() async {
+    final now = DateTime.now();
+    final initial = _expiresAt ?? now.add(const Duration(days: 14));
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial.isBefore(now) ? now : initial,
+      firstDate: now,
+      lastDate: now.add(const Duration(days: 365 * 2)),
+    );
+    if (picked == null || !mounted) return;
+    // End of local day so "closes Sep 15" covers the whole day for students.
+    setState(() => _expiresAt = DateTime(picked.year, picked.month, picked.day, 23, 59));
+  }
+
   Future<void> _save({required bool publish}) async {
-    if (_titleCtrl.text.trim().isEmpty || _bodyCtrl.text.trim().isEmpty) {
+    final title = _titleCtrl.text.trim();
+    final summary = _summaryCtrl.text.trim();
+    final body = _bodyCtrl.text.trim();
+    final isOpportunity = _kind == 'opportunity';
+
+    if (title.isEmpty) {
+      _toast('Title is required');
+      return;
+    }
+    if (isOpportunity) {
+      if (summary.isEmpty) {
+        _toast('Add a brief summary for this opportunity');
+        return;
+      }
+    } else if (body.isEmpty) {
       _toast('Title and body are required');
+      return;
+    }
+
+    final url = _urlCtrl.text.trim();
+    if (url.isNotEmpty && !_isHttpUrl(url)) {
+      _toast('Link must be a valid http(s) URL');
       return;
     }
     if (publish) {
@@ -79,17 +126,33 @@ class _ComposeCampusPostScreenState extends ConsumerState<ComposeCampusPostScree
     setState(() => _loading = true);
     try {
       final service = ref.read(campusPublishingServiceProvider);
-      final title = _titleCtrl.text.trim();
-      final summary = _summaryCtrl.text.trim();
-      final body = _bodyCtrl.text.trim();
+      // Opportunities: title + summary (+ link). Body is filled from summary on the API.
+      final resolvedBody = isOpportunity ? '' : body;
       if (_isEditing) {
-        await service.updatePost(widget.existing!.id,
-            kind: _kind, title: title, summary: summary, body: body, audience: _audience, priority: _priority,
-            category: _category);
+        await service.updatePost(
+          widget.existing!.id,
+          kind: _kind,
+          title: title,
+          summary: summary,
+          body: resolvedBody,
+          audience: _audience,
+          priority: _priority,
+          category: _category,
+          externalUrl: url,
+          expiresAt: _expiresAt,
+        );
       } else {
         final draft = await service.createPost(
-            kind: _kind, title: title, summary: summary, body: body, audience: _audience, priority: _priority,
-            category: _category);
+          kind: _kind,
+          title: title,
+          summary: summary.isEmpty ? null : summary,
+          body: resolvedBody,
+          audience: _audience,
+          priority: _priority,
+          category: _category,
+          externalUrl: url.isEmpty ? null : url,
+          expiresAt: _expiresAt,
+        );
         if (publish) await service.publishPost(draft.id);
       }
       _invalidateFeeds();
@@ -174,22 +237,66 @@ class _ComposeCampusPostScreenState extends ConsumerState<ComposeCampusPostScree
                     decoration: const InputDecoration(hintText: 'A short, clear headline'),
                   ),
                   const SizedBox(height: 16),
-                  const _Label('Summary', optional: true),
+                  _Label(_kind == 'opportunity' ? 'Brief summary' : 'Summary', optional: _kind != 'opportunity'),
                   TextField(
                     controller: _summaryCtrl,
                     textCapitalization: TextCapitalization.sentences,
-                    decoration: const InputDecoration(hintText: 'One line shown in the feed'),
+                    maxLines: _kind == 'opportunity' ? 3 : 1,
+                    decoration: InputDecoration(
+                      hintText: _kind == 'opportunity'
+                          ? 'One or two lines students see on the card'
+                          : 'One line shown in the feed',
+                    ),
+                  ),
+                  if (_kind == 'announcement') ...[
+                    const SizedBox(height: 16),
+                    const _Label('Details'),
+                    TextField(
+                      controller: _bodyCtrl,
+                      maxLines: 7,
+                      textCapitalization: TextCapitalization.sentences,
+                      decoration: const InputDecoration(
+                        hintText: 'Write the full message…',
+                        alignLabelWithHint: true,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 16),
+                  _Label(
+                    _kind == 'opportunity' ? 'Application / details link' : 'External link',
+                    optional: true,
+                  ),
+                  TextField(
+                    controller: _urlCtrl,
+                    keyboardType: TextInputType.url,
+                    autocorrect: false,
+                    decoration: const InputDecoration(hintText: 'https://…'),
                   ),
                   const SizedBox(height: 16),
-                  const _Label('Details'),
-                  TextField(
-                    controller: _bodyCtrl,
-                    maxLines: 7,
-                    textCapitalization: TextCapitalization.sentences,
-                    decoration: const InputDecoration(
-                      hintText: 'Write the full message…',
-                      alignLabelWithHint: true,
-                    ),
+                  const _Label('Closes on', optional: true),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: _pickExpires,
+                          icon: const Icon(Icons.event_outlined, size: 18),
+                          label: Text(
+                            _expiresAt == null
+                                ? 'No deadline'
+                                : DateFormat('MMM d, y').format(_expiresAt!),
+                            style: GoogleFonts.dmSans(fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ),
+                      if (_expiresAt != null) ...[
+                        const SizedBox(width: 8),
+                        IconButton(
+                          tooltip: 'Clear deadline',
+                          onPressed: () => setState(() => _expiresAt = null),
+                          icon: const Icon(Icons.close_rounded),
+                        ),
+                      ],
+                    ],
                   ),
                   const SizedBox(height: 28),
                   _Actions(

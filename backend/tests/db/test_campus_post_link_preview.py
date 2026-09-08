@@ -37,13 +37,14 @@ async def test_published_opportunity_summary_includes_link_preview(db, factory, 
     post = await posts_admin.create_post(
         db,
         actor=admin,
-        payload=CampusPostCreate(
-            kind='opportunity',
-            title='Summer Intern',
-            body='Details inside.',
-            category='internship',
-            external_url='https://jobs.example.com/posting/1',
-        ),
+            payload=CampusPostCreate(
+                kind='opportunity',
+                title='Summer Intern',
+                summary='Details inside.',
+                body='Details inside.',
+                category='internship',
+                external_url='https://jobs.example.com/posting/1',
+            ),
     )
     await posts_admin.publish_post(db, actor=admin, post_id=post.id)
 

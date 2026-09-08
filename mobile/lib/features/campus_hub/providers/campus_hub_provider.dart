@@ -210,7 +210,7 @@ class AnnouncementsNotifier extends AsyncNotifier<AnnouncementsState> {
       '/campus-hub/posts',
       queryParameters: {
         'kind': 'announcement',
-        if (category != null) 'category': category,
+        'category': ?category,
         'limit': _announcementsPageSize,
         'offset': offset,
       },
@@ -223,7 +223,7 @@ class AnnouncementsNotifier extends AsyncNotifier<AnnouncementsState> {
   Future<int> _fetchTotal(String? category) async {
     final response = await ref.read(apiClientProvider).dio.get(
       '/campus-hub/announcements/count',
-      queryParameters: {if (category != null) 'category': category},
+      queryParameters: {'category': ?category},
     );
     return ((response.data as Map<String, dynamic>)['count'] as num).toInt();
   }

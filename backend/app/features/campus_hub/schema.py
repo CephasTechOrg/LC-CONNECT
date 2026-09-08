@@ -132,7 +132,9 @@ class CampusPostCreate(BaseModel):
     kind: str = Field(pattern=r'^(announcement|opportunity)$')
     title: str = Field(min_length=1, max_length=200)
     summary: str | None = Field(default=None, max_length=400)
-    body: str = Field(min_length=1, max_length=8000)
+    # Announcements need a full body. Opportunities are title + brief summary (+ optional link);
+    # if body is omitted we copy summary so the DB NOT NULL column and detail screen stay sane.
+    body: str = Field(default='', max_length=8000)
     audience: str = Field(default='all', pattern=r'^(all|students|staff)$')
     category: str | None = Field(default=None, max_length=30)
     priority: str = Field(default='normal', pattern=r'^(normal|important|urgent)$')
@@ -141,12 +143,25 @@ class CampusPostCreate(BaseModel):
     external_url: HttpUrl | None = None
 
     @model_validator(mode='after')
-    def _validate_schedule(self) -> CampusPostCreate:
+    def _validate_schedule_and_content(self) -> CampusPostCreate:
         if self.expires_at is not None and self.publish_at is not None and self.expires_at <= self.publish_at:
             raise ValueError('expires_at must be after publish_at')
         if self.category is not None and self.category not in categories_for_kind(self.kind):
             allowed = ', '.join(sorted(categories_for_kind(self.kind)))
             raise ValueError(f"category for kind={self.kind} must be one of: {allowed}")
+
+        summary = (self.summary or '').strip() or None
+        body = (self.body or '').strip()
+        if self.kind == 'opportunity':
+            if not summary:
+                raise ValueError('summary is required for opportunities')
+            self.summary = summary
+            self.body = body or summary
+        else:
+            if not body:
+                raise ValueError('body is required for announcements')
+            self.summary = summary
+            self.body = body
         return self
 
 
@@ -154,7 +169,7 @@ class CampusPostUpdate(BaseModel):
     kind: str | None = Field(default=None, pattern=r'^(announcement|opportunity)$')
     title: str | None = Field(default=None, min_length=1, max_length=200)
     summary: str | None = Field(default=None, max_length=400)
-    body: str | None = Field(default=None, min_length=1, max_length=8000)
+    body: str | None = Field(default=None, max_length=8000)
     audience: str | None = Field(default=None, pattern=r'^(all|students|staff)$')
     category: str | None = Field(default=None, max_length=30)
     priority: str | None = Field(default=None, pattern=r'^(normal|important|urgent)$')
@@ -172,6 +187,10 @@ class CampusPostUpdate(BaseModel):
             raise ValueError(f"category for kind={self.kind} must be one of: {allowed}")
         if self.expires_at is not None and self.publish_at is not None and self.expires_at <= self.publish_at:
             raise ValueError('expires_at must be after publish_at')
+        if self.kind == 'opportunity' and self.summary is not None and not self.summary.strip():
+            raise ValueError('summary is required for opportunities')
+        if self.kind == 'announcement' and self.body is not None and not self.body.strip():
+            raise ValueError('body is required for announcements')
         return self
 
 

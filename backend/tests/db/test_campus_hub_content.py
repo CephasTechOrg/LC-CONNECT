@@ -202,12 +202,19 @@ async def test_opportunity_and_announcement_categories_do_not_cross(db, factory)
 
     # An announcement category is invalid for an opportunity.
     with pytest.raises(ValueError):
-        CampusPostCreate(kind='opportunity', title='Bad', body='Body', category='safety')
+        CampusPostCreate(
+            kind='opportunity', title='Bad', summary='Blurb', body='Body', category='safety',
+        )
 
     # Each kind accepts its own vocabulary.
     opportunity = await create_post(
         db, actor=admin,
-        payload=CampusPostCreate(kind='opportunity', title='Intern wanted', body='Body', category='internship'),
+        payload=CampusPostCreate(
+            kind='opportunity',
+            title='Intern wanted',
+            summary='Body',
+            category='internship',
+        ),
     )
     assert opportunity.category == 'internship'
 

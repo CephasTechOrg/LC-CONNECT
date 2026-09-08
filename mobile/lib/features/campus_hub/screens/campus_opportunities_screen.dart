@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/app_filter_chip.dart';
@@ -10,8 +9,8 @@ import '../../../shared/widgets/app_states.dart';
 import '../../programs/providers/programs_provider.dart';
 import '../models/campus_post.dart';
 import '../providers/campus_hub_provider.dart';
-import '../widgets/campus_post_style.dart';
 import '../widgets/campus_subpage_header.dart';
+import '../widgets/opportunity_card.dart';
 
 const _categoryFilters = <String, String>{
   'all': 'All types',
@@ -145,7 +144,7 @@ class _OpportunitiesState extends ConsumerState<CampusOpportunitiesScreen> {
                       itemCount: posts.length,
                       itemBuilder: (context, index) => Padding(
                         padding: EdgeInsets.only(bottom: index < posts.length - 1 ? 14 : 0),
-                        child: _OpportunityCard(
+                        child: OpportunityCard(
                           post: posts[index],
                           onTap: () => context.push('/home/posts/${posts[index].id}'),
                         ),
@@ -231,126 +230,6 @@ class _Seg extends StatelessWidget {
                 color: selected ? AppColors.textDark : AppColors.textMuted,
               ),
             ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _OpportunityCard extends StatelessWidget {
-  final CampusPostSummary post;
-  final VoidCallback onTap;
-
-  const _OpportunityCard({required this.post, required this.onTap});
-
-  static String _typeLabel(String category) => opportunityCategoryLabels[category] ??
-      (category.isNotEmpty ? '${category[0].toUpperCase()}${category.substring(1)}' : 'Opportunity');
-
-  @override
-  Widget build(BuildContext context) {
-    final (badgeColor, badgeBg, icon) = campusCategoryStyle('opportunity', post.category);
-    final typeLabel = _typeLabel(post.category ?? '');
-    final isPartner = post.isEmployerPartner || post.isBlueprintBond;
-    final sourceLabel = isPartner ? 'Employer Partner' : 'Campus Opportunity';
-    final sourceColor = isPartner ? AppColors.primary : AppColors.textMuted;
-    final sourceBg = isPartner ? AppColors.primarySoft : AppColors.background;
-
-    final deadline = post.expiresAt;
-    final daysLeft = deadline?.toLocal().difference(DateTime.now()).inDays;
-    final closingSoon = daysLeft != null && daysLeft <= 3;
-
-    return Material(
-      color: AppColors.surface,
-      borderRadius: BorderRadius.circular(16),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.border),
-            boxShadow: const [
-              BoxShadow(color: Color(0x0A111827), blurRadius: 3, offset: Offset(0, 1)),
-            ],
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 52,
-                height: 52,
-                decoration: BoxDecoration(color: badgeBg, borderRadius: BorderRadius.circular(14)),
-                child: Icon(icon, color: badgeColor, size: 24),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        CampusBadge(label: typeLabel, color: badgeColor, background: badgeBg),
-                        const SizedBox(width: 6),
-                        Flexible(child: CampusBadge(label: sourceLabel, color: sourceColor, background: sourceBg)),
-                        const Spacer(),
-                        Text(
-                          DateFormat('MMM d').format(post.publishAt.toLocal()),
-                          style: GoogleFonts.dmSans(fontSize: 11.5, color: AppColors.textMuted),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      post.title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.dmSans(
-                        fontSize: 15.5,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textDark,
-                      ),
-                    ),
-                    if (post.summary != null && post.summary!.trim().isNotEmpty) ...[
-                      const SizedBox(height: 3),
-                      Text(
-                        post.summary!,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.textMid, height: 1.35),
-                      ),
-                    ],
-                    if (deadline != null) ...[
-                      const SizedBox(height: 6),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.schedule_rounded,
-                            size: 13,
-                            color: closingSoon ? const Color(0xFFDC2626) : AppColors.textMuted,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Closes ${DateFormat('MMM d').format(deadline.toLocal())}',
-                            style: GoogleFonts.dmSans(
-                              fontSize: 11.5,
-                              fontWeight: closingSoon ? FontWeight.w700 : FontWeight.w500,
-                              color: closingSoon ? const Color(0xFFDC2626) : AppColors.textMuted,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              const SizedBox(width: 4),
-              const Padding(
-                padding: EdgeInsets.only(top: 16),
-                child: Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
-              ),
-            ],
           ),
         ),
       ),

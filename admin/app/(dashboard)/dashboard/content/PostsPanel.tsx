@@ -15,6 +15,8 @@ type Post = {
   category: string | null;
   priority: string;
   status: string;
+  external_url: string | null;
+  expires_at: string | null;
 };
 
 const ANNOUNCEMENT_CATEGORIES: Record<string, string> = {
@@ -63,6 +65,8 @@ export default function PostsPanel() {
   const [title, setTitle] = useState('');
   const [summary, setSummary] = useState('');
   const [body, setBody] = useState('');
+  const [externalUrl, setExternalUrl] = useState('');
+  const [expiresAt, setExpiresAt] = useState('');
   const [saving, setSaving] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [q, setQ] = useState('');
@@ -78,6 +82,8 @@ export default function PostsPanel() {
     setTitle('');
     setSummary('');
     setBody('');
+    setExternalUrl('');
+    setExpiresAt('');
     setShowForm(false);
   }
 
@@ -95,6 +101,8 @@ export default function PostsPanel() {
     setTitle(item.title);
     setSummary(item.summary ?? '');
     setBody(item.body);
+    setExternalUrl(item.external_url ?? '');
+    setExpiresAt(item.expires_at ? item.expires_at.slice(0, 10) : '');
     setShowForm(true);
   }
 
@@ -138,14 +146,25 @@ export default function PostsPanel() {
     try {
       const token = await getAccessToken();
       if (!token) throw new Error('Not signed in');
+      const isOpportunity = kind === 'opportunity';
+      const trimmedSummary = summary.trim();
+      if (isOpportunity && !trimmedSummary) {
+        setError(true);
+        setStatus('Opportunities need a brief summary.');
+        setSaving(false);
+        return;
+      }
       const payload = {
         kind,
         category,
         priority,
         audience,
         title: title.trim(),
-        summary: summary.trim() || null,
-        body: body.trim(),
+        summary: trimmedSummary || null,
+        // Announcements send body; opportunities omit it (API fills from summary).
+        body: isOpportunity ? '' : body.trim(),
+        external_url: externalUrl.trim() || null,
+        expires_at: expiresAt ? `${expiresAt}T23:59:59.000Z` : null,
       };
       if (editingId) {
         await apiFetch(`/admin/campus-posts/${editingId}`, token, {
@@ -287,12 +306,44 @@ export default function PostsPanel() {
             </div>
           </div>
           <div className="field">
-            <label htmlFor="summary">Summary</label>
-            <input id="summary" value={summary} onChange={(e) => setSummary(e.target.value)} maxLength={400} />
+            <label htmlFor="summary">{kind === 'opportunity' ? 'Brief summary' : 'Summary (optional)'}</label>
+            <input
+              id="summary"
+              value={summary}
+              onChange={(e) => setSummary(e.target.value)}
+              maxLength={400}
+              required={kind === 'opportunity'}
+              placeholder={kind === 'opportunity' ? 'One or two lines students see on the card' : undefined}
+            />
           </div>
-          <div className="field">
-            <label htmlFor="body">Body</label>
-            <textarea id="body" rows={4} value={body} onChange={(e) => setBody(e.target.value)} required />
+          {kind === 'announcement' ? (
+            <div className="field">
+              <label htmlFor="body">Body</label>
+              <textarea id="body" rows={4} value={body} onChange={(e) => setBody(e.target.value)} required />
+            </div>
+          ) : null}
+          <div className="grid-2">
+            <div className="field">
+              <label htmlFor="external_url">
+                {kind === 'opportunity' ? 'Application / details link' : 'External link (optional)'}
+              </label>
+              <input
+                id="external_url"
+                type="url"
+                value={externalUrl}
+                onChange={(e) => setExternalUrl(e.target.value)}
+                placeholder="https://…"
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="expires_at">Closes on (optional)</label>
+              <input
+                id="expires_at"
+                type="date"
+                value={expiresAt}
+                onChange={(e) => setExpiresAt(e.target.value)}
+              />
+            </div>
           </div>
           <div className="actions">
             <button className="btn" type="submit" disabled={saving} style={{ width: 'auto' }}>
@@ -333,6 +384,13 @@ export default function PostsPanel() {
                   <td>
                     <div className="ops-cell-title">{item.title}</div>
                     <div className="ops-cell-sub">{item.summary || item.body.slice(0, 80)}</div>
+                    {item.external_url ? (
+                      <div className="ops-cell-sub">
+                        <a href={item.external_url} target="_blank" rel="noopener noreferrer">
+                          {item.external_url}
+                        </a>
+                      </div>
+                    ) : null}
                   </td>
                   <td style={{ textTransform: 'capitalize' }}>{item.kind}</td>
                   <td>{categoriesForKind(item.kind)[item.category ?? ''] ?? '—'}</td>

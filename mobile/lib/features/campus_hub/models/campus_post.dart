@@ -1,3 +1,43 @@
+class LinkPreview {
+  final String? domain;
+  final String? siteName;
+  final String? title;
+  final String? description;
+  final String? imageUrl;
+  final DateTime? fetchedAt;
+  final String status; // ok | failed
+
+  const LinkPreview({
+    this.domain,
+    this.siteName,
+    this.title,
+    this.description,
+    this.imageUrl,
+    this.fetchedAt,
+    required this.status,
+  });
+
+  factory LinkPreview.fromJson(Map<String, dynamic> json) => LinkPreview(
+        domain: json['domain'] as String?,
+        siteName: json['site_name'] as String?,
+        title: json['title'] as String?,
+        description: json['description'] as String?,
+        imageUrl: json['image_url'] as String?,
+        fetchedAt: json['fetched_at'] != null ? DateTime.parse(json['fetched_at'] as String) : null,
+        status: json['status'] as String? ?? 'failed',
+      );
+
+  bool get isOk => status == 'ok';
+}
+
+/// Hostname for fallback chips when OG metadata is missing.
+String? linkPreviewHost(String url) {
+  final uri = Uri.tryParse(url);
+  final host = uri?.host;
+  if (host == null || host.isEmpty) return null;
+  return host.toLowerCase();
+}
+
 class CampusPostSummary {
   final String id;
   final String kind;
@@ -8,6 +48,7 @@ class CampusPostSummary {
   final DateTime publishAt;
   final DateTime? expiresAt;
   final String? externalUrl;
+  final LinkPreview? linkPreview;
   final bool read;
   // Blueprint Bond: 'campus' (staff/admin-authored) or 'employer' (an approved employer
   // partner's opportunity) — drives the source badge. isBlueprintBond drives the opportunities
@@ -25,6 +66,7 @@ class CampusPostSummary {
     required this.publishAt,
     this.expiresAt,
     this.externalUrl,
+    this.linkPreview,
     this.read = false,
     this.source = 'campus',
     this.isBlueprintBond = false,
@@ -40,6 +82,9 @@ class CampusPostSummary {
         publishAt: DateTime.parse(json['publish_at'] as String),
         expiresAt: json['expires_at'] != null ? DateTime.parse(json['expires_at'] as String) : null,
         externalUrl: json['external_url'] as String?,
+        linkPreview: json['link_preview'] is Map<String, dynamic>
+            ? LinkPreview.fromJson(json['link_preview'] as Map<String, dynamic>)
+            : null,
         read: json['read'] as bool? ?? false,
         source: json['source'] as String? ?? 'campus',
         isBlueprintBond: json['is_blueprint_bond'] as bool? ?? false,
@@ -59,6 +104,7 @@ class CampusPostSummary {
         publishAt: publishAt,
         expiresAt: expiresAt,
         externalUrl: externalUrl,
+        linkPreview: linkPreview,
         read: read ?? this.read,
         source: source,
         isBlueprintBond: isBlueprintBond,
@@ -79,6 +125,7 @@ class CampusPost extends CampusPostSummary {
     required super.publishAt,
     super.expiresAt,
     super.externalUrl,
+    super.linkPreview,
     super.source,
     super.isBlueprintBond,
     required this.body,
@@ -95,6 +142,9 @@ class CampusPost extends CampusPostSummary {
         publishAt: DateTime.parse(json['publish_at'] as String),
         expiresAt: json['expires_at'] != null ? DateTime.parse(json['expires_at'] as String) : null,
         externalUrl: json['external_url'] as String?,
+        linkPreview: json['link_preview'] is Map<String, dynamic>
+            ? LinkPreview.fromJson(json['link_preview'] as Map<String, dynamic>)
+            : null,
         source: json['source'] as String? ?? 'campus',
         isBlueprintBond: json['is_blueprint_bond'] as bool? ?? false,
         body: json['body'] as String,
