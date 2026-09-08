@@ -92,8 +92,13 @@ async def mark_all_announcements_read(
     current_user: User = Depends(require_verified_user),
     db: AsyncSession = Depends(get_db),
 ) -> AnnouncementUnreadCount:
-    """Mark every visible announcement read — called when the user opens the announcements list.
-    Returns the fresh unread count so the client badge stays authoritative (no drift)."""
+    """Mark every visible announcement read (bulk helper).
+
+    Product path on mobile: unread decrements **per detail open** via
+    `POST /announcements/{post_id}/read`. Opening the announcements list does **not** call this.
+    Kept for admin tooling / future "mark all" UI — do not wire it to list-open without an
+    intentional product change.
+    """
     await posts_service.mark_all_announcements_read(db, current_user)
     return AnnouncementUnreadCount(count=await posts_service.unread_announcement_count(db, current_user))
 
@@ -104,8 +109,11 @@ async def mark_announcement_read(
     current_user: User = Depends(require_verified_user),
     db: AsyncSession = Depends(get_db),
 ) -> AnnouncementUnreadCount:
-    """Mark one announcement read — called when the user opens it. Returns the fresh unread count
-    so re-reading an already-read announcement can't push the badge out of sync."""
+    """Mark one announcement read — called when the user opens that post's detail.
+
+    This is the live product path for the Latest Updates badge (5→4→…). Returns the fresh
+    unread count so re-reading an already-read announcement can't drift the badge.
+    """
     await posts_service.mark_announcement_read(db, current_user, post_id)
     return AnnouncementUnreadCount(count=await posts_service.unread_announcement_count(db, current_user))
 

@@ -202,5 +202,7 @@ async def apply_control_event(manager: ConnectionManager, payload: dict[str, Any
         await manager.revoke_conversation(UUID(payload['conversation_id']), frame)
     elif event == 'announcement':
         manager.broadcast(protocol.announcement_event(payload['audience']))
+    elif event == 'opportunity':
+        manager.broadcast(protocol.opportunity_event(payload['audience']))
     else:
         logger.warning('redis control: unknown event=%s', event)

@@ -62,8 +62,10 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
               data: (items) => items.isEmpty
                   ? [const _Message(text: "You're all caught up.")]
                   : [
+                      // Opening the inbox marks all read — never flash unread styling while
+                      // mark-all + list refetch race (treatAsRead on this screen only).
                       for (final n in items) ...[
-                        _NotificationTile(notification: n),
+                        _NotificationTile(notification: n, treatAsRead: true),
                         const Divider(height: 1, color: AppColors.border),
                       ],
                     ],
@@ -103,12 +105,14 @@ class _ConnectionRequestsRow extends ConsumerWidget {
 
 class _NotificationTile extends StatelessWidget {
   final AppNotification notification;
-  const _NotificationTile({required this.notification});
+  /// When true (notifications inbox after open), skip unread chrome — open = mark-all-read.
+  final bool treatAsRead;
+  const _NotificationTile({required this.notification, this.treatAsRead = false});
 
   @override
   Widget build(BuildContext context) {
     final route = notification.route;
-    final unread = !notification.read;
+    final unread = !treatAsRead && !notification.read;
     return ListTile(
       onTap: route != null ? () => context.push(route) : null,
       tileColor: unread ? AppColors.primarySoft.withValues(alpha: 0.35) : null,

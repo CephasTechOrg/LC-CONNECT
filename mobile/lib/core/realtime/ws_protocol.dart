@@ -115,6 +115,13 @@ class AnnouncementEvent extends InboundEvent {
   const AnnouncementEvent(this.audience);
 }
 
+/// Campus-wide ping that a new opportunity went live. Same content-free shape as announcements —
+/// bumps the Opportunities hub badge, not Latest Updates.
+class OpportunityEvent extends InboundEvent {
+  final String audience;
+  const OpportunityEvent(this.audience);
+}
+
 class WsError extends InboundEvent {
   final String code;
   final String message;
@@ -158,6 +165,8 @@ InboundEvent parseInbound(Map<String, dynamic> raw) {
       return NotificationEvent(Map<String, dynamic>.from(raw['notification'] as Map));
     case 'announcement':
       return AnnouncementEvent(raw['audience'] as String? ?? 'all');
+    case 'opportunity':
+      return OpportunityEvent(raw['audience'] as String? ?? 'all');
     case 'message.deleted':
       return MessageDeleted(raw['conversation_id'] as String, raw['message_id'] as String);
     case 'error':

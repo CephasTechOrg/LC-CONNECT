@@ -135,7 +135,7 @@ async def mark_announcement_read(db: AsyncSession, user: User, post_id: UUID) ->
 
 
 async def mark_all_announcements_read(db: AsyncSession, user: User) -> None:
-    """Mark every currently-visible announcement read (called when the user opens the list)."""
+    """Mark every currently-visible announcement read (bulk API helper — not used on list-open)."""
     visible = _visible_announcements_stmt(user).subquery()
     ids = (await db.execute(select(visible.c.id))).scalars().all()
     if not ids:

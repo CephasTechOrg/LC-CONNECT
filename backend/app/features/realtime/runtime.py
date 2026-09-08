@@ -137,6 +137,14 @@ async def broadcast_announcement(audience: str) -> None:
         logger.warning('broadcast_announcement failed (audience=%s): %s', audience, exc)
 
 
+async def broadcast_opportunity(audience: str) -> None:
+    """Ping connected clients that a new opportunity is live (cross-instance via control)."""
+    try:
+        await event_bus.publish_control({'event': 'opportunity', 'audience': audience})
+    except Exception as exc:  # noqa: BLE001 — a live ping must never break publishing
+        logger.warning('broadcast_opportunity failed (audience=%s): %s', audience, exc)
+
+
 async def emit_message_created(
     message: Message,
     *,

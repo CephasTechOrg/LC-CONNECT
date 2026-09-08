@@ -145,6 +145,23 @@ void _cardTests() {
       expect(find.text('Finish your Blueprint Bond profile'), findsNothing);
     });
 
+    testWidgets('Campus Hub prompt stays across remount while still incomplete', (tester) async {
+      // Regression for the blink: remounting Hub must not shrink→grow the prompt when the
+      // scholar + incomplete profile are already known (membership providers are keepAlive).
+      await tester.pumpWidget(_card(BlueprintBondStyle.prompt,
+          scholar: true, profile: _profile(summary: null)));
+      await tester.pumpAndSettle();
+      expect(find.text('Finish your Blueprint Bond profile'), findsOneWidget);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
+      await tester.pumpWidget(_card(BlueprintBondStyle.prompt,
+          scholar: true, profile: _profile(summary: null)));
+      // First frame after remount — must already show the prompt (no empty flash).
+      await tester.pump();
+      expect(find.text('Finish your Blueprint Bond profile'), findsOneWidget);
+    });
+
     testWidgets('Profile entry STAYS once complete, showing completed status', (tester) async {
       await tester.pumpWidget(_card(BlueprintBondStyle.entry,
           scholar: true, profile: _profile(summary: 'A summary', hasResume: true)));

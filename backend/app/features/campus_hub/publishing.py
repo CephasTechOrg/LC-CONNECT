@@ -241,16 +241,19 @@ async def publish_post(
     )
     await db.commit()
     await db.refresh(post)
-    # Live ping so students' announcement counter ticks up the moment it goes live. Scheduled
-    # (future publish_at) posts wait — nothing to announce yet. Fully isolated: the post is already
-    # committed, so a realtime hiccup (or import error) must never fail the publish.
-    if post.kind == 'announcement' and post.publish_at is not None and post.publish_at <= now:
+    # Live ping so hub badges tick up the moment a post goes live. Scheduled (future publish_at)
+    # posts wait — nothing to show yet. Fully isolated: the post is already committed, so a
+    # realtime hiccup (or import error) must never fail the publish.
+    if post.publish_at is not None and post.publish_at <= now:
         try:
             from app.features.realtime import runtime
 
-            await runtime.broadcast_announcement(post.audience)
+            if post.kind == 'announcement':
+                await runtime.broadcast_announcement(post.audience)
+            elif post.kind == 'opportunity':
+                await runtime.broadcast_opportunity(post.audience)
         except Exception:  # noqa: BLE001 — the live ping is a side effect, never a blocker
-            logging.getLogger(__name__).warning('announcement ping failed for post %s', post.id)
+            logging.getLogger(__name__).warning('%s ping failed for post %s', post.kind, post.id)
     return post
 
 

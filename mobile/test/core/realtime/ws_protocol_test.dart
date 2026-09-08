@@ -83,6 +83,16 @@ void main() {
       expect((e as WsError).code, 'forbidden');
     });
 
+    test('announcement and opportunity pings', () {
+      final a = parseInbound({'type': 'announcement', 'audience': 'students'});
+      expect(a, isA<AnnouncementEvent>());
+      expect((a as AnnouncementEvent).audience, 'students');
+
+      final o = parseInbound({'type': 'opportunity', 'audience': 'all'});
+      expect(o, isA<OpportunityEvent>());
+      expect((o as OpportunityEvent).audience, 'all');
+    });
+
     test('unknown type', () {
       expect(parseInbound({'type': 'mystery'}), isA<UnknownEvent>());
     });

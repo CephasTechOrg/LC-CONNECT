@@ -188,6 +188,20 @@ Without this, most campus-authored opportunities still have **no** URL to previe
 
 ---
 
+## Hardening pass ✅
+
+Closed after P6 against the Campus Hub badge / Blueprint Bond / live-publish gaps:
+
+- **Opportunities badge** — last-seen cursor is **per-user** (account switch safe); pure count helpers unit-tested; open list still clears.
+- **Opportunity WS ping** — publishing an opportunity fans out a content-free `opportunity` control event (same shape as announcements); mobile bumps the Opportunities tile live.
+- **Announcements** — docs/API comments aligned with product: unread drops **per detail open** (not on list open). `POST /announcements/read` remains a bulk helper only.
+- **Notifications** — keepAlive + list invalidate already shipped; inbox no longer flashes unread chrome while mark-all races the list refetch.
+- **Blueprint Bond prompt** — remount regression test; membership providers stay keepAlive (no blink).
+
+**Gate:** `pytest` (incl. `test_redis_event_bus`, link-preview units) · `flutter analyze` · opportunity badge + BB + ws_protocol tests · `python scripts/check_line_limits.py`. OpenAPI regenerated only for intentional docstring/description updates on announcement read routes.
+
+---
+
 ## Out of scope (defer)
 
 - Client-side OG scraping on scroll

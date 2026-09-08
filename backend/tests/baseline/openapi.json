@@ -10602,7 +10602,7 @@
     },
     "/api/v1/campus-hub/announcements/read": {
       "post": {
-        "description": "Mark every visible announcement read \u2014 called when the user opens the announcements list.\nReturns the fresh unread count so the client badge stays authoritative (no drift).",
+        "description": "Mark every visible announcement read (bulk helper).\n\nProduct path on mobile: unread decrements **per detail open** via\n`POST /announcements/{post_id}/read`. Opening the announcements list does **not** call this.\nKept for admin tooling / future \"mark all\" UI \u2014 do not wire it to list-open without an\nintentional product change.",
         "operationId": "mark_all_announcements_read_api_v1_campus_hub_announcements_read_post",
         "responses": {
           "200": {
@@ -10655,7 +10655,7 @@
     },
     "/api/v1/campus-hub/announcements/{post_id}/read": {
       "post": {
-        "description": "Mark one announcement read \u2014 called when the user opens it. Returns the fresh unread count\nso re-reading an already-read announcement can't push the badge out of sync.",
+        "description": "Mark one announcement read \u2014 called when the user opens that post's detail.\n\nThis is the live product path for the Latest Updates badge (5\u21924\u2192\u2026). Returns the fresh\nunread count so re-reading an already-read announcement can't drift the badge.",
         "operationId": "mark_announcement_read_api_v1_campus_hub_announcements__post_id__read_post",
         "parameters": [
           {

@@ -26,7 +26,9 @@ class _CampusUpdatesScreenState extends ConsumerState<CampusUpdatesScreen> {
     super.initState();
     _scrollController.addListener(_onScroll);
     // Read state is per-item: an announcement counts as read only when the user opens *that*
-    // announcement (see the detail screen). Browsing the list does not mark everything read.
+    // announcement (see the detail screen). Browsing the list does not mark everything read —
+    // that matches Latest Updates (content you should open), unlike Notifications / Opportunities
+    // which clear on inbox/list open. `POST /announcements/read` (mark-all) exists but is unused.
   }
 
   @override

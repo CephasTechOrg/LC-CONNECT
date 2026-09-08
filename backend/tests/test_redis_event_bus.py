@@ -138,6 +138,20 @@ async def test_apply_control_pair_revoked():
 
 
 @pytest.mark.asyncio
+async def test_apply_control_opportunity_broadcasts_frame():
+    manager = ConnectionManager(outbox_max=8)
+    user = uuid4()
+    sock = _FakeSocket()
+    conn = manager.register(sock, user)
+    await asyncio.sleep(0)
+
+    await apply_control_event(manager, {'event': 'opportunity', 'audience': 'students'})
+    await asyncio.sleep(0.02)  # let the writer drain the outbox
+    assert any(f.get('type') == 'opportunity' and f.get('audience') == 'students' for f in sock.sent)
+    await conn.stop()
+
+
+@pytest.mark.asyncio
 async def test_aallow_uses_redis_when_connected():
     limiter = RateLimiter(2, 10, name='test_dist')
     fake = _FakeRedis()
