@@ -121,6 +121,11 @@ class AuthNotifier extends AsyncNotifier<AuthUser?> {
           _markSuspended();
           return null;
         }
+        // Sign-in succeeded but the account never bootstrapped, so there is no usable session —
+        // drop it. Leaving it alive showed "can't reach LC Connect" while the user was in fact
+        // signed in to Supabase, and a relaunch then failed and signed them out anyway, making
+        // one cold start look like two separate login failures.
+        await _auth.signOut();
         rethrow;
       }
     });
@@ -205,21 +210,26 @@ class AuthNotifier extends AsyncNotifier<AuthUser?> {
   }
 
   Future<void> refreshVerification() async {
-    final current = state.asData?.value;
-    if (current == null) return;
-    try {
-      final user = await _bootstrap();
-      state = AsyncData(user);
-    } catch (_) {}
+    await _refreshFromServer();
   }
 
+  /// Re-reads the account so `profileCompleted` is current and the router can move on.
+  ///
+  /// Rethrows on failure. It used to swallow every exception, which produced the worst bug in the
+  /// flow: onboarding saved the profile successfully, this call failed (a cold start is the norm
+  /// on first run), and the app never learned the profile was complete — so the router kept the
+  /// student on /onboarding with no error, no retry, and a Finish button that silently re-saved
+  /// the same data forever. Callers must surface the failure.
   Future<void> refreshProfile() async {
-    final current = state.asData?.value;
-    if (current == null) return;
-    try {
-      final user = await _bootstrap();
-      state = AsyncData(user);
-    } catch (_) {}
+    await _refreshFromServer();
+  }
+
+  /// Leaves `state` untouched on failure — a failed refresh must not destroy a working session —
+  /// but lets the caller see that it failed.
+  Future<void> _refreshFromServer() async {
+    if (state.asData?.value == null) return;
+    final user = await _bootstrap();
+    state = AsyncData(user);
   }
 
   /// After an admin reactivates the account, retry bootstrap without signing out.

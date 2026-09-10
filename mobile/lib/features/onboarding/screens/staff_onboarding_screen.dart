@@ -99,8 +99,13 @@ class _StaffOnboardingScreenState extends ConsumerState<StaffOnboardingScreen> {
     if (_step > 0) setState(() => _step--);
   }
 
+  /// True once the profile + position have been stored server-side. From that point a failure
+  /// can only be the refresh, which needs different copy and a retry rather than a generic error.
+  bool _saved = false;
+
   Future<void> _submit() async {
     setState(() => _loading = true);
+    _saved = false;
     try {
       final client = ref.read(apiClientProvider);
       final profileBody = <String, dynamic>{
@@ -122,17 +127,32 @@ class _StaffOnboardingScreenState extends ConsumerState<StaffOnboardingScreen> {
             bio: _bioCtrl.text.trim().isEmpty ? null : _bioCtrl.text.trim(),
           );
 
+      _saved = true;
       await ref.read(authNotifierProvider.notifier).refreshProfile();
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            apiErrorMessage(e, fallback: 'Something went wrong. Please try again.'),
+            _saved
+                // Everything above succeeded and only the refresh that unlocks the app failed.
+                // Saying "something went wrong" here would send the user back to re-enter a form
+                // that is already stored.
+                ? 'Your details were saved, but we could not finish setting up. '
+                    'Check your connection and retry.'
+                : apiErrorMessage(e, fallback: 'Something went wrong. Please try again.'),
             style: GoogleFonts.dmSans(),
           ),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 8),
+          action: _saved
+              ? SnackBarAction(
+                  label: 'Retry',
+                  textColor: Colors.white,
+                  onPressed: _submit,
+                )
+              : null,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       );

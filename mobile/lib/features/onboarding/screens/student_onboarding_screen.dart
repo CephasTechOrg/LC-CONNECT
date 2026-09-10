@@ -123,8 +123,38 @@ class _StudentOnboardingScreenState extends ConsumerState<StudentOnboardingScree
         ),
       );
     } else {
-      // Refresh profileCompleted in auth state → router redirects to /home
+      await _finishSetup();
+    }
+  }
+
+  /// Refreshes `profileCompleted` so the router can move to /home.
+  ///
+  /// The profile is already stored by the time this runs, so a failure here is not a save failure
+  /// and must not be reported as one. It used to be swallowed entirely, which left the student on
+  /// this screen with no error and a Finish button that silently re-saved the same data.
+  Future<void> _finishSetup() async {
+    try {
       await ref.read(authNotifierProvider.notifier).refreshProfile();
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Your profile was saved, but we could not finish setting up. '
+            'Check your connection and retry.',
+            style: GoogleFonts.dmSans(),
+          ),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 8),
+          action: SnackBarAction(
+            label: 'Retry',
+            textColor: Colors.white,
+            onPressed: _finishSetup,
+          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
     }
   }
 

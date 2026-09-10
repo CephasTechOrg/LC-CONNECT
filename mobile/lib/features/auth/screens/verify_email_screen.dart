@@ -4,9 +4,12 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../data/auth_error_messages.dart';
+import '../data/otp_config.dart';
+import '../widgets/auth_text_field.dart';
 import '../../../core/theme/app_theme.dart';
 import '../providers/auth_provider.dart';
 
@@ -176,7 +179,7 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
                       height: 1.6,
                     ),
                     children: [
-                      const TextSpan(text: 'We sent an 8-digit verification code to\n'),
+                      TextSpan(text: 'We sent a $kOtpLength-digit verification code to\n'),
                       TextSpan(
                         text: displayEmail.isEmpty ? 'your personal email' : displayEmail,
                         style: const TextStyle(
@@ -191,14 +194,34 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
                 const SizedBox(height: 36),
 
                 // OTP field
-                _OtpField(controller: _otpCtrl),
+                AuthTextField(
+                  controller: _otpCtrl,
+                  hintText: '·' * kOtpLength,
+                  keyboardType: TextInputType.number,
+                  maxLength: kOtpLength,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  autofillHints: const [AutofillHints.oneTimeCode],
+                  textInputAction: TextInputAction.done,
+                  onFieldSubmitted: (_) => _verify(),
+                  textAlign: TextAlign.center,
+                  textStyle: GoogleFonts.dmSans(
+                    fontSize: 26,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 8,
+                    color: AppColors.textDark,
+                  ),
+                  validator: (v) => (v != null && v.length == kOtpLength)
+                      ? null
+                      : 'Enter the $kOtpLength-digit code',
+                ),
                 const SizedBox(height: 20),
 
                 // Verify button
-                _PrimaryButton(
+                AuthPrimaryButton(
                   label: 'Verify email',
                   loading: _loading,
                   onTap: _verify,
+                  height: 50,
                 ),
                 const SizedBox(height: 28),
 
@@ -254,112 +277,6 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
               ],
             ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-// ── OTP input field ───────────────────────────────────────────────
-class _OtpField extends StatelessWidget {
-  final TextEditingController controller;
-  const _OtpField({required this.controller});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 56,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFDFE6EE)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x0D0F172A),
-            blurRadius: 12,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
-      child: TextFormField(
-        controller: controller,
-        keyboardType: TextInputType.number,
-        maxLength: 8,
-        textAlign: TextAlign.center,
-        style: GoogleFonts.dmSans(
-          fontSize: 28,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 10,
-          color: const Color(0xFF111827),
-        ),
-        validator: (v) {
-          if (v == null || v.length != 8) return 'Enter the 8-digit code';
-          if (int.tryParse(v) == null) return 'Numbers only';
-          return null;
-        },
-        decoration: InputDecoration(
-          hintText: '········',
-          hintStyle: GoogleFonts.dmSans(
-            fontSize: 28,
-            letterSpacing: 10,
-            color: const Color(0xFFD1D5DB),
-          ),
-          counterText: '',
-          border: InputBorder.none,
-          enabledBorder: InputBorder.none,
-          focusedBorder: InputBorder.none,
-          errorBorder: InputBorder.none,
-          focusedErrorBorder: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-        ),
-      ),
-    );
-  }
-}
-
-// ── Primary button ────────────────────────────────────────────────
-class _PrimaryButton extends StatelessWidget {
-  final String label;
-  final bool loading;
-  final VoidCallback onTap;
-  const _PrimaryButton({required this.label, required this.loading, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: loading ? null : onTap,
-      child: Container(
-        height: 50,
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFF5A94C2), Color(0xFF3E7EB4)],
-          ),
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF3F7FB5).withAlpha(87),
-              blurRadius: 16,
-              offset: const Offset(0, 6),
-            ),
-          ],
-        ),
-        child: Center(
-          child: loading
-              ? const SizedBox(
-                  width: 22,
-                  height: 22,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                )
-              : Text(
-                  label,
-                  style: GoogleFonts.dmSans(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
         ),
       ),
     );

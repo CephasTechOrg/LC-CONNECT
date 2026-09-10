@@ -71,12 +71,15 @@ class _CreateAccountButton extends StatelessWidget {
         children: [
           Icon(Icons.school_outlined, size: 20, color: AppColors.primary),
           const SizedBox(width: 8),
-          Text(
-            'Create account',
-            style: GoogleFonts.dmSans(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textDark,
+          Flexible(
+            child: Text(
+              'Create account',
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.dmSans(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textDark,
+              ),
             ),
           ),
         ],

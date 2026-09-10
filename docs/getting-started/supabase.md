@@ -16,18 +16,17 @@ Realtime-as-chat and “no Supabase Auth” claims.
 
 ## Table of Contents
 
-1. [Why Supabase](#1-why-supabase)
-2. [Project Creation](#2-project-creation)
-3. [Important Key Distinction](#3-important-key-distinction)
-4. [Database Connection Strings](#4-database-connection-strings)
-5. [Profile Image Storage Bucket](#5-profile-image-storage-bucket)
-6. [Supabase Realtime — Messages Table](#6-supabase-realtime--messages-table)
-7. [Row-Level Security (RLS) for Realtime](#7-row-level-security-rls-for-realtime)
-8. [Why We Do Not Use Supabase Auth](#8-why-we-do-not-use-supabase-auth)
-9. [Environment Variable Reference](#9-environment-variable-reference)
-10. [Common Mistakes](#10-common-mistakes)
-
----
+- [1. Why Supabase](#1-why-supabase)
+- [2. Project Creation](#2-project-creation)
+- [3. Auth settings the app depends on](#3-auth-settings-the-app-depends-on)
+- [4. Important Key Distinction](#4-important-key-distinction)
+- [5. Database Connection Strings](#5-database-connection-strings)
+- [6. Profile Image Storage Bucket](#6-profile-image-storage-bucket)
+- [7. Supabase Realtime — Messages Table](#7-supabase-realtime--messages-table)
+- [8. Row-Level Security (RLS) for Realtime](#8-row-level-security-rls-for-realtime)
+- [9. Why We Do Not Use Supabase Auth](#9-why-we-do-not-use-supabase-auth)
+- [10. Environment Variable Reference](#10-environment-variable-reference)
+- [11. Common Mistakes](#11-common-mistakes)
 
 ## 1. Why Supabase
 
@@ -65,7 +64,22 @@ After the project is created, you will need three things from the Supabase dashb
 
 ---
 
-## 3. Important Key Distinction
+## 3. Auth settings the app depends on
+
+These live **only** in the Supabase dashboard — nothing in the repo can set or verify them, and the
+mobile app hard-depends on both. Check them whenever you create or restore a project.
+
+| Dashboard setting | Required value | Why |
+|---|---|---|
+| Authentication → Providers → Email → **OTP length** | `8` | Signup confirmation and password reset both validate against exactly this many digits. The app mirrors it in one constant, `kOtpLength` in [`mobile/lib/features/auth/data/otp_config.dart`](../../mobile/lib/features/auth/data/otp_config.dart) — change both together or every code entry fails with "Enter the 8-digit code". |
+| Authentication → Providers → Email → **Minimum password length** | `8` | Register, reset, and both web portals all require 8. A lower dashboard value lets a weaker password through on one surface but not another; a higher one makes register's own instruction unachievable. |
+| Authentication → Hooks → **Send Email** | enabled | Routes every auth email through LC Connect's branded templates. See [`send_email_hook.md`](send_email_hook.md) — the secret goes in `SUPABASE_SEND_EMAIL_HOOK_SECRET`. |
+
+> The codes are deliberately **not** magic links. `action_link` and the emailed code encode the same
+> single-use token, so clicking the link would burn the code the user is about to type. See
+> `_cta_button` in `backend/app/email.py`.
+
+## 4. Important Key Distinction
 
 | Key | Who holds it | What it can do |
 |---|---|---|
@@ -76,7 +90,7 @@ After the project is created, you will need three things from the Supabase dashb
 
 ---
 
-## 4. Database Connection Strings
+## 5. Database Connection Strings
 
 Supabase provides two pooler options. LC Connect uses the **Transaction pooler**.
 
@@ -157,7 +171,7 @@ The `_is_local()` check in `database.py` detects `localhost` or `127.0.0.1` and 
 
 ---
 
-## 5. Profile Image Storage Bucket
+## 6. Profile Image Storage Bucket
 
 LC Connect stores user avatar images in a Supabase Storage bucket.
 
@@ -216,7 +230,7 @@ One avatar per user. The extension matches whatever the user uploaded.
 
 ---
 
-## 6. Supabase Realtime — Messages Table
+## 7. Supabase Realtime — Messages Table
 
 Supabase Realtime broadcasts Postgres changes (INSERT, UPDATE, DELETE) to subscribed clients over WebSocket. LC Connect uses it to deliver new chat messages to the Flutter app instantly.
 
@@ -262,7 +276,7 @@ You should see `public | messages` in the results.
 
 ---
 
-## 7. Row-Level Security (RLS) for Realtime
+## 8. Row-Level Security (RLS) for Realtime
 
 Supabase Realtime respects RLS policies. When a Flutter client subscribes using the `anon` key (not a Supabase JWT), Supabase evaluates `SELECT` permissions for the `anon` role.
 
@@ -307,7 +321,7 @@ The `ALTER TABLE` statement is idempotent — it is safe to run even if RLS is a
 
 ---
 
-## 8. Why We Do Not Use Supabase Auth
+## 9. Why We Do Not Use Supabase Auth
 
 Supabase has a built-in auth system. LC Connect deliberately does not use it.
 
@@ -332,7 +346,7 @@ If LC Connect ever migrates to Supabase Auth, the `anon` RLS policy can be repla
 
 ---
 
-## 9. Environment Variable Reference
+## 10. Environment Variable Reference
 
 ### Backend `.env`
 
@@ -354,7 +368,7 @@ Note: `SUPABASE_URL` appears in both. The backend uses it with the service role 
 
 ---
 
-## 10. Common Mistakes
+## 11. Common Mistakes
 
 ### Wrong port in DATABASE_URL
 

@@ -5,6 +5,9 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
 import '../data/auth_error_messages.dart';
 import '../providers/auth_provider.dart';
+import '../widgets/auth_text_field.dart';
+
+part '../widgets/register_confirm_sheet.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
@@ -21,13 +24,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _confirmCtrl  = TextEditingController();
   bool _obscure = true;
 
-  static const _allowedTestEmails = {
-    'cephas.bonsuosei@gmail.com',
-    'asiedudev.hub@gmail.com',
-    'asieduminta27@gmail.com',
-    'auralenx.team@gmail.com',
-    'bdoreen889@gmail.com',
-  };
 
   @override
   void dispose() {
@@ -45,6 +41,17 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+
+    // Confirm both addresses before the account exists. Once Supabase has the signup, the campus
+    // email is the account's identity and a typo in it can only be undone by an admin — see
+    // `_showRegisterConfirmSheet` for why the campus one is the dangerous half.
+    final confirmed = await _showRegisterConfirmSheet(
+      context,
+      campusEmail: _emailCtrl.text.trim().toLowerCase(),
+      contactEmail: _contactCtrl.text.trim().toLowerCase(),
+    );
+    if (confirmed != true || !mounted) return;
+
     await ref.read(authNotifierProvider.notifier).register(
           _emailCtrl.text.trim(),
           _passwordCtrl.text,
@@ -88,22 +95,26 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 padding: const EdgeInsets.fromLTRB(24, 0, 24, 28),
                 child: Form(
                   key: _formKey,
-                  child: Column(
+                  // Lets iOS Keychain / Google Password Manager offer to save the new credential
+                  // as one unit once the form is submitted.
+                  child: AutofillGroup(
+                    child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       const _FieldLabel(title: 'Official campus email'),
                       const SizedBox(height: 8),
-                      _MockupField(
+                      AuthTextField(
                         controller:   _emailCtrl,
                         hintText:     'you@students.livingstone.edu',
                         icon:         Icons.school_outlined,
                         keyboardType: TextInputType.emailAddress,
+                        autofillHints: const [AutofillHints.username, AutofillHints.email],
+                        textInputAction: TextInputAction.next,
                         validator: (v) {
                           if (v == null || !v.contains('@')) return 'Enter a valid email';
                           final emailLower = v.toLowerCase().trim();
-                          if (_allowedTestEmails.contains(emailLower)) return null;
                           if (!_isCampusDomain(emailLower)) {
-                            return 'Use your Livingstone College email\n(@students.livingstone.edu)';
+                            return 'Use your Livingstone College email (@students.livingstone.edu)';
                           }
                           return null;
                         },
@@ -111,11 +122,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       const SizedBox(height: 16),
                       const _FieldLabel(title: 'Personal email (for your code)'),
                       const SizedBox(height: 8),
-                      _MockupField(
+                      AuthTextField(
                         controller:   _contactCtrl,
                         hintText:     'you@gmail.com',
                         icon:         Icons.mail_outline_rounded,
                         keyboardType: TextInputType.emailAddress,
+                        textInputAction: TextInputAction.next,
                         validator: (v) {
                           if (v == null || !v.contains('@')) return 'Enter a valid personal email';
                           final emailLower = v.toLowerCase().trim();
@@ -126,11 +138,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         },
                       ),
                       const SizedBox(height: 12),
-                      _MockupField(
+                      AuthTextField(
                         controller:  _passwordCtrl,
                         hintText:    'Password',
                         icon:        Icons.lock_outline_rounded,
                         obscureText: _obscure,
+                        autofillHints: const [AutofillHints.newPassword],
+                        textInputAction: TextInputAction.next,
                         suffixIcon: GestureDetector(
                           onTap: () => setState(() => _obscure = !_obscure),
                           child: Icon(
@@ -141,14 +155,19 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                             size: 18,
                           ),
                         ),
-                        validator: (v) => v != null && v.length >= 6 ? null : 'Min 6 characters',
+                        // Matches the 8-character minimum the reset screen and both web portals
+                        // already enforce; 6 here contradicted every other surface.
+                        validator: (v) => v != null && v.length >= 8 ? null : 'At least 8 characters',
                       ),
                       const SizedBox(height: 12),
-                      _MockupField(
+                      AuthTextField(
                         controller:  _confirmCtrl,
                         hintText:    'Confirm password',
                         icon:        Icons.lock_reset_rounded,
                         obscureText: _obscure,
+                        autofillHints: const [AutofillHints.newPassword],
+                        textInputAction: TextInputAction.done,
+                        onFieldSubmitted: (_) => _submit(),
                         validator: (v) => v == _passwordCtrl.text ? null : 'Passwords do not match',
                       ),
                       const SizedBox(height: 24),
@@ -182,6 +201,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         ),
                       ),
                     ],
+                    ),
                   ),
                 ),
               ),
@@ -253,74 +273,6 @@ class _FieldLabel extends StatelessWidget {
         fontSize: 13,
         fontWeight: FontWeight.w600,
         color: AppColors.textDark,
-      ),
-    );
-  }
-}
-
-// ── Field Pattern (same as Login) ────────────────────────────────
-class _MockupField extends StatelessWidget {
-  final TextEditingController controller;
-  final String hintText;
-  final IconData icon;
-  final TextInputType keyboardType;
-  final bool obscureText;
-  final Widget? suffixIcon;
-  final String? Function(String?)? validator;
-
-  const _MockupField({
-    required this.controller,
-    required this.hintText,
-    required this.icon,
-    this.keyboardType = TextInputType.text,
-    this.obscureText = false,
-    this.suffixIcon,
-    this.validator,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 48,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x0D0F172A),
-            blurRadius: 12,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
-      child: TextFormField(
-        controller:   controller,
-        keyboardType: keyboardType,
-        obscureText:  obscureText,
-        validator:    validator,
-        style: GoogleFonts.dmSans(fontSize: 15, color: AppColors.textMid),
-        decoration: InputDecoration(
-          hintText: hintText,
-          hintStyle: GoogleFonts.dmSans(fontSize: 15, color: const Color(0xFF9CA3AF)),
-          prefixIcon: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            child: Icon(icon, size: 20, color: AppColors.textMid),
-          ),
-          prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
-          suffixIcon: suffixIcon != null
-              ? Padding(
-                  padding: const EdgeInsets.only(right: 12),
-                  child: suffixIcon,
-                )
-              : null,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 14),
-          border:       InputBorder.none,
-          enabledBorder: InputBorder.none,
-          focusedBorder: InputBorder.none,
-          errorBorder:   InputBorder.none,
-          filled: false,
-        ),
       ),
     );
   }

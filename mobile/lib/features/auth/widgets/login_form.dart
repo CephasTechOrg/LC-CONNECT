@@ -1,5 +1,17 @@
 part of '../screens/login_screen.dart';
 
+/// Sign-in accepts the campus address only — it is the account identity. The personal address
+/// receives every code but is not an auth identity in Supabase, so it can never sign anyone in.
+String? _validateCampusEmail(String? v) {
+  if (v == null || !v.contains('@')) return 'Enter a valid email';
+  final domain = v.toLowerCase().trim().split('@').last;
+  if (domain != 'students.livingstone.edu' && domain != 'livingstone.edu') {
+    return 'Use your Livingstone email — codes go to your personal inbox, '
+        'but you sign in with your campus address.';
+  }
+  return null;
+}
+
 /// Brand + email/password + sign-in (scrolls when the keyboard is up).
 class _SignInFields extends StatelessWidget {
   final TextEditingController emailCtrl;
@@ -56,13 +68,18 @@ class _SignInFields extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 22),
-        _MockupField(
+        AuthTextField(
           controller: emailCtrl,
           hintText: 'you@students.livingstone.edu',
           icon: Icons.school_outlined,
           keyboardType: TextInputType.emailAddress,
-          validator: (v) =>
-              v != null && v.contains('@') ? null : 'Enter a valid email',
+          autofillHints: const [AutofillHints.username, AutofillHints.email],
+          textInputAction: TextInputAction.next,
+          // Only checked `contains('@')`, so 'a@' and a personal address both sailed through to
+          // Supabase and came back as "That email or password is incorrect" — sending students to
+          // reset a password that was never wrong. Codes go to the personal inbox, so typing it
+          // here is the natural mistake; catch it inline with the reason.
+          validator: _validateCampusEmail,
         ),
         const SizedBox(height: 6),
         Padding(
@@ -78,7 +95,7 @@ class _SignInFields extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 14),
-        _MockupField(
+        AuthTextField(
           controller: passwordCtrl,
           hintText: 'Password',
           icon: Icons.lock_outline_rounded,
@@ -93,6 +110,9 @@ class _SignInFields extends StatelessWidget {
               size: 18,
             ),
           ),
+          autofillHints: const [AutofillHints.password],
+          textInputAction: TextInputAction.done,
+          onFieldSubmitted: (_) => onSubmit(),
           validator: (v) =>
               v != null && v.isNotEmpty ? null : 'Enter your password',
         ),
@@ -172,73 +192,6 @@ class _CreateAccountFooter extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _MockupField extends StatelessWidget {
-  final TextEditingController controller;
-  final String hintText;
-  final IconData icon;
-  final TextInputType keyboardType;
-  final bool obscureText;
-  final Widget? suffixIcon;
-  final String? Function(String?)? validator;
-
-  const _MockupField({
-    required this.controller,
-    required this.hintText,
-    required this.icon,
-    this.keyboardType = TextInputType.text,
-    this.obscureText = false,
-    this.suffixIcon,
-    this.validator,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return TextFormField(
-      controller: controller,
-      keyboardType: keyboardType,
-      obscureText: obscureText,
-      validator: validator,
-      style: GoogleFonts.dmSans(fontSize: 14, color: AppColors.textDark),
-      decoration: InputDecoration(
-        hintText: hintText,
-        hintStyle: GoogleFonts.dmSans(
-          fontSize: 14,
-          color: const Color(0xFF9CA3AF),
-        ),
-        filled: true,
-        fillColor: AppColors.background,
-        prefixIcon: Icon(icon, size: 18, color: AppColors.primary),
-        suffixIcon: suffixIcon != null
-            ? Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: suffixIcon,
-              )
-            : null,
-        suffixIconConstraints:
-            const BoxConstraints(minWidth: 36, minHeight: 36),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.border, width: 1.5),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.border, width: 1.5),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.error),
-        ),
       ),
     );
   }
