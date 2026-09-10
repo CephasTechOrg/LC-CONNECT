@@ -55,36 +55,48 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final isLoading = ref.watch(authNotifierProvider).isLoading;
-    final screenH = MediaQuery.sizeOf(context).height;
-    final heroH = (screenH * 0.34).clamp(200.0, 260.0);
+    final media = MediaQuery.of(context);
+    final screenH = media.size.height;
+    // Stronger first impression: hero owns more of the first viewport on tall phones,
+    // without crowding the form on short ones.
+    final heroH = (screenH * 0.40).clamp(220.0, 320.0);
 
+    // Pin create-account to the bottom (fills tall-phone white space). Keep sign-in fields in
+    // a scroll region so the keyboard never hides them. Do NOT put Spacer inside a ScrollView —
+    // unbounded height makes the form fail to layout (blank white panel).
     return Scaffold(
       backgroundColor: AppColors.surface,
       body: Column(
         children: [
           _HeroScene(height: heroH),
           Expanded(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                return SingleChildScrollView(
-                  keyboardDismissBehavior:
-                      ScrollViewKeyboardDismissBehavior.onDrag,
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                    child: _FormSection(
-                      formKey: _formKey,
-                      emailCtrl: _emailCtrl,
-                      passwordCtrl: _passwordCtrl,
-                      obscure: _obscure,
-                      isLoading: isLoading,
-                      onToggleObscure: () =>
-                          setState(() => _obscure = !_obscure),
-                      onSubmit: _submit,
-                      onRegister: () => context.go('/register'),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    child: SingleChildScrollView(
+                      keyboardDismissBehavior:
+                          ScrollViewKeyboardDismissBehavior.onDrag,
+                      padding: const EdgeInsets.fromLTRB(28, 8, 28, 12),
+                      child: _SignInFields(
+                        emailCtrl: _emailCtrl,
+                        passwordCtrl: _passwordCtrl,
+                        obscure: _obscure,
+                        isLoading: isLoading,
+                        onToggleObscure: () =>
+                            setState(() => _obscure = !_obscure),
+                        onSubmit: _submit,
+                      ),
                     ),
                   ),
-                );
-              },
+                  _CreateAccountFooter(
+                    bottomInset: media.padding.bottom,
+                    onRegister: () => context.go('/register'),
+                  ),
+                ],
+              ),
             ),
           ),
         ],

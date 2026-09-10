@@ -19,10 +19,38 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   final _emailCtrl = TextEditingController();
   bool _loading = false;
 
+  // The reset targets the *account* address (your Livingstone email), never the personal inbox —
+  // that only receives the code. Entering the personal email here used to look like it worked
+  // (Supabase reports success for unknown addresses to prevent enumeration) but no code is ever
+  // sent, stranding the user on the code screen. Validate up front so that dead end can't happen.
+  static const _allowedTestEmails = {
+    'cephas.bonsuosei@gmail.com',
+    'asiedudev.hub@gmail.com',
+    'asieduminta27@gmail.com',
+    'auralenx.team@gmail.com',
+    'bdoreen889@gmail.com',
+  };
+
   @override
   void dispose() {
     _emailCtrl.dispose();
     super.dispose();
+  }
+
+  bool _isCampusDomain(String emailLower) {
+    final domain = emailLower.split('@').last;
+    return domain == 'students.livingstone.edu' || domain == 'livingstone.edu';
+  }
+
+  String? _validateEmail(String? v) {
+    if (v == null || !v.contains('@')) return 'Enter a valid email';
+    final emailLower = v.toLowerCase().trim();
+    if (_allowedTestEmails.contains(emailLower)) return null;
+    if (!_isCampusDomain(emailLower)) {
+      return 'Enter your Livingstone email — the account we reset, '
+          'not your personal one.';
+    }
+    return null;
   }
 
   Future<void> _submit() async {
@@ -119,8 +147,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                   hintText: 'you@students.livingstone.edu',
                   icon: Icons.school_outlined,
                   keyboardType: TextInputType.emailAddress,
-                  validator: (v) =>
-                      v != null && v.contains('@') ? null : 'Enter a valid email',
+                  validator: _validateEmail,
                 ),
                 const SizedBox(height: 24),
                 // Submit button

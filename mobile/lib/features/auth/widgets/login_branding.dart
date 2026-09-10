@@ -13,11 +13,10 @@ class _HeroScene extends StatelessWidget {
         fit: StackFit.expand,
         children: [
           Image.asset(
-            'assets/images/groupstudents.png',
+            'assets/images/groupstudent.png',
             fit: BoxFit.cover,
-            // Slightly lower than top-crop so more of the students show
-            // under the wave (less empty/blurred cut-off at the bottom).
-            alignment: const Alignment(0, -0.2),
+            // Bias slightly up so faces stay above the wave on tall phones.
+            alignment: const Alignment(0, -0.15),
           ),
           Positioned(
             left: 0,

@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Turns a Supabase auth failure into something a student can act on.
@@ -9,6 +10,14 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 /// Mapping is on [AuthException.code] — a documented, stable identifier — rather than on the
 /// message text, which Supabase is free to reword at any time.
 String authErrorMessage(Object error) {
+  // Login is two hops: Supabase sign-in, then a call to our own `/auth/bootstrap`. A failure in
+  // the second hop is a [DioException], not an [AuthException] — collapsing every one of those into
+  // "check your connection" hid the real reason (a rejected email, a suspended account, a server
+  // that is merely waking up). Surface them distinctly so the user — and we — can act.
+  if (error is DioException) {
+    return _dioMessage(error);
+  }
+
   if (error is! AuthException) {
     return 'Something went wrong. Please check your connection and try again.';
   }
@@ -41,6 +50,30 @@ String? _retryHint(String message) {
   if (seconds < 60) return '$seconds seconds';
   final minutes = (seconds / 60).ceil();
   return minutes == 1 ? 'a minute' : '$minutes minutes';
+}
+
+/// A failure talking to our backend after Supabase sign-in succeeded.
+///
+/// No `response` means the request never got an HTTP reply — host unreachable, or (most common on
+/// a free-tier host that idles) the server is cold-starting and blew past the connect timeout. With
+/// a `response`, the backend's own `detail` is already user-facing copy (e.g. "Only Livingstone
+/// College email addresses are allowed"), so prefer it over anything invented here.
+String _dioMessage(DioException error) {
+  final response = error.response;
+  if (response == null) {
+    return "Can't reach LC Connect. The server may be waking up — please try again in a moment.";
+  }
+
+  final data = response.data;
+  final detail = data is Map ? data['detail'] : null;
+  if (detail is String && detail.trim().isNotEmpty) {
+    return detail;
+  }
+
+  final code = response.statusCode ?? 0;
+  if (code == 401) return 'Your session expired. Please sign in again.';
+  if (code >= 500) return 'The server ran into a problem. Please try again shortly.';
+  return 'Something went wrong. Please try again.';
 }
 
 String _fallback(AuthException error, String? retry) {
