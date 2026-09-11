@@ -28,7 +28,7 @@ String authErrorMessage(Object error) {
     'over_email_send_rate_limit' || 'over_request_rate_limit' || 'over_sms_send_rate_limit' =>
       'Too many attempts. Please wait ${retry ?? 'a few minutes'} before trying again.',
     'invalid_credentials' => 'That email or password is incorrect.',
-    'email_not_confirmed' => 'Please confirm your email first — check your inbox for the code.',
+    'email_not_confirmed' => 'Confirm your email first. Check your inbox for the code.',
     'user_already_exists' || 'email_exists' =>
       'An account already exists for that email. Try signing in instead.',
     'otp_expired' => 'That code has expired. Request a new one.',
@@ -61,7 +61,7 @@ String? _retryHint(String message) {
 String _dioMessage(DioException error) {
   final response = error.response;
   if (response == null) {
-    return "Can't reach LC Connect. The server may be waking up — please try again in a moment.";
+    return "Can't reach LC Connect. The server may be waking up, so try again in a moment.";
   }
 
   final data = response.data;

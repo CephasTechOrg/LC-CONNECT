@@ -133,7 +133,7 @@ class _SuspendedScreenState extends ConsumerState<SuspendedScreen> {
                       ] else ...[
                         Text(
                           'If you believe this was a mistake, submit a short appeal below. '
-                          'This does not automatically restore your account — an administrator will review it.',
+                          'This does not restore your account. An administrator will review it.',
                           style: GoogleFonts.dmSans(height: 1.4),
                         ),
                         const SizedBox(height: 16),

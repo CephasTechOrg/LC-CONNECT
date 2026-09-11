@@ -79,8 +79,8 @@ class _RegisterConfirmSheet extends StatelessWidget {
               ),
               const SizedBox(height: 6),
               Text(
-                'A typo in your campus email is easy to miss — your code still arrives, but the '
-                'account is created under the wrong address.',
+                'A typo in your campus email is easy to miss. Your code still arrives, but '
+                'the account is created under the wrong address.',
                 style: GoogleFonts.dmSans(
                   fontSize: 13.5,
                   color: AppColors.textMuted,

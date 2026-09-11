@@ -43,7 +43,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   String? _validateEmail(String? v) {
     if (v == null || !v.contains('@')) return 'Enter a valid email';
     if (!_isCampusDomain(v.toLowerCase().trim())) {
-      return 'Enter your Livingstone email — the account we reset, not your personal one.';
+      return 'Use your campus email, not your personal one.';
     }
     return null;
   }
@@ -146,8 +146,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Enter your Livingstone email. We send the reset code to the personal email you '
-                  'used at signup.',
+                  'Enter your campus email. We send the code to your personal inbox.',
                   style: GoogleFonts.dmSans(
                     fontSize: 14,
                     color: AppColors.textMuted,

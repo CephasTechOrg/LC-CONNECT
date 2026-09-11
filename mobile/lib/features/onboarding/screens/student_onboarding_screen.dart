@@ -424,7 +424,7 @@ class _StudentOnboardingScreenState extends ConsumerState<StudentOnboardingScree
             ),
             const SizedBox(width: 6),
             Text(
-              '— pick at least one',
+              '(pick at least one)',
               style: GoogleFonts.dmSans(
                   fontSize: 12, color: AppColors.primary),
             ),

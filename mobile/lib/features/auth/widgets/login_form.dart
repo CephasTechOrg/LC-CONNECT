@@ -6,8 +6,7 @@ String? _validateCampusEmail(String? v) {
   if (v == null || !v.contains('@')) return 'Enter a valid email';
   final domain = v.toLowerCase().trim().split('@').last;
   if (domain != 'students.livingstone.edu' && domain != 'livingstone.edu') {
-    return 'Use your Livingstone email — codes go to your personal inbox, '
-        'but you sign in with your campus address.';
+    return "That's not a Livingstone address.";
   }
   return null;
 }
@@ -85,8 +84,7 @@ class _SignInFields extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.only(left: 4),
           child: Text(
-            'Sign in with your Livingstone email — the one you created your account with, '
-            'not your personal email.',
+            'Use your campus email, not your personal one.',
             style: GoogleFonts.dmSans(
               fontSize: 11.5,
               color: AppColors.textMuted,

@@ -58,7 +58,10 @@ void main() {
         final msg = authErrorMessage(
           AuthException('raw developer text', statusCode: '400', code: code),
         );
-        expect(msg, contains(expected), reason: 'for code $code');
+        // Case-insensitive: these assert that the copy says the right thing, not that a phrase
+        // sits mid-sentence. Re-wording "Please confirm your email first" to start the sentence
+        // with "Confirm" is a copy decision, not a regression.
+        expect(msg.toLowerCase(), contains(expected), reason: 'for code $code');
         expect(msg, isNot(contains('raw developer text')));
       }
     });
