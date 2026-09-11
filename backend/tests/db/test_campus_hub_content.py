@@ -426,3 +426,37 @@ async def test_admin_still_sees_every_audience(db, factory):
 
     ids = {row['id'] for row in await list_posts(db, user=admin)}
     assert {staff_post.id, student_post.id} <= ids
+
+
+async def test_back_catalogue_does_not_land_on_a_new_account(db, factory):
+    """A student who joins today starts at zero unread, not at the size of the archive.
+
+    "Unread" was defined purely as "no read receipt exists", and a fresh account has none — so
+    every announcement ever published counted. The first thing a new student saw was a badge
+    reading the whole back catalogue, none of which was sent to them.
+    """
+    admin = await _admin(db, factory)
+    old_one = await _published_announcement(db, admin, title='Before they joined')
+    old_two = await _published_announcement(db, admin, title='Also before')
+    # Backdate publication to before any student exists.
+    for post in (old_one, old_two):
+        post.publish_at = datetime.now(UTC) - timedelta(days=30)
+    await db.commit()
+
+    newcomer = await factory.user(display_name='Newcomer')
+    newcomer.role = 'student'
+    await db.commit()
+
+    assert await unread_announcement_count(db, newcomer) == 0
+
+    # The archive is still fully readable — this changed the badge, not access.
+    titles = {p['title'] for p in await list_posts(db, user=newcomer, kind='announcement')}
+    assert {'Before they joined', 'Also before'} <= titles
+
+    # ...and the feed agrees with the badge: pre-join posts are shown as already read, so a
+    # zero badge never sits above a feed full of unread dots.
+    assert all(p['read'] for p in await list_posts(db, user=newcomer, kind='announcement'))
+
+    # Anything published after they join still counts, which is the point of the badge.
+    await _published_announcement(db, admin, title='After they joined')
+    assert await unread_announcement_count(db, newcomer) == 1

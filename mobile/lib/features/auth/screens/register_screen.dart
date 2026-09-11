@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/theme/app_theme.dart';
 import '../data/auth_error_messages.dart';
 import '../providers/auth_provider.dart';
@@ -60,6 +61,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     if (!mounted) return;
     final error = ref.read(authNotifierProvider).error;
     if (error != null) {
+      // "Try signing in instead" is only useful if signing in is one tap away. The link that does
+      // it sits below four fields and a button, off-screen at the moment the error appears.
+      final alreadyRegistered =
+          error is AuthException && error.code == 'user_already_exists';
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -68,6 +73,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           ),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
+          duration: Duration(seconds: alreadyRegistered ? 8 : 4),
+          action: alreadyRegistered
+              ? SnackBarAction(
+                  label: 'Sign in',
+                  textColor: Colors.white,
+                  onPressed: () => context.go('/login'),
+                )
+              : null,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       );

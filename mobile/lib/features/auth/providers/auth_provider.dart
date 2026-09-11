@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/api/api_client.dart';
+import '../data/duplicate_signup.dart';
 import 'suspension_provider.dart';
 
 class AuthUser {
@@ -145,6 +146,15 @@ class AuthNotifier extends AsyncNotifier<AuthUser?> {
         password: password,
         data: {'contact_email': normalizedContact},
       );
+      // Must come before the session check: a duplicate signup also has no session, so without
+      // this it looks identical to "awaiting confirmation" and strands the user on the verify
+      // screen waiting for a code Supabase never sends. See [isDuplicateSignup].
+      if (isDuplicateSignup(result)) {
+        throw const AuthException(
+          'An account already exists for that email.',
+          code: 'user_already_exists',
+        );
+      }
       final session = result.session;
       if (session == null) {
         _pendingEmail = normalized;

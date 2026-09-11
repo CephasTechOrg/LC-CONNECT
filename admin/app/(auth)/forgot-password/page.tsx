@@ -30,7 +30,7 @@ export default function ForgotPasswordPage() {
           <p className="eyebrow">LC Connect</p>
           <h1>Check your email</h1>
           <p className="subtitle">
-            If an account exists for that email, we&rsquo;ve sent a reset link and code to it.
+            If an account exists for that email, we&rsquo;ve sent a reset code to it.
           </p>
           <a className="btn" href="/reset-password">
             I have my code
@@ -48,7 +48,7 @@ export default function ForgotPasswordPage() {
       <form className="auth-card" onSubmit={onSubmit}>
         <p className="eyebrow">LC Connect</p>
         <h1>Reset your password</h1>
-        <p className="subtitle">Enter your email and we&rsquo;ll send you a reset link and code.</p>
+        <p className="subtitle">Enter your email and we&rsquo;ll email you a reset code.</p>
         {error ? <div className="error-banner">{error}</div> : null}
         <div className="field">
           <label htmlFor="email">Email</label>
@@ -62,7 +62,7 @@ export default function ForgotPasswordPage() {
           />
         </div>
         <button className="btn" type="submit" disabled={loading}>
-          {loading ? 'Sending…' : 'Send reset link'}
+          {loading ? 'Sending…' : 'Send reset code'}
         </button>
         <p className="hint">
           <a href="/login">Back to sign in</a>

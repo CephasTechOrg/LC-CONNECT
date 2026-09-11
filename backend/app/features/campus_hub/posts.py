@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import HTTPException, status
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -42,6 +42,17 @@ def _read_exists(user: User):
     )
 
 
+def _seen(user: User):
+    """Whether the user should see this post as already-read.
+
+    True when they actually read it, *or* when it was published before their account existed.
+    The badge and the per-post dots have to agree: counting only post-signup announcements while
+    still dotting the whole back catalogue as unread would show a badge of 0 above a feed of
+    unread markers.
+    """
+    return or_(_read_exists(user), CampusPost.publish_at < user.created_at)
+
+
 def _detail(post: CampusPost) -> dict:
     return {
         **_summary(post),
@@ -60,7 +71,7 @@ async def list_posts(
     limit: int = 50,
     offset: int = 0,
 ) -> list[dict]:
-    stmt = published_posts_stmt(user=user).add_columns(_read_exists(user).label('read'))
+    stmt = published_posts_stmt(user=user).add_columns(_seen(user).label('read'))
     if kind:
         stmt = stmt.where(CampusPost.kind == kind.strip().lower())
     if priority:
@@ -82,7 +93,7 @@ async def get_post(db: AsyncSession, *, user: User, post_id: UUID) -> dict:
 
 async def build_overview(db: AsyncSession, *, user: User) -> dict:
     now = datetime.now(UTC)
-    base = published_posts_stmt(user=user, now=now).add_columns(_read_exists(user).label('read'))
+    base = published_posts_stmt(user=user, now=now).add_columns(_seen(user).label('read'))
     urgent = (
         await db.execute(
             base.where(CampusPost.priority == 'urgent').order_by(CampusPost.publish_at.desc()).limit(3)
@@ -116,8 +127,22 @@ async def announcement_total(db: AsyncSession, user: User, *, category: str | No
 
 
 async def unread_announcement_count(db: AsyncSession, user: User) -> int:
-    """How many visible announcements this user has not read yet — the badge number."""
-    unread = _visible_announcements_stmt(user).where(~_read_exists(user)).subquery()
+    """How many visible announcements this user has not read yet — the badge number.
+
+    Only counts announcements published *since the account was created*. "Unread" was otherwise
+    defined purely as "no read receipt exists", and a brand-new account has none — so every
+    announcement ever published counted, and a student's very first sight of the app was a badge
+    reading the size of the entire back catalogue. Nothing there was addressed to them; they
+    simply had not existed yet.
+
+    The history stays fully readable in the feed. This changes what counts as *new to you*, which
+    is the only thing a badge can usefully mean.
+    """
+    unread = (
+        _visible_announcements_stmt(user)
+        .where(~_seen(user))
+        .subquery()
+    )
     return int((await db.execute(select(func.count()).select_from(unread))).scalar_one())
 
 

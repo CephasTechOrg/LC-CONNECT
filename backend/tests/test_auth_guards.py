@@ -23,8 +23,8 @@ from app.dependencies import (
     require_email_confirmed_user,
     require_verified_connect_student,
 )
-from app.shared.account_status import ACCOUNT_INACTIVE_DETAIL, ACCOUNT_SUSPENDED_DETAIL
 from app.main import app
+from app.shared.account_status import ACCOUNT_INACTIVE_DETAIL, ACCOUNT_SUSPENDED_DETAIL
 
 
 def _user(**overrides):
@@ -148,6 +148,15 @@ PROTECTED_GET_ROUTES = [
     "/api/v1/connections/matches",
     "/api/v1/messages/threads",
     "/api/v1/activities",
+    # Campus Hub — the content a brand-new account is most likely to reach for. The mobile
+    # router also keeps an unverified user on /verify-email, but that is a UX gate, not a
+    # security boundary: these must refuse the request on their own.
+    "/api/v1/campus-hub/overview",
+    "/api/v1/campus-hub/posts",
+    "/api/v1/campus-hub/announcements/unread-count",
+    "/api/v1/campus-hub/directory",
+    "/api/v1/campus-hub/students",
+    "/api/v1/campus-hub/resources",
 ]
 
 
@@ -168,3 +177,49 @@ def test_missing_token_gets_401_on_protected_route():
     client = TestClient(app)
     response = client.get("/api/v1/discovery/cards")
     assert response.status_code == 401
+
+
+# ── The onboarding boundary: what a confirmed-but-not-onboarded account can do ──
+
+async def test_email_confirmation_not_onboarding_is_what_unlocks_content():
+    """Reading Campus Hub requires a *confirmed email*, not a finished profile.
+
+    This is deliberate and worth pinning down, because the two are easy to conflate. The trust
+    boundary is the campus address: confirming it proves the person holds an @livingstone address,
+    which is what earns access to announcements and opportunities. Onboarding collects major, class
+    year and interests — that makes someone *useful to others in discovery*, and withholding
+    announcements until they fill it in would gate community news on an unrelated errand.
+
+    So `require_verified_user` intentionally does not look at `profile_completed`. If that ever
+    changes, it should be a decision, not a drive-by edit — hence this test.
+    """
+    onboarded = await require_email_confirmed_user(_user(is_verified=True))
+    assert onboarded is not None
+
+    # No profile at all yet (bootstrap creates one lazily) — still allowed to read.
+    fresh = _user(is_verified=True, profile=None)
+    assert await require_email_confirmed_user(fresh) is fresh
+
+
+async def test_unconfirmed_email_is_refused_regardless_of_profile():
+    """The converse: a finished profile never substitutes for confirming the address.
+
+    This state is **not reachable today**, and the test is an ordering invariant rather than a
+    fix for a live hole. Confirmation necessarily precedes onboarding (no session is issued until
+    the email is confirmed, and onboarding cannot save without one); `_sync_and_return` only ever
+    moves `is_verified` false->true; and the single place that sets it back, account deletion,
+    clears `profile_completed` and `is_active` in the same breath, so `_ensure_active` rejects
+    those accounts with a 401 before this guard is reached.
+
+    It is pinned because one future change would make it reachable: an email-change flow. The
+    send-email hook already routes `email_change` actions, so the backend is half-prepared for it.
+    Supabase marks a user unconfirmed for the *new* address while their profile stays complete —
+    exactly this combination. If that flow ships, this test is what keeps it from silently
+    granting Campus Hub access on the strength of an unverified address.
+    """
+    with pytest.raises(HTTPException) as exc:
+        await require_email_confirmed_user(
+            _user(is_verified=False, profile=SimpleNamespace(profile_completed=True))
+        )
+    assert exc.value.status_code == 403
+    assert exc.value.detail == 'Verified account required'
