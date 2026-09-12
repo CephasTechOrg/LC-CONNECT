@@ -103,7 +103,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     if (!keyboardUp)
                       _CreateAccountFooter(
                         bottomInset: media.padding.bottom,
-                        onRegister: () => context.go('/register'),
+                        onRegister: () => context.push('/register'),
                       ),
                   ],
                 ),

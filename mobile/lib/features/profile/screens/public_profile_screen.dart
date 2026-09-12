@@ -291,7 +291,7 @@ class _HeroCard extends StatelessWidget {
                             ),
                           ),
                         ),
-                        if (profile.isVerified) ...[
+                        if (profile.campusVerified) ...[
                           const SizedBox(width: 6),
                           const Icon(Icons.verified_rounded,
                               color: AppColors.primary, size: 18),

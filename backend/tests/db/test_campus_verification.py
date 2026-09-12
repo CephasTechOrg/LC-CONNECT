@@ -10,7 +10,7 @@ from sqlalchemy import select
 
 from app.features.admin import campus_verification as campus_service
 from app.features.discovery.router import get_discovery_cards
-from app.models import AdminAuditLog, Profile, User
+from app.models import AdminAuditLog, Profile
 from app.shared.serializers import profile_to_public
 
 
@@ -103,13 +103,13 @@ async def test_profile_badge_uses_campus_verified_not_email_otp(db, factory):
     student = await factory.user(display_name='Student', is_verified=True, campus_verified=False)
     profile = (await db.execute(select(Profile).where(Profile.user_id == student.id))).scalar_one()
     public = profile_to_public(profile)
-    assert public.is_verified is False
+    assert public.campus_verified is False
 
     student.campus_verified = True
     await db.commit()
     await db.refresh(student)
     public = profile_to_public(profile)
-    assert public.is_verified is True
+    assert public.campus_verified is True
 
 
 async def test_discovery_card_badge_follows_campus_verified(db, factory):
@@ -134,7 +134,7 @@ async def test_discovery_card_badge_follows_campus_verified(db, factory):
 
     cards = await get_discovery_cards(current_user=viewer, db=db, limit=20)
     student_card = next(card for card in cards if card.user_id == student.id)
-    assert student_card.is_verified is True
+    assert student_card.campus_verified is True
 
 
 async def test_campus_verify_unknown_user_404(db, factory):

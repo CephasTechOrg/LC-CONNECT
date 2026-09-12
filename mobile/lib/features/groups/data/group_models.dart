@@ -126,7 +126,7 @@ class GroupMember {
   final String? displayName;
   final String? avatarUrl;
   final String? major;
-  final bool isVerified;
+  final bool campusVerified;
   final String role; // member | admin | owner
   final String status; // active | requested | invited | banned | removed
   final DateTime joinedAt;
@@ -137,7 +137,7 @@ class GroupMember {
     this.displayName,
     this.avatarUrl,
     this.major,
-    this.isVerified = false,
+    this.campusVerified = false,
     required this.role,
     required this.status,
     required this.joinedAt,
@@ -151,7 +151,7 @@ class GroupMember {
       displayName: p?['display_name'] as String?,
       avatarUrl: p?['avatar_url'] as String?,
       major: p?['major'] as String?,
-      isVerified: p?['is_verified'] as bool? ?? false,
+      campusVerified: p?['campus_verified'] as bool? ?? false,
       role: j['role'] as String,
       status: j['status'] as String,
       joinedAt: DateTime.parse(j['joined_at'] as String),

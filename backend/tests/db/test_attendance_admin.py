@@ -27,7 +27,7 @@ async def _honors_program(db) -> Program:
 
 async def test_list_session_history_returns_recent_sessions(db, factory):
     instructor = await factory.user(display_name='Instructor')
-    program = await _honors_program(db)
+    await _honors_program(db)  # called for the row it creates; this test needs no handle on it
 
     first = await service.start_session(db, actor_id=instructor.id, title='Day 1')
     await service.close_session_by_id(db, session_id=first.id)

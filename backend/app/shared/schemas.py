@@ -24,7 +24,10 @@ class ProfilePublic(BaseModel):
     bio: str | None
     avatar_url: str | None
     is_hidden: bool
-    is_verified: bool
+    # The admin-granted campus badge (`User.campus_verified`). Named to match its source:
+    # as `is_verified` it read like `User.is_verified`, which is a different flag entirely
+    # (email OTP completed, and what gates API access).
+    campus_verified: bool
     profile_completed: bool
     interests: list[str]
     languages_spoken: list[str]

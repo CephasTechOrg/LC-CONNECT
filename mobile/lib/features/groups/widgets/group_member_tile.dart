@@ -90,7 +90,7 @@ class _MemberTile extends StatelessWidget {
                         style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textDark),
                       ),
                     ),
-                    if (member.isVerified) ...[
+                    if (member.campusVerified) ...[
                       const SizedBox(width: 4),
                       const VerifiedBadge(size: 13),
                     ],

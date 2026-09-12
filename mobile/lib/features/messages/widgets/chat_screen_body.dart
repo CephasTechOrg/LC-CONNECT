@@ -75,7 +75,7 @@ class _ChatScreenBody extends StatelessWidget {
               subtitle: isGroup ? null : partnerSubtitle,
               avatarUrl: isGroup ? groupAvatarUrl : partner?.avatarUrl,
               isGroup: isGroup,
-              isVerified: !isGroup && (partner?.isVerified ?? false),
+              campusVerified: !isGroup && (partner?.campusVerified ?? false),
               onIdentityTap: onIdentityTap,
               onMenu: onMenu,
             ),

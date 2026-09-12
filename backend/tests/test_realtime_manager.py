@@ -135,7 +135,12 @@ async def test_revoke_pair_only_revokes_listed_conversations():
     await mgr.unregister(conn_b)
 
 
-async def test_revoke_pair_noop_when_not_shared():
+async def test_close_user_closes_every_socket_for_that_user():
+    """Was misnamed `test_revoke_pair_noop_when_not_shared`, a name the real no-op test below
+    also used — so this body was shadowed and never ran (ruff F811). It is the only coverage
+    `close_user` has, and `close_user` is the suspension kick: an admin suspends an account and
+    every live socket for it must drop immediately rather than keep streaming messages.
+    """
     mgr = ConnectionManager()
     user = uuid4()
     sock1, sock2 = FakeSocket(), FakeSocket()

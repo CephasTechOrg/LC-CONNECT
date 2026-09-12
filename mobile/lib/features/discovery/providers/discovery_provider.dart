@@ -10,7 +10,7 @@ class DiscoveryCard {
   final String? major;
   final int? classYear;
   final String? bio;
-  final bool isVerified;
+  final bool campusVerified;
   final List<String> interests;
   final List<String> languagesSpoken;
   final List<String> languagesLearning;
@@ -27,7 +27,7 @@ class DiscoveryCard {
     this.major,
     this.classYear,
     this.bio,
-    this.isVerified = false,
+    this.campusVerified = false,
     required this.interests,
     required this.languagesSpoken,
     required this.languagesLearning,
@@ -45,7 +45,7 @@ class DiscoveryCard {
         major: j['major'] as String?,
         classYear: j['class_year'] as int?,
         bio: j['bio'] as String?,
-        isVerified: j['is_verified'] as bool? ?? false,
+        campusVerified: j['campus_verified'] as bool? ?? false,
         interests: List<String>.from(j['interests'] ?? []),
         languagesSpoken: List<String>.from(j['languages_spoken'] ?? []),
         languagesLearning: List<String>.from(j['languages_learning'] ?? []),

@@ -11,11 +11,11 @@ from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import func, select
 
+from app.features.groups import service as group_service
+from app.features.groups.schema import GroupCreate
 from app.features.messages.service import unread_summary
 from app.features.realtime.service import mark_read
 from app.models import Conversation, ConversationMember
-from app.features.groups import service as group_service
-from app.features.groups.schema import GroupCreate
 from app.shared.conversations import blockable_conversation_ids_between, ensure_dm_conversation
 
 BASE = datetime(2026, 1, 1, 12, 0, 0, tzinfo=UTC)

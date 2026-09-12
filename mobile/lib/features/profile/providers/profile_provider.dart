@@ -20,7 +20,7 @@ class PublicProfile {
   final List<String> languagesSpoken;
   final List<String> languagesLearning;
   final List<String> lookingFor;
-  final bool isVerified;
+  final bool campusVerified;
   // Staff identity (null/empty for students). `role` drives the staff vs student layout;
   // `contactEmail` is a staff member's public email; position fields describe their role.
   final String role;
@@ -45,7 +45,7 @@ class PublicProfile {
     required this.languagesSpoken,
     required this.languagesLearning,
     required this.lookingFor,
-    required this.isVerified,
+    required this.campusVerified,
     this.role = 'student',
     this.contactEmail,
     this.positionTitle,
@@ -71,7 +71,7 @@ class PublicProfile {
         languagesSpoken: List<String>.from(j['languages_spoken'] ?? []),
         languagesLearning: List<String>.from(j['languages_learning'] ?? []),
         lookingFor: List<String>.from(j['looking_for'] ?? []),
-        isVerified: j['is_verified'] as bool? ?? false,
+        campusVerified: j['campus_verified'] as bool? ?? false,
         role: j['role'] as String? ?? 'student',
         contactEmail: j['contact_email'] as String?,
         positionTitle: j['position_title'] as String?,
@@ -102,7 +102,7 @@ class MyProfile {
   final String? bio;
   final String? avatarUrl;
   final bool isHidden;
-  final bool isVerified;
+  final bool campusVerified;
   final bool profileCompleted;
   final List<String> interests;
   final List<String> languagesSpoken;
@@ -130,7 +130,7 @@ class MyProfile {
     this.bio,
     this.avatarUrl,
     required this.isHidden,
-    required this.isVerified,
+    required this.campusVerified,
     required this.profileCompleted,
     required this.interests,
     required this.languagesSpoken,
@@ -159,7 +159,7 @@ class MyProfile {
         bio: j['bio'] as String?,
         avatarUrl: j['avatar_url'] as String?,
         isHidden: j['is_hidden'] as bool? ?? false,
-        isVerified: j['is_verified'] as bool? ?? false,
+        campusVerified: j['campus_verified'] as bool? ?? false,
         profileCompleted: j['profile_completed'] as bool? ?? false,
         interests: List<String>.from(j['interests'] ?? []),
         languagesSpoken: List<String>.from(j['languages_spoken'] ?? []),
@@ -195,7 +195,7 @@ class MyProfile {
         bio: bio,
         avatarUrl: avatarUrl ?? this.avatarUrl,
         isHidden: isHidden,
-        isVerified: isVerified,
+        campusVerified: campusVerified,
         profileCompleted: profileCompleted,
         interests: interests,
         languagesSpoken: languagesSpoken,

@@ -40,10 +40,10 @@ async def participants_read(db: AsyncSession, activity: Activity) -> list[Activi
             profile_id=profile_id,
             display_name=display_name,
             avatar_url=avatar_url,
-            is_verified=is_verified,
+            campus_verified=campus_verified,
             is_creator=(user_id == activity.creator_id),
         )
-        for user_id, profile_id, display_name, avatar_url, is_verified in rows
+        for user_id, profile_id, display_name, avatar_url, campus_verified in rows
     ]
 
 

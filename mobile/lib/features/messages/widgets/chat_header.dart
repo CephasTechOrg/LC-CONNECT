@@ -10,7 +10,7 @@ class _ChatHeader extends StatelessWidget {
   final String? avatarUrl;
   final bool isGroup;
   /// DM only: shows the checkmark next to their name.
-  final bool isVerified;
+  final bool campusVerified;
 
   /// Tap the avatar/name → the partner's profile (DM) or the group detail screen (group).
   final VoidCallback? onIdentityTap;
@@ -23,7 +23,7 @@ class _ChatHeader extends StatelessWidget {
     this.subtitle,
     this.avatarUrl,
     this.isGroup = false,
-    this.isVerified = false,
+    this.campusVerified = false,
     this.onIdentityTap,
     this.onMenu,
   });
@@ -72,7 +72,7 @@ class _ChatHeader extends StatelessWidget {
                                   ),
                                 ),
                               ),
-                              if (isVerified) ...[
+                              if (campusVerified) ...[
                                 const SizedBox(width: 4),
                                 const VerifiedBadge(size: 15),
                               ],

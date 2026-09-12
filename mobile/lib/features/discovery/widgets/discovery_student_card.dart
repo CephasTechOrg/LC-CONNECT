@@ -131,7 +131,7 @@ class _StudentCardState extends State<_StudentCard> {
                               ),
                             ),
                           ),
-                          if (c.isVerified) ...[
+                          if (c.campusVerified) ...[
                             const SizedBox(width: 5),
                             const VerifiedBadge(size: 16),
                           ],

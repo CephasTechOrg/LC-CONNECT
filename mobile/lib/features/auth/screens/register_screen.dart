@@ -40,6 +40,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     return domain == 'students.livingstone.edu' || domain == 'livingstone.edu';
   }
 
+  void _backToLogin() {
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go('/login');
+    }
+  }
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -78,7 +86,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               ? SnackBarAction(
                   label: 'Sign in',
                   textColor: Colors.white,
-                  onPressed: () => context.go('/login'),
+                  onPressed: _backToLogin,
                 )
               : null,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -97,6 +105,19 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
     return Scaffold(
       backgroundColor: Colors.white,
+      // Login `push`es here, so the platform back gesture already works; this makes the way
+      // back discoverable too. Without either, the only exit was the "Sign In" line at the
+      // very bottom of a scrolling form, and Android's back gesture left the app entirely.
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded,
+              size: 18, color: AppColors.textDark),
+          onPressed: _backToLogin,
+          tooltip: 'Back to sign in',
+        ),
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           child: Column(
@@ -192,7 +213,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       const SizedBox(height: 20),
                       Center(
                         child: GestureDetector(
-                          onTap: () => context.go('/login'),
+                          onTap: _backToLogin,
                           child: RichText(
                             text: TextSpan(
                               style: GoogleFonts.dmSans(
@@ -231,7 +252,7 @@ class _Branding extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+      padding: const EdgeInsets.fromLTRB(24, 4, 24, 0),
       child: Row(
         children: [
           Image.asset(

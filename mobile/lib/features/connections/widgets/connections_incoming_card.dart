@@ -113,7 +113,7 @@ class _IncomingCardState extends ConsumerState<_IncomingCard> {
                             ),
                           ),
                         ),
-                        if (p?.isVerified ?? false) ...[
+                        if (p?.campusVerified ?? false) ...[
                           const SizedBox(width: 4),
                           const VerifiedBadge(size: 14),
                         ],

@@ -74,7 +74,7 @@ class _CountingProfile extends MyProfileNotifier {
       lookingForCodes: [],
       allowMessagesFromMatchesOnly: true,
       showProfileToVerifiedOnly: false,
-      isVerified: true,
+      campusVerified: true,
       isHidden: false,
       profileCompleted: true,
       campusPositionVerified: false,

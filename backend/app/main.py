@@ -10,9 +10,9 @@ from fastapi.responses import ORJSONResponse
 from app.config import settings
 from app.features.account import router as account_router
 from app.features.activities import router as activities_router
+from app.features.admin import router as admin_router
 from app.features.attendance import router as attendance_router
 from app.features.attendance.admin_router import router as attendance_admin_router
-from app.features.admin import router as admin_router
 from app.features.auth import router as auth_v2_router
 from app.features.campus_hub import router as campus_hub_router
 from app.features.campus_positions import router as campus_positions_router

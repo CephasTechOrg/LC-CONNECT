@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/api/health_provider.dart';
+import 'core/config/startup_config.dart';
 import 'core/notifications/notification_service.dart';
 import 'core/router/app_router.dart';
 import 'core/storage/secure_session_storage.dart';
@@ -12,11 +12,19 @@ import 'shared/widgets/offline_banner.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await dotenv.load(fileName: '.env');
-  final supabaseUrl = dotenv.env['SUPABASE_URL']!;
+
+  // Config problems end at a screen that names them, never a black screen — see [StartupConfig].
+  final problems = <String>[];
+  final config = await StartupConfig.load(problems: problems);
+  if (config == null) {
+    runApp(StartupConfigErrorApp(problems: problems));
+    return;
+  }
+
+  final supabaseUrl = config.supabaseUrl;
   await Supabase.initialize(
     url: supabaseUrl,
-    anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
+    anonKey: config.supabaseAnonKey,
     // Without this the session (refresh token included) persists to SharedPreferences in
     // plaintext — see `SecureSessionLocalStorage` for why that matters and what it costs.
     authOptions: FlutterAuthClientOptions(

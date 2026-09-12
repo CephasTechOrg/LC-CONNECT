@@ -172,7 +172,7 @@ class _ThreadCard extends ConsumerWidget {
                                 ),
                               ),
                             ),
-                            if (!thread.isGroup && (thread.partner?.isVerified ?? false)) ...[
+                            if (!thread.isGroup && (thread.partner?.campusVerified ?? false)) ...[
                               const SizedBox(width: 4),
                               const VerifiedBadge(size: 14),
                             ],

@@ -45,7 +45,7 @@ PublicProfile _studentProfile() => const PublicProfile(
       languagesSpoken: [],
       languagesLearning: [],
       lookingFor: ['Friendship'],
-      isVerified: true,
+      campusVerified: true,
     );
 
 ProviderScope _scope(MyProfile profile) {
@@ -73,7 +73,7 @@ MyProfile _makeProfile({
   List<String> lookingForCodes = const ['friendship', 'study_partner'],
   bool allowMessages = true,
   bool showToVerified = true,
-  bool isVerified = true,
+  bool campusVerified = true,
   bool campusPositionVerified = false,
   int connections = 42,
   int activities = 7,
@@ -94,7 +94,7 @@ MyProfile _makeProfile({
       lookingForCodes: lookingForCodes,
       allowMessagesFromMatchesOnly: allowMessages,
       showProfileToVerifiedOnly: showToVerified,
-      isVerified: isVerified,
+      campusVerified: campusVerified,
       campusPositionVerified: campusPositionVerified,
       connectionCount: connections,
       activityCount: activities,
@@ -118,7 +118,7 @@ void main() {
       'bio': 'Hello!',
       'avatar_url': null,
       'is_hidden': false,
-      'is_verified': true,
+      'campus_verified': true,
       'profile_completed': true,
       'interests': ['Photography', 'Hiking'],
       'languages_spoken': ['English', 'Mandarin'],
@@ -152,16 +152,16 @@ void main() {
       expect(p.lookingForCodes, contains('study_partner'));
     });
 
-    test('parses is_verified field', () {
+    test('parses campus_verified field', () {
       final p = MyProfile.fromJson(fullJson);
-      expect(p.isVerified, isTrue);
+      expect(p.campusVerified, isTrue);
     });
 
-    test('defaults is_verified to false when absent', () {
+    test('defaults campus_verified to false when absent', () {
       final json = Map<String, dynamic>.from(fullJson)
-        ..remove('is_verified');
+        ..remove('campus_verified');
       final p = MyProfile.fromJson(json);
-      expect(p.isVerified, isFalse);
+      expect(p.campusVerified, isFalse);
     });
 
     test('parses preference booleans', () {
@@ -230,7 +230,7 @@ void main() {
         'position_department': 'Biology',
         'position_office': 'Science Hall 204',
         'position_availability': 'Mon/Wed 2-4pm',
-        'is_verified': true,
+        'campus_verified': true,
       });
       expect(p.isStaff, isTrue);
       expect(p.contactEmail, 'smith@livingstone.edu');
@@ -243,7 +243,7 @@ void main() {
         'id': 'p2',
         'user_id': 'u2',
         'display_name': 'Maya Chen',
-        'is_verified': true,
+        'campus_verified': true,
       });
       expect(p.isStaff, isFalse);
       expect(p.role, 'student');
@@ -362,9 +362,9 @@ void main() {
     // The hero carries two independent badges: verified-student (verified_rounded, the familiar
     // checkmark) and campus-position-verified (workspace_premium_rounded). They must not imply
     // each other.
-    testWidgets('shows verified badge and row when isVerified is true',
+    testWidgets('shows verified badge and row when campusVerified is true',
         (tester) async {
-      await tester.pumpWidget(_scope(_makeProfile(isVerified: true)));
+      await tester.pumpWidget(_scope(_makeProfile(campusVerified: true)));
       await tester.pumpAndSettle();
       expect(find.text('Verified Student'), findsOneWidget);
       expect(
@@ -378,9 +378,9 @@ void main() {
       );
     });
 
-    testWidgets('hides verified badge and row when isVerified is false',
+    testWidgets('hides verified badge and row when campusVerified is false',
         (tester) async {
-      await tester.pumpWidget(_scope(_makeProfile(isVerified: false)));
+      await tester.pumpWidget(_scope(_makeProfile(campusVerified: false)));
       await tester.pumpAndSettle();
       expect(find.text('Verified Student', skipOffstage: false), findsNothing);
       expect(
@@ -392,7 +392,7 @@ void main() {
     testWidgets('shows the campus-position badge when the position is verified',
         (tester) async {
       await tester.pumpWidget(
-        _scope(_makeProfile(isVerified: true, campusPositionVerified: true)),
+        _scope(_makeProfile(campusVerified: true, campusPositionVerified: true)),
       );
       await tester.pumpAndSettle();
       expect(

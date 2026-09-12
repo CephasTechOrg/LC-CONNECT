@@ -5,8 +5,6 @@ Ensures CI cannot silently skip the DB suite: REQUIRE_TEST_DB must be recognized
 
 from __future__ import annotations
 
-import os
-
 from tests.db.conftest import _require_test_db
 
 

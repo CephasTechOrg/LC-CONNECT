@@ -12,7 +12,7 @@ class _InfoRows extends StatelessWidget {
       child: Column(
         children: [
           // Verified Student
-          if (profile.isVerified) ...[
+          if (profile.campusVerified) ...[
             _InfoRow(
               icon: Icons.verified_user_outlined,
               iconColor: AppColors.primary,

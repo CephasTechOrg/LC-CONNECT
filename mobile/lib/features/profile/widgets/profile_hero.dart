@@ -74,7 +74,7 @@ class _HeroSection extends StatelessWidget {
                             ),
                           ),
                         ),
-                        if (profile.isVerified) ...[
+                        if (profile.campusVerified) ...[
                           const SizedBox(width: 6),
                           Tooltip(
                             message: 'Verified student',

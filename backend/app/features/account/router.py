@@ -12,9 +12,9 @@ from app.features.account.schema import (
     AccountDeleteResponse,
     AccountExportResponse,
     SuspensionAppealCreate,
+    SuspensionAppealRead,
     SuspensionAppealSubmitResponse,
     SuspensionStatusResponse,
-    SuspensionAppealRead,
 )
 from app.models import User
 from app.shared import supabase_admin

@@ -92,7 +92,7 @@ class _ParticipantTile extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textDark)),
           ),
-          if (participant.isVerified) ...[
+          if (participant.campusVerified) ...[
             const SizedBox(width: 4),
             const VerifiedBadge(size: 13),
           ],

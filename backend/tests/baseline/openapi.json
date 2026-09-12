@@ -203,6 +203,10 @@
             ],
             "title": "Avatar Url"
           },
+          "campus_verified": {
+            "title": "Campus Verified",
+            "type": "boolean"
+          },
           "display_name": {
             "anyOf": [
               {
@@ -216,10 +220,6 @@
           },
           "is_creator": {
             "title": "Is Creator",
-            "type": "boolean"
-          },
-          "is_verified": {
-            "title": "Is Verified",
             "type": "boolean"
           },
           "profile_id": {
@@ -245,7 +245,7 @@
           "profile_id",
           "display_name",
           "avatar_url",
-          "is_verified",
+          "campus_verified",
           "is_creator"
         ],
         "title": "ActivityParticipantRead",
@@ -3406,6 +3406,10 @@
             ],
             "title": "Bio"
           },
+          "campus_verified": {
+            "title": "Campus Verified",
+            "type": "boolean"
+          },
           "class_year": {
             "anyOf": [
               {
@@ -3434,10 +3438,6 @@
             },
             "title": "Interests",
             "type": "array"
-          },
-          "is_verified": {
-            "title": "Is Verified",
-            "type": "boolean"
           },
           "languages_learning": {
             "items": {
@@ -3508,7 +3508,7 @@
           "major",
           "class_year",
           "bio",
-          "is_verified",
+          "campus_verified",
           "interests",
           "languages_spoken",
           "languages_learning",
@@ -4841,6 +4841,10 @@
             "title": "Campus Position Verified",
             "type": "boolean"
           },
+          "campus_verified": {
+            "title": "Campus Verified",
+            "type": "boolean"
+          },
           "class_year": {
             "anyOf": [
               {
@@ -4903,10 +4907,6 @@
           },
           "is_hidden": {
             "title": "Is Hidden",
-            "type": "boolean"
-          },
-          "is_verified": {
-            "title": "Is Verified",
             "type": "boolean"
           },
           "languages_learning": {
@@ -5038,7 +5038,7 @@
           "bio",
           "avatar_url",
           "is_hidden",
-          "is_verified",
+          "campus_verified",
           "profile_completed",
           "interests",
           "languages_spoken",
@@ -5464,6 +5464,10 @@
             ],
             "title": "Campus"
           },
+          "campus_verified": {
+            "title": "Campus Verified",
+            "type": "boolean"
+          },
           "class_year": {
             "anyOf": [
               {
@@ -5522,10 +5526,6 @@
           },
           "is_hidden": {
             "title": "Is Hidden",
-            "type": "boolean"
-          },
-          "is_verified": {
-            "title": "Is Verified",
             "type": "boolean"
           },
           "languages_learning": {
@@ -5649,7 +5649,7 @@
           "bio",
           "avatar_url",
           "is_hidden",
-          "is_verified",
+          "campus_verified",
           "profile_completed",
           "interests",
           "languages_spoken",

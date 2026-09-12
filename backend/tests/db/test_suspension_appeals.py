@@ -9,7 +9,6 @@ from fastapi import HTTPException
 
 from app.features.account import suspension as suspension_service
 from app.features.admin import service as admin_service
-from app.models import SuspensionAppeal
 
 
 async def test_suspended_user_can_submit_appeal(db, factory):

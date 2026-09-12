@@ -14,7 +14,7 @@ class MessagePartner {
   final String? avatarUrl;
   final String? major;
   final int? classYear;
-  final bool isVerified;
+  final bool campusVerified;
   final List<String> interests;
   final List<String> lookingFor;
   final List<String> languagesSpoken;
@@ -27,7 +27,7 @@ class MessagePartner {
     this.avatarUrl,
     this.major,
     this.classYear,
-    this.isVerified = false,
+    this.campusVerified = false,
     required this.interests,
     required this.lookingFor,
     required this.languagesSpoken,
@@ -41,7 +41,7 @@ class MessagePartner {
         avatarUrl: j['avatar_url'] as String?,
         major: j['major'] as String?,
         classYear: j['class_year'] as int?,
-        isVerified: j['is_verified'] as bool? ?? false,
+        campusVerified: j['campus_verified'] as bool? ?? false,
         interests: List<String>.from(j['interests'] ?? []),
         lookingFor: List<String>.from(j['looking_for'] ?? []),
         languagesSpoken: List<String>.from(j['languages_spoken'] ?? []),
