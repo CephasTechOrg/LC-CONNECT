@@ -58,7 +58,7 @@ class CampusHubScreen extends ConsumerWidget {
     final profile = ref.watch(myProfileNotifierProvider).asData?.value;
     final isStudent = (user?.role ?? 'student') == 'student';
     final firstName = _greetingName(displayName: profile?.displayName, email: user?.email);
-    final greeting = '${_greeting()}, $firstName';
+    final timeOfDay = _greeting();
     final overviewAsync = ref.watch(campusHubOverviewProvider);
     // Keep badge notifiers alive while Hub is visible (announcements WS + opportunities cursor).
     ref.watch(announcementCountProvider);
@@ -76,7 +76,7 @@ class CampusHubScreen extends ConsumerWidget {
           },
           child: ListView(
             children: [
-              _HomeGreetingHeader(greeting: greeting),
+              _HomeGreetingHeader(timeOfDay: timeOfDay, name: firstName),
               const SizedBox(height: 8),
               const BlueprintBondCard(style: BlueprintBondStyle.prompt),
               const AttendanceOpenCard(),

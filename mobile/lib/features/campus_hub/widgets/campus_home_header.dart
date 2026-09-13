@@ -2,10 +2,20 @@ part of '../screens/campus_hub_screen.dart';
 
 /// Home greeting header: LC mark, personal greeting, and the notification bell.
 /// Sits directly on the page background rather than a white bar.
+///
+/// Two lines on purpose. As one 24px line, "Good afternoon, `<name>`" never fit — the greeting
+/// alone overruns the ~250px this column gets on a 393px phone, so the ellipsis always ate the
+/// **name**, which is the only part that is actually about the person. Shrinking the type enough
+/// to fit would have meant roughly 9px. Splitting it gives the name the full width and the
+/// emphasis, and the header stays the same height as before.
 class _HomeGreetingHeader extends ConsumerWidget {
-  final String greeting;
+  /// "Good afternoon" — no name, no comma.
+  final String timeOfDay;
 
-  const _HomeGreetingHeader({required this.greeting});
+  /// First name, or a fallback derived from the email.
+  final String name;
+
+  const _HomeGreetingHeader({required this.timeOfDay, required this.name});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -26,26 +36,37 @@ class _HomeGreetingHeader extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  greeting,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.dmSans(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.textDark,
-                    height: 1.1,
-                    letterSpacing: -0.48,
+                // scaleDown, not ellipsis: a clipped name is worse than a slightly smaller one,
+                // and after the logo and the bell a 320px phone leaves this column ~178px — not
+                // enough for a long name at full size. Common names still render at 22px; only
+                // the long ones shrink, and none are ever cut.
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    timeOfDay,
+                    maxLines: 1,
+                    style: GoogleFonts.dmSans(
+                      fontSize: 13.5,
+                      color: AppColors.textMuted,
+                      height: 1.2,
+                    ),
                   ),
                 ),
-                const SizedBox(height: 3),
-                Text(
-                  'Campus Hub · Livingstone College',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.dmSans(
-                    fontSize: 13.5,
-                    color: AppColors.textMuted,
+                const SizedBox(height: 2),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    name,
+                    maxLines: 1,
+                    style: GoogleFonts.dmSans(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textDark,
+                      height: 1.15,
+                      letterSpacing: -0.44,
+                    ),
                   ),
                 ),
               ],

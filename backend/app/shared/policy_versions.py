@@ -9,7 +9,15 @@ people for nothing trains them to tap through without reading.
 
 from __future__ import annotations
 
-CURRENT_POLICY_VERSION = 1
+CURRENT_POLICY_VERSION = 2
+
+# Version history — why each bump happened, so the threshold stays consistent.
+#   1  Initial Terms of Service + Privacy Policy.
+#   2  Removed the governing-law clause from the Terms. That deletes a *term*, not just wording,
+#      so anyone who accepted v1 agreed to a document that said something this one does not —
+#      which is what the threshold in this module's docstring is for. The Privacy Policy rewrite
+#      that shipped alongside it (same facts, less emphasis on what is not encrypted) would not
+#      have warranted a bump on its own.
 
 # Tracked separately from `CURRENT_POLICY_VERSION`. The employer agreement and the student-facing
 # terms change on their own schedules, and raising one must not force the other's users to accept
