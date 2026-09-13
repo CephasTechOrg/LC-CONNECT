@@ -245,14 +245,18 @@ class _StudentOnboardingScreenState extends ConsumerState<StudentOnboardingScree
                 ),
               ),
               const SizedBox(width: 10),
-              Text(
-                'Set Up Your Profile',
-                style: GoogleFonts.dmSans(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textDark,
+              Expanded(
+                child: Text(
+                  'Set Up Your Profile',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textDark,
+                  ),
                 ),
               ),
+              // The only way out of onboarding — see [OnboardingSignOutButton].
+              const OnboardingSignOutButton(),
             ],
           ),
           const SizedBox(height: 20),

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../auth/providers/auth_provider.dart';
 
 class OnboardingStepIndicator extends StatelessWidget {
   final int currentStep;
@@ -201,6 +203,66 @@ class OnboardingBottomBar extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Sign-out escape for the onboarding header.
+///
+/// Onboarding is the one screen the router will not let a verified user leave: any other
+/// location redirects straight back to `/onboarding` until `profileCompleted` is true. With no
+/// sign-out, a student who signed in on the wrong account, or who simply cannot finish right now
+/// (the lookup options failing to load on a cold start, say), had no way out of the app at all
+/// short of force-quitting — and reopening landed them right back here.
+///
+/// Signing out clears the session, which drops `isLoggedIn`, which lets the router send them to
+/// `/login`. Confirmed first, since it discards anything typed into the form.
+class OnboardingSignOutButton extends ConsumerWidget {
+  const OnboardingSignOutButton({super.key});
+
+  Future<void> _confirmAndSignOut(BuildContext context, WidgetRef ref) async {
+    final leave = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Sign out?', style: GoogleFonts.dmSans(fontWeight: FontWeight.w700)),
+        content: Text(
+          'You can finish setting up your profile next time you sign in. '
+          'Anything you have typed here will be lost.',
+          style: GoogleFonts.dmSans(height: 1.45),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text('Keep setting up', style: GoogleFonts.dmSans()),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(
+              'Sign out',
+              style: GoogleFonts.dmSans(color: AppColors.error, fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (leave != true) return;
+    await ref.read(authNotifierProvider.notifier).logout();
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return TextButton(
+      onPressed: () => _confirmAndSignOut(context, ref),
+      style: TextButton.styleFrom(
+        foregroundColor: AppColors.textMuted,
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        minimumSize: const Size(0, 36),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+      child: Text(
+        'Sign out',
+        style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w600),
       ),
     );
   }
