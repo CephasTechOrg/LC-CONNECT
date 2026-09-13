@@ -64,6 +64,9 @@ class MyEmployerRead(BaseModel):
     organization_status: EmployerOrganizationStatus
     email: EmailStr
     display_name: str | None
+    # Whether the stored acceptance matches the current Employer Agreement version. A boolean —
+    # the portal never needs the numbering, only whether it is current.
+    agreement_accepted: bool
 
 
 class EmployerScholarView(BaseModel):

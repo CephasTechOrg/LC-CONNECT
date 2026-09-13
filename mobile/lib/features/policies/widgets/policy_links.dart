@@ -42,38 +42,63 @@ List<InlineSpan> policyPairSpans(BuildContext context, {TextStyle? plainStyle}) 
   ];
 }
 
-/// Stacked links for a settings screen or a footer, where there is no surrounding sentence.
+/// The three documents as one grouped card.
+///
+/// Boxed with hairline dividers so it reads as a single set alongside the gate's reassurance
+/// panel — three bare `ListTile`s under a bordered box looked like two unrelated components.
 class PolicyLinkList extends StatelessWidget {
   const PolicyLinkList({super.key});
 
-  static const _entries = <String, String>{
-    PolicySlug.terms: 'Terms of Service',
-    PolicySlug.privacy: 'Privacy Policy',
-    PolicySlug.guidelines: 'Community Guidelines',
-  };
+  static const _entries = <(String, String, IconData)>[
+    (PolicySlug.terms, 'Terms of Service', Icons.description_outlined),
+    (PolicySlug.privacy, 'Privacy Policy', Icons.shield_outlined),
+    (PolicySlug.guidelines, 'Community Guidelines', Icons.handshake_outlined),
+  ];
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        for (final entry in _entries.entries)
-          ListTile(
-            dense: true,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 4),
-            title: Text(
-              entry.value,
-              style: GoogleFonts.dmSans(
-                fontSize: 14.5,
-                fontWeight: FontWeight.w500,
-                color: AppColors.textDark,
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        children: [
+          for (final (index, (slug, label, icon)) in _entries.indexed) ...[
+            if (index > 0)
+              const Divider(height: 1, thickness: 1, color: AppColors.border, indent: 46),
+            InkWell(
+              onTap: () => context.push('/policies/$slug'),
+              borderRadius: BorderRadius.vertical(
+                top: Radius.circular(index == 0 ? 11 : 0),
+                bottom: Radius.circular(index == _entries.length - 1 ? 11 : 0),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                child: Row(
+                  children: [
+                    Icon(icon, size: 18, color: AppColors.primary),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        label,
+                        style: GoogleFonts.dmSans(
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textDark,
+                        ),
+                      ),
+                    ),
+                    const Icon(Icons.chevron_right_rounded,
+                        size: 20, color: AppColors.textMuted),
+                  ],
+                ),
               ),
             ),
-            trailing: const Icon(Icons.chevron_right_rounded,
-                size: 20, color: AppColors.textMuted),
-            onTap: () => context.push('/policies/${entry.key}'),
-          ),
-      ],
+          ],
+        ],
+      ),
     );
   }
 }

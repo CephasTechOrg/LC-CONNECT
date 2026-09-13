@@ -167,3 +167,78 @@ def test_policy_documents_are_cacheable():
         response = client.get(path)
         assert response.status_code == 200
         assert 'max-age' in response.headers.get('cache-control', ''), path
+
+
+# ── Employer Agreement ────────────────────────────────────────────────────────
+
+def _employer_ctx(*, accepted_version: int):
+    account = SimpleNamespace(
+        email='hr@example.com',
+        display_name='HR',
+        agreement_accepted_version=accepted_version,
+        agreement_accepted_at=None,
+    )
+    org = SimpleNamespace(id='org-1', name='Example Corp', status='approved')
+    return SimpleNamespace(account=account, organization=org)
+
+
+async def test_agreed_employer_guard_blocks_until_accepted():
+    """The guard that makes the agreement real rather than decorative.
+
+    Scholar data and opportunity submission sit behind this. Without it an approved employer
+    holding a valid token could skip the portal's gate screen and still read résumés — the same
+    reason the mobile bootstrap check exists alongside the signup checkbox.
+    """
+    from app.features.employers.auth import require_agreed_employer
+
+    with pytest.raises(HTTPException) as exc:
+        await require_agreed_employer(_employer_ctx(accepted_version=0))
+    assert exc.value.status_code == 403
+    assert 'Employer Agreement' in exc.value.detail
+
+
+async def test_agreed_employer_guard_allows_a_current_acceptance():
+    from app.features.employers.auth import require_agreed_employer
+    from app.shared.policy_versions import CURRENT_EMPLOYER_AGREEMENT_VERSION
+
+    ctx = _employer_ctx(accepted_version=CURRENT_EMPLOYER_AGREEMENT_VERSION)
+    assert await require_agreed_employer(ctx) is ctx
+
+
+async def test_a_stale_employer_acceptance_is_blocked():
+    """Raising the agreement version must re-prompt every partner, not just new ones."""
+    from app.features.employers.auth import require_agreed_employer
+    from app.shared.policy_versions import CURRENT_EMPLOYER_AGREEMENT_VERSION
+
+    stale = _employer_ctx(accepted_version=CURRENT_EMPLOYER_AGREEMENT_VERSION - 1)
+    with pytest.raises(HTTPException):
+        await require_agreed_employer(stale)
+
+
+def test_scholar_routes_sit_behind_the_agreement():
+    """Asserted on the wiring, because a new scholar route added with the wrong dependency is
+    exactly how student résumés would quietly become reachable without an agreement."""
+    from pathlib import Path
+
+    source = Path('app/features/employers/router.py').read_text()
+    import re
+
+    for chunk in re.split(r'(?=@router\.)', source):
+        if not chunk.startswith('@router.'):
+            continue
+        path = re.search(r"@router\.\w+\(\s*'?([^',\n]*)", chunk).group(1)
+        if path.startswith('/scholars') or path == '/opportunities':
+            assert 'require_agreed_employer' in chunk, f'{path} must require the agreement'
+        # /me must NOT require it, or the portal cannot discover that it needs to show the gate.
+        if path == '/me':
+            assert 'require_agreed_employer' not in chunk
+
+
+def test_the_two_version_constants_are_independent():
+    """Bumping the student policies must not re-prompt employers, and vice versa."""
+    from pathlib import Path
+
+    source = Path('app/shared/policy_versions.py').read_text()
+    assert 'CURRENT_POLICY_VERSION = ' in source
+    assert 'CURRENT_EMPLOYER_AGREEMENT_VERSION = ' in source
+    assert 'CURRENT_EMPLOYER_AGREEMENT_VERSION = CURRENT_POLICY_VERSION' not in source

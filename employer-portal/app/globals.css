@@ -1235,3 +1235,61 @@ button {
     grid-template-columns: 1fr;
   }
 }
+
+/* ── Employer Agreement gate ───────────────────────────────────────────────── */
+/* Wider than the auth cards it borrows from: this one holds a document, not a form. */
+.agreement-card {
+  max-width: 46rem;
+}
+
+.agreement-body {
+  max-height: 42vh;
+  overflow-y: auto;
+  margin: 1rem 0 1.25rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--border, #e3e0ea);
+  border-radius: 10px;
+  background: #fbfafc;
+}
+
+.agreement-body:focus-visible {
+  outline: 2px solid #6f42e8;
+  outline-offset: 2px;
+}
+
+/* The agreement is served as markdown; showing it pre-wrapped keeps it byte-faithful to the
+   reviewed file rather than depending on a renderer to interpret it. */
+.agreement-text {
+  margin: 0;
+  font: inherit;
+  font-size: 0.86rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: #3b3547;
+}
+
+.agreement-consent {
+  display: flex;
+  gap: 0.65rem;
+  align-items: flex-start;
+  margin-bottom: 1.1rem;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  cursor: pointer;
+}
+
+.agreement-consent input {
+  margin-top: 0.2rem;
+  flex: 0 0 auto;
+}
+
+.link-button {
+  border: 0;
+  padding: 0;
+  background: none;
+  color: #6f42e8;
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+}

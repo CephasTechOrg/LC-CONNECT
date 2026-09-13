@@ -4,6 +4,15 @@ export type MyEmployer = {
   organization_status: 'pending' | 'approved' | 'rejected';
   email: string;
   display_name: string | null;
+  /** Whether the stored acceptance matches the current Employer Agreement version. */
+  agreement_accepted: boolean;
+};
+
+export type PolicyDocument = {
+  slug: string;
+  title: string;
+  version: number;
+  body: string;
 };
 
 function apiBase(): string {
@@ -88,6 +97,15 @@ function statusMessage(status: number): string {
 
 export async function myEmployer(accessToken: string): Promise<MyEmployer> {
   return apiFetch<MyEmployer>('/employers/me', accessToken);
+}
+
+export async function acceptEmployerAgreement(accessToken: string): Promise<MyEmployer> {
+  return apiFetch<MyEmployer>('/employers/me/accept-agreement', accessToken, { method: 'POST' });
+}
+
+/** Unauthenticated — the agreement has to be readable before it is accepted. */
+export async function policyDocument(slug: string): Promise<PolicyDocument> {
+  return apiFetch<PolicyDocument>(`/policies/${slug}`, null);
 }
 
 export async function forgotPassword(email: string): Promise<void> {

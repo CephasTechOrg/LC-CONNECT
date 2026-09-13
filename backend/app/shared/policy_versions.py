@@ -11,6 +11,11 @@ from __future__ import annotations
 
 CURRENT_POLICY_VERSION = 1
 
+# Tracked separately from `CURRENT_POLICY_VERSION`. The employer agreement and the student-facing
+# terms change on their own schedules, and raising one must not force the other's users to accept
+# again for no reason.
+CURRENT_EMPLOYER_AGREEMENT_VERSION = 1
+
 # Only these are served. `docs/policies/` also holds internal working documents — the coverage
 # audit, the decisions register, this plan — and an allowlist is what keeps them from being
 # published by a stray filename. Anything listed here must be safe to hand to the person it

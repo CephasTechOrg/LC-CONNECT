@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.models import EmployerAccount, EmployerOrganization
 from app.security import verify_supabase_access_token
+from app.shared.policy_versions import CURRENT_EMPLOYER_AGREEMENT_VERSION
 
 _bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -56,4 +57,25 @@ async def get_employer_auth_context(
 async def require_approved_employer(
     ctx: EmployerAuthContext = Depends(get_employer_auth_context),
 ) -> EmployerAuthContext:
+    return ctx
+
+
+async def require_agreed_employer(
+    ctx: EmployerAuthContext = Depends(require_approved_employer),
+) -> EmployerAuthContext:
+    """Approved **and** currently accepting the Employer Agreement.
+
+    Guards scholar data and opportunity submission, so the agreement is enforced by the API rather
+    than only by the portal screen. Without this a caller holding a valid token could skip the
+    gate component entirely and still read résumés — the same reason the mobile bootstrap check
+    exists alongside the signup checkbox.
+
+    Deliberately NOT applied to `/employers/me` (the portal has to be able to ask whether it needs
+    to show the gate) or to the accept endpoint itself.
+    """
+    if ctx.account.agreement_accepted_version < CURRENT_EMPLOYER_AGREEMENT_VERSION:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail='Please accept the Employer Agreement before viewing scholar information.',
+        )
     return ctx

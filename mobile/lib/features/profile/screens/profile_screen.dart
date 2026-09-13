@@ -14,6 +14,7 @@ import '../../../shared/widgets/app_skeleton.dart';
 import '../../../shared/widgets/app_states.dart';
 import '../../account/providers/account_provider.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../policies/data/policy_slugs.dart';
 import '../../scholars/widgets/blueprint_bond_card.dart';
 import '../providers/profile_provider.dart';
 

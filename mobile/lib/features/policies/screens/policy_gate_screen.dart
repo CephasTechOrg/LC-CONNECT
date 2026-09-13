@@ -74,17 +74,31 @@ class _PolicyGateScreenState extends ConsumerState<PolicyGateScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      width: 60,
-                      height: 60,
-                      decoration: BoxDecoration(
-                        color: AppColors.primaryPale,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: const Icon(Icons.verified_user_outlined,
-                          size: 30, color: AppColors.primary),
+                    // The LC mark rather than a generic shield: this is the first screen an
+                    // existing user sees after an update, and it should look like the app they
+                    // already signed in to, not like a compliance interstitial.
+                    Row(
+                      children: [
+                        Image.asset('assets/images/lclogo.png',
+                            width: 34, height: 34, fit: BoxFit.contain),
+                        const SizedBox(width: 10),
+                        // Flexible, or the wordmark overflows at 320px with text scaled to the
+                        // 1.4 the app clamps to — the same trap the login button had.
+                        Flexible(
+                          child: Text(
+                            'LC Connect',
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.dmSans(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textDark,
+                              letterSpacing: -0.3,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 22),
+                    const SizedBox(height: 26),
                     Text(
                       'Before you continue',
                       style: GoogleFonts.dmSans(
@@ -96,27 +110,19 @@ class _PolicyGateScreenState extends ConsumerState<PolicyGateScreen> {
                     ),
                     const SizedBox(height: 10),
                     Text(
-                      'Please review how LC Connect works and how your information is handled, '
-                      'then accept to carry on.',
+                      'Please read the Terms of Service and Privacy Policy, then accept to '
+                      'continue.',
                       style: GoogleFonts.dmSans(
                         fontSize: 14.5,
                         color: AppColors.textMuted,
                         height: 1.55,
                       ),
                     ),
-                    const SizedBox(height: 24),
-                    const _GateSummary(),
                     const SizedBox(height: 22),
-                    Text(
-                      'Read in full',
-                      style: GoogleFonts.dmSans(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.4,
-                        color: AppColors.textMuted,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
+                    const _GateSummary(),
+                    const SizedBox(height: 26),
+                    const _Eyebrow('Read in full'),
+                    const SizedBox(height: 10),
                     const PolicyLinkList(),
                   ],
                 ),
@@ -136,26 +142,42 @@ class _PolicyGateScreenState extends ConsumerState<PolicyGateScreen> {
   }
 }
 
-/// The short version. Not a substitute for the documents — the point is that someone who will not
-/// read 8,000 words still learns the three things most likely to surprise them.
+/// Small uppercase section label.
+class _Eyebrow extends StatelessWidget {
+  final String text;
+  const _Eyebrow(this.text);
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text.toUpperCase(),
+      style: GoogleFonts.dmSans(
+        fontSize: 11,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 0.8,
+        color: AppColors.textMuted,
+      ),
+    );
+  }
+}
+
+/// Reassurance, deliberately **not** a summary of the policies.
+///
+/// It used to preview specific clauses here — profile visibility, that messages are not
+/// end-to-end encrypted. Putting that on the first screen someone sees turns a welcome into a
+/// disclaimer, and it lands as a warning rather than as the context it has in the document, where
+/// the reasoning sits next to it. The documents say those things properly; this screen's job is to
+/// point at them.
+///
+/// Every line here must be true and must not overclaim: no "fully secure", no "private", nothing
+/// the Privacy Policy would contradict.
 class _GateSummary extends StatelessWidget {
   const _GateSummary();
 
   static const _points = <(IconData, String)>[
-    (
-      Icons.groups_outlined,
-      'Your profile is visible to other signed-in members by default. You can hide it any time.',
-    ),
-    (
-      Icons.lock_outline_rounded,
-      'Messages are stored on our servers, not end-to-end encrypted. Administrators only ever see '
-          'messages someone reports.',
-    ),
-    (
-      Icons.shield_outlined,
-      'Harassment, impersonation, spam and sharing other people’s private details can cost '
-          'you your account.',
-    ),
+    (Icons.school_outlined, 'Built for the Livingstone College campus community.'),
+    (Icons.lock_outline_rounded, 'Your information is protected, and we never sell it.'),
+    (Icons.tune_rounded, 'Privacy settings you can change at any time.'),
   ];
 
   @override

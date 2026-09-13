@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -46,6 +46,12 @@ class EmployerAccount(Base):
     display_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
     auth_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    # Employer Agreement acceptance. `0` means never accepted — the server default, so every
+    # existing employer account is gated on next sign-in rather than assumed to have agreed.
+    agreement_accepted_version: Mapped[int] = mapped_column(
+        Integer, default=0, server_default='0', nullable=False
+    )
+    agreement_accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False

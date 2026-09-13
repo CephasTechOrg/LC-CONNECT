@@ -250,7 +250,7 @@ void main() {
       await tester.tap(find.byType(Checkbox));
       await tester.pump();
 
-      final link = find.widgetWithText(ListTile, 'Privacy Policy');
+      final link = find.text('Privacy Policy');
       await tester.ensureVisible(link);
       await tester.pumpAndSettle();
       await tester.tap(link);
@@ -263,11 +263,32 @@ void main() {
       expect(tester.widget<Checkbox>(find.byType(Checkbox)).value, isTrue);
     });
 
-    testWidgets('the summary names the three surprising things', (tester) async {
+    testWidgets('the gate points at the documents rather than summarising them', (tester) async {
+      // It used to preview specific clauses here — profile visibility, and that messages are not
+      // end-to-end encrypted. On the first screen someone sees, that reads as a disclaimer
+      // stripped of the reasoning that sits beside it in the document. The documents say those
+      // things; this screen's job is to get the user to them.
       await _pump(tester);
-      expect(find.textContaining('visible to other signed-in members'), findsOneWidget);
-      expect(find.textContaining('not end-to-end encrypted'), findsOneWidget);
-      expect(find.textContaining('can cost'), findsOneWidget);
+
+      expect(find.textContaining('Please read the Terms of Service'), findsOneWidget);
+      expect(find.text('READ IN FULL'), findsOneWidget);
+      for (final label in ['Terms of Service', 'Privacy Policy', 'Community Guidelines']) {
+        expect(find.text(label), findsOneWidget, reason: label);
+      }
+
+      // No policy clause is restated on this screen.
+      for (final clause in [
+        'end-to-end',
+        'visible to other signed-in',
+        'can cost you your account',
+        'Administrators',
+      ]) {
+        expect(
+          find.textContaining(clause, findRichText: true),
+          findsNothing,
+          reason: '"$clause" belongs in the document, not on the gate',
+        );
+      }
     });
   });
 }

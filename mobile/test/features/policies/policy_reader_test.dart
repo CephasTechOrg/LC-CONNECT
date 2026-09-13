@@ -154,7 +154,7 @@ void main() {
       expect(find.byType(PolicyDocumentScreen), findsNothing);
     });
 
-    testWidgets('the stacked list offers all three documents', (tester) async {
+    testWidgets('the grouped card offers all three documents', (tester) async {
       await tester.pumpWidget(ProviderScope(
         child: MaterialApp(
           home: const Scaffold(body: PolicyLinkList()),

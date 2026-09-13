@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends
@@ -6,7 +7,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.database import get_db
 from app.features.employers import discovery, service
-from app.features.employers.auth import EmployerAuthContext, require_approved_employer
+from app.features.employers.auth import (
+    EmployerAuthContext,
+    require_agreed_employer,
+    require_approved_employer,
+)
 from app.features.employers.rate_limit import opportunity_submit_limit
 from app.features.employers.schema import (
     EmployerOrganizationRead,
@@ -17,6 +22,8 @@ from app.features.employers.schema import (
     OpportunitySubmissionRead,
 )
 from app.features.scholars.schema import SignedUrlRead
+from app.models import EmployerAccount
+from app.shared.policy_versions import CURRENT_EMPLOYER_AGREEMENT_VERSION
 from app.shared.rate_limit import employer_register_limit
 from app.shared.storage import storage_service
 
@@ -65,13 +72,41 @@ async def get_my_employer_context(
 ) -> MyEmployerRead:
     """The portal's session-check call — succeeding at all means the caller is an *approved*
     employer (pending/rejected 403s with the matching message before this ever returns)."""
+    return _my_employer(ctx)
+
+
+def _agreement_accepted(account: EmployerAccount) -> bool:
+    """Current acceptance, not merely *some* acceptance — a stored version below the constant is
+    stale, which is what makes raising it re-prompt every partner."""
+    return account.agreement_accepted_version >= CURRENT_EMPLOYER_AGREEMENT_VERSION
+
+
+def _my_employer(ctx: EmployerAuthContext) -> MyEmployerRead:
     return MyEmployerRead(
         organization_id=ctx.organization.id,
         organization_name=ctx.organization.name,
         organization_status=ctx.organization.status,
         email=ctx.account.email,
         display_name=ctx.account.display_name,
+        agreement_accepted=_agreement_accepted(ctx.account),
     )
+
+
+@router.post('/me/accept-agreement', response_model=MyEmployerRead)
+async def accept_employer_agreement(
+    ctx: EmployerAuthContext = Depends(require_approved_employer),
+    db: AsyncSession = Depends(get_db),
+) -> MyEmployerRead:
+    """Record acceptance of the Employer Agreement for the signed-in employer account.
+
+    Behind `require_approved_employer`, so a pending or rejected organisation cannot accept its
+    way to anything — it has no Supabase identity at all until approval. Idempotent.
+    """
+    ctx.account.agreement_accepted_version = CURRENT_EMPLOYER_AGREEMENT_VERSION
+    ctx.account.agreement_accepted_at = datetime.now(UTC)
+    await db.commit()
+    await db.refresh(ctx.account)
+    return _my_employer(ctx)
 
 
 @router.post(
@@ -82,7 +117,7 @@ async def get_my_employer_context(
 )
 async def submit_opportunity(
     payload: OpportunitySubmissionCreate,
-    ctx: EmployerAuthContext = Depends(require_approved_employer),
+    ctx: EmployerAuthContext = Depends(require_agreed_employer),
     db: AsyncSession = Depends(get_db),
 ) -> OpportunitySubmissionRead:
     submission = await service.submit_opportunity(db, account=ctx.account, payload=payload)
@@ -100,7 +135,7 @@ async def list_my_opportunities(
 
 @router.get('/scholars', response_model=list[EmployerScholarView])
 async def list_eligible_scholars(
-    _: EmployerAuthContext = Depends(require_approved_employer),
+    _: EmployerAuthContext = Depends(require_agreed_employer),
     db: AsyncSession = Depends(get_db),
 ) -> list[EmployerScholarView]:
     """Only scholars with active Presidential Scholars membership **and** current
@@ -120,7 +155,7 @@ async def list_eligible_scholars(
 @router.get('/scholars/{user_id}', response_model=EmployerScholarView)
 async def get_eligible_scholar(
     user_id: UUID,
-    ctx: EmployerAuthContext = Depends(require_approved_employer),
+    ctx: EmployerAuthContext = Depends(require_agreed_employer),
     db: AsyncSession = Depends(get_db),
 ) -> EmployerScholarView:
     profile, social_profile = await discovery.get_eligible_scholar_or_404(db, user_id)
@@ -139,7 +174,7 @@ async def get_eligible_scholar(
 @router.get('/scholars/{user_id}/headshot-url', response_model=SignedUrlRead)
 async def get_scholar_headshot_url(
     user_id: UUID,
-    _: EmployerAuthContext = Depends(require_approved_employer),
+    _: EmployerAuthContext = Depends(require_agreed_employer),
     db: AsyncSession = Depends(get_db),
 ) -> SignedUrlRead:
     url = await discovery.headshot_signed_url(db, user_id)
@@ -149,7 +184,7 @@ async def get_scholar_headshot_url(
 @router.get('/scholars/{user_id}/resume-url', response_model=SignedUrlRead)
 async def get_scholar_resume_url(
     user_id: UUID,
-    _: EmployerAuthContext = Depends(require_approved_employer),
+    _: EmployerAuthContext = Depends(require_agreed_employer),
     db: AsyncSession = Depends(get_db),
 ) -> SignedUrlRead:
     url = await discovery.resume_signed_url(db, user_id)

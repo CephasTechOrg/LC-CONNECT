@@ -157,9 +157,8 @@ free of people behaving badly. We work to keep it secure, but no system is perfe
 We are not responsible for what another member does, or for anything that happens between members
 outside the app.
 
-LC Connect is built and operated in North Carolina, United States, and these terms are read under
-North Carolina law. If something goes wrong, the first step is to contact us — most things are
-easier to sort out directly than formally.
+If something goes wrong, contact us. Most things are easier to sort out directly, and anything
+that belongs in the College's own conduct or grievance process will go there.
 
 ## 11. Changes
 

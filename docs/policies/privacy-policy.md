@@ -74,16 +74,15 @@ there — treat groups as semi-public.
 
 Administrators can see your account details — your name, email addresses, role, and account status.
 
-**For messages, their access is deliberately narrow.** When someone reports a message, a copy of
-just that message is saved onto the report, and that copy is what an administrator reviews.
-**There is no way for an administrator to open your inbox or browse your conversations** — no such
-tool exists in the app, by design. Reading a report requires two-factor authentication, and every
-time an administrator opens one it is logged.
+**Nobody can read your conversations.** There is no feature anywhere in LC Connect that opens
+someone's inbox — not for administrators, not for anyone.
 
-So while your messages are stored in a form our servers can read, in practice the only messages
-anyone at LC Connect ever sees are the ones somebody chose to report.
+The single exception is a message that gets reported. When you report one, a copy of that one
+message is saved to the report, and that copy is all an administrator sees. Opening it requires
+two-factor authentication and is logged. Everything else you have ever sent stays between you and
+the person you sent it to.
 
-Reports are **not anonymous to administrators** — we store who filed each one.
+Reports are not anonymous to administrators — we store who filed each one.
 
 ### Employers — scholars only, and only if you say yes
 
@@ -110,31 +109,20 @@ employer already saw or saved.**
 
 ## 3. How your data is protected
 
-What is true:
-
 - Everything travels over encrypted connections.
 - Your password is held by our sign-in provider. We never receive it.
 - Your login session is stored in your device's secure keystore, not in plain settings.
 - Sessions are short-lived and refresh automatically; a dead session signs you out.
-- Résumés and headshots are in private storage, reachable only by expiring link.
+- Data is encrypted at rest by our database provider.
+- Résumés and headshots are in private storage, reachable only by an expiring link.
 - Sensitive administrator actions require two-factor authentication and are logged.
 - Actions that could be abused are rate-limited.
-- Data is encrypted at rest by our database provider.
 
-**What is not true, stated plainly: LC Connect is not end-to-end encrypted.**
-
-Your messages are stored in a form our servers can read. That is normal for an app like this, and
-it is what makes it possible to act on a harassment report at all — if messages were end-to-end
-encrypted, someone could report a threat and we would have no way to see it.
-
-Two things follow, and they pull in opposite directions, so both are worth knowing:
-
-- **In practice, access is tightly limited.** No tool exists to browse your conversations.
-  Administrators see only messages that were reported, behind two-factor authentication, and each
-  viewing is logged.
-- **In principle, the data is readable.** Because it is not end-to-end encrypted, it could be
-  exposed in a serious breach. Do not use LC Connect for anything you need to be mathematically
-  certain no one else could ever read.
+On messages specifically: no feature exists for reading them, so the only one anyone ever sees is a
+message somebody reported. What that rests on is a deliberate choice — messages are not end-to-end
+encrypted, meaning they are stored in a form our servers could read rather than scrambled so that
+only you hold the key. That is exactly what makes acting on a report possible: if a reported threat
+could not be read, nothing could be done about it.
 
 No system is perfectly secure. If you find a weakness, please tell us rather than use it.
 

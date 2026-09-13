@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { ComponentType, ReactNode, useEffect, useState } from 'react';
 import { myEmployer, type MyEmployer, toUserMessage } from '@/lib/api/client';
+import { AgreementGate } from '@/components/agreement-gate';
 import { createClient } from '@/lib/supabase/client';
 import { signOut } from '@/lib/auth/session';
 import {
@@ -43,6 +44,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const [employer, setEmployer] = useState<MyEmployer | null>(null);
+  const [token, setToken] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
 
@@ -58,6 +60,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         }
 
         const me = await myEmployer(session.access_token);
+        setToken(session.access_token);
         setEmployer(me);
         setReady(true);
       } catch (err) {
@@ -92,6 +95,19 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           </button>
         </div>
       </div>
+    );
+  }
+
+  // Wraps every dashboard page, so this one check covers /scholars, /scholars/[id] and
+  // /opportunities without touching any of them.
+  if (!employer.agreement_accepted && token) {
+    return (
+      <AgreementGate
+        employer={employer}
+        accessToken={token}
+        onAccepted={setEmployer}
+        onSignOut={() => void onLogout()}
+      />
     );
   }
 
