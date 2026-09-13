@@ -75,6 +75,8 @@ GET /api/v1/messages/threads/{match_id}/sync
 GET /api/v1/messages/unread-summary
 GET /api/v1/notifications
 GET /api/v1/notifications/unread-count
+GET /api/v1/policies
+GET /api/v1/policies/{slug}
 GET /api/v1/profiles/me
 GET /api/v1/profiles/{profile_id}
 GET /api/v1/programs/me
@@ -128,6 +130,7 @@ POST /api/v1/admin/users/{user_id}/reactivate
 POST /api/v1/admin/users/{user_id}/revoke-campus-verify
 POST /api/v1/admin/users/{user_id}/suspend
 POST /api/v1/attendance/sessions/{session_id}/check-in
+POST /api/v1/auth/accept-policies
 POST /api/v1/auth/bootstrap
 POST /api/v1/auth/forgot-password
 POST /api/v1/auth/webhooks/send-email

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lc_connect/features/auth/providers/auth_provider.dart';
 import 'package:lc_connect/features/auth/screens/register_screen.dart';
+import 'package:lc_connect/features/policies/data/policy_slugs.dart';
 
 /// Records what reached `register()` without touching Supabase.
 class _RecordingAuth extends AuthNotifier {
@@ -17,8 +18,9 @@ class _RecordingAuth extends AuthNotifier {
     String email,
     String password, {
     required String contactEmail,
+    required int policiesAcceptedVersion,
   }) async {
-    calls.add('$email|$contactEmail');
+    calls.add('$email|$contactEmail|v$policiesAcceptedVersion');
   }
 }
 
@@ -29,6 +31,13 @@ Future<void> _pumpRegister(WidgetTester tester) async {
       child: const MaterialApp(home: RegisterScreen()),
     ),
   );
+  await tester.pump();
+}
+
+/// Ticks the policy consent box. Nothing can be submitted without it, so every test that reaches
+/// the confirm sheet has to do this first.
+Future<void> _acceptPolicies(WidgetTester tester) async {
+  await tester.tap(find.byType(Checkbox));
   await tester.pump();
 }
 
@@ -60,6 +69,7 @@ void main() {
     testWidgets('submitting opens the review sheet instead of registering', (tester) async {
       await _pumpRegister(tester);
       await _fillValidForm(tester);
+      await _acceptPolicies(tester);
       await _tapCreateAccount(tester);
 
       expect(find.text('Check your details'), findsOneWidget);
@@ -70,6 +80,7 @@ void main() {
     testWidgets('the sheet shows both addresses, normalised', (tester) async {
       await _pumpRegister(tester);
       await _fillValidForm(tester);
+      await _acceptPolicies(tester);
       await _tapCreateAccount(tester);
 
       // Lowercased, so what the user checks is exactly what the account is created with.
@@ -82,6 +93,7 @@ void main() {
     testWidgets('Edit closes the sheet and registers nothing', (tester) async {
       await _pumpRegister(tester);
       await _fillValidForm(tester);
+      await _acceptPolicies(tester);
       await _tapCreateAccount(tester);
 
       await tester.tap(find.text('Edit'));
@@ -96,6 +108,7 @@ void main() {
     testWidgets('confirming registers with the entered addresses', (tester) async {
       await _pumpRegister(tester);
       await _fillValidForm(tester);
+      await _acceptPolicies(tester);
       await _tapCreateAccount(tester);
 
       await tester.tap(find.text('Create account')); // sheet's confirm, not the form's button
@@ -103,7 +116,7 @@ void main() {
 
       expect(
         _RecordingAuth.calls,
-        ['John.Doe@students.livingstone.edu|John.Doe@gmail.com'],
+        ['John.Doe@students.livingstone.edu|John.Doe@gmail.com|v$kPolicyVersion'],
       );
     });
 
@@ -116,6 +129,7 @@ void main() {
       await tester.enterText(fields.at(2), 'hunter2pass');
       await tester.enterText(fields.at(3), 'hunter2pass');
       await tester.pump();
+      await _acceptPolicies(tester);
       await _tapCreateAccount(tester);
 
       expect(find.text('Check your details'), findsNothing);

@@ -10,6 +10,7 @@ class BootstrapResponse(BaseModel):
     role: str
     status: str
     is_verified: bool
+    policies_accepted: bool
     profile_completed: bool
     auth_user_id: UUID
 
@@ -20,6 +21,7 @@ class CurrentUserResponse(BaseModel):
     role: str
     status: str
     is_verified: bool
+    policies_accepted: bool
     profile_completed: bool = False
     auth_user_id: UUID | None = None
 

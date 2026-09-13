@@ -53,3 +53,31 @@ Only one, and it is not blocking:
 contact address. If nothing reads it yet, a privacy request or a security report has nowhere to
 land, and § 8's five-day commitment cannot be met. Worth pointing it at something real — even a
 forward to a personal address — before the documents go in front of students.
+
+---
+
+## Employer agreement — where the document outruns the code
+
+Moved here out of `employer-agreement.md` itself: that file is **served to employers** by the
+policies endpoint, so it must contain nothing internal. Keeping these notes in it would have
+published our own gaps analysis to the people the agreement constrains.
+
+Worth recording while it is fresh — these are gaps between this document and what the portal
+currently enforces:
+
+- **Sections 3 and 4 are promises, not controls.** Nothing technically stops an employer saving a
+  résumé and keeping it. That is true of every recruiting platform, and a contract is the normal
+  answer — but it is the reason view logging (section 5) matters: it is the only part of this we can
+  actually verify.
+- **Withdrawal already works** — consent is checked on every read, so revoking it cuts off access
+  immediately. No cleanup job needed.
+- **There is no expiry on employer accounts.** An approved organisation stays approved until an
+  administrator revokes it. An annual re-approval would make section 10 meaningful rather than
+  theoretical; worth considering if the partner list grows.
+- **No per-employer rate limit on profile views.** The portal is browsable at human speed today
+  because the partner list is short. If it grows, a view cap would make section 3's no-scraping
+  rule enforceable instead of aspirational.
+
+None of these block the agreement — a contract is the normal answer to all of them, and every
+recruiting platform relies on one. They are recorded so the difference between what we promise and
+what we enforce stays visible.

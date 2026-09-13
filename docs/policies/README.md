@@ -18,6 +18,7 @@ that produced them.
 | [`feature-policy-coverage.md`](feature-policy-coverage.md) | The audit: every feature in the system mapped to the clauses it requires. Start here. | Internal |
 | [`employer-agreement.md`](employer-agreement.md) | Rules for approved employer organisations using the scholar portal. | Accepted in the employer portal |
 | [`decisions-made.md`](decisions-made.md) | The twelve policy questions and what was decided. | Internal |
+| [`implementation-plan.md`](implementation-plan.md) | How acceptance gets built across mobile and the portals. | Internal |
 
 ## On naming — one correction
 

@@ -1429,6 +1429,10 @@
             "title": "Is Verified",
             "type": "boolean"
           },
+          "policies_accepted": {
+            "title": "Policies Accepted",
+            "type": "boolean"
+          },
           "profile_completed": {
             "title": "Profile Completed",
             "type": "boolean"
@@ -1448,6 +1452,7 @@
           "role",
           "status",
           "is_verified",
+          "policies_accepted",
           "profile_completed",
           "auth_user_id"
         ],
@@ -3207,6 +3212,10 @@
             "title": "Is Verified",
             "type": "boolean"
           },
+          "policies_accepted": {
+            "title": "Policies Accepted",
+            "type": "boolean"
+          },
           "profile_completed": {
             "default": false,
             "title": "Profile Completed",
@@ -3226,7 +3235,8 @@
           "email",
           "role",
           "status",
-          "is_verified"
+          "is_verified",
+          "policies_accepted"
         ],
         "title": "CurrentUserResponse",
         "type": "object"
@@ -5386,6 +5396,73 @@
           "reason"
         ],
         "title": "OpportunitySubmissionRejectRequest",
+        "type": "object"
+      },
+      "PolicyDocument": {
+        "properties": {
+          "body": {
+            "title": "Body",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "slug",
+          "title",
+          "version",
+          "body"
+        ],
+        "title": "PolicyDocument",
+        "type": "object"
+      },
+      "PolicyDocumentSummary": {
+        "properties": {
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "title"
+        ],
+        "title": "PolicyDocumentSummary",
+        "type": "object"
+      },
+      "PolicyIndex": {
+        "properties": {
+          "documents": {
+            "items": {
+              "$ref": "#/components/schemas/PolicyDocumentSummary"
+            },
+            "title": "Documents",
+            "type": "array"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "documents"
+        ],
+        "title": "PolicyIndex",
         "type": "object"
       },
       "PositionReviewRequest": {
@@ -10341,6 +10418,33 @@
         ]
       }
     },
+    "/api/v1/auth/accept-policies": {
+      "post": {
+        "description": "Record acceptance for the signed-in user at the current version.\n\nCovers the two cases signup metadata cannot: an account created before the gate existed, and a\nre-prompt after `CURRENT_POLICY_VERSION` is raised. Idempotent \u2014 accepting twice is harmless.",
+        "operationId": "accept_policies_api_v1_auth_accept_policies_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurrentUserResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Accept Policies",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
     "/api/v1/auth/bootstrap": {
       "post": {
         "operationId": "bootstrap_api_v1_auth_bootstrap_post",
@@ -13951,6 +14055,70 @@
         "summary": "Get Unread Count",
         "tags": [
           "notifications"
+        ]
+      }
+    },
+    "/api/v1/policies": {
+      "get": {
+        "operationId": "list_policies_api_v1_policies_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PolicyIndex"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Policies",
+        "tags": [
+          "policies"
+        ]
+      }
+    },
+    "/api/v1/policies/{slug}": {
+      "get": {
+        "description": "404 for any slug not on the public allowlist \u2014 `docs/policies/` also holds internal notes.",
+        "operationId": "get_policy_api_v1_policies__slug__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PolicyDocument"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Policy",
+        "tags": [
+          "policies"
         ]
       }
     },

@@ -42,6 +42,14 @@ class User(Base):
     campus_verified_by_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey('users.id', ondelete='SET NULL'), nullable=True
     )
+    # Policy acceptance. `0` means never accepted — also the column's server default, so every
+    # account predating the gate is correctly treated as outstanding and re-prompted on next
+    # launch. Compared against `CURRENT_POLICY_VERSION`; raising that constant makes every stored
+    # value stale at once. See app/shared/policy_versions.py.
+    policies_accepted_version: Mapped[int] = mapped_column(
+        Integer, default=0, server_default='0', nullable=False
+    )
+    policies_accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
     # Set when the user self-deletes. The row is anonymized in place (see app/features/account),

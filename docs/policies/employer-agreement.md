@@ -110,23 +110,3 @@ accept the new one before continuing to use the portal.
 ## 12. Contact
 
 `support@livingstone.edu`
-
----
-
-## Notes for us, not for employers
-
-Worth recording while it is fresh — these are gaps between this document and what the portal
-currently enforces:
-
-- **Sections 3 and 4 are promises, not controls.** Nothing technically stops an employer saving a
-  résumé and keeping it. That is true of every recruiting platform, and a contract is the normal
-  answer — but it is the reason view logging (section 5) matters: it is the only part of this we can
-  actually verify.
-- **Withdrawal already works** — consent is checked on every read, so revoking it cuts off access
-  immediately. No cleanup job needed.
-- **There is no expiry on employer accounts.** An approved organisation stays approved until an
-  administrator revokes it. An annual re-approval would make section 10 meaningful rather than
-  theoretical; worth considering if the partner list grows.
-- **No per-employer rate limit on profile views.** The portal is browsable at human speed today
-  because the partner list is short. If it grows, a view cap would make section 3's no-scraping
-  rule enforceable instead of aspirational.

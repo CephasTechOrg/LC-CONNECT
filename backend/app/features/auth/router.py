@@ -1,3 +1,5 @@
+from datetime import UTC, datetime
+
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,6 +12,7 @@ from app.features.auth.schema import BootstrapResponse, CurrentUserResponse, For
 from app.features.auth.service import bootstrap_user
 from app.models import User
 from app.security import SupabaseClaims
+from app.shared.policy_versions import CURRENT_POLICY_VERSION
 from app.shared.rate_limit import forgot_password_email_limit, forgot_password_ip_limit
 from app.shared.supabase_admin import request_password_reset
 
@@ -51,6 +54,43 @@ async def forgot_password(payload: ForgotPasswordRequest) -> MessageResponse:
     return MessageResponse(message='If an account exists for that email, a reset link has been sent.')
 
 
+def _policies_accepted(user: User) -> bool:
+    """Current acceptance, not merely *some* acceptance.
+
+    A stored version below `CURRENT_POLICY_VERSION` is stale, which is what makes raising that
+    constant re-prompt everyone. `0` is the column default, so accounts predating the gate report
+    False and get caught by it.
+    """
+    return user.policies_accepted_version >= CURRENT_POLICY_VERSION
+
+
+@router.post('/accept-policies', response_model=CurrentUserResponse)
+async def accept_policies(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> CurrentUserResponse:
+    """Record acceptance for the signed-in user at the current version.
+
+    Covers the two cases signup metadata cannot: an account created before the gate existed, and a
+    re-prompt after `CURRENT_POLICY_VERSION` is raised. Idempotent — accepting twice is harmless.
+    """
+    current_user.policies_accepted_version = CURRENT_POLICY_VERSION
+    current_user.policies_accepted_at = datetime.now(UTC)
+    await db.commit()
+    await db.refresh(current_user)
+    profile_completed = bool(current_user.profile and current_user.profile.profile_completed)
+    return CurrentUserResponse(
+        id=current_user.id,
+        email=current_user.email,
+        role=current_user.role,
+        status=current_user.status,
+        is_verified=current_user.is_verified,
+        policies_accepted=_policies_accepted(current_user),
+        profile_completed=profile_completed,
+        auth_user_id=current_user.auth_user_id,
+    )
+
+
 @router.post('/bootstrap', response_model=BootstrapResponse)
 async def bootstrap(
     claims: SupabaseClaims = Depends(get_supabase_claims),
@@ -65,6 +105,7 @@ async def bootstrap(
         role=user.role,
         status=user.status,
         is_verified=user.is_verified,
+        policies_accepted=_policies_accepted(user),
         profile_completed=profile_completed,
         auth_user_id=user.auth_user_id,
     )
@@ -79,6 +120,7 @@ async def me(current_user: User = Depends(get_current_user)) -> CurrentUserRespo
         role=current_user.role,
         status=current_user.status,
         is_verified=current_user.is_verified,
+        policies_accepted=_policies_accepted(current_user),
         profile_completed=profile_completed,
         auth_user_id=current_user.auth_user_id,
     )

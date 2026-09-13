@@ -11,6 +11,9 @@ class AuthUser {
   final String email;
   final String role;
   final bool isVerified;
+  /// Whether the stored acceptance matches the backend's current policy version. A boolean, not
+  /// the version number — the app never needs to know the numbering, only whether it is current.
+  final bool policiesAccepted;
   final bool profileCompleted;
 
   const AuthUser({
@@ -18,6 +21,7 @@ class AuthUser {
     required this.email,
     required this.role,
     this.isVerified = false,
+    this.policiesAccepted = false,
     this.profileCompleted = false,
   });
 
@@ -26,14 +30,19 @@ class AuthUser {
         email: json['email'] as String,
         role: json['role'] as String? ?? 'student',
         isVerified: json['is_verified'] as bool? ?? false,
+        // Absent means an older server, or a response we cannot read — treat as not accepted, so
+        // the failure mode is "asked again" rather than "silently let through".
+        policiesAccepted: json['policies_accepted'] as bool? ?? false,
         profileCompleted: json['profile_completed'] as bool? ?? false,
       );
 
-  AuthUser copyWith({bool? isVerified, bool? profileCompleted}) => AuthUser(
+  AuthUser copyWith({bool? isVerified, bool? policiesAccepted, bool? profileCompleted}) =>
+      AuthUser(
         id: id,
         email: email,
         role: role,
         isVerified: isVerified ?? this.isVerified,
+        policiesAccepted: policiesAccepted ?? this.policiesAccepted,
         profileCompleted: profileCompleted ?? this.profileCompleted,
       );
 }
@@ -136,6 +145,7 @@ class AuthNotifier extends AsyncNotifier<AuthUser?> {
     String email,
     String password, {
     required String contactEmail,
+    required int policiesAcceptedVersion,
   }) async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
@@ -144,7 +154,14 @@ class AuthNotifier extends AsyncNotifier<AuthUser?> {
       final result = await _auth.signUp(
         email: normalized,
         password: password,
-        data: {'contact_email': normalizedContact},
+        // The accepted version travels in signup metadata because there is nowhere else for it to
+        // go yet: no session and no LC Connect user row exist until the email code is confirmed.
+        // The backend reads it from the JWT claims on first bootstrap and writes it to the user
+        // row — clamped to its own current version, since metadata is client-writable.
+        data: {
+          'contact_email': normalizedContact,
+          'policies_accepted_version': policiesAcceptedVersion,
+        },
       );
       // Must come before the session check: a duplicate signup also has no session, so without
       // this it looks identical to "awaiting confirmation" and strands the user on the verify
@@ -217,6 +234,17 @@ class AuthNotifier extends AsyncNotifier<AuthUser?> {
     }
     await _auth.updateUser(UserAttributes(password: newPassword));
     await _auth.signOut();
+  }
+
+  /// Records acceptance for the signed-in user, then refreshes so the router can move on.
+  ///
+  /// Covers the two cases signup metadata cannot: an account created before the gate shipped, and
+  /// a re-prompt after the backend's policy version is raised. Rethrows so the gate screen can
+  /// show the failure rather than appearing to succeed and staying put.
+  Future<void> acceptPolicies() async {
+    final client = ref.read(apiClientProvider);
+    final response = await client.dio.post('/auth/accept-policies');
+    state = AsyncData(AuthUser.fromBootstrap(response.data as Map<String, dynamic>));
   }
 
   Future<void> refreshVerification() async {

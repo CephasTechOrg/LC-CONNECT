@@ -38,6 +38,8 @@ import '../../features/scholars/screens/blueprint_bond_screen.dart';
 import '../../features/attendance/screens/attendance_scanner_screen.dart';
 import '../../features/connections/screens/connections_screen.dart';
 import '../../features/onboarding/screens/onboarding_screen.dart';
+import '../../features/policies/screens/policy_document_screen.dart';
+import '../../features/policies/screens/policy_gate_screen.dart';
 import '../../shared/widgets/nav_shell.dart';
 
 // Notifies GoRouter whenever auth state changes so redirect re-evaluates.
@@ -63,6 +65,9 @@ class _AuthRouterNotifier extends ChangeNotifier {
   bool get isVerified =>
       _ref.read(authNotifierProvider).asData?.value?.isVerified ?? false;
 
+  bool get policiesAccepted =>
+      _ref.read(authNotifierProvider).asData?.value?.policiesAccepted ?? false;
+
   bool get profileCompleted =>
       _ref.read(authNotifierProvider).asData?.value?.profileCompleted ?? false;
 
@@ -81,6 +86,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isLoggedIn = notifier.isLoggedIn;
       final isSuspended = notifier.isSuspended;
       final isVerified = notifier.isVerified;
+      final policiesAccepted = notifier.policiesAccepted;
       final profileCompleted = notifier.profileCompleted;
       final awaitingEmailConfirmation = notifier.awaitingEmailConfirmation;
       final loc = state.matchedLocation;
@@ -91,8 +97,15 @@ final routerProvider = Provider<GoRouter>((ref) {
           loc == '/forgot-password' ||
           loc == '/reset-password';
       final isVerifyScreen = loc == '/verify-email';
+      final isPolicyGate = loc == '/accept-policies';
       final isOnboarding = loc == '/onboarding';
       final isSuspendedScreen = loc == '/suspended';
+
+      // A policy document is readable in every state: with no account (the signup checkbox links
+      // into it), while suspended, at the acceptance gate, or from Settings. Never redirect away
+      // from one — it was briefly in `isPublicScreen`, which made the "verified user on a public
+      // screen → move forward" rule below throw a signed-in reader out to /home mid-document.
+      if (loc.startsWith('/policies/')) return null;
 
       // Suspended account — keep Supabase session so user can appeal; block the rest of the app.
       if (isSuspended) {
@@ -115,6 +128,17 @@ final routerProvider = Provider<GoRouter>((ref) {
         if (isVerifyScreen || isPublicScreen) return null;
         return '/verify-email';
       }
+      // Verified but has not accepted the current policies — nothing else is reachable. Comes
+      // before the "move forward" rules below so a stale acceptance cannot be skipped by landing
+      // on /login or /verify-email. The gate's own Sign out is the way out.
+      if (isLoggedIn && isVerified && !policiesAccepted) {
+        return isPolicyGate ? null : '/accept-policies';
+      }
+      // Accepted, so the gate is behind them.
+      if (isLoggedIn && isVerified && isPolicyGate) {
+        return profileCompleted ? '/home' : '/onboarding';
+      }
+
       // Logged in + verified on a public or verify screen → move forward
       if (isLoggedIn && isVerified && (isPublicScreen || isVerifyScreen)) {
         return profileCompleted ? '/home' : '/onboarding';
@@ -143,6 +167,15 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(path: '/verify-email', builder: (context, state) => const VerifyEmailScreen()),
       GoRoute(path: '/suspended', builder: (context, state) => const SuspendedScreen()),
+      GoRoute(
+        path: '/accept-policies',
+        builder: (context, state) => const PolicyGateScreen(),
+      ),
+      GoRoute(
+        path: '/policies/:slug',
+        builder: (context, state) =>
+            PolicyDocumentScreen(slug: state.pathParameters['slug']!),
+      ),
       GoRoute(path: '/onboarding', builder: (context, state) => const OnboardingScreen()),
       GoRoute(
         path: '/users/:profileId',

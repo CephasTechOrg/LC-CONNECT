@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import HTTPException, status
@@ -20,6 +21,7 @@ from app.shared.email_roles import (
     normalize_personal_contact_email,
     sync_user_role_from_email,
 )
+from app.shared.policy_versions import CURRENT_POLICY_VERSION
 
 _CONTACT_EMAIL_METADATA_KEYS = ('contact_email', 'personal_email')
 
@@ -58,6 +60,46 @@ def _sync_contact_email(user: User, claims: SupabaseClaims) -> None:
     contact = contact_email_from_claims(claims)
     if contact is not None:
         user.contact_email = contact
+
+
+def _accepted_version_from_claims(claims: SupabaseClaims) -> int:
+    """Policy version the client says was accepted at signup, from Supabase user metadata.
+
+    The mobile app cannot record acceptance server-side at signup — there is no session and no user
+    row until the email code is confirmed — so it rides along in `signUp(data: {...})` the same way
+    `contact_email` does, and lands here on first bootstrap.
+
+    **Clamped to `CURRENT_POLICY_VERSION`.** Metadata is client-writable, so an untrusted value
+    claiming version 9999 would otherwise skip every future gate permanently. Clamping means the
+    worst a tampered client achieves is claiming today's version — which is a user lying about
+    consenting to rules that bind them, and self-defeating.
+    """
+    for bucket in ('user_metadata', 'app_metadata'):
+        metadata = claims.raw.get(bucket) or {}
+        if not isinstance(metadata, dict):
+            continue
+        raw = metadata.get('policies_accepted_version')
+        if isinstance(raw, bool) or not isinstance(raw, (int, str)):
+            continue
+        try:
+            claimed = int(raw)
+        except (TypeError, ValueError):
+            continue
+        if claimed > 0:
+            return min(claimed, CURRENT_POLICY_VERSION)
+    return 0
+
+
+def _sync_policy_acceptance(user: User, claims: SupabaseClaims) -> None:
+    """Only ever moves the stored version forward, never back.
+
+    A stale client that omits the metadata must not un-accept someone who already agreed, and a
+    re-login must not reset an acceptance recorded by `POST /auth/accept-policies`.
+    """
+    claimed = _accepted_version_from_claims(claims)
+    if claimed > user.policies_accepted_version:
+        user.policies_accepted_version = claimed
+        user.policies_accepted_at = datetime.now(UTC)
 
 
 def _active_or_raise(user: User) -> User:
@@ -154,6 +196,7 @@ async def _sync_and_return(
     _active_or_raise(user)
     sync_user_role_from_email(user, email)
     _sync_contact_email(user, claims)
+    _sync_policy_acceptance(user, claims)
     if claims.email_verified and not user.is_verified:
         user.is_verified = True
 

@@ -24,6 +24,7 @@ from app.features.lookups import router as lookups_router
 from app.features.messages import router as messages_router
 from app.features.notifications import inbox_router as notifications_inbox_router
 from app.features.notifications import router as notifications_router
+from app.features.policies import router as policies_router
 from app.features.profiles import router as profiles_router
 from app.features.programs import router as programs_router
 from app.features.realtime import router as realtime_router
@@ -145,6 +146,9 @@ app.include_router(lookups_router, prefix=settings.api_v1_prefix)
 app.include_router(profiles_router, prefix=settings.api_v1_prefix)
 app.include_router(campus_positions_router, prefix=settings.api_v1_prefix)
 app.include_router(campus_hub_router, prefix=settings.api_v1_prefix)
+# Public and unauthenticated on purpose: the signup screen links into these before an
+# account exists, so the terms are readable without a token.
+app.include_router(policies_router, prefix=settings.api_v1_prefix)
 app.include_router(discovery_router, prefix=settings.api_v1_prefix)
 app.include_router(connections_router, prefix=settings.api_v1_prefix)
 app.include_router(messages_router, prefix=settings.api_v1_prefix)

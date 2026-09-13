@@ -77,6 +77,11 @@ async def build_account_export(db: AsyncSession, user: User) -> dict[str, Any]:
             'status': user.status,
             'is_active': user.is_active,
             'is_verified': user.is_verified,
+            # Consent records are data about the user, so they belong in the bundle the privacy
+            # policy promises. Mirrors how the scholar export already carries
+            # `employer_visibility_consent` / `consent_given_at` / `consent_version`.
+            'policies_accepted_version': user.policies_accepted_version,
+            'policies_accepted_at': _iso(user.policies_accepted_at),
             'created_at': _iso(user.created_at),
             'updated_at': _iso(user.updated_at),
         },

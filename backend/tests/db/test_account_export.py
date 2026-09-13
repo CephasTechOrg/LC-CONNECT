@@ -26,6 +26,10 @@ async def test_export_includes_account_profile_and_message(db, factory):
     assert payload['profile']['display_name'] == 'Exporter'
     assert payload['profile']['bio'] == 'Hello campus'
     assert any(m['body'] == 'My private note' for m in payload['messages_sent'])
+    # Consent records are data about the user. The privacy policy promises the export contains
+    # their data, and "when did I agree to this" is a question a person can reasonably ask.
+    assert 'policies_accepted_version' in payload['account']
+    assert 'policies_accepted_at' in payload['account']
     assert 'password_hash' not in payload['account']
     assert all('token' not in d for d in payload['device_tokens'])
 

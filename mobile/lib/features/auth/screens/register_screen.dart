@@ -6,8 +6,11 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/theme/app_theme.dart';
 import '../data/auth_error_messages.dart';
 import '../providers/auth_provider.dart';
+import '../../policies/data/policy_slugs.dart';
+import '../../policies/widgets/policy_links.dart';
 import '../widgets/auth_text_field.dart';
 
+part '../widgets/policy_consent_checkbox.dart';
 part '../widgets/register_confirm_sheet.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
@@ -24,6 +27,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _passwordCtrl = TextEditingController();
   final _confirmCtrl  = TextEditingController();
   bool _obscure = true;
+  bool _policiesAccepted = false;
 
 
   @override
@@ -49,6 +53,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   }
 
   Future<void> _submit() async {
+    // Belt and braces with the disabled button: `onFieldSubmitted` on the last field also calls
+    // this, so the keyboard's Done key must not be a way around the checkbox.
+    if (!_policiesAccepted) return;
     if (!_formKey.currentState!.validate()) return;
 
     // Confirm both addresses before the account exists. Once Supabase has the signup, the campus
@@ -65,6 +72,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           _emailCtrl.text.trim(),
           _passwordCtrl.text,
           contactEmail: _contactCtrl.text.trim(),
+          policiesAcceptedVersion: kPolicyVersion,
         );
     if (!mounted) return;
     final error = ref.read(authNotifierProvider).error;
@@ -204,10 +212,19 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         onFieldSubmitted: (_) => _submit(),
                         validator: (v) => v == _passwordCtrl.text ? null : 'Passwords do not match',
                       ),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 20),
+                      _PolicyConsentCheckbox(
+                        accepted: _policiesAccepted,
+                        onChanged: (value) =>
+                            setState(() => _policiesAccepted = value),
+                      ),
+                      const SizedBox(height: 20),
                       _ActionButton(
                         label: 'Create Account',
                         isLoading: isLoading,
+                        // Disabled rather than tappable-then-refused: a button that looks ready
+                        // and then tells you no is worse than one that visibly is not ready yet.
+                        enabled: _policiesAccepted,
                         onTap: _submit,
                       ),
                       const SizedBox(height: 20),
@@ -317,12 +334,21 @@ class _ActionButton extends StatelessWidget {
   final String label;
   final bool isLoading;
   final VoidCallback onTap;
-  const _ActionButton({required this.label, required this.isLoading, required this.onTap});
+  final bool enabled;
+  const _ActionButton({
+    required this.label,
+    required this.isLoading,
+    required this.onTap,
+    this.enabled = true,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: isLoading ? null : onTap,
+    final active = enabled && !isLoading;
+    return Opacity(
+      opacity: active ? 1 : 0.45,
+      child: GestureDetector(
+      onTap: active ? onTap : null,
       child: Container(
         height: 48,
         decoration: BoxDecoration(
@@ -356,6 +382,7 @@ class _ActionButton extends StatelessWidget {
                   ),
                 ),
         ),
+      ),
       ),
     );
   }
