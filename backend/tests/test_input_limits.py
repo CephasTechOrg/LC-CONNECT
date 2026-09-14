@@ -14,18 +14,27 @@ from pydantic import ValidationError
 from app.features.campus_hub.schema import CampusResourceCreate
 from app.features.profiles.schema import ProfileUpdate
 
+# Two different caps, for two different reasons.
+#
+#   _MAX_SELECTIONS (5)   a product rule on what a student may choose — five is enough to say who
+#                         you are, and few enough that the answers stay meaningful.
+#   _MAX_LOOKUP_ITEMS (30) the abuse ceiling described above, still guarding `looking_for_codes`.
+_SELECTION_FIELDS = ['interests', 'languages_spoken', 'languages_learning']
 
-def test_interests_list_is_capped():
+
+@pytest.mark.parametrize('field', _SELECTION_FIELDS)
+def test_a_student_may_choose_five(field):
+    payload = ProfileUpdate(**{field: [f'Item {i}' for i in range(5)]})
+    assert len(getattr(payload, field)) == 5
+
+
+@pytest.mark.parametrize('field', _SELECTION_FIELDS)
+def test_a_sixth_selection_is_refused(field):
     with pytest.raises(ValidationError):
-        ProfileUpdate(interests=[f'Interest {i}' for i in range(31)])
+        ProfileUpdate(**{field: [f'Item {i}' for i in range(6)]})
 
 
-def test_interests_list_at_the_cap_is_accepted():
-    payload = ProfileUpdate(interests=[f'Interest {i}' for i in range(30)])
-    assert payload.interests is not None and len(payload.interests) == 30
-
-
-@pytest.mark.parametrize('field', ['interests', 'languages_spoken', 'languages_learning', 'looking_for_codes'])
+@pytest.mark.parametrize('field', [*_SELECTION_FIELDS, 'looking_for_codes'])
 def test_every_lookup_list_is_capped(field):
     """All four write to shared/lookup vocabularies — none may be left unbounded."""
     with pytest.raises(ValidationError):

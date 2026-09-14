@@ -30,6 +30,12 @@ class Match(Base):
     user_a_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('users.id', ondelete='CASCADE'), index=True, nullable=False)
     user_b_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('users.id', ondelete='CASCADE'), index=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    # Set when either side disconnects. The row is kept rather than deleted: `messages.match_id`
+    # is ON DELETE CASCADE, so removing a match would wipe the whole conversation for *both*
+    # people — a harsher outcome than blocking, which only hides. Keeping the row also keeps
+    # thread addressing working (`/messages/threads/{match_id}`), so the history stays readable
+    # while the connection itself is over.
+    disconnected_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class Block(Base):

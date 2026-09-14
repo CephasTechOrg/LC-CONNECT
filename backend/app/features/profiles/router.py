@@ -17,7 +17,7 @@ from app.features.profiles.service import (
 from app.models import ActivityParticipant, Match, Message, Profile, User, UserLanguage
 from app.shared.image_processing import sanitize_avatar
 from app.shared.onboarding import compute_onboarding_completed
-from app.shared.policies import assert_profile_visible
+from app.shared.policies import assert_profile_visible, connection_state
 from app.shared.profiles import get_profile_by_user_id, profile_load_options
 from app.shared.rate_limit import avatar_upload_limit
 from app.shared.schemas import ProfilePublic
@@ -123,6 +123,9 @@ async def get_profile(profile_id: UUID, current_user: User = Depends(require_ema
     # Enforce hidden / verified-only / block visibility (was only checking is_hidden).
     await assert_profile_visible(db, viewer=current_user, profile=profile)
     public = profile_to_public(profile)
+    public = public.model_copy(update={
+        'connection_state': await connection_state(db, viewer_id=current_user.id, other_id=profile.user_id),
+    })
     # For staff, attach their verified campus position so a student sees the full picture —
     # title, department, office, availability — in one place (email comes from the serializer).
     if public.role in ('staff', 'admin'):

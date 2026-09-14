@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.dependencies import require_verified_connect_student
+from app.features.auth.schema import MessageResponse
 from app.features.connections.schema import (
     ConnectionRequestCreate,
     ConnectionRequestEnriched,
@@ -125,6 +126,53 @@ async def outgoing_requests(current_user: User = Depends(require_verified_connec
     return await _enrich(db, requests, lambda r: r.receiver_id)
 
 
+@router.post('/{request_id}/withdraw', response_model=MessageResponse)
+async def withdraw_request(
+    request_id: UUID,
+    current_user: User = Depends(require_verified_connect_student),
+    db: AsyncSession = Depends(get_db),
+) -> MessageResponse:
+    """Take back a request you sent, while it is still pending.
+
+    Deletes the row rather than marking it withdrawn: `uq_connection_sender_receiver` is on the
+    pair, so a kept row would block the sender from ever asking again. Nothing references a
+    pending request, so there is nothing to orphan.
+    """
+    request = await db.get(ConnectionRequest, request_id)
+    # 404 rather than 403 for someone else's request — never confirm that an id exists.
+    if request is None or request.sender_id != current_user.id or request.status != 'pending':
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Pending request not found')
+    await db.delete(request)
+    await db.commit()
+    return MessageResponse(message='Request withdrawn')
+
+
+@router.post('/disconnect/{user_id}', response_model=MessageResponse)
+async def disconnect_from_user(
+    user_id: UUID,
+    current_user: User = Depends(require_verified_connect_student),
+    db: AsyncSession = Depends(get_db),
+) -> MessageResponse:
+    """End a connection without blocking the person.
+
+    Flags the row instead of deleting it. `messages.match_id` is ON DELETE CASCADE, so a delete
+    would wipe the conversation for **both** people — a harsher outcome than blocking, which only
+    hides. It would also break `/messages/threads/{match_id}`. Flagging ends the connection,
+    stops new DMs and group invites, and leaves the history intact for both sides.
+
+    Either party may disconnect, and the other is not notified — the same quiet exit blocking has.
+    """
+    # Keyed on the *person*, not the match row: clients reach this from a profile, where they
+    # know who they are looking at but have never been told a match id.
+    match = await existing_match(db, current_user.id, user_id)
+    if match is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Connection not found')
+    if match.disconnected_at is None:
+        match.disconnected_at = datetime.now(UTC)
+        await db.commit()
+    return MessageResponse(message='Disconnected')
+
+
 @router.post('/{request_id}/accept', response_model=MatchRead)
 async def accept_request(request_id: UUID, current_user: User = Depends(require_verified_connect_student), db: AsyncSession = Depends(get_db)):
     request = await db.get(ConnectionRequest, request_id)
@@ -141,6 +189,9 @@ async def accept_request(request_id: UUID, current_user: User = Depends(require_
         match = Match(user_a_id=left, user_b_id=right)
         db.add(match)
         await db.flush()
+    # Reconnecting reuses the old row (uq_match_pair forbids a second one), so the disconnect
+    # flag has to be cleared or the pair stays disconnected despite an accepted request.
+    match.disconnected_at = None
     await ensure_dm_conversation(db, match)  # every match gets its conversation
     await db.commit()
     await db.refresh(match)

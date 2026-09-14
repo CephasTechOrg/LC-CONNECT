@@ -164,6 +164,33 @@ class ConnectionsNotifier extends AsyncNotifier<ConnectionsState> {
     ref.invalidate(threadsNotifierProvider);
   }
 
+  /// Take back a request you sent, while it is still pending.
+  ///
+  /// The server deletes the row rather than marking it withdrawn, so the pair is free to connect
+  /// again later — a kept row would trip the sender/receiver unique constraint forever.
+  Future<void> withdraw(String requestId) async {
+    final client = ref.read(apiClientProvider);
+    await client.dio.post('/connections/$requestId/withdraw');
+    final current = state.asData?.value;
+    if (current == null) return;
+    state = AsyncData(current.copyWith(
+      outgoing: current.outgoing.where((r) => r.id != requestId).toList(),
+    ));
+  }
+
+  /// End a connection without blocking the person.
+  ///
+  /// The server flags the match rather than deleting it, so the conversation history survives for
+  /// both sides — deleting would cascade the messages away for the other person too.
+  Future<void> disconnect(String userId) async {
+    final client = ref.read(apiClientProvider);
+    await client.dio.post('/connections/disconnect/$userId');
+    // The pair is no longer connected: the DM must leave the inbox and they become discoverable
+    // again, so both caches are stale.
+    ref.invalidate(threadsNotifierProvider);
+    ref.invalidateSelf();
+  }
+
   Future<void> decline(String requestId) async {
     final client = ref.read(apiClientProvider);
     await client.dio.post('/connections/$requestId/decline');

@@ -16,7 +16,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.features.campus_positions.service import get_primary_position
-from app.models import Block, CampusPosition, ConversationMember, Match, Profile, User
+from app.models import (
+    Block,
+    CampusPosition,
+    ConnectionRequest,
+    ConversationMember,
+    Match,
+    Profile,
+    User,
+)
 
 
 async def users_are_blocked(db: AsyncSession, user_a: UUID, user_b: UUID) -> bool:
@@ -40,10 +48,47 @@ async def users_are_connected(db: AsyncSession, user_a: UUID, user_b: UUID) -> b
             or_(
                 (Match.user_a_id == user_a) & (Match.user_b_id == user_b),
                 (Match.user_a_id == user_b) & (Match.user_b_id == user_a),
-            )
+            ),
+            # A disconnected pair is not connected: group invites and DMs must both stop.
+            Match.disconnected_at.is_(None),
         )
     )
     return result.scalar_one_or_none() is not None
+
+
+async def connection_state(db: AsyncSession, *, viewer_id: UUID, other_id: UUID) -> str:
+    """How `viewer_id` stands with `other_id`: the value a Connect button should render from.
+
+    Exists because the profile screen had no way to know. It tracked "did I just tap Connect?" in
+    local state, so reopening a profile showed **Connect** again for someone you had already
+    requested — and tapping it returned 409 `Connection request already exists`. Discovery never
+    had the bug because the backend filters pending and matched people out of the card feed;
+    profiles are reachable from search, notifications and rosters, which do not.
+
+    One of: `self`, `connected`, `outgoing_pending`, `incoming_pending`, `none`.
+    """
+    if viewer_id == other_id:
+        return 'self'
+
+    if await users_are_connected(db, viewer_id, other_id):
+        return 'connected'
+
+    pending = (
+        await db.execute(
+            select(ConnectionRequest.sender_id).where(
+                ConnectionRequest.status == 'pending',
+                or_(
+                    (ConnectionRequest.sender_id == viewer_id)
+                    & (ConnectionRequest.receiver_id == other_id),
+                    (ConnectionRequest.sender_id == other_id)
+                    & (ConnectionRequest.receiver_id == viewer_id),
+                ),
+            )
+        )
+    ).scalars().first()
+    if pending is None:
+        return 'none'
+    return 'outgoing_pending' if pending == viewer_id else 'incoming_pending'
 
 
 # Campus official roles that may hold a verified position and participate in staff DMs.

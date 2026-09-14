@@ -6,11 +6,14 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/avatar_widget.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../../core/api/api_error.dart';
+import '../../connections/providers/connections_provider.dart';
 import '../../discovery/providers/discovery_provider.dart';
 import '../../messages/providers/messages_provider.dart';
 import '../../messages/providers/staff_messaging_provider.dart';
 import '../providers/profile_provider.dart';
 
+part '../widgets/public_profile_connect_bar.dart';
 part '../widgets/public_profile_staff.dart';
 
 class PublicProfileScreen extends ConsumerWidget {
@@ -70,7 +73,10 @@ class _PublicBody extends ConsumerStatefulWidget {
 
 class _PublicBodyState extends ConsumerState<_PublicBody> {
   bool _connecting = false;
-  bool _requestSent = false;
+  /// Seeded from the server so reopening a profile shows the true state. It was previously a
+  /// bare `false`, which meant a profile you had already requested rendered **Connect** again
+  /// and the tap came back 409 "Connection request already exists".
+  late ConnectionStatus _state = widget.profile.connectionStatus;
   bool _messaging = false;
 
   /// Start (or open) a direct thread with this staff member. A student may message staff because
@@ -101,8 +107,56 @@ class _PublicBodyState extends ConsumerState<_PublicBody> {
     }
   }
 
+  /// Ends the connection without blocking. Offered because blocking was otherwise the only way
+  /// out, and blocking is a far heavier thing to do to someone you simply drifted from.
+  Future<void> _disconnect() async {
+    final name = widget.profile.displayName ?? 'this person';
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Disconnect?', style: GoogleFonts.dmSans(fontWeight: FontWeight.w700)),
+        content: Text(
+          "You and $name will no longer be connected, and you won't be able to message each "
+          "other. They are not told. Your conversation stays, and you can connect again later.",
+          style: GoogleFonts.dmSans(height: 1.45),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text('Cancel', style: GoogleFonts.dmSans()),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text('Disconnect',
+                style: GoogleFonts.dmSans(
+                    color: AppColors.error, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    try {
+      await ref
+          .read(connectionsNotifierProvider.notifier)
+          .disconnect(widget.profile.userId);
+      if (!mounted) return;
+      setState(() => _state = ConnectionStatus.none);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(
+          apiErrorMessage(error, fallback: "Couldn't disconnect. Please try again."),
+          style: GoogleFonts.dmSans(),
+        ),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ));
+    }
+  }
+
   Future<void> _connect() async {
-    if (_connecting || _requestSent) return;
+    if (_connecting || _state != ConnectionStatus.none) return;
     setState(() => _connecting = true);
     try {
       await ref.read(discoveryNotifierProvider.notifier).connect(
@@ -113,7 +167,7 @@ class _PublicBodyState extends ConsumerState<_PublicBody> {
       if (!mounted) return;
       setState(() {
         _connecting = false;
-        _requestSent = true;
+        _state = ConnectionStatus.outgoingPending;
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -184,77 +238,15 @@ class _PublicBodyState extends ConsumerState<_PublicBody> {
               ? _StaffMessageBar(loading: _messaging, onMessage: _message)
               : _ConnectBar(
                   loading: _connecting,
-                  sent: _requestSent,
+                  state: _state,
                   onConnect: _connect,
+                  onDisconnect: _disconnect,
                 ),
       ],
     );
   }
 }
 
-class _ConnectBar extends StatelessWidget {
-  final bool loading;
-  final bool sent;
-  final VoidCallback onConnect;
-  const _ConnectBar({
-    required this.loading,
-    required this.sent,
-    required this.onConnect,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.fromLTRB(
-        20,
-        12,
-        20,
-        12 + MediaQuery.paddingOf(context).bottom,
-      ),
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        border: Border(top: BorderSide(color: AppColors.border)),
-      ),
-      child: SizedBox(
-        width: double.infinity,
-        height: 52,
-        child: FilledButton.icon(
-          onPressed: sent || loading ? null : onConnect,
-          icon: loading
-              ? const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.white,
-                  ),
-                )
-              : Icon(
-                  sent ? Icons.check_rounded : Icons.person_add_alt_1,
-                  size: 18,
-                ),
-          label: Text(
-            sent ? 'Request sent' : 'Connect',
-            style: GoogleFonts.dmSans(
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          style: FilledButton.styleFrom(
-            backgroundColor: sent ? AppColors.green : AppColors.primary,
-            disabledBackgroundColor:
-                sent ? AppColors.green : AppColors.primary.withValues(alpha: 0.6),
-            disabledForegroundColor: Colors.white,
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(13),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 // ── Hero card ─────────────────────────────────────────────────────
 

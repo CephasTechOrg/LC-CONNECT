@@ -39,6 +39,12 @@ class ProfilePublic(BaseModel):
     # Position context is filled only on the single-profile view (kept off list serializations).
     role: str = 'student'
     contact_email: str | None = None
+    # How the viewer stands with this person: self | connected | outgoing_pending |
+    # incoming_pending | none. Filled only on the single-profile view, like the position fields
+    # below — list serializations leave it null. The Connect button renders from this instead of
+    # from screen-local state, which reset on every open and produced a "Connect" button that
+    # 409'd for someone you had already requested.
+    connection_state: str | None = None
     position_title: str | None = None
     position_department: str | None = None
     position_office: str | None = None

@@ -5,9 +5,27 @@ import '../../auth/providers/auth_provider.dart';
 
 // ── Public profile (viewing another user) ─────────────────────────
 
+/// How the viewer stands with this person, straight from the server:
+/// `self` · `connected` · `outgoing_pending` · `incoming_pending` · `none`.
+///
+/// The Connect button used to render from screen-local state that reset on every open, so
+/// reopening a profile you had already messaged showed **Connect** again and the tap 409'd.
+enum ConnectionStatus { none, outgoingPending, incomingPending, connected, self }
+
+ConnectionStatus _connectionStatusFrom(String? raw) => switch (raw) {
+      'connected' => ConnectionStatus.connected,
+      'outgoing_pending' => ConnectionStatus.outgoingPending,
+      'incoming_pending' => ConnectionStatus.incomingPending,
+      'self' => ConnectionStatus.self,
+      // Unknown or absent (list serializations omit it) is the safe default: show Connect, and
+      // let the server reject a duplicate rather than the client guessing it is connected.
+      _ => ConnectionStatus.none,
+    };
+
 class PublicProfile {
   final String profileId;
   final String userId;
+  final ConnectionStatus connectionStatus;
   final String? displayName;
   final String? pronouns;
   final String? major;
@@ -33,6 +51,7 @@ class PublicProfile {
   const PublicProfile({
     required this.profileId,
     required this.userId,
+    this.connectionStatus = ConnectionStatus.none,
     this.displayName,
     this.pronouns,
     this.major,
@@ -59,6 +78,7 @@ class PublicProfile {
   factory PublicProfile.fromJson(Map<String, dynamic> j) => PublicProfile(
         profileId: j['id'] as String,
         userId: j['user_id'] as String,
+        connectionStatus: _connectionStatusFrom(j['connection_state'] as String?),
         displayName: j['display_name'] as String?,
         pronouns: j['pronouns'] as String?,
         major: j['major'] as String?,

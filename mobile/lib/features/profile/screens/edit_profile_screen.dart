@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../onboarding/providers/onboarding_provider.dart';
+import '../../onboarding/widgets/onboarding_shared_widgets.dart';
 import '../providers/profile_provider.dart';
 
 class EditProfileScreen extends ConsumerStatefulWidget {
@@ -25,6 +26,10 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   final Set<String> _interests = {};
   final Set<String> _langSpoken = {};
   final Set<String> _langLearning = {};
+  // Anything the student typed that is not in the seeded list yet — shown as chips here, and
+  // created server-side on save by `get_or_create_*`.
+  final Set<String> _customInterests = {};
+  final Set<String> _customLanguages = {};
   final Set<String> _lookingFor = {};
   bool _initialized = false;
   bool _saving = false;
@@ -295,9 +300,14 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           const SizedBox(height: 28),
           _section('Interests', optional: true),
           const SizedBox(height: 12),
-          _ChipGrid(
-            options: data.interests,
+          OnboardingChipGrid(
+            options: [...data.interests, ..._customInterests],
             selected: _interests,
+            maxSelections: kMaxSelections,
+            onAddCustom: (value) => setState(() {
+              _customInterests.add(value);
+              _interests.add(value);
+            }),
             onToggle: (v) => setState(() {
               _interests.contains(v)
                   ? _interests.remove(v)
@@ -307,9 +317,14 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           const SizedBox(height: 28),
           _section('Languages I speak', optional: true),
           const SizedBox(height: 12),
-          _ChipGrid(
-            options: data.languages,
+          OnboardingChipGrid(
+            options: [...data.languages, ..._customLanguages],
             selected: _langSpoken,
+            maxSelections: kMaxSelections,
+            onAddCustom: (value) => setState(() {
+              _customLanguages.add(value);
+              _langSpoken.add(value);
+            }),
             onToggle: (v) => setState(() {
               _langSpoken.contains(v)
                   ? _langSpoken.remove(v)
@@ -319,9 +334,14 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           const SizedBox(height: 28),
           _section("Languages I'm learning", optional: true),
           const SizedBox(height: 12),
-          _ChipGrid(
-            options: data.languages,
+          OnboardingChipGrid(
+            options: [...data.languages, ..._customLanguages],
             selected: _langLearning,
+            maxSelections: kMaxSelections,
+            onAddCustom: (value) => setState(() {
+              _customLanguages.add(value);
+              _langLearning.add(value);
+            }),
             onToggle: (v) => setState(() {
               _langLearning.contains(v)
                   ? _langLearning.remove(v)
@@ -350,7 +370,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               ],
             ),
             const SizedBox(height: 12),
-            _ChipGrid(
+            OnboardingChipGrid(
               options: data.lookingFor.map((l) => l['name']!).toList(),
               optionKeys: data.lookingFor.map((l) => l['code']!).toList(),
               selected: _lookingFor,
@@ -473,59 +493,3 @@ class _FieldLabel extends StatelessWidget {
   }
 }
 
-class _ChipGrid extends StatelessWidget {
-  final List<String> options;
-  final List<String>? optionKeys;
-  final Set<String> selected;
-  final ValueChanged<String> onToggle;
-  final bool highlight;
-
-  const _ChipGrid({
-    required this.options,
-    this.optionKeys,
-    required this.selected,
-    required this.onToggle,
-    this.highlight = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: List.generate(options.length, (i) {
-        final key = optionKeys?[i] ?? options[i];
-        final label = options[i];
-        final isOn = selected.contains(key);
-        return GestureDetector(
-          onTap: () => onToggle(key),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
-            padding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            decoration: BoxDecoration(
-              color: isOn
-                  ? (highlight ? AppColors.primary : AppColors.primarySoft)
-                  : Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: isOn ? AppColors.primary : AppColors.border,
-                width: 1.5,
-              ),
-            ),
-            child: Text(
-              label,
-              style: GoogleFonts.dmSans(
-                fontSize: 13,
-                fontWeight: isOn ? FontWeight.w600 : FontWeight.w400,
-                color: isOn
-                    ? (highlight ? Colors.white : AppColors.primary)
-                    : AppColors.textMid,
-              ),
-            ),
-          ),
-        );
-      }),
-    );
-  }
-}

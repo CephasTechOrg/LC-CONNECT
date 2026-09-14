@@ -1,11 +1,55 @@
 part of '../screens/connections_screen.dart';
 
-class _OutgoingCard extends StatelessWidget {
+class _OutgoingCard extends ConsumerWidget {
   final ConnectionRequest request;
   const _OutgoingCard({required this.request});
 
+  /// Confirmed because it cannot be undone from here — withdrawing deletes the request, and
+  /// asking again means finding the person and starting over.
+  Future<void> _withdraw(BuildContext context, WidgetRef ref) async {
+    final name = request.partnerProfile?.displayName ?? 'this person';
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Withdraw request?',
+            style: GoogleFonts.dmSans(fontWeight: FontWeight.w700)),
+        content: Text(
+          "$name will no longer see your request. You can send another one later.",
+          style: GoogleFonts.dmSans(height: 1.45),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text('Keep it', style: GoogleFonts.dmSans()),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text('Withdraw',
+                style: GoogleFonts.dmSans(
+                    color: AppColors.error, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+    try {
+      await ref.read(connectionsNotifierProvider.notifier).withdraw(request.id);
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(
+          apiErrorMessage(error, fallback: "Couldn't withdraw that. Please try again."),
+          style: GoogleFonts.dmSans(),
+        ),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ));
+    }
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final r = request;
     final p = r.partnerProfile;
 
@@ -87,6 +131,19 @@ class _OutgoingCard extends StatelessWidget {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
+              ),
+              const SizedBox(height: 2),
+              TextButton(
+                onPressed: () => _withdraw(context, ref),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                  minimumSize: const Size(0, 28),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  foregroundColor: AppColors.textMuted,
+                ),
+                child: Text('Withdraw',
+                    style: GoogleFonts.dmSans(
+                        fontSize: 11.5, fontWeight: FontWeight.w600)),
               ),
             ],
           ),

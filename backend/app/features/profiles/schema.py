@@ -15,6 +15,11 @@ from app.shared.schemas import ProfilePublic
 _LookupName = Annotated[str, StringConstraints(min_length=1, max_length=80, strip_whitespace=True)]
 _MAX_LOOKUP_ITEMS = 30
 
+# Product cap, separate from the abuse cap above and much tighter. Five is enough to say who you
+# are and few enough that the answers stay meaningful — a profile listing twenty interests tells
+# a reader nothing. Enforced here as well as in the app so it holds whatever the client does.
+_MAX_SELECTIONS = 5
+
 
 class ProfileUpdate(BaseModel):
     display_name: str | None = Field(default=None, max_length=120)
@@ -27,9 +32,9 @@ class ProfileUpdate(BaseModel):
     is_hidden: bool | None = None
     allow_messages_from_matches_only: bool | None = None
     show_profile_to_verified_only: bool | None = None
-    interests: list[_LookupName] | None = Field(default=None, max_length=_MAX_LOOKUP_ITEMS)
-    languages_spoken: list[_LookupName] | None = Field(default=None, max_length=_MAX_LOOKUP_ITEMS)
-    languages_learning: list[_LookupName] | None = Field(default=None, max_length=_MAX_LOOKUP_ITEMS)
+    interests: list[_LookupName] | None = Field(default=None, max_length=_MAX_SELECTIONS)
+    languages_spoken: list[_LookupName] | None = Field(default=None, max_length=_MAX_SELECTIONS)
+    languages_learning: list[_LookupName] | None = Field(default=None, max_length=_MAX_SELECTIONS)
     looking_for_codes: list[_LookupName] | None = Field(default=None, max_length=_MAX_LOOKUP_ITEMS)
 
 

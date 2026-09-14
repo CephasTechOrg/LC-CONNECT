@@ -91,12 +91,27 @@ class OnboardingLabel extends StatelessWidget {
   }
 }
 
+/// How many interests / languages a student may choose.
+///
+/// Matches `_MAX_SELECTIONS` in `backend/app/features/profiles/schema.py`, which enforces it
+/// server-side too. Five is enough to say who you are and few enough that the answers stay
+/// meaningful — a profile listing twenty interests tells a reader nothing.
+const int kMaxSelections = 5;
+
 class OnboardingChipGrid extends StatelessWidget {
   final List<String> options;
   final List<String>? optionKeys;
   final Set<String> selected;
   final ValueChanged<String> onToggle;
   final bool highlight;
+
+  /// When set, unselected chips stop responding once this many are chosen. The limit is shown
+  /// rather than enforced silently — a chip that just does nothing reads as a broken app.
+  final int? maxSelections;
+
+  /// When set, an "Add your own" chip appears. The seeded list is a starting point, not the whole
+  /// vocabulary: the backend creates anything unrecognised on save.
+  final ValueChanged<String>? onAddCustom;
 
   const OnboardingChipGrid({
     super.key,
@@ -105,19 +120,64 @@ class OnboardingChipGrid extends StatelessWidget {
     required this.selected,
     required this.onToggle,
     this.highlight = false,
+    this.maxSelections,
+    this.onAddCustom,
   });
+
+  bool get _atLimit =>
+      maxSelections != null && selected.length >= maxSelections!;
+
+  Future<void> _promptForCustom(BuildContext context) async {
+    final controller = TextEditingController();
+    final value = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Add your own',
+            style: GoogleFonts.dmSans(fontWeight: FontWeight.w700)),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLength: 40,
+          textCapitalization: TextCapitalization.words,
+          decoration: const InputDecoration(
+            hintText: 'e.g. Afrobeats',
+            counterText: '',
+          ),
+          onSubmitted: (v) => Navigator.of(context).pop(v.trim()),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('Cancel', style: GoogleFonts.dmSans()),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(controller.text.trim()),
+            child: Text('Add',
+                style: GoogleFonts.dmSans(fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+    if (value != null && value.isNotEmpty) onAddCustom!(value);
+  }
 
   @override
   Widget build(BuildContext context) {
     return Wrap(
       spacing: 8,
       runSpacing: 8,
-      children: List.generate(options.length, (i) {
+      children: [
+        ...List.generate(options.length, (i) {
         final key = optionKeys?[i] ?? options[i];
         final label = options[i];
         final isOn = selected.contains(key);
-        return GestureDetector(
-          onTap: () => onToggle(key),
+        // At the limit, already-chosen chips stay tappable so you can swap one out; it is only
+        // adding a sixth that is blocked.
+        final locked = _atLimit && !isOn;
+        return Opacity(
+          opacity: locked ? 0.4 : 1,
+          child: GestureDetector(
+          onTap: locked ? null : () => onToggle(key),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 150),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -142,8 +202,40 @@ class OnboardingChipGrid extends StatelessWidget {
               ),
             ),
           ),
+          ),
         );
       }),
+        if (onAddCustom != null && !_atLimit)
+          GestureDetector(
+            onTap: () => _promptForCustom(context),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: AppColors.primary,
+                  width: 1.5,
+                  style: BorderStyle.solid,
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.add_rounded, size: 15, color: AppColors.primary),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Add your own',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

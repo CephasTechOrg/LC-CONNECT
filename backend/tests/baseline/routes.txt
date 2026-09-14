@@ -141,9 +141,11 @@ POST /api/v1/campus-hub/my-posts
 POST /api/v1/campus-hub/my-posts/{post_id}/archive
 POST /api/v1/campus-hub/my-posts/{post_id}/publish
 POST /api/v1/campus-positions/me
+POST /api/v1/connections/disconnect/{user_id}
 POST /api/v1/connections/request
 POST /api/v1/connections/{request_id}/accept
 POST /api/v1/connections/{request_id}/decline
+POST /api/v1/connections/{request_id}/withdraw
 POST /api/v1/devices
 POST /api/v1/employers/me/accept-agreement
 POST /api/v1/employers/opportunities

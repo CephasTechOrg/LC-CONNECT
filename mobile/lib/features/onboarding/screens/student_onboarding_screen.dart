@@ -28,11 +28,13 @@ class _StudentOnboardingScreenState extends ConsumerState<StudentOnboardingScree
   final _bioCtrl = TextEditingController();
   final _locationCtrl = TextEditingController();
   final Set<String> _interests = {};
+  final Set<String> _customInterests = {};
 
   // Step 2 — Connect
   final Set<String> _lookingFor = {};
   final Set<String> _langSpoken = {};
   final Set<String> _langLearning = {};
+  final Set<String> _customLanguages = {};
 
   @override
   void initState() {
@@ -398,8 +400,13 @@ class _StudentOnboardingScreenState extends ConsumerState<StudentOnboardingScree
         OnboardingLabel('Interests', optional: true),
         const SizedBox(height: 10),
         OnboardingChipGrid(
-          options: data.interests,
+          options: [...data.interests, ..._customInterests],
           selected: _interests,
+          maxSelections: kMaxSelections,
+          onAddCustom: (value) => setState(() {
+            _customInterests.add(value);
+            _interests.add(value);
+          }),
           onToggle: (v) => setState(() {
             _interests.contains(v)
                 ? _interests.remove(v)
@@ -419,7 +426,7 @@ class _StudentOnboardingScreenState extends ConsumerState<StudentOnboardingScree
         Row(
           children: [
             Text(
-              "I'm looking for",
+              "I'm open to",
               style: GoogleFonts.dmSans(
                 fontSize: 13.5,
                 fontWeight: FontWeight.w600,
@@ -450,8 +457,13 @@ class _StudentOnboardingScreenState extends ConsumerState<StudentOnboardingScree
         OnboardingLabel('Languages I speak', optional: true),
         const SizedBox(height: 10),
         OnboardingChipGrid(
-          options: data.languages,
+          options: [...data.languages, ..._customLanguages],
           selected: _langSpoken,
+          maxSelections: kMaxSelections,
+          onAddCustom: (value) => setState(() {
+            _customLanguages.add(value);
+            _langSpoken.add(value);
+          }),
           onToggle: (v) => setState(() {
             _langSpoken.contains(v)
                 ? _langSpoken.remove(v)
@@ -462,8 +474,13 @@ class _StudentOnboardingScreenState extends ConsumerState<StudentOnboardingScree
         OnboardingLabel("Languages I'm learning", optional: true),
         const SizedBox(height: 10),
         OnboardingChipGrid(
-          options: data.languages,
+          options: [...data.languages, ..._customLanguages],
           selected: _langLearning,
+          maxSelections: kMaxSelections,
+          onAddCustom: (value) => setState(() {
+            _customLanguages.add(value);
+            _langLearning.add(value);
+          }),
           onToggle: (v) => setState(() {
             _langLearning.contains(v)
                 ? _langLearning.remove(v)

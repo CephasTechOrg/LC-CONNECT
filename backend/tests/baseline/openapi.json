@@ -4875,6 +4875,17 @@
             "title": "Connection Count",
             "type": "integer"
           },
+          "connection_state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Connection State"
+          },
           "contact_email": {
             "anyOf": [
               {
@@ -5561,6 +5572,17 @@
             ],
             "title": "Class Year"
           },
+          "connection_state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Connection State"
+          },
           "contact_email": {
             "anyOf": [
               {
@@ -5824,7 +5846,7 @@
                   "minLength": 1,
                   "type": "string"
                 },
-                "maxItems": 30,
+                "maxItems": 5,
                 "type": "array"
               },
               {
@@ -5852,7 +5874,7 @@
                   "minLength": 1,
                   "type": "string"
                 },
-                "maxItems": 30,
+                "maxItems": 5,
                 "type": "array"
               },
               {
@@ -5869,7 +5891,7 @@
                   "minLength": 1,
                   "type": "string"
                 },
-                "maxItems": 30,
+                "maxItems": 5,
                 "type": "array"
               },
               {
@@ -11713,6 +11735,55 @@
         ]
       }
     },
+    "/api/v1/connections/disconnect/{user_id}": {
+      "post": {
+        "description": "End a connection without blocking the person.\n\nFlags the row instead of deleting it. `messages.match_id` is ON DELETE CASCADE, so a delete\nwould wipe the conversation for **both** people \u2014 a harsher outcome than blocking, which only\nhides. It would also break `/messages/threads/{match_id}`. Flagging ends the connection,\nstops new DMs and group invites, and leaves the history intact for both sides.\n\nEither party may disconnect, and the other is not notified \u2014 the same quiet exit blocking has.",
+        "operationId": "disconnect_from_user_api_v1_connections_disconnect__user_id__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Disconnect From User",
+        "tags": [
+          "connections"
+        ]
+      }
+    },
     "/api/v1/connections/incoming": {
       "get": {
         "operationId": "incoming_requests_api_v1_connections_incoming_get",
@@ -11940,6 +12011,55 @@
           }
         ],
         "summary": "Decline Request",
+        "tags": [
+          "connections"
+        ]
+      }
+    },
+    "/api/v1/connections/{request_id}/withdraw": {
+      "post": {
+        "description": "Take back a request you sent, while it is still pending.\n\nDeletes the row rather than marking it withdrawn: `uq_connection_sender_receiver` is on the\npair, so a kept row would block the sender from ever asking again. Nothing references a\npending request, so there is nothing to orphan.",
+        "operationId": "withdraw_request_api_v1_connections__request_id__withdraw_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "request_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Request Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Withdraw Request",
         "tags": [
           "connections"
         ]
