@@ -90,6 +90,15 @@ class TypingStopFrame(BaseModel):
     conversation_id: UUID
 
 
+class PingFrame(BaseModel):
+    """Application-level keepalive. The idle reaper only sees *inbound application frames*
+    (`manager.touch` runs in the serve loop), so transport-level pings from uvicorn cannot keep
+    a socket alive. A reading-only client sends nothing for minutes, so without this its socket
+    is reaped at `WS_IDLE_TIMEOUT_SECONDS` and live delivery stops until it reconnects."""
+
+    type: Literal['ping']
+
+
 class ReadFrame(BaseModel):
     type: Literal['messages.read']
     conversation_id: UUID
@@ -97,7 +106,8 @@ class ReadFrame(BaseModel):
 
 
 InboundFrame = Annotated[
-    AuthFrame | SubscribeFrame | UnsubscribeFrame | SendFrame | TypingStartFrame | TypingStopFrame | ReadFrame,
+    AuthFrame | SubscribeFrame | UnsubscribeFrame | SendFrame | TypingStartFrame | TypingStopFrame
+    | ReadFrame | PingFrame,
     Field(discriminator='type'),
 ]
 
@@ -141,6 +151,11 @@ def auth_ok(user_id: UUID, heartbeat_seconds: int) -> dict[str, Any]:
     }
 
 
+def pong() -> dict[str, Any]:
+    """Reply to a client keepalive. Clients use its arrival to detect a half-open socket."""
+    return {'type': 'pong'}
+
+
 def error(code: str, message: str, request_id: UUID | None = None) -> dict[str, Any]:
     frame: dict[str, Any] = {'type': 'error', 'code': code, 'message': message}
     if request_id is not None:
@@ -175,7 +190,7 @@ def conversation_updated(message: Message) -> dict[str, Any]:
     return {'type': 'conversation.updated', 'conversation_id': addressing_id(message), 'message': serialize_message(message)}
 
 
-def typing_event(conversation_id: UUID, user_id: UUID, active: bool) -> dict[str, Any]:
+def typing_event(conversation_id: UUID | str, user_id: UUID, active: bool) -> dict[str, Any]:
     return {
         'type': 'typing',
         'conversation_id': str(conversation_id),
@@ -184,7 +199,9 @@ def typing_event(conversation_id: UUID, user_id: UUID, active: bool) -> dict[str
     }
 
 
-def read_receipt(conversation_id: UUID, user_id: UUID, through_message_id: UUID, read_at_iso: str) -> dict[str, Any]:
+def read_receipt(
+    conversation_id: UUID | str, user_id: UUID, through_message_id: UUID, read_at_iso: str
+) -> dict[str, Any]:
     return {
         'type': 'messages.receipt',
         'conversation_id': str(conversation_id),
@@ -211,6 +228,10 @@ def opportunity_event(audience: str) -> dict[str, Any]:
     return {'type': 'opportunity', 'audience': audience}
 
 
-def message_deleted(conversation_id: UUID, message_id: UUID) -> dict[str, Any]:
-    """A message was deleted for everyone — clients tombstone it in the open chat."""
+def message_deleted(conversation_id: UUID | str, message_id: UUID) -> dict[str, Any]:
+    """A message was deleted for everyone — clients tombstone it in the open chat.
+
+    `conversation_id` must be the **addressing** id (see `addressing_id`), not the canonical
+    conversation id, or the client's open-chat guard will not match it for a DM.
+    """
     return {'type': 'message.deleted', 'conversation_id': str(conversation_id), 'message_id': str(message_id)}

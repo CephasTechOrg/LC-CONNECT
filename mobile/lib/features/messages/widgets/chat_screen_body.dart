@@ -117,7 +117,9 @@ class _ChatScreenBody extends StatelessWidget {
             if (partnerTyping) _TypingIndicator(name: typingName),
             _InputBar(
               controller: inputController,
-              sending: false,
+              // A send is in flight while any bubble is still optimistic. Was hardcoded false,
+              // so the button never showed its in-flight state.
+              sending: messages.any((m) => m.status == MessageStatus.sending),
               onSend: onSend,
               onTyping: onTyping,
             ),

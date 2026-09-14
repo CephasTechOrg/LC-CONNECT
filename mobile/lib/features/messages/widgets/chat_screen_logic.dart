@@ -1,6 +1,6 @@
 part of '../screens/chat_screen.dart';
 
-mixin _ChatScreenLogic on _ChatScreenStateBase {
+mixin _ChatScreenLogic on _ChatScreenStateBase, _ChatSendLogic {
   Future<void> loadInitial() async {
     if (!validThread) return;
     final cached = await ref.read(chatMessageCacheProvider).load(widget.matchId);
@@ -152,6 +152,7 @@ mixin _ChatScreenLogic on _ChatScreenStateBase {
     seenServerIds.removeWhere((id) => !liveIds.contains(id));
   }
 
+  @override
   void scheduleCacheSave() {
     cacheSaveTimer?.cancel();
     cacheSaveTimer = Timer(const Duration(milliseconds: 400), () {
@@ -160,6 +161,7 @@ mixin _ChatScreenLogic on _ChatScreenStateBase {
     });
   }
 
+  @override
   bool get isNearBottom {
     if (!scrollController.hasClients) return true;
     final pos = scrollController.position;
@@ -180,36 +182,11 @@ mixin _ChatScreenLogic on _ChatScreenStateBase {
         markMineRead();
       case MessageDeleted(:final conversationId, :final messageId) when conversationId == widget.matchId:
         markDeleted(messageId);
-      case WsError(:final code, :final message):
-        handleWsError(code, message);
+      case WsError(:final code, :final message, :final requestId):
+        handleWsError(code, message, requestId: requestId);
       default:
         break;
     }
-  }
-
-  void handleWsError(String code, String message) {
-    if (code != 'rate_limited' && code != 'forbidden') return;
-    var failed = false;
-    setState(() {
-      for (var i = 0; i < messages.length; i++) {
-        if (messages[i].status == MessageStatus.sending) {
-          messages[i] = messages[i].copyWith(status: MessageStatus.failed);
-          failed = true;
-        }
-      }
-    });
-    if (!failed || !mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          code == 'rate_limited' ? 'Sending too fast — please wait a moment.' : message,
-          style: GoogleFonts.dmSans(color: Colors.white),
-        ),
-        backgroundColor: AppColors.error,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
   }
 
   void markDeleted(String messageId) {
@@ -235,43 +212,6 @@ mixin _ChatScreenLogic on _ChatScreenStateBase {
         ),
       );
     }
-  }
-
-  void mergeIncoming(ChatMessage msg) {
-    if (seenServerIds.contains(msg.id)) return;
-    if (msg.clientMessageId != null &&
-        messages.any((m) => m.clientMessageId == msg.clientMessageId)) {
-      seenServerIds.add(msg.id);
-      return;
-    }
-    setState(() {
-      seenServerIds.add(msg.id);
-      messages.add(msg);
-      messages.sort((a, b) => a.createdAt.compareTo(b.createdAt));
-    });
-    final isMine = msg.senderId == currentUserId;
-    if (isMine || isNearBottom) {
-      scrollToBottom(force: true);
-    } else {
-      setState(() => newWhileAway++);
-    }
-    scheduleCacheSave();
-  }
-
-  void reconcileAck(ChatMessage server) {
-    final cid = server.clientMessageId;
-    final idx = cid == null ? -1 : messages.indexWhere((m) => m.clientMessageId == cid);
-    sendTimers.remove(cid)?.cancel();
-    setState(() {
-      seenServerIds.add(server.id);
-      if (idx == -1) {
-        if (!messages.any((m) => m.id == server.id)) messages.add(server);
-      } else {
-        messages[idx] = server.copyWith(status: MessageStatus.sent);
-      }
-      messages.sort((a, b) => a.createdAt.compareTo(b.createdAt));
-    });
-    scheduleCacheSave();
   }
 
   void setPartnerTyping(bool active, [String? userId]) {
@@ -303,65 +243,6 @@ mixin _ChatScreenLogic on _ChatScreenStateBase {
     });
   }
 
-  void send() {
-    if (!validThread) return;
-    final text = inputController.text.trim();
-    if (text.isEmpty) return;
-    inputController.clear();
-    typingStopTimer?.cancel();
-    rt.sendTyping(widget.matchId, active: false);
-    final clientId = uuidV4();
-    final optimistic = ChatMessage(
-      id: 'local:$clientId',
-      matchId: widget.matchId,
-      senderId: currentUserId,
-      clientMessageId: clientId,
-      body: text,
-      createdAt: DateTime.now(),
-      status: MessageStatus.sending,
-    );
-    setState(() => messages.add(optimistic));
-    dispatchSend(clientId, text);
-    scrollToBottom(force: true);
-    scheduleCacheSave();
-  }
-
-  void dispatchSend(String clientId, String body) {
-    final accepted = rt.sendMessage(
-      conversationId: widget.matchId,
-      clientMessageId: clientId,
-      body: body,
-    );
-    if (!accepted) {
-      sendTimers.remove(clientId)?.cancel();
-      if (!mounted) return;
-      final idx = messages.indexWhere((m) => m.clientMessageId == clientId);
-      if (idx != -1) {
-        setState(() => messages[idx] = messages[idx].copyWith(status: MessageStatus.failed));
-      }
-      scheduleCacheSave();
-      _showOutboxFullSnack(context);
-      return;
-    }
-    sendTimers[clientId]?.cancel();
-    sendTimers[clientId] = Timer(_ChatScreenStateBase.sendTimeout, () {
-      if (!mounted) return;
-      final idx = messages.indexWhere((m) => m.clientMessageId == clientId);
-      if (idx != -1 && messages[idx].status == MessageStatus.sending) {
-        setState(() => messages[idx] = messages[idx].copyWith(status: MessageStatus.failed));
-      }
-    });
-  }
-
-  void retry(ChatMessage failed) {
-    final cid = failed.clientMessageId;
-    if (cid == null) return;
-    final idx = messages.indexWhere((m) => m.clientMessageId == cid);
-    if (idx == -1) return;
-    setState(() => messages[idx] = messages[idx].copyWith(status: MessageStatus.sending));
-    dispatchSend(cid, failed.body);
-  }
-
   void onUserTyping() {
     final now = DateTime.now();
     if (now.difference(lastTypingSent).inMilliseconds > 1500) {
@@ -370,16 +251,6 @@ mixin _ChatScreenLogic on _ChatScreenStateBase {
     }
     typingStopTimer?.cancel();
     typingStopTimer = Timer(const Duration(seconds: 3), () => rt.sendTyping(widget.matchId, active: false));
-  }
-
-  void sendRead() {
-    for (var i = messages.length - 1; i >= 0; i--) {
-      final m = messages[i];
-      if (!m.id.startsWith('local:')) {
-        rt.markRead(widget.matchId, m.id);
-        return;
-      }
-    }
   }
 
   void onScroll() {
@@ -403,6 +274,7 @@ mixin _ChatScreenLogic on _ChatScreenStateBase {
     scrollToBottom(force: true);
   }
 
+  @override
   void scrollToBottom({bool jump = false, bool force = false}) {
     if (!force && awayFromBottom) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {

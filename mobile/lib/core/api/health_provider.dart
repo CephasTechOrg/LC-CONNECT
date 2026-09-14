@@ -19,11 +19,21 @@ final backendStatusProvider =
 class BackendStatusNotifier extends Notifier<BackendStatus> {
   static const _onlineInterval = Duration(seconds: 45);
   static const _offlineInterval = Duration(seconds: 8);
-  static const _probeTimeout = Duration(seconds: 5);
+
+  /// Long enough to survive a cold start. The API is hosted on a plan that spins down when
+  /// idle, so the first request after a quiet period can take far longer than a warm one. A 5s
+  /// probe reported "offline" during exactly the window a user was trying to send in, while
+  /// the real request (30s timeout) was still in flight and about to succeed.
+  static const _probeTimeout = Duration(seconds: 15);
+
+  /// Consecutive failures before showing the offline banner. One failure is more often a cold
+  /// start or a blip than an outage, and a banner that cries wolf teaches users to ignore it.
+  static const _failuresBeforeOffline = 2;
 
   Timer? _timer;
   _LifecycleObserver? _lifecycle;
   int _probeGeneration = 0;
+  int _consecutiveFailures = 0;
   Dio? _probe;
 
   @override
@@ -59,17 +69,25 @@ class BackendStatusNotifier extends Notifier<BackendStatus> {
     final dio = _probe;
     if (dio == null) return;
 
-    BackendStatus next;
+    var reachable = true;
     try {
       await dio.get<void>('/health');
-      next = BackendStatus.online;
     } catch (_) {
-      next = BackendStatus.offline;
+      reachable = false;
     }
 
     if (gen != _probeGeneration) return; // superseded by a newer check
     if (!ref.mounted) return;
-    state = next;
+    _consecutiveFailures = reachable ? 0 : _consecutiveFailures + 1;
+    // Hold the current state through a single failure: a lone miss is usually the server
+    // waking up, and flipping to "offline" mid-send is worse than a moment of staleness. On a
+    // first probe that misses, this leaves the state at `checking` rather than accusing the
+    // server of being down before we have evidence.
+    if (reachable) {
+      state = BackendStatus.online;
+    } else if (_consecutiveFailures >= _failuresBeforeOffline) {
+      state = BackendStatus.offline;
+    }
     _scheduleNext();
   }
 
@@ -78,14 +96,17 @@ class BackendStatusNotifier extends Notifier<BackendStatus> {
   /// clears it.
   void reportUnreachable() {
     if (state == BackendStatus.offline) return;
+    // A real request already failed on the network, which is stronger evidence than a probe
+    // miss — trust it immediately rather than waiting for a second failure.
+    _consecutiveFailures = _failuresBeforeOffline;
     state = BackendStatus.offline;
     _scheduleNext();
   }
 
   void _scheduleNext() {
     _timer?.cancel();
-    final delay =
-        state == BackendStatus.offline ? _offlineInterval : _onlineInterval;
+    final unhealthy = state == BackendStatus.offline || _consecutiveFailures > 0;
+    final delay = unhealthy ? _offlineInterval : _onlineInterval;
     _timer = Timer(delay, checkNow);
   }
 }

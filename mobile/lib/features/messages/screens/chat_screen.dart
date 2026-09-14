@@ -28,6 +28,7 @@ part '../widgets/chat_bubble.dart';
 part '../widgets/chat_input.dart';
 part '../widgets/chat_unavailable.dart';
 part '../widgets/chat_screen_body.dart';
+part '../widgets/chat_send_logic.dart';
 part '../widgets/chat_screen_logic.dart';
 
 /// Pixels from the bottom of the list before we treat the user as "scrolled up".
@@ -58,13 +59,26 @@ class ChatScreen extends ConsumerStatefulWidget {
 
 abstract class _ChatScreenStateBase extends ConsumerState<ChatScreen> {
   static const pageSize = 50;
-  static const sendTimeout = Duration(seconds: 8);
+
+  /// How long to wait for a WebSocket `message.ack` before falling back to HTTP. Short, because
+  /// missing it is cheap now — it escalates rather than failing.
+  static const ackTimeout = Duration(seconds: 6);
+
+  /// Gap between HTTP retries while the network (or a cold-started server) is unavailable.
+  static const restRetryDelay = Duration(seconds: 20);
+
+  /// Total time a message may stay "sending" before it is marked failed. Comfortably longer
+  /// than a free-tier cold start, so spin-up latency never shows up as a false failure.
+  static const sendDeadline = Duration(seconds: 60);
 
   final inputController = TextEditingController();
   final scrollController = ScrollController();
   final messages = <ChatMessage>[];
   final seenServerIds = <String>{};
   final sendTimers = <String, Timer>{};
+
+  /// When each in-flight send was first attempted, for the `sendDeadline` check.
+  final sendStartedAt = <String, DateTime>{};
 
   bool loading = true;
   bool loadingOlder = false;
@@ -100,7 +114,7 @@ abstract class _ChatScreenStateBase extends ConsumerState<ChatScreen> {
   }
 }
 
-class _ChatScreenState extends _ChatScreenStateBase with _ChatScreenLogic {
+class _ChatScreenState extends _ChatScreenStateBase with _ChatSendLogic, _ChatScreenLogic {
   @override
   void initState() {
     super.initState();

@@ -5,6 +5,10 @@ Data structures (all O(1) add/remove/lookup, event-loop-atomic — no locks need
     _by_user:         user_id         -> set[Connection]    # fan-out to a user's devices
     _by_conversation: conversation_id -> set[Connection]    # fan-out to subscribers
 
+`_by_conversation` is keyed by the **canonical** `Conversation.id` — never by the id a client
+happens to address the conversation with (a DM's match id). Every publisher routes on the
+canonical id, so the two must agree; `Connection.refs` translates at the inbound edge.
+
 Each Connection has a bounded outbox drained by its own writer task, so one slow or
 dead socket can never block a broadcast (it is dropped on overflow/error instead).
 Delivery only ever *enqueues* (O(1) per socket); it never awaits a socket inline.
@@ -29,19 +33,39 @@ class SocketLike(Protocol):
 class Connection:
     """A single authenticated socket and its outbound pipeline."""
 
-    __slots__ = ('socket', 'user_id', 'subscriptions', 'partners', 'last_seen', 'alive', '_outbox', '_writer')
+    __slots__ = (
+        'socket', 'user_id', 'subscriptions', 'partners', 'refs', 'addressing',
+        'last_seen', 'alive', '_outbox', '_writer',
+    )
 
     def __init__(self, socket: SocketLike, user_id: UUID, outbox_max: int) -> None:
         self.socket = socket
         self.user_id = user_id
         self.subscriptions: set[UUID] = set()
-        # conversation_id -> other active member ids, cached at subscribe so typing needs no DB
-        # hit. One entry for a DM, N-1 for a group.
+        # canonical conversation_id -> other active member ids, cached at subscribe so typing
+        # needs no DB hit. One entry for a DM, N-1 for a group.
         self.partners: dict[UUID, list[UUID]] = {}
+        # Client-supplied ref -> canonical conversation id. A DM is addressed by its *match* id
+        # (and, since resolve_conversation tries the conversation table first, sometimes by its
+        # conversation id), while every server-side publisher routes on the canonical id. This
+        # map is what reconciles the two; see `canonical`.
+        self.refs: dict[UUID, UUID] = {}
+        # canonical conversation_id -> the id clients address it by, mirroring
+        # `protocol.addressing_id`. Lets typing/read frames carry an id the client can match
+        # without re-reading the conversation.
+        self.addressing: dict[UUID, str] = {}
         self.last_seen: float = time.monotonic()
         self.alive: bool = True
         self._outbox: asyncio.Queue[Any] = asyncio.Queue(maxsize=outbox_max)
         self._writer: asyncio.Task[None] | None = None
+
+    def canonical(self, conversation_ref: UUID) -> UUID:
+        """Map a client-supplied conversation ref to the canonical conversation id.
+
+        Falls back to the ref itself, so anything unmapped (groups, staff DMs, and any id that
+        was never subscribed) behaves exactly as it did before refs existed.
+        """
+        return self.refs.get(conversation_ref, conversation_ref)
 
     def start(self) -> None:
         self._writer = asyncio.create_task(self._run())
@@ -102,6 +126,8 @@ class ConnectionManager:
         for conv_id in list(conn.subscriptions):
             self._detach_conversation(conn, conv_id)
         conn.subscriptions.clear()
+        conn.refs.clear()
+        conn.addressing.clear()
         peers = self._by_user.get(conn.user_id)
         if peers is not None:
             peers.discard(conn)
@@ -111,14 +137,25 @@ class ConnectionManager:
 
     # ── subscriptions ─────────────────────────────────────────────────────────
 
-    def subscribe(self, conn: Connection, conversation_id: UUID) -> None:
+    def subscribe(self, conn: Connection, conversation_id: UUID, *, ref: UUID | None = None) -> None:
+        """Index `conn` under the **canonical** `conversation_id`, remembering the `ref` the client
+        used to address it. Publishers all route on the canonical id, so indexing on anything else
+        (as this did before — a DM's match id) delivers to nobody."""
         conn.subscriptions.add(conversation_id)
+        conn.refs[ref if ref is not None else conversation_id] = conversation_id
         self._by_conversation.setdefault(conversation_id, set()).add(conn)
 
-    def unsubscribe(self, conn: Connection, conversation_id: UUID) -> None:
-        conn.subscriptions.discard(conversation_id)
-        conn.partners.pop(conversation_id, None)
-        self._detach_conversation(conn, conversation_id)
+    def unsubscribe(self, conn: Connection, conversation_ref: UUID) -> None:
+        """Accepts either id: the client unsubscribes with the ref it subscribed under, while
+        revocation calls in with the canonical id. Both must fully detach, or a revoked socket
+        keeps receiving."""
+        canonical = conn.canonical(conversation_ref)
+        conn.subscriptions.discard(canonical)
+        conn.partners.pop(canonical, None)
+        conn.addressing.pop(canonical, None)
+        for ref in [r for r, target in conn.refs.items() if target == canonical]:
+            del conn.refs[ref]
+        self._detach_conversation(conn, canonical)
 
     def _detach_conversation(self, conn: Connection, conversation_id: UUID) -> None:
         subs = self._by_conversation.get(conversation_id)

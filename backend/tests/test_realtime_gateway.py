@@ -266,3 +266,51 @@ def test_oversized_frame_gets_frame_too_large_error(happy_auth, monkeypatch):
         ws.send_text('{"pad":"' + ('x' * 200) + '"}')
         frame = ws.receive_json()
     assert frame['type'] == 'error' and frame['code'] == 'frame_too_large'
+
+
+# ── keepalive ─────────────────────────────────────────────────────────────────
+
+def test_ping_returns_pong(happy_auth):
+    """Without an app-level keepalive a reading-only client sends nothing and gets reaped at
+    WS_IDLE_TIMEOUT_SECONDS, which silently kills live delivery mid-conversation."""
+    with _client().websocket_connect('/api/v1/ws') as ws:
+        ws.send_json({'type': 'auth', 'access_token': 'good'})
+        assert ws.receive_json()['type'] == 'auth.ok'
+        ws.send_json({'type': 'ping'})
+        assert _recv_type(ws, 'pong') == {'type': 'pong'}
+
+
+def test_ping_refreshes_the_idle_clock(happy_auth):
+    """The reaper reads `last_seen`, which only an inbound application frame updates — so the
+    ping must count even though it carries nothing."""
+    from app.features.realtime.runtime import manager
+
+    with _client().websocket_connect('/api/v1/ws') as ws:
+        ws.send_json({'type': 'auth', 'access_token': 'good'})
+        assert ws.receive_json()['type'] == 'auth.ok'
+        conn = next(iter(manager._by_user[happy_auth.id]))
+        conn.last_seen = 0.0  # pretend the socket has been silent for a long time
+        ws.send_json({'type': 'ping'})
+        _recv_type(ws, 'pong')
+        assert conn.last_seen > 0.0
+
+
+def test_ping_flood_is_dropped_without_error_frames(happy_auth):
+    """Over budget we stay silent rather than erroring: an error frame would amplify a flood,
+    and the client reads error frames as send failures."""
+    with _client().websocket_connect('/api/v1/ws') as ws:
+        ws.send_json({'type': 'auth', 'access_token': 'good'})
+        assert ws.receive_json()['type'] == 'auth.ok'
+        for _ in range(40):
+            ws.send_json({'type': 'ping'})
+        # Prove the socket is still usable and never produced an error frame.
+        ws.send_json({'type': 'conversation.subscribe', 'request_id': str(uuid4()),
+                      'conversation_id': str(uuid4())})
+        seen = []
+        for _ in range(30):
+            frame = ws.receive_json()
+            seen.append(frame['type'])
+            if frame['type'] == 'subscribed':
+                break
+        assert 'subscribed' in seen, 'socket stopped serving after a ping flood'
+        assert 'error' not in seen

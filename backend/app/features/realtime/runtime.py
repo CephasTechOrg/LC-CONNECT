@@ -52,6 +52,9 @@ event_bus = _EventBusProxy()
 send_limiter = RateLimiter(settings.ws_send_rate_per_10s, 10, name='ws_send')
 typing_limiter = RateLimiter(settings.ws_typing_rate_per_10s, 10, name='ws_typing')
 subscribe_limiter = RateLimiter(settings.ws_subscribe_rate_per_10s, 10, name='ws_subscribe')
+# Generous next to the 25s heartbeat: a client reconnecting or waking from background may
+# ping a little early. Over budget we drop silently rather than error (see gateway._on_ping).
+ping_limiter = RateLimiter(settings.ws_ping_rate_per_10s, 10, name='ws_ping')
 malformed_limiter = RateLimiter(settings.ws_max_malformed_frames, 60, name='ws_malformed')
 
 
@@ -164,9 +167,11 @@ async def emit_message_created(
         )
 
 
-async def broadcast_message_deleted(conversation_id: UUID, message_id: UUID, member_ids: list[UUID]) -> None:
-    frame = protocol.message_deleted(conversation_id, message_id)
-    await event_bus.publish_to_conversation(conversation_id, frame)
+async def broadcast_message_deleted(message: Message, member_ids: list[UUID]) -> None:
+    """Takes the `Message` rather than a bare id because the two ids differ: the frame is routed
+    on the canonical conversation id, but addressed with the id clients match on."""
+    frame = protocol.message_deleted(protocol.addressing_id(message), message.id)
+    await event_bus.publish_to_conversation(message.conversation_id, frame)
     for user_id in member_ids:
         await event_bus.publish_to_user(user_id, frame)
 

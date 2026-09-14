@@ -97,4 +97,30 @@ void main() {
       expect(parseInbound({'type': 'mystery'}), isA<UnknownEvent>());
     });
   });
+
+  group('keepalive + error correlation', () {
+    test('pingFrame is the bare keepalive the server expects', () {
+      expect(pingFrame(), {'type': 'ping'});
+    });
+
+    test('parseInbound understands pong', () {
+      expect(parseInbound({'type': 'pong'}), isA<Pong>());
+    });
+
+    test('WsError carries request_id so one failure is not blamed on every send', () {
+      final e = parseInbound({
+        'type': 'error',
+        'code': 'rate_limited',
+        'message': 'Slow down',
+        'request_id': 'req-1',
+      }) as WsError;
+      expect(e.code, 'rate_limited');
+      expect(e.requestId, 'req-1');
+    });
+
+    test('WsError without request_id is connection-wide, not attributable', () {
+      final e = parseInbound({'type': 'error', 'code': 'idle_timeout', 'message': 'idle'}) as WsError;
+      expect(e.requestId, isNull);
+    });
+  });
 }

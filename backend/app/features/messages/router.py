@@ -169,5 +169,5 @@ async def delete_message_endpoint(
     from app.features.realtime.runtime import broadcast_message_deleted
 
     members = await active_member_ids(db, message.conversation_id)
-    await broadcast_message_deleted(message.conversation_id, message.id, members)
+    await broadcast_message_deleted(message, members)
     return message_read(message)

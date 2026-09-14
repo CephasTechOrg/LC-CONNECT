@@ -41,6 +41,20 @@ class RealtimeClient {
   final Future<String?> Function() tokenProvider;
   final Random _random;
 
+  /// Seam for tests: the real connector hits the network, which makes every timing behaviour
+  /// here (heartbeat, watchdog, backoff) otherwise unverifiable.
+  final WebSocketChannel Function(Uri) connectChannel;
+
+  /// Cap on the opening handshake. Render's free tier spins down when idle, so a cold start can
+  /// hang the handshake for a long time; without a cap the client sits in `connecting`, where
+  /// `connect()` early-returns and every send silently lands in the outbox.
+  final Duration connectTimeout;
+
+  /// Reconnect after this many heartbeat intervals with no inbound frame. Two tolerates one
+  /// lost ping; the resulting ~3-interval detection (75s at the default 25s) still lands inside
+  /// the server's 90s idle reaper.
+  static const _maxSilentIntervals = 2;
+
   static const maxOutboxSize = 50;
   /// Warn the UI when the offline send queue is nearly full.
   static const outboxWarnThreshold = 40;
@@ -55,12 +69,32 @@ class RealtimeClient {
   WebSocketChannel? _channel;
   StreamSubscription<dynamic>? _sub;
   Timer? _reconnectTimer;
+  Timer? _pingTimer;
   int _attempt = 0;
   bool _hadConnection = false;
   bool _disposed = false;
 
-  RealtimeClient({required this.url, required this.tokenProvider, Random? random})
-      : _random = random ?? Random();
+  /// Server-advertised keepalive interval, from `auth.ok`.
+  Duration _heartbeat = const Duration(seconds: 25);
+
+  /// Heartbeat intervals elapsed with no inbound frame at all. Counting ticks rather than
+  /// comparing timestamps keeps this independent of the wall clock.
+  int _silentIntervals = 0;
+
+  /// `message.send` frames written to a *ready* socket but not yet acked, keyed by request id.
+  /// A write to a half-open socket succeeds silently, so without this they would be lost with
+  /// no error at all — the "sometimes a message just fails" case. Re-queued on disconnect.
+  final _inflight = <String, Map<String, dynamic>>{};
+  final _requestToClientId = <String, String>{};
+
+  RealtimeClient({
+    required this.url,
+    required this.tokenProvider,
+    Random? random,
+    WebSocketChannel Function(Uri)? connectChannel,
+    this.connectTimeout = const Duration(seconds: 30),
+  })  : _random = random ?? Random(),
+        connectChannel = connectChannel ?? WebSocketChannel.connect;
 
   ValueListenable<RealtimeStatus> get status => _status;
 
@@ -89,11 +123,14 @@ class RealtimeClient {
       _scheduleReconnect(); // no session yet — try again shortly
       return;
     }
+    if (_disposed) return; // disposed during the token await — the notifier is gone
     _status.value = RealtimeStatus.connecting;
-    final channel = WebSocketChannel.connect(url);
+    final channel = connectChannel(url);
     try {
-      await channel.ready;
+      await channel.ready.timeout(connectTimeout);
     } catch (_) {
+      unawaited(channel.sink.close());
+      if (_disposed) return; // disposed while the handshake was still pending
       _status.value = RealtimeStatus.disconnected;
       _scheduleReconnect();
       return;
@@ -109,6 +146,8 @@ class RealtimeClient {
   }
 
   void _onData(dynamic data) {
+    // Any inbound byte proves the socket is still two-way; the keepalive reads this.
+    _silentIntervals = 0;
     final Map<String, dynamic> raw;
     try {
       raw = jsonDecode(data as String) as Map<String, dynamic>;
@@ -124,6 +163,7 @@ class RealtimeClient {
       final wasReconnect = _hadConnection;
       _hadConnection = true;
       _status.value = RealtimeStatus.ready;
+      _startHeartbeat(event.heartbeatSeconds);
       for (final conversationId in _subscriptions) {
         _sink(subscribeFrame(uuidV4(_random), conversationId));
       }
@@ -138,11 +178,76 @@ class RealtimeClient {
       if (wasReconnect) _reconnected.add(null);
       return;
     }
+    if (event is Pong) return; // liveness only — already stamped above
+    if (event is MessageAck) _clearInflightFor(event.clientMessageId);
+    if (event is WsError && event.requestId != null) _forgetRequest(event.requestId!);
     _events.add(event);
+  }
+
+  // ── keepalive ───────────────────────────────────────────────────────────────
+
+  /// The server reaps sockets idle beyond `WS_IDLE_TIMEOUT_SECONDS`, and only *inbound
+  /// application frames* refresh its clock. A chat left open without typing therefore dies
+  /// silently, which is why messages stopped arriving until the screen was reopened.
+  void _startHeartbeat(int seconds) {
+    _heartbeat = Duration(seconds: seconds.clamp(5, 300));
+    _silentIntervals = 0;
+    _pingTimer?.cancel();
+    _pingTimer = Timer.periodic(_heartbeat, (_) {
+      // Two whole intervals without a single inbound frame means the socket is half-open:
+      // writes still report success but nothing is arriving. A stalled read is the only
+      // detectable symptom, so treat it as a disconnect and reconnect rather than sit there
+      // looking healthy while messages silently fail.
+      if (_silentIntervals >= _maxSilentIntervals) {
+        _teardown(keepConnectionFlag: true);
+        _scheduleReconnect();
+        return;
+      }
+      _silentIntervals++;
+      _sink(pingFrame());
+    });
+  }
+
+  void _stopHeartbeat() {
+    _pingTimer?.cancel();
+    _pingTimer = null;
+    _silentIntervals = 0;
+  }
+
+  // ── in-flight sends ─────────────────────────────────────────────────────────
+
+  void _clearInflightFor(String? clientMessageId) {
+    if (clientMessageId == null) return;
+    final requestId = _requestToClientId.entries
+        .firstWhere((e) => e.value == clientMessageId, orElse: () => const MapEntry('', ''))
+        .key;
+    if (requestId.isEmpty) return;
+    _forgetRequest(requestId);
+  }
+
+  void _forgetRequest(String requestId) {
+    _inflight.remove(requestId);
+    _requestToClientId.remove(requestId);
+  }
+
+  /// The `client_message_id` a server error belongs to, so a caller can fail *that* message
+  /// instead of every one in flight. Null when the error is not attributable to a send.
+  String? clientMessageIdForRequest(String requestId) => _requestToClientId[requestId];
+
+  /// Stop trying to deliver a message over the socket — used once it has been delivered
+  /// another way (the REST fallback), so a reconnect does not re-send it.
+  void cancelPendingSend(String clientMessageId) {
+    _clearInflightFor(clientMessageId);
+    _outbox.removeWhere((f) => f['client_message_id'] == clientMessageId);
+    _syncOutboxCount();
   }
 
   void _onClosed() {
     final code = _channel?.closeCode;
+    _stopHeartbeat();
+    // The socket is gone, so anything unacked never arrived — put it back in the outbox for
+    // the next auth.ok rather than leaving it to time out as a failure.
+    _requeueInflight();
     _sub?.cancel();
     _sub = null;
     _channel = null;
@@ -184,8 +289,13 @@ class RealtimeClient {
 
   /// Returns `false` when the offline outbox is full — caller should surface failure.
   bool sendMessage({required String conversationId, required String clientMessageId, required String body}) {
-    final frame = sendFrame(requestId: uuidV4(_random), conversationId: conversationId, clientMessageId: clientMessageId, body: body);
+    final requestId = uuidV4(_random);
+    final frame = sendFrame(requestId: requestId, conversationId: conversationId, clientMessageId: clientMessageId, body: body);
     if (_status.value == RealtimeStatus.ready) {
+      // Held until acked: a write to a half-open socket reports success but arrives nowhere,
+      // so this is what lets the frame be re-queued rather than lost.
+      _inflight[requestId] = frame;
+      _requestToClientId[requestId] = clientMessageId;
       _sink(frame);
       return true;
     }
@@ -211,6 +321,8 @@ class RealtimeClient {
   void clear() {
     _subscriptions.clear();
     _outbox.clear();
+    _inflight.clear();
+    _requestToClientId.clear();
     _syncOutboxCount();
     _teardown();
   }
@@ -230,6 +342,8 @@ class RealtimeClient {
 
   void _teardown({bool keepConnectionFlag = false}) {
     _cancelReconnect();
+    _stopHeartbeat();
+    _requeueInflight();
     _sub?.cancel();
     _sub = null;
     _channel?.sink.close();
@@ -238,6 +352,19 @@ class RealtimeClient {
     // (→ fires `reconnected` → REST-sync). Reset it on logout/dispose.
     if (!keepConnectionFlag) _hadConnection = false;
     if (!_disposed) _status.value = RealtimeStatus.disconnected;
+  }
+
+  /// Move unacked sends back to the outbox so the next `auth.ok` re-sends them. Safe because
+  /// the server is idempotent on `client_message_id` — a duplicate is acked, never stored twice.
+  void _requeueInflight() {
+    if (_inflight.isEmpty) return;
+    final pending = List.of(_inflight.values);
+    _inflight.clear();
+    _requestToClientId.clear();
+    final room = maxOutboxSize - _outbox.length;
+    if (room <= 0) return; // outbox already full — the caller surfaces failure as before
+    _outbox.insertAll(0, pending.take(room)); // oldest first: preserve send order
+    _syncOutboxCount();
   }
 
   void dispose() {

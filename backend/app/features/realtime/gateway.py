@@ -28,6 +28,7 @@ from app.features.realtime.runtime import (
     event_bus,
     malformed_limiter,
     manager,
+    ping_limiter,
     send_limiter,
     subscribe_limiter,
     typing_limiter,
@@ -173,6 +174,8 @@ async def _dispatch(conn: Connection, frame: protocol.InboundFrame) -> None:
             await _on_typing(conn, frame.conversation_id, active=False)
         case protocol.ReadFrame():
             await _on_read(conn, frame)
+        case protocol.PingFrame():
+            _on_ping(conn)
         case protocol.AuthFrame():
             manager.send(conn, protocol.error(ErrorCode.INVALID_FRAME, 'Already authenticated'))
 
@@ -192,10 +195,24 @@ async def _on_subscribe(conn: Connection, frame: protocol.SubscribeFrame) -> Non
             manager.send(conn, protocol.error(ErrorCode.FORBIDDEN, 'Forbidden', frame.request_id))
             return
     # Cache the other members so typing needs no per-keystroke DB hit. One for a DM, N-1 for
-    # a group — typing fans out to all of them.
-    conn.partners[frame.conversation_id] = others
-    manager.subscribe(conn, frame.conversation_id)
+    # a group — typing fans out to all of them. Keyed canonically, like the manager index.
+    conn.partners[conversation.id] = others
+    conn.addressing[conversation.id] = str(conversation.match_id or conversation.id)
+    manager.subscribe(conn, conversation.id, ref=frame.conversation_id)
+    # The ack echoes the client's own ref — that is what it correlates the subscription on.
     manager.send(conn, protocol.subscribed(frame.request_id, frame.conversation_id))
+
+
+def _on_ping(conn: Connection) -> None:
+    """Keepalive. `manager.touch` already ran in the serve loop before dispatch, so the idle
+    clock is refreshed even when the reply is throttled.
+
+    Over budget we drop silently instead of returning an error frame: an error would let a ping
+    flood amplify outbound traffic, and clients treat error frames as send failures.
+    """
+    if not ping_limiter.allow(id(conn)):
+        return
+    manager.send(conn, protocol.pong())
 
 
 def _on_unsubscribe(conn: Connection, frame: protocol.UnsubscribeFrame) -> None:
@@ -236,14 +253,16 @@ async def _on_send(conn: Connection, frame: protocol.SendFrame) -> None:
 async def _on_typing(conn: Connection, conversation_id: UUID, active: bool) -> None:
     # Authz proxy: members are cached only for authorized subscriptions (and cleared on
     # block/suspension/removal revocation), so this avoids a DB hit per keystroke while safe.
-    partners = conn.partners.get(conversation_id)
+    canonical = conn.canonical(conversation_id)
+    partners = conn.partners.get(canonical)
     if not partners:
         return
-    if active and not await typing_limiter.aallow((conn.user_id, conversation_id)):
+    if active and not await typing_limiter.aallow((conn.user_id, canonical)):
         return
     # Deliver to every other member's USER channel → shows inside the chat and on their list.
-    # One recipient for a DM, all others for a group.
-    frame = protocol.typing_event(conversation_id, conn.user_id, active)
+    # One recipient for a DM, all others for a group. The frame carries the *addressing* id,
+    # which is what the recipient's open chat matches on.
+    frame = protocol.typing_event(conn.addressing.get(canonical, str(conversation_id)), conn.user_id, active)
     for partner_id in partners:
         await event_bus.publish_to_user(partner_id, frame)
 
@@ -252,7 +271,7 @@ async def _on_read(conn: Connection, frame: protocol.ReadFrame) -> None:
     async with AsyncSessionLocal() as db:
         try:
             await service.recheck_account(db, conn.user_id)
-            await service.authorize_conversation(db, conn.user_id, frame.conversation_id)
+            conversation = await service.authorize_conversation(db, conn.user_id, frame.conversation_id)
         except service.WsForbidden:
             return
         read_at = await service.mark_read(
@@ -263,8 +282,17 @@ async def _on_read(conn: Connection, frame: protocol.ReadFrame) -> None:
         )
     if read_at is None:
         return
+    # Route on the canonical id (what the manager indexes), but address the frame with the
+    # client-facing id (what the recipient's open chat matches on). Before subscriptions were
+    # canonicalised these were the same value for a DM, which is why this read correctly by
+    # accident — it must not go back to echoing the client's ref.
     await event_bus.publish_to_conversation(
-        frame.conversation_id,
-        protocol.read_receipt(frame.conversation_id, conn.user_id, frame.through_message_id, read_at.isoformat()),
+        conversation.id,
+        protocol.read_receipt(
+            conversation.match_id or conversation.id,
+            conn.user_id,
+            frame.through_message_id,
+            read_at.isoformat(),
+        ),
         exclude_user=conn.user_id,
     )

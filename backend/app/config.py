@@ -113,6 +113,7 @@ class Settings(BaseSettings):
     ws_send_rate_per_10s: int = Field(default=20, alias='WS_SEND_RATE_PER_10S')
     ws_typing_rate_per_10s: int = Field(default=10, alias='WS_TYPING_RATE_PER_10S')
     ws_subscribe_rate_per_10s: int = Field(default=15, alias='WS_SUBSCRIBE_RATE_PER_10S')
+    ws_ping_rate_per_10s: int = Field(default=6, alias='WS_PING_RATE_PER_10S')
     ws_max_malformed_frames: int = Field(default=10, alias='WS_MAX_MALFORMED_FRAMES')
     ws_outbox_max_size: int = Field(default=256, alias='WS_OUTBOX_MAX_SIZE')
 

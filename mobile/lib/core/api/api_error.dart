@@ -23,3 +23,9 @@ String apiErrorMessage(Object error, {required String fallback}) {
   }
   return fallback;
 }
+
+/// The HTTP status a failed call came back with, or null when the request never got a response
+/// (no connection, timeout, a server still spinning up). That distinction is what lets a caller
+/// tell "the server rejected this" from "we could not reach the server yet" — the first is
+/// final, the second is worth retrying.
+int? apiStatusCode(Object error) => error is DioException ? error.response?.statusCode : null;

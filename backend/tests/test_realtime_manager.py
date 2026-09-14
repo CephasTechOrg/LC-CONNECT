@@ -190,3 +190,51 @@ async def test_revoke_pair_noop_when_not_shared():
     assert len(conn_b.subscriptions) == 1
     await mgr.unregister(conn_a)
     await mgr.unregister(conn_b)
+
+
+# ── canonical keys vs client refs ─────────────────────────────────────────────
+
+async def test_subscribe_with_ref_indexes_canonical_and_resolves_both_ids():
+    """A DM is subscribed under its match id but indexed under the conversation id, because
+    every publisher routes on the latter."""
+    mgr = ConnectionManager()
+    conn = mgr.register(FakeSocket(), uuid4())
+    canonical, ref = uuid4(), uuid4()
+
+    mgr.subscribe(conn, canonical, ref=ref)
+
+    assert mgr.conversation_subscriber_count(canonical) == 1
+    assert mgr.conversation_subscriber_count(ref) == 0  # the ref is NOT an index key
+    assert conn.canonical(ref) == canonical
+    assert conn.canonical(canonical) == canonical  # canonical id resolves to itself
+    assert conn.canonical(uuid4()) is not None  # unknown ref falls back to itself, never KeyError
+    await mgr.unregister(conn)
+
+
+async def test_revoke_conversation_by_canonical_id_drops_a_ref_subscriber():
+    """The security-adjacent half of the routing bug: revocation looks up the canonical id, so
+    while DMs were indexed by match id a block left the victim's live socket subscribed."""
+    mgr = ConnectionManager()
+    conn = mgr.register(FakeSocket(), uuid4())
+    canonical, match_id = uuid4(), uuid4()
+    mgr.subscribe(conn, canonical, ref=match_id)
+
+    await mgr.revoke_conversation(canonical, {'type': 'error', 'code': 'forbidden'})
+
+    assert mgr.conversation_subscriber_count(canonical) == 0
+    assert conn.subscriptions == set()
+    assert conn.refs == {}  # the match-id alias is gone too, not left dangling
+    await mgr.unregister(conn)
+
+
+async def test_unregister_clears_ref_and_addressing_maps():
+    mgr = ConnectionManager()
+    conn = mgr.register(FakeSocket(), uuid4())
+    canonical = uuid4()
+    mgr.subscribe(conn, canonical, ref=uuid4())
+    conn.addressing[canonical] = 'anything'
+
+    await mgr.unregister(conn)
+
+    assert conn.refs == {}
+    assert conn.addressing == {}

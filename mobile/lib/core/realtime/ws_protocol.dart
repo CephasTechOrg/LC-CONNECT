@@ -49,6 +49,11 @@ Map<String, dynamic> readFrame(String conversationId, String throughMessageId) =
       'through_message_id': throughMessageId,
     };
 
+/// Application-level keepalive. The server's idle reaper only sees inbound *application*
+/// frames, so transport pings cannot keep the socket alive — a chat left open without typing
+/// is closed at `WS_IDLE_TIMEOUT_SECONDS` and stops receiving.
+Map<String, dynamic> pingFrame() => {'type': 'ping'};
+
 // ── Inbound events (server → client) ──────────────────────────────────────────
 
 sealed class InboundEvent {
@@ -122,10 +127,21 @@ class OpportunityEvent extends InboundEvent {
   const OpportunityEvent(this.audience);
 }
 
+/// Reply to [pingFrame]. Its arrival is what proves the socket is still two-way — a half-open
+/// TCP connection accepts writes silently, so silence here is the only detectable symptom.
+class Pong extends InboundEvent {
+  const Pong();
+}
+
 class WsError extends InboundEvent {
   final String code;
   final String message;
-  const WsError(this.code, this.message);
+
+  /// The `request_id` of the frame that caused this error, when the server could attribute it.
+  /// Null for connection-wide errors (idle timeout, revocation). Without it a single error
+  /// cannot be told apart from a blanket failure, so callers must not fail unrelated work.
+  final String? requestId;
+  const WsError(this.code, this.message, {this.requestId});
 }
 
 class UnknownEvent extends InboundEvent {
@@ -169,8 +185,14 @@ InboundEvent parseInbound(Map<String, dynamic> raw) {
       return OpportunityEvent(raw['audience'] as String? ?? 'all');
     case 'message.deleted':
       return MessageDeleted(raw['conversation_id'] as String, raw['message_id'] as String);
+    case 'pong':
+      return const Pong();
     case 'error':
-      return WsError(raw['code'] as String? ?? 'error', raw['message'] as String? ?? '');
+      return WsError(
+        raw['code'] as String? ?? 'error',
+        raw['message'] as String? ?? '',
+        requestId: raw['request_id'] as String?,
+      );
     default:
       return UnknownEvent(type ?? 'unknown');
   }
