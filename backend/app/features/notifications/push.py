@@ -46,6 +46,24 @@ def _notification_copy(notif_type: str, actor_name: str | None, group_name: str 
     return who, 'You have a new notification'
 
 
+
+def _failure_reasons(response) -> str:
+    """Why FCM rejected each token — the actual diagnosis when a push "just never arrives".
+
+    `ThirdPartyAuthError` means APNs refused the credential: usually the .p8 is missing for the
+    environment the token belongs to (a debug build registers against the APNs *sandbox*, a
+    TestFlight build against production, and Firebase holds a slot for each).
+    `SenderIdMismatch` means the token was issued by a different Firebase project.
+    `Unregistered` means the app was uninstalled, and is pruned automatically.
+    """
+    reasons = [
+        type(r.exception).__name__
+        for r in response.responses
+        if not r.success and r.exception is not None
+    ]
+    return ', '.join(sorted(set(reasons))) or 'unknown'
+
+
 class PushSender:
     def __init__(self) -> None:
         self._ready = False
@@ -138,8 +156,9 @@ class PushSender:
             if not result.success and isinstance(result.exception, messaging.UnregisteredError)
         ]
         logger.info(
-            'Notification push (%s): sent=%d failed=%d pruned=%d',
+            'Notification push (%s): sent=%d failed=%d pruned=%d reasons=%s',
             notif_type, response.success_count, response.failure_count, len(invalid),
+            _failure_reasons(response) if response.failure_count else 'none',
         )
         return invalid
 
@@ -249,9 +268,13 @@ class PushSender:
             for token, result in zip(tokens, response.responses, strict=False)
             if not result.success and isinstance(result.exception, messaging.UnregisteredError)
         ]
-        logger.info(
-            'Push: sent=%d failed=%d pruned=%d', response.success_count, response.failure_count, len(invalid)
-        )
+        if response.failure_count:
+            logger.warning(
+                'Push: sent=%d failed=%d pruned=%d reasons=%s',
+                response.success_count, response.failure_count, len(invalid), _failure_reasons(response),
+            )
+        else:
+            logger.info('Push: sent=%d failed=0 pruned=%d', response.success_count, len(invalid))
         return invalid
 
 

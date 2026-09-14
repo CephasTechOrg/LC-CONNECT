@@ -107,10 +107,19 @@ class UnreadNotifier extends Notifier<UnreadState> {
   }
 
   /// Called when a chat opens — marks it active so live messages don't inflate the badge.
-  void enterConversation(String matchId) =>
-      state = state.copyWith(activeConversationId: matchId);
+  void enterConversation(String matchId) {
+    if (!ref.mounted) return;
+    state = state.copyWith(activeConversationId: matchId);
+  }
 
-  void leaveConversation() => state = state.copyWith(clearActive: true);
+  /// Called as a chat closes. ChatScreen defers this out of `dispose` (Riverpod forbids
+  /// provider writes inside a widget life-cycle), which means the provider itself may already
+  /// be gone by the time it lands — on sign-out, or when the whole scope tears down. Touching
+  /// `state` then throws `UnmountedRefException`, so check first.
+  void leaveConversation() {
+    if (!ref.mounted) return;
+    state = state.copyWith(clearActive: true);
+  }
 
   /// Optimistically zero a conversation's unread (on top of the real WS `messages.read`).
   /// If the read call fails, the next re-seed restores the true count.

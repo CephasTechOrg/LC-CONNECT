@@ -16,7 +16,11 @@ when opened.
 ## 2. Add the iOS app
 1. Firebase console → **Add app → iOS**.
 2. **Bundle ID**: use the app's bundle id (Xcode → Runner target → General; currently
-   `com.livingstone.lcConnect`).
+   `com.lcconnect.app`). It must match the App ID registered in Apple Developer *and* the
+   `BUNDLE_ID` inside `GoogleService-Info.plist` — FCM addresses APNs by bundle id, so a
+   mismatch fails as `DeviceTokenNotForTopic`, which looks exactly like a bad APNs key.
+   Note this deliberately differs from the Android package (`com.livingstone.lc_connect`);
+   the two registries are independent.
 3. Download **`GoogleService-Info.plist`** → in Xcode, drag it into the **Runner** target (check
    "Copy items if needed" and the Runner target). Place at `mobile/ios/Runner/GoogleService-Info.plist`.
 

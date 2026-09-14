@@ -82,12 +82,12 @@ mixin _ChatSendLogic on _ChatScreenStateBase {
             '/messages/threads/${widget.matchId}',
             data: {'body': body, 'client_message_id': clientId},
           );
-      if (!mounted) return;
+      if (disposed || !mounted) return;
       // Delivered — stop the socket from retrying the same message on reconnect.
       rt.cancelPendingSend(clientId);
       reconcileAck(ChatMessage.fromJson(Map<String, dynamic>.from(resp.data as Map)));
     } catch (e) {
-      if (!mounted) return;
+      if (disposed || !mounted) return;
       final status = apiStatusCode(e);
       if (status == 429) {
         markSendFailed(clientId);
@@ -117,7 +117,7 @@ mixin _ChatSendLogic on _ChatScreenStateBase {
 
   void markSendFailed(String clientId) {
     sendTimers.remove(clientId)?.cancel();
-    if (!mounted) return;
+    if (disposed || !mounted) return;
     final idx = messages.indexWhere((m) => m.clientMessageId == clientId);
     if (idx == -1) return;
     setState(() => messages[idx] = messages[idx].copyWith(status: MessageStatus.failed));
@@ -125,7 +125,7 @@ mixin _ChatSendLogic on _ChatScreenStateBase {
   }
 
   void showSendSnack(String text) {
-    if (!mounted) return;
+    if (disposed || !mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(text, style: GoogleFonts.dmSans(color: Colors.white)),

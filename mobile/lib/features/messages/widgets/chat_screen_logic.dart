@@ -16,7 +16,7 @@ mixin _ChatScreenLogic on _ChatScreenStateBase, _ChatSendLogic {
           .read(apiClientProvider)
           .dio
           .get('/messages/threads/${widget.matchId}', queryParameters: {'limit': _ChatScreenStateBase.pageSize});
-      if (!mounted) return;
+      if (disposed || !mounted) return;
       final page = parsePage(resp.data as List);
       setState(() {
         absorb(page);
@@ -28,7 +28,7 @@ mixin _ChatScreenLogic on _ChatScreenStateBase, _ChatSendLogic {
       sendRead();
       scheduleCacheSave();
     } catch (e) {
-      if (!mounted) return;
+      if (disposed || !mounted) return;
       setState(() {
         loading = false;
         if (messages.isEmpty) {
@@ -63,7 +63,7 @@ mixin _ChatScreenLogic on _ChatScreenStateBase, _ChatSendLogic {
           'limit': _ChatScreenStateBase.pageSize,
         },
       );
-      if (!mounted) return;
+      if (disposed || !mounted) return;
       final older = parsePage(resp.data as List);
       setState(() {
         absorb(older);
@@ -76,6 +76,7 @@ mixin _ChatScreenLogic on _ChatScreenStateBase, _ChatSendLogic {
   }
 
   Future<void> syncAfterReconnect() async {
+    if (disposed || !mounted) return;
     if (!validThread) return;
     rt.subscribe(widget.matchId);
     final newest = newestServerMessage();
@@ -92,7 +93,7 @@ mixin _ChatScreenLogic on _ChatScreenStateBase, _ChatSendLogic {
             'limit': 100,
           },
         );
-        if (!mounted) return;
+        if (disposed || !mounted) return;
         final missed = parseAscending(resp.data as List);
         if (missed.isEmpty) break;
         setState(() => absorb(missed));
@@ -169,7 +170,7 @@ mixin _ChatScreenLogic on _ChatScreenStateBase, _ChatSendLogic {
   }
 
   void onEvent(InboundEvent event) {
-    if (!mounted) return;
+    if (disposed || !mounted) return;
     switch (event) {
       case MessageCreated(:final conversationId, :final message) when conversationId == widget.matchId:
         mergeIncoming(ChatMessage.fromJson(message));
@@ -200,7 +201,7 @@ mixin _ChatScreenLogic on _ChatScreenStateBase, _ChatSendLogic {
     try {
       await ref.read(apiClientProvider).dio.delete('/messages/${msg.id}');
     } catch (_) {
-      if (!mounted) return;
+      if (disposed || !mounted) return;
       final idx = messages.indexWhere((m) => m.id == msg.id);
       if (idx != -1) setState(() => messages[idx] = messages[idx].copyWith(deleted: false));
       ScaffoldMessenger.of(context).showSnackBar(

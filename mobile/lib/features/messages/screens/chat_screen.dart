@@ -91,6 +91,12 @@ abstract class _ChatScreenStateBase extends ConsumerState<ChatScreen> {
   String currentUserId = '';
   DateTime lastTypingSent = DateTime.fromMillisecondsSinceEpoch(0);
 
+  /// Set at the very top of `dispose()`. `mounted` is not sufficient on its own: during unmount
+  /// the element is already `defunct` while `State._element` is still set, so `mounted` reads
+  /// true and `setState` throws. Stream events buffered before `cancel()` also arrive after
+  /// teardown, since cancelling is asynchronous.
+  bool disposed = false;
+
   StreamSubscription<InboundEvent>? eventsSub;
   StreamSubscription<void>? reconnectSub;
   Timer? typingResetTimer;
@@ -140,8 +146,16 @@ class _ChatScreenState extends _ChatScreenStateBase with _ChatSendLogic, _ChatSc
 
   @override
   void dispose() {
+    disposed = true;
     if (validThread) {
-      unread.leaveConversation();
+      // Deferred: Riverpod forbids writing to a provider during a widget life-cycle, and
+      // `dispose` runs inside the tree's finalize pass. The notifier reference was captured in
+      // initState, so it stays valid after this State is gone.
+      final unreadNotifier = unread;
+      // A microtask, not `Future(...)`: the latter schedules a zero-duration Timer, which
+      // `testWidgets` reports as a pending timer and fails the test. Mirrors the
+      // `Future.microtask` already used in initState for enterConversation.
+      Future.microtask(() => unreadNotifier.leaveConversation());
       rt.unsubscribe(widget.matchId);
     }
     eventsSub?.cancel();
