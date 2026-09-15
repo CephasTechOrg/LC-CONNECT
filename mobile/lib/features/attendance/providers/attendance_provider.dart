@@ -104,19 +104,39 @@ final honorsAttendanceEnabledProvider = FutureProvider.autoDispose<bool>((ref) a
 /// Active Honors session for the signed-in scholar. Non-scholars get a closed state without calling the API.
 final activeAttendanceProvider = FutureProvider.autoDispose<ActiveAttendanceState>((ref) async {
   ref.watch(authNotifierProvider);
-  if (!ref.watch(isVerifiedScholarProvider)) return ActiveAttendanceState.closed();
-
-  final enabled = await ref.watch(honorsAttendanceEnabledProvider.future);
-  if (!enabled) return ActiveAttendanceState.closed();
-
+  // All `watch` calls up front, before any `await` — an autoDispose Ref used after an async gap
+  // throws once the provider has no listeners.
+  final isScholar = ref.watch(isVerifiedScholarFutureProvider.future);
+  final enabledFuture = ref.watch(honorsAttendanceEnabledProvider.future);
   final client = ref.watch(apiClientProvider);
+
+  // Awaited, not read: the sync scholar provider reports false while memberships are still
+  // loading, so this used to return `closed()` for a genuine scholar and surface
+  // "Attendance is closed." on the scanner.
+  if (!await isScholar) return ActiveAttendanceState.closed();
+  if (!await enabledFuture) return ActiveAttendanceState.closed();
   final response = await client.dio.get('/attendance/honors/active');
   return ActiveAttendanceState.fromJson(response.data as Map<String, dynamic>);
 });
 
 /// True when the student should see any Honors attendance surfaces.
+///
+/// Returns false while loading, which is what you want for *showing* a surface — an entry point
+/// that flashes in and out is worse than one that appears a beat late. Use
+/// [honorsAttendanceVisibleFutureProvider] to make a decision.
 final honorsAttendanceVisibleProvider = Provider.autoDispose<bool>((ref) {
   if (!ref.watch(isVerifiedScholarProvider)) return false;
   final enabled = ref.watch(honorsAttendanceEnabledProvider).value;
   return enabled == true;
+});
+
+/// Awaitable form of [honorsAttendanceVisibleProvider], for the scanner, which must not mistake
+/// "still loading" for "not permitted" and show an error screen on the first frame.
+final honorsAttendanceVisibleFutureProvider = FutureProvider.autoDispose<bool>((ref) async {
+  // Every `watch` happens before the first `await`. On an autoDispose provider the Ref can be
+  // disposed during an async gap, and touching it afterwards throws.
+  final isScholar = ref.watch(isVerifiedScholarFutureProvider.future);
+  final enabled = ref.watch(honorsAttendanceEnabledProvider.future);
+  if (!await isScholar) return false;
+  return enabled;
 });

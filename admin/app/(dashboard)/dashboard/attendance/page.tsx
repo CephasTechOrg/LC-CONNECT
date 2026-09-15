@@ -196,6 +196,10 @@ export default function AttendanceLandingPage() {
           <div className="attendance-start-dialog-backdrop" onClick={() => setDialogOpen(false)} aria-hidden />
           <form className="attendance-start-dialog-card" onSubmit={(e) => void startSession(e)}>
             <h2>Start Honors Attendance</h2>
+            <p className="attendance-start-intro">
+              Check-in opens the moment you start the session. Students scan the QR code on screen
+              to check themselves in.
+            </p>
             <label>
               Class title
               <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={160} required />
@@ -210,6 +214,9 @@ export default function AttendanceLandingPage() {
                 onChange={(e) => setPresentMinutes(Number(e.target.value))}
                 required
               />
+              <span className="attendance-field-hint">
+                How long after starting a scan still counts as <strong>Present</strong>.
+              </span>
             </label>
             <label>
               Late check-in (minutes)
@@ -221,7 +228,46 @@ export default function AttendanceLandingPage() {
                 onChange={(e) => setLateMinutes(Number(e.target.value))}
                 required
               />
+              <span className="attendance-field-hint">
+                Extra time <em>after</em> the present window, recorded as <strong>Late</strong>.
+                Set to 0 for no late window.
+              </span>
             </label>
+
+            {/* Spelled out because the two inputs alone don't say when anything closes, and the
+                late window runs *after* the present one rather than from the start. */}
+            <div className="attendance-window-summary" aria-live="polite">
+              <span className="attendance-window-summary-title">This session will behave like this</span>
+              <ul>
+                <li>
+                  <span className="attendance-chip present">Present</span>
+                  from start until <strong>{presentMinutes} min</strong>
+                </li>
+                {lateMinutes > 0 ? (
+                  <li>
+                    <span className="attendance-chip late">Late</span>
+                    from <strong>{presentMinutes} min</strong> to{' '}
+                    <strong>{presentMinutes + lateMinutes} min</strong>
+                  </li>
+                ) : (
+                  <li>
+                    <span className="attendance-chip muted">No late window</span>
+                    scans after {presentMinutes} min are rejected
+                  </li>
+                )}
+                <li>
+                  <span className="attendance-chip closed">No check-in</span>
+                  after <strong>{presentMinutes + lateMinutes} min</strong> — scans are rejected
+                </li>
+              </ul>
+              {/* The window expiring only stops scans. `close_session` is what writes the absent
+                  records, and it is only ever called by an admin — nothing closes a session on a
+                  timer. An admin who assumes otherwise leaves a session open with no absences. */}
+              <p className="attendance-window-note">
+                The session stays open until you close it. <strong>Closing it is what records
+                absences</strong> for Honors students who never checked in.
+              </p>
+            </div>
             <div className="attendance-start-actions">
               <button className="ops-btn" type="button" onClick={() => setDialogOpen(false)} disabled={busy}>
                 Cancel

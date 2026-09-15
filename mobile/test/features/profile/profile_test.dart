@@ -335,11 +335,12 @@ void main() {
       // Stats are below the fold — search off-stage elements too
       expect(find.text('42', skipOffstage: false), findsOneWidget);
       expect(find.text('7', skipOffstage: false), findsOneWidget);
-      expect(find.text('15', skipOffstage: false), findsOneWidget);
       expect(find.text('Connections', skipOffstage: false), findsOneWidget);
       expect(find.text('Joined Activities', skipOffstage: false),
           findsOneWidget);
-      expect(find.text('Messages', skipOffstage: false), findsOneWidget);
+      // A cumulative message total only ever grows and says nothing useful about an account,
+      // so it was removed from the profile deliberately.
+      expect(find.text('Messages', skipOffstage: false), findsNothing);
     });
 
     testWidgets('shows preference toggles', (tester) async {

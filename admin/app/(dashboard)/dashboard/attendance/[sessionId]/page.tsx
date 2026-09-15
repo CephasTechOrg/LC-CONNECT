@@ -137,11 +137,24 @@ export default function AttendanceSessionPage() {
   const filteredEntries = useMemo(() => {
     if (!roster) return [];
     const term = search.trim().toLowerCase();
-    if (!term) return roster.entries;
-    return roster.entries.filter((entry) => {
-      const name = (entry.display_name || entry.email).toLowerCase();
-      return name.includes(term);
-    });
+    const matches = term
+      ? roster.entries.filter((entry) => {
+          // Email too: the roster shows it under every name, so it is the obvious thing to
+          // paste in when looking someone up, and searching it used to silently fail.
+          const name = (entry.display_name || entry.email).toLowerCase();
+          return name.includes(term) || entry.email.toLowerCase().includes(term);
+        })
+      : roster.entries;
+
+    // Alphabetical, always. The API returns membership order, which looks arbitrary to an admin
+    // scanning for one student. Sorting by check-in time was the alternative, but it makes rows
+    // jump as people scan — the stats row and the recent-check-ins panel already cover activity;
+    // this list's job is being findable.
+    return [...matches].sort((a, b) =>
+      (a.display_name || a.email).localeCompare(b.display_name || b.email, undefined, {
+        sensitivity: 'base',
+      }),
+    );
   }, [roster, search]);
 
   const recentCheckIns = useMemo(() => {
@@ -306,11 +319,11 @@ export default function AttendanceSessionPage() {
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search students…"
+              placeholder="Search by name or email…"
               aria-label="Search students"
             />
           </div>
-          <table className="ops-table" style={{ marginTop: 12 }}>
+          <table className="ops-table ops-cards-sm" style={{ marginTop: 12 }}>
             <thead>
               <tr>
                 <th>Student</th>
@@ -326,12 +339,12 @@ export default function AttendanceSessionPage() {
                     <div className="ops-cell-title">{entry.display_name || entry.email}</div>
                     <div className="ops-cell-sub">{entry.email}</div>
                   </td>
-                  <td>
+                  <td data-label="Status">
                     <span className={statusChip(entry.status)}>{entry.status || '—'}</span>
                   </td>
-                  <td>{formatTime(entry.checked_in_at)}</td>
+                  <td data-label="Checked in">{formatTime(entry.checked_in_at)}</td>
                   {!isOpen ? (
-                    <td>
+                    <td className="ops-cell-actions">
                       {entry.record_id ? (
                         <button
                           className="ops-btn"

@@ -307,6 +307,10 @@ class _SpotlightContent extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
       child: Column(
+        // One cohesive block rather than brand-pinned-top and copy-pinned-bottom. A `Spacer`
+        // used to shove the wordmark and the headline to opposite ends of the card, which read
+        // as two unrelated things sharing a rectangle instead of one message.
+        mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
@@ -332,7 +336,7 @@ class _SpotlightContent extends StatelessWidget {
               height: 1,
             ),
           ),
-          const Spacer(),
+          const SizedBox(height: 14),
           ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 190),
             child: Text.rich(
@@ -359,7 +363,7 @@ class _SpotlightContent extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 7),
+          const SizedBox(height: 6),
           ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 175),
             child: Text(

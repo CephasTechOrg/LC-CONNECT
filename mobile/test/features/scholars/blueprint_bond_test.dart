@@ -108,9 +108,11 @@ void main() {
 
 // ── BlueprintBondCard: where it shows and where it disappears ────────────────────
 //
-// The prompt on Campus Hub is a call-to-action, so it must vanish once there's nothing left to
-// do — otherwise it becomes permanent clutter on a feed students scroll daily. The Profile entry
-// is the opposite: a permanent way in, present whether complete or not.
+// The prompt on Campus Hub is a call-to-action, so it must give way once there's nothing left
+// to do — otherwise it becomes permanent clutter on a feed students scroll daily. It is replaced
+// by a compact status row rather than vanishing: when it disappeared entirely, finishing the
+// profile removed the only place a verified scholar could see they were one. The Profile entry
+// is a permanent way in, and leads with the account status.
 
 Widget _card(BlueprintBondStyle style, {required bool scholar, ScholarProfile? profile}) {
   return ProviderScope(
@@ -138,11 +140,14 @@ void _cardTests() {
       expect(find.text('Finish your Blueprint Bond profile'), findsOneWidget);
     });
 
-    testWidgets('Campus Hub prompt DISAPPEARS once the profile is complete', (tester) async {
+    testWidgets('Campus Hub prompt gives way to a status row once complete', (tester) async {
       await tester.pumpWidget(_card(BlueprintBondStyle.prompt,
           scholar: true, profile: _profile(summary: 'A summary', hasResume: true)));
       await tester.pumpAndSettle();
       expect(find.text('Finish your Blueprint Bond profile'), findsNothing);
+      // Status, not a nag — but still present, and still a way through.
+      expect(find.text('Honors Student'), findsOneWidget);
+      expect(find.text('Blueprint Bond'), findsOneWidget);
     });
 
     testWidgets('Campus Hub prompt stays across remount while still incomplete', (tester) async {
@@ -166,15 +171,16 @@ void _cardTests() {
       await tester.pumpWidget(_card(BlueprintBondStyle.entry,
           scholar: true, profile: _profile(summary: 'A summary', hasResume: true)));
       await tester.pumpAndSettle();
-      expect(find.text('Blueprint Bond'), findsOneWidget);
-      expect(find.text('Professional profile complete'), findsOneWidget);
+      expect(find.text('Honors Student'), findsOneWidget);
+      expect(find.text('Blueprint Bond · profile complete'), findsOneWidget);
     });
 
     testWidgets('Profile entry shows incomplete status when unfinished', (tester) async {
       await tester.pumpWidget(_card(BlueprintBondStyle.entry,
           scholar: true, profile: _profile(summary: null)));
       await tester.pumpAndSettle();
-      expect(find.text('Profile incomplete'), findsOneWidget);
+      expect(find.text('Honors Student'), findsOneWidget);
+      expect(find.text('Blueprint Bond · profile incomplete'), findsOneWidget);
     });
   });
 }

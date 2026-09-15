@@ -14,9 +14,10 @@ class _StatsRow extends StatelessWidget {
         children: [
           _StatItem(count: profile.connectionCount, label: 'Connections'),
           _StatDivider(),
+          // A cumulative message total stops meaning anything once someone is active — it only
+          // ever goes up, and a big number says nothing about the account. Connections and
+          // activities describe participation; a message tally just describes volume.
           _StatItem(count: profile.activityCount, label: 'Joined Activities'),
-          _StatDivider(),
-          _StatItem(count: profile.messageCount, label: 'Messages'),
         ],
       ),
     );

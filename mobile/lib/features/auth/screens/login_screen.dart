@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/dismiss_keyboard.dart';
 import '../data/auth_error_messages.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/auth_text_field.dart';
@@ -77,69 +78,71 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     // Pin create-account to the bottom (fills tall-phone white space). Keep sign-in fields in
     // a scroll region so the keyboard never hides them. Do NOT put Spacer inside a ScrollView —
     // unbounded height makes the form fail to layout (blank white panel).
-    return Scaffold(
-      backgroundColor: AppColors.surface,
-      body: Column(
-        children: [
-          if (heroH > 0) _HeroScene(height: heroH),
-          Expanded(
-            child: Form(
-              key: _formKey,
-              child: AutofillGroup(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Expanded(
-                      child: LayoutBuilder(
-                        builder: (context, box) => SingleChildScrollView(
-                          keyboardDismissBehavior:
-                              ScrollViewKeyboardDismissBehavior.onDrag,
-                          child: Padding(
-                            padding: const EdgeInsets.fromLTRB(28, 8, 28, 12),
-                            child: ConstrainedBox(
-                              // Centre the form in whatever height is left instead of pinning it
-                              // to the top, which left a large dead gap between the fields and
-                              // the keyboard. `minHeight` (never a Spacer) keeps the box bounded
-                              // — a Spacer inside a ScrollView gets unbounded height and fails to
-                              // lay out, leaving a blank white panel. The 20 matches the vertical
-                              // padding above so the minimum can't exceed the viewport.
-                              constraints: BoxConstraints(
-                                minHeight:
-                                    (box.maxHeight - 20).clamp(0.0, double.infinity),
-                              ),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  _SignInFields(
-                                    emailCtrl: _emailCtrl,
-                                    passwordCtrl: _passwordCtrl,
-                                    obscure: _obscure,
-                                    isLoading: isLoading,
-                                    onToggleObscure: () =>
-                                        setState(() => _obscure = !_obscure),
-                                    onSubmit: _submit,
-                                  ),
-                                ],
+    return DismissKeyboardOnTap(
+      child: Scaffold(
+        backgroundColor: AppColors.surface,
+        body: Column(
+          children: [
+            if (heroH > 0) _HeroScene(height: heroH),
+            Expanded(
+              child: Form(
+                key: _formKey,
+                child: AutofillGroup(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(
+                        child: LayoutBuilder(
+                          builder: (context, box) => SingleChildScrollView(
+                            keyboardDismissBehavior:
+                                ScrollViewKeyboardDismissBehavior.onDrag,
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(28, 8, 28, 12),
+                              child: ConstrainedBox(
+                                // Centre the form in whatever height is left instead of pinning it
+                                // to the top, which left a large dead gap between the fields and
+                                // the keyboard. `minHeight` (never a Spacer) keeps the box bounded
+                                // — a Spacer inside a ScrollView gets unbounded height and fails to
+                                // lay out, leaving a blank white panel. The 20 matches the vertical
+                                // padding above so the minimum can't exceed the viewport.
+                                constraints: BoxConstraints(
+                                  minHeight:
+                                      (box.maxHeight - 20).clamp(0.0, double.infinity),
+                                ),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  children: [
+                                    _SignInFields(
+                                      emailCtrl: _emailCtrl,
+                                      passwordCtrl: _passwordCtrl,
+                                      obscure: _obscure,
+                                      isLoading: isLoading,
+                                      onToggleObscure: () =>
+                                          setState(() => _obscure = !_obscure),
+                                      onSubmit: _submit,
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                    // With the keyboard up the footer joins the scroll region instead of being
-                    // pinned, so a short phone can never run out of room for it.
-                    if (!keyboardUp)
-                      _CreateAccountFooter(
-                        bottomInset: media.padding.bottom,
-                        onRegister: () => context.push('/register'),
-                      ),
-                  ],
+                      // With the keyboard up the footer joins the scroll region instead of being
+                      // pinned, so a short phone can never run out of room for it.
+                      if (!keyboardUp)
+                        _CreateAccountFooter(
+                          bottomInset: media.padding.bottom,
+                          onRegister: () => context.push('/register'),
+                        ),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

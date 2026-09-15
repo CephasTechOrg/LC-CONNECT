@@ -46,6 +46,18 @@ final myProgramMembershipsProvider = FutureProvider<List<ProgramMembership>>((re
       .toList();
 });
 
+/// Awaitable form of [isVerifiedScholarProvider].
+///
+/// The sync one answers `false` while the membership list is still loading, which is correct for
+/// *rendering* — a surface that hasn't been shown yet shouldn't flash in. It is wrong for
+/// *deciding*: the attendance scanner read it on its first frame, got `false`, and showed
+/// "not available for your account" before the request had even returned. Anything that makes a
+/// decision rather than paints a widget should await this instead.
+final isVerifiedScholarFutureProvider = FutureProvider<bool>((ref) async {
+  final memberships = await ref.watch(myProgramMembershipsProvider.future);
+  return memberships.any((m) => m.programSlug == presidentialScholarsSlug && m.isActive);
+});
+
 /// Whether the current user is a verified Presidential Scholar — drives every Blueprint Bond
 /// surface (completion card, professional-profile screen access).
 final isVerifiedScholarProvider = Provider<bool>((ref) {

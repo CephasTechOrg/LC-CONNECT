@@ -192,12 +192,12 @@ export default function UsersPage() {
                 : 'Try clearing filters or searching a different name or email.'}
             </OpsEmpty>
           ) : (
-            <table className="ops-table">
+            <table className="ops-table ops-cards-sm">
               <thead>
                 <tr>
                   <th>User</th>
                   <th>Campus email</th>
-                  <th>Personal email</th>
+                  <th className="ops-col-hide-md">Personal email</th>
                   <th>Role</th>
                   <th>Email</th>
                   <th>Campus badge</th>
@@ -218,20 +218,24 @@ export default function UsersPage() {
                           <div className="ops-cell-title">{u.display_name || '—'}</div>
                         </div>
                       </td>
-                      <td>{u.email}</td>
-                      <td>{u.contact_email || '—'}</td>
-                      <td style={{ textTransform: 'capitalize' }}>{u.role}</td>
-                      <td>
+                      <td data-label="Campus email">{u.email}</td>
+                      <td className="ops-col-hide-md" data-label="Personal email">
+                        {u.contact_email || '—'}
+                      </td>
+                      <td data-label="Role" style={{ textTransform: 'capitalize' }}>
+                        {u.role}
+                      </td>
+                      <td data-label="Email">
                         <span className={u.is_verified ? 'ops-chip success' : 'ops-chip muted'}>
                           {u.is_verified ? 'Confirmed' : 'Pending OTP'}
                         </span>
                       </td>
-                      <td>
+                      <td data-label="Campus badge">
                         <span className={u.campus_verified ? 'ops-chip success' : 'ops-chip muted'}>
                           {u.campus_verified ? 'Verified' : 'Not verified'}
                         </span>
                       </td>
-                      <td>
+                      <td data-label="Account">
                         <span
                           className={
                             u.status === 'active'
@@ -244,7 +248,7 @@ export default function UsersPage() {
                           {u.status}
                         </span>
                       </td>
-                      <td>
+                      <td className="ops-cell-actions">
                         <div className="ops-row-actions">
                           {u.role === 'admin' ? (
                             <span className="ops-cell-sub" style={{ fontStyle: 'italic' }}>

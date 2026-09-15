@@ -9,5 +9,6 @@ Setup, daily workflow, and deployment.
 | [`supabase.md`](./supabase.md) | **Supabase setup** — storage, connection strings, Realtime, RLS |
 | [`resend.md`](./resend.md) | Email provider (Resend) setup |
 | [`deployment.md`](./deployment.md) | **Render deployment** — `render.yaml`, env vars, and every failure we hit + fixed |
+| [`testflight_release.md`](./testflight_release.md) | **Shipping to TestFlight** — the build/upload checklist, which changes need a new build, whether each one gets reviewed, and the rejections we hit |
 | [`admin_portal.md`](./admin_portal.md) | **Next.js admin** — first admin promote, MFA, local `admin/` app |
 | [`setup.md`](./setup.md) | Older local-setup notes (prefer `local_dev_setup.md`) |

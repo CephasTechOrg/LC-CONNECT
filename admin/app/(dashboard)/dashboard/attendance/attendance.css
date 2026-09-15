@@ -190,3 +190,113 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ── Start dialog: explaining the session before it starts ────────────────────
+   Two number inputs alone never said when check-in closed, that the late window
+   runs *after* the present one rather than from the start, or that absences are
+   only written when an admin closes the session. */
+
+.attendance-start-intro {
+  margin: -6px 0 18px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--muted-strong);
+}
+
+.attendance-field-hint {
+  display: block;
+  margin-top: 5px;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.attendance-field-hint strong {
+  color: var(--text-mid);
+  font-weight: 650;
+}
+
+.attendance-window-summary {
+  margin: 4px 0 18px;
+  padding: 13px 14px;
+  border-radius: 12px;
+  background: var(--bg-soft);
+  border: 1px solid var(--border-soft);
+}
+
+.attendance-window-summary-title {
+  display: block;
+  margin-bottom: 9px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.attendance-window-summary ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 7px;
+}
+
+.attendance-window-summary li {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 7px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--text-mid);
+  font-weight: 400;
+}
+
+.attendance-chip {
+  flex: 0 0 auto;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.attendance-chip.present {
+  background: #dff3e8;
+  color: #1d7a4f;
+}
+
+.attendance-chip.late {
+  background: #fdf0d5;
+  color: #8a5a06;
+}
+
+.attendance-chip.closed,
+.attendance-chip.muted {
+  background: #eeebf3;
+  color: var(--muted-strong);
+}
+
+.attendance-window-note {
+  margin: 10px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-soft);
+  font-size: 12.5px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--text-mid);
+}
+
+.attendance-window-note strong {
+  font-weight: 650;
+}
+
+/* The dialog can now be taller than a short laptop viewport. */
+@media (max-height: 760px) {
+  .attendance-start-dialog-card {
+    max-height: 88vh;
+    overflow-y: auto;
+  }
+}

@@ -65,65 +65,67 @@ class _ChatScreenBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _ChatHeader(
-              title: isGroup ? (groupTitle ?? 'Group') : (partner?.displayName ?? 'Chat'),
-              subtitle: isGroup ? null : partnerSubtitle,
-              avatarUrl: isGroup ? groupAvatarUrl : partner?.avatarUrl,
-              isGroup: isGroup,
-              campusVerified: !isGroup && (partner?.campusVerified ?? false),
-              onIdentityTap: onIdentityTap,
-              onMenu: onMenu,
-            ),
-            _ConnectionBanner(status: connectionStatus),
-            _OutboxBanner(outboxCount: outboxCount),
-            Expanded(
-              child: Stack(
-                alignment: Alignment.bottomRight,
-                children: [
-                  loading
-                      ? const Center(child: CircularProgressIndicator())
-                      : loadError != null && messages.isEmpty
-                          ? AppErrorState(message: loadError!, onRetry: onRetryLoad)
-                          : messages.isEmpty
-                              ? _EmptyChatState(name: groupTitle ?? partner?.displayName ?? 'your match')
-                              : _MessageList(
-                                  messages: messages,
-                                  currentUserId: currentUserId,
-                                  partnerAvatarUrl: partner?.avatarUrl,
-                                  isGroup: isGroup,
-                                  senders: senders,
-                                  onReport: isGroup ? onReport : null,
-                                  onDelete: onDelete,
-                                  iAmGroupAdmin: iAmGroupAdmin,
-                                  scrollController: scrollController,
-                                  onRetry: onRetry,
-                                ),
-                  if (awayFromBottom && !loading && messages.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 12, bottom: 8),
-                      child: _ScrollToBottomFab(
-                        newCount: newWhileAway,
-                        onTap: onScrollToBottomTap,
-                      ),
-                    ),
-                ],
+    return DismissKeyboardOnTap(
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        body: SafeArea(
+          child: Column(
+            children: [
+              _ChatHeader(
+                title: isGroup ? (groupTitle ?? 'Group') : (partner?.displayName ?? 'Chat'),
+                subtitle: isGroup ? null : partnerSubtitle,
+                avatarUrl: isGroup ? groupAvatarUrl : partner?.avatarUrl,
+                isGroup: isGroup,
+                campusVerified: !isGroup && (partner?.campusVerified ?? false),
+                onIdentityTap: onIdentityTap,
+                onMenu: onMenu,
               ),
-            ),
-            if (partnerTyping) _TypingIndicator(name: typingName),
-            _InputBar(
-              controller: inputController,
-              // A send is in flight while any bubble is still optimistic. Was hardcoded false,
-              // so the button never showed its in-flight state.
-              sending: messages.any((m) => m.status == MessageStatus.sending),
-              onSend: onSend,
-              onTyping: onTyping,
-            ),
-          ],
+              _ConnectionBanner(status: connectionStatus),
+              _OutboxBanner(outboxCount: outboxCount),
+              Expanded(
+                child: Stack(
+                  alignment: Alignment.bottomRight,
+                  children: [
+                    loading
+                        ? const Center(child: CircularProgressIndicator())
+                        : loadError != null && messages.isEmpty
+                            ? AppErrorState(message: loadError!, onRetry: onRetryLoad)
+                            : messages.isEmpty
+                                ? _EmptyChatState(name: groupTitle ?? partner?.displayName ?? 'your match')
+                                : _MessageList(
+                                    messages: messages,
+                                    currentUserId: currentUserId,
+                                    partnerAvatarUrl: partner?.avatarUrl,
+                                    isGroup: isGroup,
+                                    senders: senders,
+                                    onReport: isGroup ? onReport : null,
+                                    onDelete: onDelete,
+                                    iAmGroupAdmin: iAmGroupAdmin,
+                                    scrollController: scrollController,
+                                    onRetry: onRetry,
+                                  ),
+                    if (awayFromBottom && !loading && messages.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 12, bottom: 8),
+                        child: _ScrollToBottomFab(
+                          newCount: newWhileAway,
+                          onTap: onScrollToBottomTap,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              if (partnerTyping) _TypingIndicator(name: typingName),
+              _InputBar(
+                controller: inputController,
+                // A send is in flight while any bubble is still optimistic. Was hardcoded false,
+                // so the button never showed its in-flight state.
+                sending: messages.any((m) => m.status == MessageStatus.sending),
+                onSend: onSend,
+                onTyping: onTyping,
+              ),
+            ],
+          ),
         ),
       ),
     );

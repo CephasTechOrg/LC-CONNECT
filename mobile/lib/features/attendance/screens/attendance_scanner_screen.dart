@@ -46,7 +46,17 @@ class _AttendanceScannerScreenState extends ConsumerState<AttendanceScannerScree
   }
 
   Future<void> _bootstrap() async {
-    if (!ref.read(honorsAttendanceVisibleProvider)) {
+    // Awaited, not read. `honorsAttendanceVisibleProvider` answers false while the membership
+    // and feature-flag requests are still in flight, so reading it here on the first frame
+    // flashed "not available for your account" at every scholar before the real answer arrived.
+    bool visible;
+    try {
+      visible = await ref.read(honorsAttendanceVisibleFutureProvider.future);
+    } catch (_) {
+      visible = false;
+    }
+    if (!mounted) return;
+    if (!visible) {
       setState(() {
         _phase = _ScannerPhase.error;
         _errorMessage = 'This attendance session is not available for your account.';
@@ -68,6 +78,7 @@ class _AttendanceScannerScreenState extends ConsumerState<AttendanceScannerScree
 
     try {
       final active = await ref.read(activeAttendanceProvider.future);
+      if (!mounted) return;
       if (active.isCheckedIn) {
         setState(() {
           _phase = _ScannerPhase.success;

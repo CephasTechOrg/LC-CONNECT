@@ -568,3 +568,125 @@
     max-width: 100%;
   }
 }
+
+/* ── Tables become cards on narrow screens ────────────────────────────────────
+   An eight-column table with two long email addresses cannot be made readable by
+   squeezing: `min-width` only forces long values to wrap inside 80px cells, which
+   is what made names and emails stack on top of each other. Below this breakpoint
+   each row becomes a card and each cell carries its own label, so nothing is
+   truncated, nothing wraps mid-address, and no sideways scrolling is needed.
+
+   Opt-in per table via `.ops-cards-sm`, because a table converted to cards without
+   `data-label` on its cells renders as unlabelled stacked values — worse than the
+   horizontal scroll it replaced. Add the class only once the cells are labelled.
+
+   Cells opt in individually by carrying `data-label`. A cell without one (the name,
+   the action buttons) renders full-width with no label, which is what those want. */
+
+@media (max-width: 860px) {
+  .ops-table-wrap:has(.ops-cards-sm) {
+    background: none;
+    border: none;
+    box-shadow: none;
+    border-radius: 0;
+  }
+
+  /* Cards must not sit inside a horizontal scroller. */
+  .ops-table-wrap.table-scroll:has(.ops-cards-sm) {
+    overflow-x: visible;
+    overflow-y: visible;
+  }
+
+  .ops-table.ops-cards-sm {
+    min-width: 0;
+    display: block;
+  }
+
+  .ops-table.ops-cards-sm thead {
+    /* Column headers are replaced by the per-cell labels below. */
+    display: none;
+  }
+
+  .ops-table.ops-cards-sm tbody,
+  .ops-table.ops-cards-sm tr,
+  .ops-table.ops-cards-sm td {
+    display: block;
+    width: auto;
+  }
+
+  .ops-table.ops-cards-sm tr {
+    background: #fff;
+    border: 1px solid #eeebf3;
+    border-radius: 16px;
+    box-shadow: 0 6px 18px -14px rgba(52, 38, 104, 0.35);
+    padding: 4px 16px 12px;
+    margin-bottom: 12px;
+  }
+
+  .ops-table.ops-cards-sm td {
+    border-bottom: 1px solid #f4f1f9;
+    padding: 10px 0;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    font-size: 13.5px;
+  }
+
+  .ops-table.ops-cards-sm td:last-child {
+    border-bottom: none;
+  }
+
+  .ops-table.ops-cards-sm td::before {
+    content: attr(data-label);
+    flex: 0 0 auto;
+    color: #8e8899;
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
+
+  /* Values line up on the right and may wrap — but only between words, never
+     mid-address, because the cell now has the full card width to use. */
+  .ops-table.ops-cards-sm td > * {
+    text-align: right;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  /* The identity cell leads the card: full width, no label, larger. */
+  .ops-table.ops-cards-sm td:first-child {
+    display: block;
+    padding-top: 14px;
+    font-size: 15px;
+  }
+
+  .ops-table.ops-cards-sm td:first-child::before {
+    content: none;
+  }
+
+  .ops-table.ops-cards-sm td:first-child > * {
+    text-align: left;
+  }
+
+  /* Actions sit as a full-width row of buttons at the foot of the card. */
+  .ops-table.ops-cards-sm td.ops-cell-actions {
+    display: block;
+    padding-top: 12px;
+  }
+
+  .ops-table.ops-cards-sm td.ops-cell-actions::before {
+    content: none;
+  }
+
+  .ops-table.ops-cards-sm td.ops-cell-actions .ops-row-actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .ops-table.ops-cards-sm td.ops-cell-actions .ops-btn {
+    flex: 1 1 auto;
+  }
+}

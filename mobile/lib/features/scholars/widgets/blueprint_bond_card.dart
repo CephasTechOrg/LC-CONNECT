@@ -40,17 +40,75 @@ class BlueprintBondCard extends ConsumerWidget {
         (profile.hasResume || profile.hasHeadshot);
 
     if (style == BlueprintBondStyle.prompt) {
-      // Nothing left to nudge about — Profile keeps the permanent way in.
-      if (isComplete) return const SizedBox.shrink();
-      // First load only: stay silent until we know the profile isn't already complete.
-      // Once we've shown the prompt, remounts keep [profile] via asData and don't flicker.
+      // First load only: stay silent until we know whether the profile is already complete.
+      // Once something has rendered, remounts keep [profile] via asData and don't flicker.
       if (profile == null) return const SizedBox.shrink();
+      // Nothing left to nudge about, but the status still belongs on the dashboard. The card
+      // used to vanish entirely here, so finishing the profile removed the only place a
+      // verified scholar could see they were one — leaving the notification as the sole cue.
+      if (isComplete) {
+        return _StatusRow(onTap: () => context.push('/profile/blueprint-bond'));
+      }
       return _PromptCard(onTap: () => context.push('/profile/blueprint-bond'));
     }
 
     return _EntryRow(
       isComplete: isComplete,
       onTap: () => context.push('/profile/blueprint-bond'),
+    );
+  }
+}
+
+/// Campus Hub, once there is nothing left to finish: a slim confirmation that the student is a
+/// verified Honors Student, still linking through to Blueprint Bond. Deliberately much quieter
+/// than [_PromptCard] — it is status, not a call to action, and it sits on a feed the student
+/// scrolls every day.
+class _StatusRow extends StatelessWidget {
+  final VoidCallback onTap;
+  const _StatusRow({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
+      child: Material(
+        color: AppColors.primarySoft,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            child: Row(
+              children: [
+                const Icon(Icons.workspace_premium_rounded,
+                    size: 18, color: Color(0xFF1B3A5C)),
+                const SizedBox(width: 9),
+                Expanded(
+                  child: Text(
+                    'Honors Student',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF1B3A5C),
+                    ),
+                  ),
+                ),
+                Text(
+                  'Blueprint Bond',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.primary,
+                  ),
+                ),
+                const SizedBox(width: 2),
+                Icon(Icons.chevron_right_rounded, size: 18, color: AppColors.primary),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -151,8 +209,11 @@ class _EntryRow extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Honors Student is an account status and leads; Blueprint Bond is what
+                    // that status gives access to, so it reads as the detail underneath. This
+                    // row only renders for verified scholars, so the label is always true.
                     Text(
-                      'Blueprint Bond',
+                      'Honors Student',
                       style: GoogleFonts.dmSans(
                         fontSize: 14.5,
                         fontWeight: FontWeight.w700,
@@ -168,9 +229,14 @@ class _EntryRow extends StatelessWidget {
                           decoration: BoxDecoration(color: statusColor, shape: BoxShape.circle),
                         ),
                         const SizedBox(width: 6),
-                        Text(
-                          isComplete ? 'Professional profile complete' : 'Profile incomplete',
-                          style: GoogleFonts.dmSans(fontSize: 12.5, color: AppColors.textMuted),
+                        Flexible(
+                          child: Text(
+                            isComplete
+                                ? 'Blueprint Bond · profile complete'
+                                : 'Blueprint Bond · profile incomplete',
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.dmSans(fontSize: 12.5, color: AppColors.textMuted),
+                          ),
                         ),
                       ],
                     ),
