@@ -31,6 +31,19 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<!-- Required by App Store processing (ITMS-90683), NOT because the app uses location.
+	     `permission_handler_apple` compiles every permission strategy into the release binary,
+	     including LocationPermissionStrategy, so CoreLocation is linked and Apple's static
+	     analysis demands a purpose string. The app only ever requests Permission.camera, and
+	     the privacy policy's "no GPS, no location tracking" claim remains accurate — this string
+	     can never be shown, because nothing in the app asks for location. -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>LC Connect does not request or use your location. This description is required because a bundled component includes location support.</string>
+	<!-- Required: the app opens the photo library via image_picker (ImageSource.gallery) for
+	     profile pictures, group avatars and activity images. Without this key App Store
+	     processing rejects the build with ITMS-90683. -->
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>LC Connect needs access to your photos so you can choose a profile picture and add images to groups and activities.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Camera access is required to scan the Honors attendance QR code.</string>
 	<key>UIApplicationSceneManifest</key>
