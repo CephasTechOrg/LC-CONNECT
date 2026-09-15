@@ -637,6 +637,13 @@
     border-bottom: none;
   }
 
+  /* A column hidden at mid widths was hidden to buy horizontal space. Cards have no
+     horizontal constraint, so hiding it there just loses information for no gain —
+     personal email was disappearing on exactly the screens with room to show it. */
+  .ops-table.ops-cards-sm td.ops-col-hide-md {
+    display: flex;
+  }
+
   .ops-table.ops-cards-sm td::before {
     content: attr(data-label);
     flex: 0 0 auto;

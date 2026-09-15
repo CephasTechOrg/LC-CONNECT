@@ -1,6 +1,15 @@
 part of '../screens/campus_hub_screen.dart';
 
 const _spotlightHeight = 188.0;
+
+/// The card is a fixed height, but its copy is not: at large accessibility text sizes the
+/// headline and description grow past 188dp and overflow. Grow the card with the text instead
+/// of clamping the text — clamping would make the one surface a low-vision student most needs
+/// to read the one that refuses to scale. Capped so it can't eat the whole viewport.
+double _spotlightHeightFor(BuildContext context) {
+  final scale = MediaQuery.textScalerOf(context).scale(1.0).clamp(1.0, 1.6);
+  return _spotlightHeight * scale;
+}
 const _spotlightRadius = 20.0;
 
 class _SpotlightCarousel extends StatefulWidget {
@@ -67,7 +76,7 @@ class _SpotlightCarouselState extends State<_SpotlightCarousel> {
       child: Column(
         children: [
           SizedBox(
-            height: _spotlightHeight,
+            height: _spotlightHeightFor(context),
             child: NotificationListener<ScrollNotification>(
               // A deliberate swipe wins: reset the dwell so the slide the student chose gets a
               // full turn instead of sliding away a moment later.
