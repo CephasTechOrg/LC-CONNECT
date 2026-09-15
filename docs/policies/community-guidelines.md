@@ -1,6 +1,6 @@
 # LC Connect — Community Guidelines
 
-**Version 1 · Effective: [launch date]**
+**Version 2 · Effective: September 15, 2026**
 
 LC Connect is your campus, in an app. These are the rules for how we treat each other here. They
 are part of the [Terms of Service](terms-of-service.md), so breaking them can cost you your

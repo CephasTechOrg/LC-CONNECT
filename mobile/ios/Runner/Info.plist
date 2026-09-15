@@ -6,8 +6,13 @@
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<!-- The app talks to Supabase, Render and FCM over standard HTTPS only, which is exempt
+	     encryption. Declaring it here means App Store Connect stops asking the export-compliance
+	     question on every single upload, which otherwise blocks each build from reaching testers. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>CFBundleDisplayName</key>
-	<string>Lc Connect</string>
+	<string>LC Connect</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>

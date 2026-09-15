@@ -1,6 +1,6 @@
 # LC Connect — Employer Agreement
 
-**Version 1 · Effective: [launch date]**
+**Version 1 · Effective: September 15, 2026**
 
 For organisations approved to view scholar profiles and post opportunities through the LC Connect
 employer portal.

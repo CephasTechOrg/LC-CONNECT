@@ -1,6 +1,6 @@
 # LC Connect — Terms of Service
 
-**Version 1 · Effective: [launch date]**
+**Version 2 · Effective: September 15, 2026**
 
 LC Connect is an app for the Livingstone College campus community. These are the rules for using
 it. By creating an account you agree to them, to the [Privacy Policy](privacy-policy.md), and to

@@ -1,6 +1,6 @@
 # LC Connect — Privacy Policy
 
-**Version 1 · Effective: [launch date]**
+**Version 2 · Effective: September 15, 2026**
 
 What LC Connect stores about you, who can see it, who else is involved, how long we keep it, and
 what you can ask us to do. This describes the app as it actually works.
