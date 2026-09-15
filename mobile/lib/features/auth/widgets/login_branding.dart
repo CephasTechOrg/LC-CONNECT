@@ -13,7 +13,7 @@ class _HeroScene extends StatelessWidget {
         fit: StackFit.expand,
         children: [
           Image.asset(
-            'assets/images/groupstudent.png',
+            'assets/images/groupstudent.webp',
             fit: BoxFit.cover,
             // Bias slightly up so faces stay above the wave on tall phones.
             alignment: const Alignment(0, -0.15),
@@ -59,7 +59,7 @@ class _LcBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Image.asset(
-      'assets/images/lclogo.png',
+      'assets/images/lclogo.webp',
       width: size,
       height: size,
       fit: BoxFit.contain,

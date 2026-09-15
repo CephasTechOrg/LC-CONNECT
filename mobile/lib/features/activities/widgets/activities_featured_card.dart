@@ -81,7 +81,7 @@ class _FeaturedCardState extends ConsumerState<_FeaturedCard> {
                       bottom: 0,
                       child: Opacity(
                         opacity: 0.55,
-                        child: Image.asset('assets/images/school.png', fit: BoxFit.contain),
+                        child: Image.asset('assets/images/school.webp', fit: BoxFit.contain),
                       ),
                     ),
                   ],

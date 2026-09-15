@@ -69,6 +69,43 @@ void main() {
     });
   });
 
+  /// The keyboard used to make the login page lurch: the hero snapped from full height to zero
+  /// the instant a field took focus, and the form stayed pinned to the top, leaving a large dead
+  /// gap above the keyboard. These two guard the fix.
+  group('L2 keyboard behaviour', () {
+    testWidgets('the form centres in the space the keyboard leaves', (tester) async {
+      await _pumpLogin(tester, const Size(393, 852), bottomInset: 336);
+
+      final brandTop = tester.getTopLeft(find.text('LC Connect')).dy;
+      final forgotBottom = tester.getBottomLeft(find.text('Forgot password?')).dy;
+      const viewportBottom = 852.0 - 336.0; // hero is fully collapsed at this inset
+
+      final gapAbove = brandTop;
+      final gapBelow = viewportBottom - forgotBottom;
+
+      expect(gapBelow, greaterThan(0), reason: 'content must stay above the keyboard');
+      expect((gapAbove - gapBelow).abs(), lessThan(48),
+          reason: 'roughly equal gaps means centred; a big gapBelow means pinned to the top');
+    });
+
+    testWidgets('the hero shrinks progressively with the keyboard, not in one snap',
+        (tester) async {
+      await _pumpLogin(tester, const Size(393, 852));
+      final atRest = tester.getTopLeft(find.text('LC Connect')).dy;
+
+      await _pumpLogin(tester, const Size(393, 852), bottomInset: 120);
+      final partway = tester.getTopLeft(find.text('LC Connect')).dy;
+
+      await _pumpLogin(tester, const Size(393, 852), bottomInset: 336);
+      final collapsed = tester.getTopLeft(find.text('LC Connect')).dy;
+
+      // A partially-raised keyboard must land strictly between the two extremes; if the hero
+      // still snapped to zero, `partway` would equal `collapsed`.
+      expect(partway, lessThan(atRest));
+      expect(partway, greaterThan(collapsed));
+    });
+  });
+
   testWidgets('F1 error text no longer overlaps the value', (tester) async {
     final key = GlobalKey<FormState>();
     final ctrl = TextEditingController(text: 'typed value');

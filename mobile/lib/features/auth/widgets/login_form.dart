@@ -66,7 +66,29 @@ class _SignInFields extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 22),
+        const SizedBox(height: 26),
+        Text(
+          'Welcome back',
+          style: GoogleFonts.dmSans(
+            fontSize: 21,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textDark,
+            letterSpacing: -0.4,
+            height: 1.15,
+          ),
+        ),
+        const SizedBox(height: 5),
+        // The campus-email rule reads as an instruction here, before the field. It used to sit
+        // wedged between the two inputs, where it broke the rhythm and looked like an error.
+        Text(
+          'Use your campus email, not your personal one.',
+          style: GoogleFonts.dmSans(
+            fontSize: 13,
+            color: AppColors.textMuted,
+            height: 1.35,
+          ),
+        ),
+        const SizedBox(height: 20),
         AuthTextField(
           controller: emailCtrl,
           hintText: 'you@students.livingstone.edu',
@@ -80,19 +102,7 @@ class _SignInFields extends StatelessWidget {
           // here is the natural mistake; catch it inline with the reason.
           validator: _validateCampusEmail,
         ),
-        const SizedBox(height: 6),
-        Padding(
-          padding: const EdgeInsets.only(left: 4),
-          child: Text(
-            'Use your campus email, not your personal one.',
-            style: GoogleFonts.dmSans(
-              fontSize: 11.5,
-              color: AppColors.textMuted,
-              height: 1.35,
-            ),
-          ),
-        ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 12),
         AuthTextField(
           controller: passwordCtrl,
           hintText: 'Password',
@@ -114,21 +124,24 @@ class _SignInFields extends StatelessWidget {
           validator: (v) =>
               v != null && v.isNotEmpty ? null : 'Enter your password',
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: 22),
         _SignInButton(isLoading: isLoading, onTap: onSubmit),
-        const SizedBox(height: 12),
+        const SizedBox(height: 4),
         Align(
           alignment: Alignment.centerRight,
-          child: GestureDetector(
+          // Padding inside the tap target, not around it: 13sp text alone is well under the 44pt
+          // minimum touch size.
+          child: InkWell(
             onTap: () => context.push('/forgot-password'),
+            borderRadius: BorderRadius.circular(8),
             child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 2),
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
               child: Text(
                 'Forgot password?',
                 style: GoogleFonts.dmSans(
                   fontSize: 13,
                   color: AppColors.primary,
-                  fontWeight: FontWeight.w500,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),

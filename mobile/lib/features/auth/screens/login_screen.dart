@@ -58,14 +58,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final isLoading = ref.watch(authNotifierProvider).isLoading;
     final media = MediaQuery.of(context);
     final screenH = media.size.height;
-    final keyboardUp = media.viewInsets.bottom > 0;
+    final keyboardInset = media.viewInsets.bottom;
+    final keyboardUp = keyboardInset > 0;
     // Stronger first impression: hero owns more of the first viewport on tall phones,
     // without crowding the form on short ones.
     //
-    // It collapses entirely once the keyboard is up. On a 360x640 phone a 300px keyboard left
-    // only 84px for the form and the pinned footer, which needs ~130 — a 62px overflow. The hero
-    // is decoration; the fields and the footer are not, so the hero is what gives way.
-    final heroH = keyboardUp ? 0.0 : (screenH * 0.40).clamp(220.0, 320.0);
+    // It gives way to the keyboard. On a 360x640 phone a 300px keyboard left only 84px for the
+    // form and the pinned footer, which needs ~130 — a 62px overflow. The hero is decoration;
+    // the fields and the footer are not, so the hero is what yields.
+    //
+    // It shrinks *in step with* `viewInsets.bottom` rather than snapping to zero the instant a
+    // field takes focus. The inset animates as the keyboard slides up, so the hero glides out
+    // with it — snapping was what made typing feel like the page lurching. The 1.2 factor makes
+    // sure it still reaches zero on a tall phone paired with a short keyboard.
+    final baseHeroH = (screenH * 0.40).clamp(220.0, 320.0);
+    final heroH = (baseHeroH - keyboardInset * 1.2).clamp(0.0, baseHeroH);
 
     // Pin create-account to the bottom (fills tall-phone white space). Keep sign-in fields in
     // a scroll region so the keyboard never hides them. Do NOT put Spacer inside a ScrollView —
@@ -83,18 +90,40 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Expanded(
-                      child: SingleChildScrollView(
-                        keyboardDismissBehavior:
-                            ScrollViewKeyboardDismissBehavior.onDrag,
-                        padding: const EdgeInsets.fromLTRB(28, 8, 28, 12),
-                        child: _SignInFields(
-                          emailCtrl: _emailCtrl,
-                          passwordCtrl: _passwordCtrl,
-                          obscure: _obscure,
-                          isLoading: isLoading,
-                          onToggleObscure: () =>
-                              setState(() => _obscure = !_obscure),
-                          onSubmit: _submit,
+                      child: LayoutBuilder(
+                        builder: (context, box) => SingleChildScrollView(
+                          keyboardDismissBehavior:
+                              ScrollViewKeyboardDismissBehavior.onDrag,
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(28, 8, 28, 12),
+                            child: ConstrainedBox(
+                              // Centre the form in whatever height is left instead of pinning it
+                              // to the top, which left a large dead gap between the fields and
+                              // the keyboard. `minHeight` (never a Spacer) keeps the box bounded
+                              // — a Spacer inside a ScrollView gets unbounded height and fails to
+                              // lay out, leaving a blank white panel. The 20 matches the vertical
+                              // padding above so the minimum can't exceed the viewport.
+                              constraints: BoxConstraints(
+                                minHeight:
+                                    (box.maxHeight - 20).clamp(0.0, double.infinity),
+                              ),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  _SignInFields(
+                                    emailCtrl: _emailCtrl,
+                                    passwordCtrl: _passwordCtrl,
+                                    obscure: _obscure,
+                                    isLoading: isLoading,
+                                    onToggleObscure: () =>
+                                        setState(() => _obscure = !_obscure),
+                                    onSubmit: _submit,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
                         ),
                       ),
                     ),

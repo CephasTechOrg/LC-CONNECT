@@ -71,7 +71,7 @@ class _CompactCardState extends ConsumerState<_CompactCard> {
               width: 60,
               height: 60,
               child: Image.asset(
-                'assets/images/school.png',
+                'assets/images/school.webp',
                 fit: BoxFit.cover,
               ),
             ),

@@ -148,10 +148,10 @@ class _ActivityDetailScreenState extends ConsumerState<ActivityDetailScreen> {
                     Image.network(
                       activity.bannerUrl!,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => Image.asset('assets/images/school.png', fit: BoxFit.cover),
+                      errorBuilder: (_, _, _) => Image.asset('assets/images/school.webp', fit: BoxFit.cover),
                     )
                   else
-                    Image.asset('assets/images/school.png', fit: BoxFit.cover),
+                    Image.asset('assets/images/school.webp', fit: BoxFit.cover),
                   DecoratedBox(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(

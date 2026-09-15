@@ -35,9 +35,24 @@ when opened.
 
 ## 4. APNs key (required for iOS delivery)
 1. Apple Developer → **Certificates, Identifiers & Profiles → Keys → +** → enable **Apple Push
-   Notifications service (APNs)** → download the `.p8` (you can only download once).
-2. Firebase console → **Project settings → Cloud Messaging → Apple app configuration** → upload the
-   `.p8` with its **Key ID** and your **Team ID**.
+   Notifications service (APNs)** → click **Configure** (Apple requires it) and choose:
+   - **Environment: `Sandbox & Production`**
+   - **Type: `Team Scoped (All Topics)`**
+2. Continue → Register → download the `.p8` (**you can only download once** — store it somewhere
+   permanent, not `~/Downloads`).
+3. Verify on the key's detail page that Configuration reads **`Team Scoped [Sandbox & Production]`**.
+4. Firebase console → **Project settings → Cloud Messaging → Apple app configuration** → upload the
+   `.p8` to **both** the *development* and *production* APNs auth key rows, with its **Key ID** and
+   your **Team ID** (`53D4586HVT`).
+
+> **The environment choice is the trap.** A key created as `Topic specific [Production]` looks
+> completely correct everywhere — valid file, right Key ID, right Team ID, both Firebase rows
+> filled — and Apple silently refuses every push from a debug build. A `flutter run` build carries
+> `aps-environment: development` and registers against the APNs **sandbox**; TestFlight and the App
+> Store use **production**. A production-only key covers only the latter, so local testing fails
+> while a TestFlight build would have worked. Apple does **not** let you change the environment of
+> an existing key — the only fix is to register a new one and revoke the old. Team Scoped +
+> Sandbox & Production covers every case and needs no revisiting.
 
 ## 5. iOS capabilities (Xcode → Runner → Signing & Capabilities)
 - **+ Capability → Push Notifications**
@@ -74,8 +89,22 @@ flutter clean && flutter run     # full run, not hot reload
 
 ## Troubleshooting
 - **No `Push enabled` log** → `FIREBASE_CREDENTIALS_JSON` not set/invalid on the backend.
-- **iOS: no push** → APNs key not uploaded to Firebase, or Push/Background-Modes capabilities missing,
-  or testing on the Simulator (iOS Simulator supports notifications on recent Xcode; a real device is
-  most reliable).
+- **iOS: no push** → check the backend logs first; they name the cause:
+  - `Push: sent=0 failed=N ... reasons=ThirdPartyAuthError` → **APNs refused the credential.** Almost
+    always the key's environment (see §4) — a `Topic specific [Production]` key cannot serve the
+    sandbox that debug builds register against. Also check Push Notifications is enabled on the App ID.
+  - `reasons=SenderIdMismatch` → the device token belongs to a different Firebase project.
+  - `reasons=UnregisteredError` → stale token; pruned automatically, no action needed.
+  - `offline push skipped: recipient=... reconnected during grace` → push was never attempted because
+    the recipient still had a live socket. Background the app and wait ~10s before sending.
+  - no push log at all → `push_sender` is disabled, or the recipient had no registered device token.
+- **iOS Simulator cannot be trusted for push.** Even on Apple silicon, `getAPNSToken()` commonly
+  returns nil, so no FCM token is ever minted and nothing registers. A *successful* simulator push
+  proves the config; a failure proves nothing. Validate on a physical device.
+- **iOS: nothing registers** → the app logs the reason (`push: ...` lines in
+  `core/notifications/notification_service.dart`). `push: APNs token not ready` means APNs never
+  issued a token — expected on Simulator, a real problem on a device.
+- **`Developer Mode disabled`** on a physical device → iPhone Settings → Privacy & Security →
+  Developer Mode → on, then restart. Required before Xcode can register the device for provisioning.
 - **Token not registering** → check the device hit `POST /api/v1/devices` (backend logs) and the user
   is verified.

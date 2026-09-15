@@ -17,7 +17,7 @@ class _SignInButton extends StatelessWidget {
         borderRadius: BorderRadius.circular(13),
         child: Container(
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 14),
+          padding: const EdgeInsets.symmetric(vertical: 16),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(13),
             boxShadow: [
@@ -42,8 +42,9 @@ class _SignInButton extends StatelessWidget {
                   'Sign In',
                   style: GoogleFonts.dmSans(
                     color: Colors.white,
-                    fontSize: 15,
+                    fontSize: 15.5,
                     fontWeight: FontWeight.w700,
+                    letterSpacing: 0.1,
                   ),
                 ),
         ),

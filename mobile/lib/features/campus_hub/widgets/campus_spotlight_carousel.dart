@@ -11,39 +11,88 @@ class _SpotlightCarousel extends StatefulWidget {
 }
 
 class _SpotlightCarouselState extends State<_SpotlightCarousel> {
+  /// How long each slide holds before advancing.
+  ///
+  /// Ten seconds: unhurried enough to read a headline plus its description without feeling
+  /// rushed, still quick enough that a student who lingers sees all three. Much slower than
+  /// this and most would only ever see slide one, which defeats having the other two.
+  static const _dwell = Duration(seconds: 10);
+  static const _slide = Duration(milliseconds: 420);
+
   final _controller = PageController();
   int _index = 0;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _restartTimer();
+  }
 
   @override
   void dispose() {
+    _timer?.cancel();
     _controller.dispose();
     super.dispose();
   }
 
+  void _restartTimer() {
+    _timer?.cancel();
+    if (campusSpotlights.length < 2) return;
+    _timer = Timer.periodic(_dwell, (_) => _advance());
+  }
+
+  void _advance() {
+    if (!mounted || !_controller.hasClients) return;
+    _controller.animateToPage(
+      (_index + 1) % campusSpotlights.length,
+      duration: _slide,
+      curve: Curves.easeOutCubic,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    // An auto-advancing carousel is a known accessibility problem — it moves content out from
+    // under someone still reading it. Honour the OS "reduce motion" setting by holding on the
+    // first slide and letting them swipe at their own pace.
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _timer?.cancel();
+      _timer = null;
+    } else if (_timer == null && campusSpotlights.length > 1) {
+      _restartTimer();
+    }
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
       child: Column(
         children: [
           SizedBox(
             height: _spotlightHeight,
-            child: PageView.builder(
-              controller: _controller,
-              itemCount: campusSpotlights.length,
-              onPageChanged: (i) => setState(() => _index = i),
-              itemBuilder: (_, i) => _SpotlightCard(spotlight: campusSpotlights[i]),
+            child: NotificationListener<ScrollNotification>(
+              // A deliberate swipe wins: reset the dwell so the slide the student chose gets a
+              // full turn instead of sliding away a moment later.
+              onNotification: (n) {
+                if (n is ScrollStartNotification && n.dragDetails != null) {
+                  _restartTimer();
+                }
+                return false;
+              },
+              child: PageView.builder(
+                controller: _controller,
+                itemCount: campusSpotlights.length,
+                onPageChanged: (i) => setState(() => _index = i),
+                itemBuilder: (_, i) => _SpotlightCard(spotlight: campusSpotlights[i]),
+              ),
             ),
           ),
           const SizedBox(height: 8),
           _SpotlightDots(
             count: campusSpotlights.length,
             active: _index,
-            onTap: (i) => _controller.animateToPage(
-              i,
-              duration: const Duration(milliseconds: 420),
-              curve: Curves.easeOutCubic,
-            ),
+            onTap: (i) {
+              _restartTimer();
+              _controller.animateToPage(i, duration: _slide, curve: Curves.easeOutCubic);
+            },
           ),
         ],
       ),

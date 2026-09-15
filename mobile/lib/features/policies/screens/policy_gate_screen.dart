@@ -79,7 +79,7 @@ class _PolicyGateScreenState extends ConsumerState<PolicyGateScreen> {
                     // already signed in to, not like a compliance interstitial.
                     Row(
                       children: [
-                        Image.asset('assets/images/lclogo.png',
+                        Image.asset('assets/images/lclogo.webp',
                             width: 34, height: 34, fit: BoxFit.contain),
                         const SizedBox(width: 10),
                         // Flexible, or the wordmark overflows at 320px with text scaled to the

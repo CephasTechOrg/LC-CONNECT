@@ -21,7 +21,7 @@ class _Header extends StatelessWidget {
             onPressed: onBack,
           ),
           Image.asset(
-            'assets/images/lclogo.png',
+            'assets/images/lclogo.webp',
             width: 32,
             height: 32,
             fit: BoxFit.contain,

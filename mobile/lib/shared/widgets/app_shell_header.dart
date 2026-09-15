@@ -30,7 +30,7 @@ class AppShellHeader extends StatelessWidget {
       child: Row(
         children: [
           Image.asset(
-            'assets/images/lclogo.png',
+            'assets/images/lclogo.webp',
             width: 36,
             height: 36,
             fit: BoxFit.contain,

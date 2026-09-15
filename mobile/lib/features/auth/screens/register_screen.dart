@@ -273,7 +273,7 @@ class _Branding extends StatelessWidget {
       child: Row(
         children: [
           Image.asset(
-            'assets/images/lclogo.png',
+            'assets/images/lclogo.webp',
             width: 40,
             height: 40,
             fit: BoxFit.contain,

@@ -26,7 +26,7 @@ class _HomeGreetingHeader extends ConsumerWidget {
       child: Row(
         children: [
           Image.asset(
-            'assets/images/lclogo.png',
+            'assets/images/lclogo.webp',
             width: 46,
             height: 46,
             fit: BoxFit.contain,

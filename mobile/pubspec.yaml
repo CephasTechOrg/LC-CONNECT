@@ -71,6 +71,10 @@ dev_dependencies:
   # without waiting real seconds.
   fake_async: ^1.3.1
 
+  # Generates every iOS/Android launcher icon size from one 1024x1024 source.
+  # Regenerate after changing assets/icon/*: dart run flutter_launcher_icons
+  flutter_launcher_icons: ^0.14.3
+
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 
@@ -84,14 +88,13 @@ flutter:
 
   assets:
     - .env
-    - assets/images/students.png
-    - assets/images/school.png
-    - assets/images/headshots.png
-    - assets/images/groupstudents.png
-    - assets/images/lclogo.png
-    - assets/images/groupstudent.png
+    - assets/images/school.webp
+    - assets/images/lclogo.webp
+    - assets/images/groupstudent.webp
     - assets/images/spotlight_campus.jpg
-    - assets/images/spotlight_student.png
+    - assets/images/spotlight_student.webp
+    - assets/images/lcgroup.webp
+    - assets/images/lcgrad.webp
     - assets/images/featured/
     - assets/sounds/new_message.wav
 
@@ -114,3 +117,16 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+# App launcher icon. Source art lives in assets/icon/ (not shipped as a Flutter asset — these
+# are compiled into the native icon sets at build-config time, not loaded at runtime).
+flutter_launcher_icons:
+  image_path: "assets/icon/app_icon.png"
+  ios: true
+  # iOS rejects icons with an alpha channel; the source is already opaque, this is a backstop.
+  remove_alpha_ios: true
+  android: true
+  # Adaptive icons layer a transparent foreground over a flat colour, so the launcher can mask
+  # them to whatever shape the device uses.
+  adaptive_icon_background: "#3671A5"
+  adaptive_icon_foreground: "assets/icon/app_icon_foreground.png"
