@@ -128,35 +128,9 @@ class OnboardingChipGrid extends StatelessWidget {
       maxSelections != null && selected.length >= maxSelections!;
 
   Future<void> _promptForCustom(BuildContext context) async {
-    final controller = TextEditingController();
     final value = await showDialog<String>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Add your own',
-            style: GoogleFonts.dmSans(fontWeight: FontWeight.w700)),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          maxLength: 40,
-          textCapitalization: TextCapitalization.words,
-          decoration: const InputDecoration(
-            hintText: 'e.g. Afrobeats',
-            counterText: '',
-          ),
-          onSubmitted: (v) => Navigator.of(context).pop(v.trim()),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text('Cancel', style: GoogleFonts.dmSans()),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(controller.text.trim()),
-            child: Text('Add',
-                style: GoogleFonts.dmSans(fontWeight: FontWeight.w700)),
-          ),
-        ],
-      ),
+      builder: (context) => const _AddYourOwnDialog(),
     );
     if (value != null && value.isNotEmpty) onAddCustom!(value);
   }
@@ -356,6 +330,59 @@ class OnboardingSignOutButton extends ConsumerWidget {
         'Sign out',
         style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w600),
       ),
+    );
+  }
+}
+
+/// The "add your own" prompt, as a widget so it can own and dispose its controller.
+///
+/// The controller used to be created in the caller and never disposed — a `ChangeNotifier` leaked
+/// once per opening, and this dialog can be opened repeatedly during onboarding. Disposing it in
+/// the caller instead is not an option: `showDialog` completes when the route is popped, while the
+/// exit animation still has the `TextField` mounted, so an eager dispose throws
+/// "A TextEditingController was used after being disposed". Owning it here ties the lifetime to
+/// the widget that actually uses it.
+class _AddYourOwnDialog extends StatefulWidget {
+  const _AddYourOwnDialog();
+
+  @override
+  State<_AddYourOwnDialog> createState() => _AddYourOwnDialogState();
+}
+
+class _AddYourOwnDialogState extends State<_AddYourOwnDialog> {
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _submit() => Navigator.of(context).pop(_controller.text.trim());
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text('Add your own', style: GoogleFonts.dmSans(fontWeight: FontWeight.w700)),
+      content: TextField(
+        controller: _controller,
+        autofocus: true,
+        maxLength: 40,
+        textCapitalization: TextCapitalization.words,
+        textInputAction: TextInputAction.done,
+        decoration: const InputDecoration(hintText: 'e.g. Afrobeats', counterText: ''),
+        onSubmitted: (_) => _submit(),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text('Cancel', style: GoogleFonts.dmSans()),
+        ),
+        TextButton(
+          onPressed: _submit,
+          child: Text('Add', style: GoogleFonts.dmSans(fontWeight: FontWeight.w700)),
+        ),
+      ],
     );
   }
 }

@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -7,6 +9,7 @@ from app.features.notifications.schema import DeviceRegister, NotificationRead, 
 from app.features.notifications.service import (
     list_notifications,
     mark_all_read,
+    mark_one_read,
     register_device,
     unread_count,
     unregister_device,
@@ -39,8 +42,28 @@ async def get_unread_count(
 async def mark_notifications_read(
     current_user: User = Depends(require_email_confirmed_user), db: AsyncSession = Depends(get_db)
 ):
-    """Mark all of the user's notifications read — called when they open the notifications screen."""
+    """Mark every notification read — the explicit "Mark all read" action.
+
+    This used to be called automatically when the inbox mounted, which destroyed the unread state
+    before the user could see which rows were new. The client now marks rows individually as they
+    are opened (see below) and only calls this on a deliberate action.
+    """
     await mark_all_read(db, current_user.id)
+
+
+@inbox_router.post('/{notification_id}/read', status_code=status.HTTP_204_NO_CONTENT)
+async def mark_notification_read(
+    notification_id: UUID,
+    current_user: User = Depends(require_email_confirmed_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    """Mark one notification read — called when the user opens it.
+
+    Deliberately 204 whether or not a row changed: an unknown id and an already-read notification
+    are both "nothing left to do", and distinguishing them would tell a caller whether a given
+    notification id exists for another user.
+    """
+    await mark_one_read(db, current_user.id, notification_id)
 
 
 @router.post('', status_code=status.HTTP_204_NO_CONTENT)

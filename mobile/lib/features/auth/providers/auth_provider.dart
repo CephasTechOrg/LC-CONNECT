@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -47,6 +48,18 @@ class AuthUser {
       );
 }
 
+/// Thrown when the stored session could not be restored because the backend was unreachable.
+///
+/// Distinct from a *rejected* session: the credentials are intact and worth keeping, so the app
+/// must offer a retry rather than sign the user out. The splash screen renders this as
+/// "we can't reach LC Connect right now" with the session preserved.
+class AuthRestoreUnreachable implements Exception {
+  const AuthRestoreUnreachable();
+
+  @override
+  String toString() => 'AuthRestoreUnreachable: the backend could not be reached';
+}
+
 /// Set when bootstrap returns 403 `account_suspended` — session stays alive so the user can appeal.
 class SuspendedSession {
   final String email;
@@ -72,9 +85,26 @@ class AuthNotifier extends AsyncNotifier<AuthUser?> {
   GoTrueClient get _auth => Supabase.instance.client.auth;
   String? _pendingEmail;
   String? _pendingContactEmail;
+  bool _sessionRestored = false;
 
   String? get pendingEmail => _pendingEmail;
   String? get pendingContactEmail => _pendingContactEmail;
+
+  /// Whether the **initial** session restore has finished — with a session, without one, or
+  /// having failed. Until then the app genuinely does not know who the user is.
+  ///
+  /// This is deliberately *not* `state.isLoading`. [login] also sets `AsyncLoading`, and treating
+  /// that as "restoring" would throw the user onto the splash screen the moment they tapped
+  /// Sign in. Only the one-time [build] flips this flag.
+  bool get sessionRestored => _sessionRestored;
+
+  /// Marks the initial restore as finished, whatever its outcome.
+  ///
+  /// `@protected` and separate from [build] because a subclass that overrides [build] — every test
+  /// double does — would otherwise never flip the flag, and the router would hold the splash
+  /// screen forever. Any override of [build] must call this on every return path.
+  @protected
+  void markSessionRestored() => _sessionRestored = true;
 
   @override
   Future<AuthUser?> build() async {
@@ -86,18 +116,61 @@ class AuthNotifier extends AsyncNotifier<AuthUser?> {
     });
     ref.onDispose(sub.cancel);
 
+    // [markSessionRestored] is called on every path that reaches a *definitive* answer — signed
+    // in, not signed in, or suspended — because that is what lets the router leave the splash.
+    // It is deliberately NOT called when the backend was unreachable: there is no answer yet, so
+    // the app stays on the splash (which offers a retry) instead of falling through to the login
+    // form, which is what made a network blip look like a sign-out.
     if (_auth.currentSession == null) {
+      markSessionRestored();
       return null;
     }
     try {
-      return await _bootstrap();
+      final user = await _bootstrap();
+      markSessionRestored();
+      return user;
     } on DioException catch (e) {
       if (isAccountSuspendedError(e)) {
         _markSuspended();
+        markSessionRestored();
         return null;
       }
+      // Beta report #10 — "users have to authenticate repeatedly". This branch used to be an
+      // unconditional `await _auth.signOut()`, which destroyed a perfectly valid session
+      // (refresh token and all) whenever the *backend* call failed. A cold-start timeout or a
+      // moment of flaky campus Wi-Fi at launch signed the user out and made them log in again.
+      // Nothing was wrong with their credentials.
+      //
+      // The two cases are now distinguished: a session the server *rejected* is dead and must
+      // go, but a server we could not *reach* says nothing about the session — so keep it, and
+      // surface a retry.
+      //
+      // Throwing (rather than returning null) is also what gets the retry for free: Riverpod
+      // retries a failed provider on an exponential backoff, so the restore keeps trying by
+      // itself while the splash shows its manual "Try again" alongside.
+      if (_isUnreachable(e)) {
+        throw const AuthRestoreUnreachable();
+      }
       await _auth.signOut();
+      markSessionRestored();
       return null;
+    }
+  }
+
+  /// Whether a failure means "could not reach the server" rather than "the server said no".
+  ///
+  /// Mirrors the classification `_UnreachableInterceptor` already applies in `api_client.dart`,
+  /// plus 5xx: a server error is the backend's problem, never evidence about this session.
+  static bool _isUnreachable(DioException error) {
+    switch (error.type) {
+      case DioExceptionType.connectionTimeout:
+      case DioExceptionType.sendTimeout:
+      case DioExceptionType.receiveTimeout:
+      case DioExceptionType.connectionError:
+        return true;
+      default:
+        final status = error.response?.statusCode;
+        return status != null && status >= 500;
     }
   }
 

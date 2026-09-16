@@ -20,8 +20,6 @@ services:
         value: production
       - key: DATABASE_URL
         sync: false
-      - key: JWT_SECRET_KEY
-        sync: false
       - key: CORS_ORIGINS
         sync: false
       - key: SUPABASE_URL
@@ -72,6 +70,20 @@ services:
       # Soft-deleted message hard-purge window — used by scripts/purge_soft_deleted_messages.py (#21).
       - key: MESSAGE_SOFT_DELETE_RETENTION_DAYS
         value: "90"
+      # ── Honors attendance ─────────────────────────────────────────────────────
+      # Both of these were live in the Render dashboard but undeclared here, so they were
+      # invisible to review and would be silently lost on a service re-create. `sync: false`
+      # keeps the values out of git while making the requirement explicit.
+      #
+      # Off by default in app/config.py: when false, EVERY student attendance route returns 404
+      # (see app/features/attendance/permissions.py::ensure_honors_attendance_enabled) and every
+      # mobile attendance surface hides itself. Must be "true" wherever attendance is in use.
+      - key: HONORS_ATTENDANCE_ENABLED
+        sync: false
+      # HMAC key for the rotating check-in QR. Unset → start_session 503s and any check-in is
+      # rejected (verify_challenge_token returns False rather than trusting an unsigned code).
+      - key: ATTENDANCE_QR_SIGNING_SECRET
+        sync: false
 
   # ── Admin portal (Next.js) ────────────────────────────────────────────────────
   # A Node web service, NOT a static site: `admin/middleware.ts` refreshes the Supabase

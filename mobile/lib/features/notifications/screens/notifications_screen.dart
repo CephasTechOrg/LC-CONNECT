@@ -10,8 +10,18 @@ import '../../connections/providers/connections_provider.dart';
 import '../data/notification_models.dart';
 import '../providers/notifications_provider.dart';
 
-/// The notification center — a list of group membership events. Opening it marks everything read
-/// (the bell badge clears); tapping a row jumps to the related group.
+/// The notification center. Unread rows stay visibly unread for the whole visit; opening one
+/// marks just that one read.
+///
+/// Beta report #14 — "read/unread state is not visually clear enough". The unread chrome (tinted
+/// row, bold title, dot) was all implemented but unreachable: the screen marked *everything* read
+/// on mount, which raced the list refetch, so rows could come back already read and the styling
+/// would flash off. The workaround was to pass `treatAsRead: true` for every row, which disabled
+/// unread styling on the only screen that shows notifications.
+///
+/// The fix is [_unreadOnEntry]: snapshot which ids were unread *before* marking anything, and
+/// style from the snapshot. That removes the race the workaround existed for **and** gives the
+/// user time to see what was new — the two goals were never in conflict.
 class NotificationsScreen extends ConsumerStatefulWidget {
   const NotificationsScreen({super.key});
 
@@ -20,13 +30,51 @@ class NotificationsScreen extends ConsumerStatefulWidget {
 }
 
 class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
-  @override
-  void initState() {
-    super.initState();
-    // Viewing the screen clears the badge + marks read on the server.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(notificationCountProvider.notifier).markAllRead();
-    });
+  /// Ids that were unread when this screen opened. Styling reads from here, never from the
+  /// live row state, so marking a row read does not make it look read mid-visit.
+  final Set<String> _unreadOnEntry = {};
+  bool _snapshotTaken = false;
+
+  /// Ids the user has explicitly cleared with "Mark all read" during this visit.
+  ///
+  /// Needed because the list itself may still be stale — `markAllRead` triggers a refetch, but
+  /// the styling must not wait on a network round trip to reflect a button the user just pressed.
+  final Set<String> _clearedHere = {};
+
+  /// The last rendered page, so "mark all read" knows which ids it just cleared.
+  List<AppNotification> _items = const [];
+
+  /// Records the unread set once, from the first loaded page.
+  void _snapshot(List<AppNotification> items) {
+    _items = items;
+    if (_snapshotTaken) return;
+    _snapshotTaken = true;
+    _unreadOnEntry.addAll(items.where((n) => !n.read).map((n) => n.id));
+  }
+
+  /// A notification that arrives while the inbox is open is new to the user, so it counts as
+  /// unread even though the snapshot was taken before it existed.
+  bool _isUnread(AppNotification n) {
+    if (_clearedHere.contains(n.id)) return false;
+    return _unreadOnEntry.contains(n.id) || !n.read;
+  }
+
+  Future<void> _open(AppNotification n) async {
+    final route = n.route;
+    // Mark read first so the badge drops immediately; the row keeps its styling for this visit.
+    if (!n.read) {
+      await ref.read(notificationCountProvider.notifier).markOneRead(n.id);
+    }
+    if (!mounted || route == null) return;
+    context.push(route);
+  }
+
+  Future<void> _markAllRead() async {
+    // Everything currently on screen is cleared immediately; anything that arrives afterwards is
+    // genuinely new and still shows as unread.
+    final cleared = _items.map((n) => n.id).toList();
+    setState(() => _clearedHere.addAll(cleared));
+    await ref.read(notificationCountProvider.notifier).markAllRead();
   }
 
   @override
@@ -40,6 +88,21 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
         title: Text('Notifications',
             style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, color: AppColors.textDark)),
         iconTheme: const IconThemeData(color: AppColors.textDark),
+        actions: [
+          if (ref.watch(notificationCountProvider) > 0)
+            TextButton(
+              onPressed: _markAllRead,
+              style: TextButton.styleFrom(minimumSize: const Size(48, 48)),
+              child: Text(
+                'Mark all read',
+                style: GoogleFonts.dmSans(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.primary,
+                ),
+              ),
+            ),
+        ],
       ),
       body: RefreshIndicator(
         onRefresh: () async {
@@ -59,16 +122,20 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
               error: (_, _) => [
                 _Message(text: "Couldn't load notifications", onRetry: () => ref.invalidate(notificationsListProvider)),
               ],
-              data: (items) => items.isEmpty
-                  ? [const _Message(text: "You're all caught up.")]
-                  : [
-                      // Opening the inbox marks all read — never flash unread styling while
-                      // mark-all + list refetch race (treatAsRead on this screen only).
-                      for (final n in items) ...[
-                        _NotificationTile(notification: n, treatAsRead: true),
-                        const Divider(height: 1, color: AppColors.border),
-                      ],
-                    ],
+              data: (items) {
+                _snapshot(items);
+                if (items.isEmpty) return [const _Message(text: "You're all caught up.")];
+                return [
+                  for (final n in items) ...[
+                    _NotificationTile(
+                      notification: n,
+                      unread: _isUnread(n),
+                      onOpen: () => _open(n),
+                    ),
+                    const Divider(height: 1, color: AppColors.border),
+                  ],
+                ];
+              },
             ),
           ],
         ),
@@ -105,16 +172,31 @@ class _ConnectionRequestsRow extends ConsumerWidget {
 
 class _NotificationTile extends StatelessWidget {
   final AppNotification notification;
-  /// When true (notifications inbox after open), skip unread chrome — open = mark-all-read.
-  final bool treatAsRead;
-  const _NotificationTile({required this.notification, this.treatAsRead = false});
+
+  /// Supplied by the screen from its entry snapshot, not derived from `notification.read` — see
+  /// [NotificationsScreen].
+  final bool unread;
+  final VoidCallback? onOpen;
+  const _NotificationTile({
+    required this.notification,
+    this.unread = false,
+    this.onOpen,
+  });
 
   @override
   Widget build(BuildContext context) {
     final route = notification.route;
-    final unread = !treatAsRead && !notification.read;
+    return Semantics(
+      // Unread is otherwise signalled only by a tint and a dot — both colour, neither available
+      // to a screen reader.
+      label: unread ? 'Unread. ${notification.message}' : notification.message,
+      child: _tile(context, route),
+    );
+  }
+
+  Widget _tile(BuildContext context, String? route) {
     return ListTile(
-      onTap: route != null ? () => context.push(route) : null,
+      onTap: onOpen ?? (route != null ? () => context.push(route) : null),
       tileColor: unread ? AppColors.primarySoft.withValues(alpha: 0.35) : null,
       leading: notification.isActorCentric
           ? AvatarWidget(imageUrl: notification.actorAvatarUrl, size: 40, cacheScope: notification.actorName)

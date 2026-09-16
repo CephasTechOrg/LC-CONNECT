@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:intl/intl.dart';
+import '../../../shared/util/app_date_format.dart';
 import '../../../core/api/api_error.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/avatar_widget.dart';
@@ -83,10 +83,7 @@ class _ConnectionsScreenState extends ConsumerState<ConnectionsScreen>
   }
 }
 // ── Helpers ───────────────────────────────────────────────────────
-String _timeAgo(DateTime dt) {
-  final diff = DateTime.now().difference(dt);
-  if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
-  if (diff.inHours < 24) return '${diff.inHours}h ago';
-  if (diff.inDays < 7) return '${diff.inDays}d ago';
-  return DateFormat('MMM d').format(dt);
-}
+// Was a local copy whose `>= 7 days` branch formatted the raw parsed timestamp, so a request
+// created late in the local evening showed the wrong calendar day. [AppDateFormat] converts once,
+// internally.
+String _timeAgo(DateTime dt) => AppDateFormat.relative(dt);

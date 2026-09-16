@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import AwareDatetime, BaseModel, Field, model_validator
 
 
 class ActivityCreate(BaseModel):
@@ -9,8 +9,13 @@ class ActivityCreate(BaseModel):
     description: str | None = Field(default=None, max_length=1000)
     category: str = Field(max_length=40)
     location: str = Field(min_length=2, max_length=160)
-    start_time: datetime
-    end_time: datetime | None = None
+    # `AwareDatetime`, not `datetime`: a naive value has no defined instant, and accepting one let
+    # it reach a `timestamptz` column to be silently reinterpreted in the session timezone. It also
+    # made the ordering check in `update_activity` compare naive against aware and raise a 500.
+    # Every client already sends an offset (`toUtc().toIso8601String()`), so this only rejects
+    # payloads that were never well-defined.
+    start_time: AwareDatetime
+    end_time: AwareDatetime | None = None
     max_participants: int | None = Field(default=None, ge=2, le=500)
 
     @model_validator(mode='after')
@@ -27,8 +32,11 @@ class ActivityUpdate(BaseModel):
     description: str | None = Field(default=None, max_length=1000)
     category: str | None = Field(default=None, max_length=40)
     location: str | None = Field(default=None, min_length=2, max_length=160)
-    start_time: datetime | None = None
-    end_time: datetime | None = None
+    # See `ActivityCreate`. This model is where the naive/aware mix actually bit: a PATCH carrying
+    # only a naive `end_time` reached `update_activity`, which compares it against the stored
+    # (aware) `start_time` — an unhandled `TypeError`, surfacing as a 500.
+    start_time: AwareDatetime | None = None
+    end_time: AwareDatetime | None = None
     max_participants: int | None = Field(default=None, ge=2, le=500)
 
 

@@ -16,6 +16,8 @@ import '../../auth/providers/auth_provider.dart';
 import '../../discovery/providers/discovery_provider.dart';
 import '../../notifications/providers/notifications_provider.dart';
 import '../../profile/providers/profile_provider.dart';
+import '../../programs/providers/programs_provider.dart';
+import '../../scholars/providers/scholars_provider.dart';
 import '../../scholars/widgets/blueprint_bond_card.dart';
 import '../../attendance/providers/attendance_provider.dart';
 import '../../attendance/widgets/attendance_open_card.dart';
@@ -74,6 +76,12 @@ class CampusHubScreen extends ConsumerWidget {
           onRefresh: () async {
             ref.invalidate(campusHubOverviewProvider);
             ref.invalidate(activeAttendanceProvider);
+            // The two gated dashboard cards resolve through these. Neither was refreshed here,
+            // so a pull-to-refresh could not recover a Blueprint or attendance card that had
+            // hidden itself after a failed request — the only fix was restarting the app.
+            ref.invalidate(myProgramMembershipsProvider);
+            ref.invalidate(honorsAttendanceEnabledProvider);
+            ref.invalidate(scholarProfileNotifierProvider);
             await ref.read(opportunityNewCountProvider.notifier).refresh();
           },
           child: ListView(

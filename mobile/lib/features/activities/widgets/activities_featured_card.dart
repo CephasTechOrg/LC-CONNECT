@@ -171,11 +171,11 @@ class _FeaturedCardState extends ConsumerState<_FeaturedCard> {
                   ],
                   _MetaRow(
                     icon: Icons.calendar_today_outlined,
-                    text: _formatDate(a.startTime),
+                    text: AppDateFormat.date(a.startTime),
                   ),
                   _MetaRow(
                     icon: Icons.access_time_outlined,
-                    text: _formatTimeRange(a.startTime, a.endTime),
+                    text: AppDateFormat.timeRange(a.startTime, a.endTime),
                   ),
                   _MetaRow(
                     icon: Icons.location_on_outlined,

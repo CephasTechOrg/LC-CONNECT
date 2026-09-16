@@ -96,6 +96,36 @@ async def maybe_auto_close_session(db: AsyncSession, session: AttendanceSession)
     return await close_session(db, session=session)
 
 
+async def sweep_expired_sessions(db: AsyncSession) -> list[UUID]:
+    """Close every session whose window has elapsed. Returns the ids closed.
+
+    [maybe_auto_close_session] is lazy — it only fires when some read path happens to touch the
+    session. Nothing guarantees one does: if the last student checks in and everyone closes the
+    app, the session stays `status='open'` in the database indefinitely. That matters because
+    `uq_attendance_session_one_open_per_program` is a partial unique index on open rows, so the
+    stale session **blocks the instructor from starting the next one** with a 409, and the roster
+    never materialises its `absent` rows.
+
+    Idempotent and safe to run on a schedule: a session already closed is skipped by
+    [maybe_auto_close_session], and closing is driven entirely by the stored window.
+    """
+    rows = (
+        await db.execute(
+            select(AttendanceSession).where(
+                AttendanceSession.status == ATTENDANCE_SESSION_OPEN_STATUS
+            )
+        )
+    ).scalars().all()
+
+    closed: list[UUID] = []
+    for session in rows:
+        if _now() <= _session_close_at(session):
+            continue
+        await close_session(db, session=session)
+        closed.append(session.id)
+    return closed
+
+
 async def start_session(
     db: AsyncSession,
     *,

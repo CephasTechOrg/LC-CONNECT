@@ -124,6 +124,26 @@ async def unread_count(db: AsyncSession, user_id: UUID) -> int:
     ).scalar_one()
 
 
+async def mark_one_read(db: AsyncSession, user_id: UUID, notification_id: UUID) -> bool:
+    """Mark a single notification read. Returns whether a row was affected.
+
+    Scoped to `user_id` so the id in the URL cannot be used to touch someone else's row, and
+    idempotent: re-reading an already-read notification is a no-op rather than an error, which is
+    what lets the client fire this optimistically on tap.
+    """
+    result = await db.execute(
+        update(Notification)
+        .where(
+            Notification.id == notification_id,
+            Notification.user_id == user_id,
+            Notification.read_at.is_(None),
+        )
+        .values(read_at=func.now())
+    )
+    await db.commit()
+    return bool(result.rowcount)
+
+
 async def mark_all_read(db: AsyncSession, user_id: UUID) -> None:
     await db.execute(
         update(Notification)

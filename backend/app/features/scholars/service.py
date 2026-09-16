@@ -25,6 +25,22 @@ from app.shared.storage import storage_service
 CURRENT_CONSENT_VERSION = 1
 MAX_SKILL_LENGTH = 60
 
+# ── Profile completeness ──────────────────────────────────────────────────────────────
+# What "complete" means, in exactly one place.
+#
+# This decides whether the Blueprint Bond prompt leaves the student's dashboard, so it has to be
+# defined rather than implied. It used to be computed *on the client* as
+# `summary.isNotEmpty && (hasResume || hasHeadshot)`, which had two problems: it accepted a
+# one-character summary and a headshot with no résumé, and — worse — it ignored
+# `employer_visibility_consent` entirely. A scholar could therefore be "complete", stop being
+# prompted, and still be invisible to every employer, which is the whole point of the module.
+#
+# Tunable here on purpose: too strict and the prompt never retires (the complaint inverted), too
+# loose and thin profiles reach employers.
+MIN_SUMMARY_LENGTH = 80
+MIN_SKILLS = 3
+MIN_CAREER_INTERESTS = 1
+
 _PDF_MAGIC = b'%PDF-'
 _ZIP_MAGIC = b'PK\x03\x04'
 _DOCX_CONTENT_TYPE = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
@@ -36,7 +52,33 @@ async def is_verified_scholar(db: AsyncSession, user_id: UUID) -> bool:
     return await is_active_program_member(db, user_id, PRESIDENTIAL_SCHOLARS_SLUG)
 
 
+def missing_profile_fields(profile: ScholarProfessionalProfile) -> list[str]:
+    """Which required fields are still outstanding, in the order a student would fill them.
+
+    Returned to the client so the prompt can name what is left instead of nudging generically, and
+    so "complete" has one definition shared by mobile, the admin portal, and any employer-facing
+    view. Field names match the API's own field names.
+    """
+    missing: list[str] = []
+    if not (profile.summary or '').strip() or len((profile.summary or '').strip()) < MIN_SUMMARY_LENGTH:
+        missing.append('summary')
+    if profile.headshot_path is None:
+        missing.append('headshot')
+    if profile.resume_path is None:
+        missing.append('resume')
+    if len(profile.skills or []) < MIN_SKILLS:
+        missing.append('skills')
+    if len(profile.career_interests or []) < MIN_CAREER_INTERESTS:
+        missing.append('career_interests')
+    # Last because it is the final act of publishing, and because without it everything above is
+    # invisible to employers — which is why completeness cannot be defined without it.
+    if not profile.employer_visibility_consent or profile.consent_version < CURRENT_CONSENT_VERSION:
+        missing.append('employer_visibility_consent')
+    return missing
+
+
 def _to_read(profile: ScholarProfessionalProfile) -> ScholarProfessionalProfileRead:
+    missing = missing_profile_fields(profile)
     return ScholarProfessionalProfileRead(
         id=profile.id,
         user_id=profile.user_id,
@@ -51,6 +93,8 @@ def _to_read(profile: ScholarProfessionalProfile) -> ScholarProfessionalProfileR
         has_resume=profile.resume_path is not None,
         created_at=profile.created_at,
         updated_at=profile.updated_at,
+        is_complete=not missing,
+        missing_fields=missing,
     )
 
 

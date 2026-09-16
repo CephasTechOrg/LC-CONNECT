@@ -10,8 +10,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/auth/providers/auth_provider.dart';
 import '../api/api_client.dart';
-import '../router/app_router.dart';
+import '../router/pending_deep_link.dart';
+import '../../features/attendance/providers/attendance_provider.dart';
 import '../../features/messages/providers/messages_provider.dart';
+import '../../features/notifications/providers/notifications_provider.dart';
 import '../../features/messages/utils/message_navigation.dart';
 
 /// Guarded FCM wrapper. If Firebase isn't configured yet (no google-services files),
@@ -28,6 +30,7 @@ class NotificationService {
   String? _token;
   StreamSubscription<String>? _tokenRefreshSub;
   StreamSubscription<RemoteMessage>? _messageOpenedSub;
+  StreamSubscription<RemoteMessage>? _foregroundSub;
   bool _listenersAttached = false;
 
   bool get available => _available;
@@ -47,7 +50,8 @@ class NotificationService {
     required void Function(String conversationId) onOpenConversation,
     required void Function(String postId) onOpenCampusPost,
     required VoidCallback onOpenNotifications,
-    required VoidCallback onOpenAttendanceScanner,
+    required void Function(String? sessionId) onOpenAttendanceScanner,
+    void Function(RemoteMessage message)? onForegroundMessage,
   }) async {
     if (!_available) return;
     if (_listenersAttached) return;
@@ -68,6 +72,13 @@ class NotificationService {
         _register(dio, refreshed);
       });
       _messageOpenedSub = FirebaseMessaging.onMessageOpenedApp.listen(open);
+      // A push arriving while the app is foregrounded previously produced *nothing*: there was no
+      // `onMessage` listener anywhere, so on iOS the notification is suppressed by the system and
+      // on both platforms the app never learned about it. The WS-driven in-app banner only covers
+      // new messages, so attendance and campus pushes were invisible to an open app.
+      if (onForegroundMessage != null) {
+        _foregroundSub = FirebaseMessaging.onMessage.listen(onForegroundMessage);
+      }
       final initial = await messaging.getInitialMessage();
       if (initial != null) open(initial);
       _listenersAttached = true;
@@ -116,12 +127,13 @@ class NotificationService {
     void Function(String) onOpenConversation,
     void Function(String) onOpenCampusPost,
     VoidCallback onOpenNotifications,
-    VoidCallback onOpenAttendanceScanner,
+    void Function(String? sessionId) onOpenAttendanceScanner,
   ) {
     final data = message.data;
     final type = data['type'];
     if (type == 'honors_attendance_open') {
-      onOpenAttendanceScanner();
+      final sessionId = data['session_id'];
+      onOpenAttendanceScanner(sessionId is String && sessionId.isNotEmpty ? sessionId : null);
       return;
     }
     if (type == 'campus_post') {
@@ -158,8 +170,10 @@ class NotificationService {
     if (!_available) return;
     await _tokenRefreshSub?.cancel();
     await _messageOpenedSub?.cancel();
+    await _foregroundSub?.cancel();
     _tokenRefreshSub = null;
     _messageOpenedSub = null;
+    _foregroundSub = null;
     _listenersAttached = false;
     final token = _token;
     if (token != null) {
@@ -181,27 +195,53 @@ class NotificationService {
 }
 
 /// Registers/clears the FCM token in step with auth. Watch once at the app root.
+///
+/// Every tap target is **queued** rather than pushed. These callbacks fire as soon as the auth
+/// state carries a user, which is earlier than the app can navigate: the router still has the
+/// verify-email, policy-acceptance, and onboarding gates to evaluate, and on a cold start the
+/// session restore itself may be in flight. A direct `push()` was silently redirected away, which
+/// is why tapping a notification could appear to do nothing.
+/// [deepLinkDrainProvider] performs the navigation once it will actually stick.
 final notificationRegistrarProvider = Provider<void>((ref) {
   final dio = ref.watch(apiClientProvider).dio;
+  void enqueue(DeepLinkOpen open) => ref.read(pendingDeepLinkProvider.notifier).enqueue(open);
+
   ref.listen<AsyncValue<AuthUser?>>(authNotifierProvider, (_, next) {
     if (next.asData?.value != null) {
       NotificationService.instance.registerForUser(
         dio,
         onOpenConversation: (conversationId) {
-          openMessageConversation(
-            router: ref.read(routerProvider),
-            conversationId: conversationId,
-            threads: ref.read(threadsNotifierProvider).asData?.value,
-          );
+          // `threads` is read at drain time, not tap time: on a cold start the thread list has
+          // not loaded yet, and without it a group conversation opens as a DM.
+          enqueue((router) => openMessageConversation(
+                router: router,
+                conversationId: conversationId,
+                threads: ref.read(threadsNotifierProvider).asData?.value,
+                // Last resort: if the inbox still has not loaded, fetch it rather than assuming
+                // this is a DM — a group opened as a DM is a visibly broken screen.
+                onUnresolved: () async {
+                  try {
+                    return await ref.read(threadsNotifierProvider.future);
+                  } catch (_) {
+                    return null;
+                  }
+                },
+              ));
         },
-        onOpenCampusPost: (postId) {
-          ref.read(routerProvider).push('/home/posts/$postId');
-        },
-        onOpenNotifications: () {
-          ref.read(routerProvider).push('/notifications');
-        },
-        onOpenAttendanceScanner: () {
-          ref.read(routerProvider).push('/attendance/scan');
+        onOpenCampusPost: (postId) => enqueue((router) => router.push('/home/posts/$postId')),
+        onOpenNotifications: () => enqueue((router) => router.push('/notifications')),
+        onOpenAttendanceScanner: (sessionId) => enqueue((router) => router.push(
+              sessionId == null
+                  ? '/attendance/scan'
+                  : '/attendance/scan?session=$sessionId',
+            )),
+        // Foreground pushes refresh the surfaces they concern rather than navigating: the user is
+        // already looking at the app and did not ask to be moved.
+        onForegroundMessage: (message) {
+          if (message.data['type'] == attendanceOpenNotificationType) {
+            ref.invalidate(activeAttendanceProvider);
+          }
+          ref.invalidate(notificationsListProvider);
         },
       );
     } else {

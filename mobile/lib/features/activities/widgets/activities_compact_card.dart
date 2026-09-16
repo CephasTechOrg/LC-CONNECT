@@ -94,7 +94,7 @@ class _CompactCardState extends ConsumerState<_CompactCard> {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  _formatDate(a.startTime),
+                  AppDateFormat.date(a.startTime),
                   style: GoogleFonts.dmSans(
                       fontSize: 11, color: AppColors.textMuted),
                 ),

@@ -105,6 +105,11 @@ class _Field extends StatelessWidget {
       maxLength: maxLength,
       keyboardType: keyboardType,
       inputFormatters: inputFormatters,
+      // Without this the keyboard offers a return key that does nothing on a single-line field.
+      // `next` advances focus via Flutter's own traversal (EditableText calls `nextFocus()`), so
+      // no explicit FocusNode chain is needed. Multiline fields keep the newline key.
+      textInputAction: maxLines == 1 ? TextInputAction.next : null,
+      textCapitalization: TextCapitalization.sentences,
       style: GoogleFonts.dmSans(fontSize: 14, color: AppColors.textDark),
       decoration: InputDecoration(
         hintText: hint,

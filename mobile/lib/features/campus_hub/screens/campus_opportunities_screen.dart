@@ -85,7 +85,7 @@ class _OpportunitiesState extends ConsumerState<CampusOpportunitiesScreen> {
   @override
   Widget build(BuildContext context) {
     final postsAsync = ref.watch(campusPostsProvider(_query));
-    final isVerifiedScholar = ref.watch(isVerifiedScholarProvider);
+    final isVerifiedScholar = ref.watch(scholarEligibilityProvider).isPermitted;
     // Non-scholars never receive Blueprint Bond posts; keep filtering campus-facing.
     final source = isVerifiedScholar ? _source : _SourceTab.all;
 

@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:intl/intl.dart';
 import '../../../core/api/api_error.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/app_filter_chip.dart';
 import '../../../shared/widgets/app_shell_header.dart';
 import '../../../shared/widgets/app_skeleton.dart';
+import '../../../shared/util/app_date_format.dart';
 import '../../../shared/widgets/app_states.dart';
 import '../../notifications/widgets/notifications_bell_button.dart';
 import '../providers/activities_provider.dart';
@@ -87,10 +87,3 @@ class ActivitiesScreen extends ConsumerWidget {
   }
 }
 // ── Date/time helpers ─────────────────────────────────────────────
-String _formatDate(DateTime dt) => DateFormat('EEE, MMM d').format(dt);
-
-String _formatTimeRange(DateTime start, DateTime? end) {
-  final s = DateFormat('h:mm a').format(start);
-  if (end == null) return s;
-  return '$s – ${DateFormat('h:mm a').format(end)}';
-}

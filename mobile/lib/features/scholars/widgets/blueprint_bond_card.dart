@@ -9,13 +9,18 @@ import '../providers/scholars_provider.dart';
 
 /// How the Blueprint Bond entry point presents itself.
 enum BlueprintBondStyle {
-  /// A call-to-action, shown only while the professional profile is still incomplete.
-  /// Once there's nothing left to do it disappears — a prompt that never goes away stops
-  /// reading as a prompt and just becomes clutter on a feed the student scrolls daily.
+  /// A call-to-action for the dashboard, shown **only** while the professional profile is still
+  /// incomplete. Once there is nothing left to do it disappears entirely: a prompt that never goes
+  /// away stops reading as a prompt and becomes clutter on a feed the student scrolls daily.
+  ///
+  /// It used to leave a quiet status row behind instead. That was deliberate — removing it
+  /// entirely left a verified scholar with no way to see their status — but the answer to that is
+  /// the permanent [entry] row on Profile, not a residue on the dashboard.
   prompt,
 
   /// A permanent, compact row. Lives on Profile, where the student expects to find their own
-  /// things regardless of state, so it stays put whether complete or not.
+  /// things regardless of state, so it stays put whether complete or not. This is what makes it
+  /// safe for [prompt] to vanish.
   entry,
 }
 
@@ -28,87 +33,34 @@ class BlueprintBondCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    if (!ref.watch(isVerifiedScholarProvider)) return const SizedBox.shrink();
+    // Phase 0 keeps the rendering identical to before: hidden unless confirmed eligible. The
+    // difference is that `unknown` is now *distinguishable* from `no`, which is what lets Phase 1
+    // put a retry here instead of silence.
+    if (!ref.watch(scholarEligibilityProvider).isPermitted) return const SizedBox.shrink();
 
     final profileAsync = ref.watch(scholarProfileNotifierProvider);
     // Keep the last known profile across reloads so the prompt doesn't shrink→grow (blink)
     // every time Campus Hub remounts and the notifier briefly looks empty.
     final profile = profileAsync.asData?.value ?? profileAsync.value;
 
-    final isComplete = profile != null &&
-        (profile.summary?.isNotEmpty ?? false) &&
-        (profile.hasResume || profile.hasHeadshot);
-
     if (style == BlueprintBondStyle.prompt) {
       // First load only: stay silent until we know whether the profile is already complete.
       // Once something has rendered, remounts keep [profile] via asData and don't flicker.
       if (profile == null) return const SizedBox.shrink();
-      // Nothing left to nudge about, but the status still belongs on the dashboard. The card
-      // used to vanish entirely here, so finishing the profile removed the only place a
-      // verified scholar could see they were one — leaving the notification as the sole cue.
-      if (isComplete) {
-        return _StatusRow(onTap: () => context.push('/profile/blueprint-bond'));
-      }
-      return _PromptCard(onTap: () => context.push('/profile/blueprint-bond'));
+      // Done — the prompt retires. The permanent row on Profile is where status lives.
+      if (profile.isComplete) return const SizedBox.shrink();
+      return _PromptCard(
+        missingFields: profile.missingFields,
+        onTap: () => context.push('/profile/blueprint-bond'),
+      );
     }
 
+    // Profile: permanent, but it must not *assert* a state it could not read. A failed
+    // `/scholars/me` used to render "profile incomplete" with an amber dot for a scholar whose
+    // profile may well be finished — worse than saying nothing.
     return _EntryRow(
-      isComplete: isComplete,
+      isComplete: profile?.isComplete,
       onTap: () => context.push('/profile/blueprint-bond'),
-    );
-  }
-}
-
-/// Campus Hub, once there is nothing left to finish: a slim confirmation that the student is a
-/// verified Honors Student, still linking through to Blueprint Bond. Deliberately much quieter
-/// than [_PromptCard] — it is status, not a call to action, and it sits on a feed the student
-/// scrolls every day.
-class _StatusRow extends StatelessWidget {
-  final VoidCallback onTap;
-  const _StatusRow({required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
-      child: Material(
-        color: AppColors.primarySoft,
-        borderRadius: BorderRadius.circular(12),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            child: Row(
-              children: [
-                const Icon(Icons.workspace_premium_rounded,
-                    size: 18, color: Color(0xFF1B3A5C)),
-                const SizedBox(width: 9),
-                Expanded(
-                  child: Text(
-                    'Honors Student',
-                    style: GoogleFonts.dmSans(
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFF1B3A5C),
-                    ),
-                  ),
-                ),
-                Text(
-                  'Blueprint Bond',
-                  style: GoogleFonts.dmSans(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.primary,
-                  ),
-                ),
-                const SizedBox(width: 2),
-                Icon(Icons.chevron_right_rounded, size: 18, color: AppColors.primary),
-              ],
-            ),
-          ),
-        ),
-      ),
     );
   }
 }
@@ -116,7 +68,28 @@ class _StatusRow extends StatelessWidget {
 /// Campus Hub: a single, focused nudge with one job — get the profile finished.
 class _PromptCard extends StatelessWidget {
   final VoidCallback onTap;
-  const _PromptCard({required this.onTap});
+  final List<String> missingFields;
+  const _PromptCard({required this.onTap, this.missingFields = const []});
+
+  /// Human wording for the API's field names. A generic "finish your profile" makes the student
+  /// open the screen to discover what is left; naming the next step is the difference between a
+  /// nudge and a chore.
+  static const _labels = <String, String>{
+    'summary': 'a short summary',
+    'headshot': 'a headshot',
+    'resume': 'your résumé',
+    'skills': 'a few skills',
+    'career_interests': 'career interests',
+    'employer_visibility_consent': 'employer visibility',
+  };
+
+  String get _subtitle {
+    final named = missingFields.map((f) => _labels[f]).whereType<String>().toList();
+    if (named.isEmpty) return 'Get seen by employer partners';
+    if (named.length == 1) return 'Still needed: ${named.first}';
+    if (named.length == 2) return 'Still needed: ${named[0]} and ${named[1]}';
+    return 'Still needed: ${named[0]}, ${named[1]} and ${named.length - 2} more';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -157,7 +130,9 @@ class _PromptCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'Get seen by employer partners',
+                        _subtitle,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.dmSans(
                           fontSize: 12.5,
                           color: Colors.white.withValues(alpha: 0.75),
@@ -180,13 +155,18 @@ class _PromptCard extends StatelessWidget {
 /// Profile: a quiet, permanent row that matches the surrounding sections rather than shouting
 /// over them — the student already knows they're a scholar; this is just the way in.
 class _EntryRow extends StatelessWidget {
-  final bool isComplete;
+  /// `null` when the profile could not be read — render neither "complete" nor "incomplete".
+  final bool? isComplete;
   final VoidCallback onTap;
   const _EntryRow({required this.isComplete, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    final statusColor = isComplete ? AppColors.green : const Color(0xFFD97706);
+    final statusColor = switch (isComplete) {
+      true => AppColors.green,
+      false => const Color(0xFFD97706),
+      null => AppColors.textMuted,
+    };
     return Material(
       color: AppColors.surface,
       child: InkWell(
@@ -231,9 +211,11 @@ class _EntryRow extends StatelessWidget {
                         const SizedBox(width: 6),
                         Flexible(
                           child: Text(
-                            isComplete
-                                ? 'Blueprint Bond · profile complete'
-                                : 'Blueprint Bond · profile incomplete',
+                            switch (isComplete) {
+                              true => 'Blueprint Bond · profile complete',
+                              false => 'Blueprint Bond · profile incomplete',
+                              null => 'Blueprint Bond',
+                            },
                             overflow: TextOverflow.ellipsis,
                             style: GoogleFonts.dmSans(fontSize: 12.5, color: AppColors.textMuted),
                           ),

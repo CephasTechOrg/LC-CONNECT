@@ -6554,6 +6554,10 @@
             "title": "Id",
             "type": "string"
           },
+          "is_complete": {
+            "title": "Is Complete",
+            "type": "boolean"
+          },
           "linkedin_url": {
             "anyOf": [
               {
@@ -6564,6 +6568,13 @@
               }
             ],
             "title": "Linkedin Url"
+          },
+          "missing_fields": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing Fields",
+            "type": "array"
           },
           "skills": {
             "items": {
@@ -6607,7 +6618,9 @@
           "has_headshot",
           "has_resume",
           "created_at",
-          "updated_at"
+          "updated_at",
+          "is_complete",
+          "missing_fields"
         ],
         "title": "ScholarProfessionalProfileRead",
         "type": "object"
@@ -14166,7 +14179,7 @@
     },
     "/api/v1/notifications/read": {
       "post": {
-        "description": "Mark all of the user's notifications read \u2014 called when they open the notifications screen.",
+        "description": "Mark every notification read \u2014 the explicit \"Mark all read\" action.\n\nThis used to be called automatically when the inbox mounted, which destroyed the unread state\nbefore the user could see which rows were new. The client now marks rows individually as they\nare opened (see below) and only calls this on a deliberate action.",
         "operationId": "mark_notifications_read_api_v1_notifications_read_post",
         "responses": {
           "204": {
@@ -14205,6 +14218,48 @@
           }
         ],
         "summary": "Get Unread Count",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/v1/notifications/{notification_id}/read": {
+      "post": {
+        "description": "Mark one notification read \u2014 called when the user opens it.\n\nDeliberately 204 whether or not a row changed: an unknown id and an already-read notification\nare both \"nothing left to do\", and distinguishing them would tell a caller whether a given\nnotification id exists for another user.",
+        "operationId": "mark_notification_read_api_v1_notifications__notification_id__read_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "notification_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Notification Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Mark Notification Read",
         "tags": [
           "notifications"
         ]

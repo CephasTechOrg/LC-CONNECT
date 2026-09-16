@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:intl/intl.dart';
 import '../../../core/api/api_error.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/util/app_date_format.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../providers/activities_provider.dart';
 import '../widgets/activity_participants_sheet.dart';
@@ -241,13 +241,13 @@ class _ActivityDetailScreenState extends ConsumerState<ActivityDetailScreen> {
                 _DetailRow(
                   icon: Icons.calendar_today_outlined,
                   label: 'Date',
-                  value: DateFormat('EEEE, MMMM d, y').format(activity.startTime),
+                  value: AppDateFormat.fullDate(activity.startTime),
                 ),
                 const SizedBox(height: 12),
                 _DetailRow(
                   icon: Icons.access_time_outlined,
                   label: 'Time',
-                  value: _formatTimeRange(activity.startTime, activity.endTime),
+                  value: AppDateFormat.timeRange(activity.startTime, activity.endTime),
                 ),
                 const SizedBox(height: 12),
 
@@ -499,8 +499,3 @@ class _JoinBar extends StatelessWidget {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────
-String _formatTimeRange(DateTime start, DateTime? end) {
-  final s = DateFormat('h:mm a').format(start);
-  if (end == null) return s;
-  return '$s – ${DateFormat('h:mm a').format(end)}';
-}

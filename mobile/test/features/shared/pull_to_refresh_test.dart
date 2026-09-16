@@ -13,6 +13,7 @@ import 'package:lc_connect/features/notifications/providers/notifications_provid
 import 'package:lc_connect/features/profile/providers/profile_provider.dart';
 import 'package:lc_connect/features/profile/screens/profile_screen.dart';
 import 'package:lc_connect/features/programs/providers/programs_provider.dart';
+import 'package:lc_connect/shared/util/eligibility.dart';
 
 // ── Shared mocks ──────────────────────────────────────────────────
 
@@ -189,7 +190,7 @@ void main() {
           overrides: [
             authNotifierProvider.overrideWith(_StudentAuth.new),
             myProfileNotifierProvider.overrideWith(() => profile),
-            isVerifiedScholarProvider.overrideWithValue(false),
+            scholarEligibilityProvider.overrideWithValue(Eligibility.no),
           ],
           child: MaterialApp.router(
             routerConfig: GoRouter(

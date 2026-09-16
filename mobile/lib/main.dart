@@ -5,9 +5,11 @@ import 'core/api/health_provider.dart';
 import 'core/config/startup_config.dart';
 import 'core/notifications/notification_service.dart';
 import 'core/router/app_router.dart';
+import 'core/router/pending_deep_link.dart';
 import 'core/storage/secure_session_storage.dart';
 import 'core/theme/app_theme.dart';
 import 'features/messages/providers/in_app_message_listener.dart';
+import 'shared/widgets/dismiss_keyboard.dart';
 import 'shared/widgets/offline_banner.dart';
 
 Future<void> main() async {
@@ -45,6 +47,7 @@ class LcConnectApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     ref.watch(notificationRegistrarProvider); // registers the FCM token in step with auth
+    ref.watch(deepLinkDrainProvider); // performs queued notification taps once the app can navigate
     ref.watch(inAppMessageListenerProvider); // pops in-app banners for foreground messages
     ref.watch(backendStatusProvider); // keep reachability probes alive app-wide
     final router = ref.watch(routerProvider);
@@ -53,9 +56,16 @@ class LcConnectApp extends ConsumerWidget {
       theme: AppTheme.light,
       routerConfig: router,
       debugShowCheckedModeBanner: false,
+      // `DismissKeyboardOnTap` was written for the chat screen and used in 2 of the 24 screens
+      // that have a text field. Hoisting it here covers all of them: it uses
+      // `HitTestBehavior.translucent`, so it takes part in hit testing without consuming the
+      // gesture — buttons, links and list taps inside still win, and only taps nothing else
+      // claims reach it.
       builder: (context, child) => MediaQuery.withClampedTextScaling(
         maxScaleFactor: 1.4,
-        child: AppConnectivityChrome(child: child),
+        child: DismissKeyboardOnTap(
+          child: AppConnectivityChrome(child: child),
+        ),
       ),
     );
   }

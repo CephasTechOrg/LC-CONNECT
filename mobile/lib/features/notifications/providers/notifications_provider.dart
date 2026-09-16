@@ -70,13 +70,27 @@ class NotificationCountNotifier extends Notifier<int> {
     ref.invalidate(notificationsListProvider);
   }
 
-  /// Called when the notifications screen opens: clear the badge locally and mark all read
-  /// on the server. If the call fails, the next re-seed restores the true count.
+  /// Explicit "mark all read" action. Clears the badge locally, then the server.
+  ///
+  /// This used to run automatically when the inbox mounted, which is what made unread state
+  /// invisible: everything was read before the user could look at it, so the screen had to
+  /// suppress unread styling entirely to avoid flashing it off mid-refetch.
   Future<void> markAllRead() async {
     state = 0;
     try {
       await ref.read(apiClientProvider).dio.post('/notifications/read');
       ref.invalidate(notificationsListProvider);
+    } catch (_) {/* re-seed will correct on next reconnect/resume */}
+  }
+
+  /// Marks one notification read when the user opens it, and drops the badge by exactly one.
+  ///
+  /// Optimistic and idempotent: the endpoint is a no-op for an already-read row, and any drift is
+  /// corrected by the reconnect/resume re-seed.
+  Future<void> markOneRead(String notificationId) async {
+    if (state > 0) state = state - 1;
+    try {
+      await ref.read(apiClientProvider).dio.post('/notifications/$notificationId/read');
     } catch (_) {/* re-seed will correct on next reconnect/resume */}
   }
 }

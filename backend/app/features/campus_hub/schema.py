@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, HttpUrl, model_validator
+from pydantic import AwareDatetime, BaseModel, ConfigDict, EmailStr, Field, HttpUrl, model_validator
 
 # `category` classifies a post within its `kind` — each kind has its own vocabulary (they drive
 # different filter chips/colors on their respective screens, so the sets don't overlap).
@@ -138,8 +138,10 @@ class CampusPostCreate(BaseModel):
     audience: str = Field(default='all', pattern=r'^(all|students|staff)$')
     category: str | None = Field(default=None, max_length=30)
     priority: str = Field(default='normal', pattern=r'^(normal|important|urgent)$')
-    publish_at: datetime | None = None
-    expires_at: datetime | None = None
+    # Aware-only, for the same reason as activities: these are client-supplied instants that end up
+    # in `timestamptz` columns and get compared against stored values in the service layer.
+    publish_at: AwareDatetime | None = None
+    expires_at: AwareDatetime | None = None
     external_url: HttpUrl | None = None
 
     @model_validator(mode='after')
@@ -173,8 +175,8 @@ class CampusPostUpdate(BaseModel):
     audience: str | None = Field(default=None, pattern=r'^(all|students|staff)$')
     category: str | None = Field(default=None, max_length=30)
     priority: str | None = Field(default=None, pattern=r'^(normal|important|urgent)$')
-    publish_at: datetime | None = None
-    expires_at: datetime | None = None
+    publish_at: AwareDatetime | None = None
+    expires_at: AwareDatetime | None = None
     external_url: HttpUrl | None = None
 
     @model_validator(mode='after')

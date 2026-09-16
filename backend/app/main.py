@@ -52,6 +52,36 @@ if not _app_logger.handlers:
 configure_request_id_logging(_app_logger)
 
 
+async def _sweep_attendance_sessions() -> None:
+    """Close Honors attendance sessions whose window has elapsed.
+
+    Session auto-close is otherwise lazy — it only happens when a read path touches the session
+    (see `attendance.service.maybe_auto_close_session`). If nobody reads it, the session stays
+    `status='open'`, which holds `uq_attendance_session_one_open_per_program` and blocks the
+    instructor from starting the next one. This is the only thing that guarantees closure.
+
+    Runs on the API process rather than as a cron job because it is cheap (one indexed query over
+    open sessions), needs no coordination, and must keep working on a single free-tier instance
+    where no scheduler exists. It is idempotent, so a second instance running it is harmless.
+    """
+    while True:
+        await asyncio.sleep(60)
+        if not settings.honors_attendance_enabled:
+            continue
+        try:
+            from app.database import AsyncSessionLocal
+            from app.features.attendance.service import sweep_expired_sessions
+
+            async with AsyncSessionLocal() as db:
+                closed = await sweep_expired_sessions(db)
+            if closed:
+                logging.getLogger('lc_connect').info(
+                    'attendance sweep: closed %d expired session(s)', len(closed)
+                )
+        except Exception:  # noqa: BLE001 - housekeeping must never crash the app
+            logging.getLogger('lc_connect').warning('attendance sweep failed', exc_info=True)
+
+
 async def _prune_rate_limiters() -> None:
     """Hourly: drop rate-limiter buckets idle > 1 day so the in-memory dicts never grow without
     bound over a long-running process."""
@@ -69,6 +99,7 @@ async def _prune_rate_limiters() -> None:
 async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     pruner = asyncio.create_task(_prune_rate_limiters())
     idle_reaper = asyncio.create_task(run_idle_reaper())
+    attendance_sweeper = asyncio.create_task(_sweep_attendance_sessions())
     subscriber: asyncio.Task[None] | None = None
     try:
         await connect_redis()
@@ -87,6 +118,7 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
             await subscriber
         except asyncio.CancelledError:
             pass
+    attendance_sweeper.cancel()
     idle_reaper.cancel()
     pruner.cancel()
     await close_redis()
