@@ -41,3 +41,37 @@
 **Reason:** Student campus inboxes frequently block transactional mail; personal inboxes are reliable. OTP proves inbox control; admin verification proves community membership.
 
 **Spec:** `docs/features/auth/DUAL_EMAIL_CAMPUS_VERIFICATION.md`
+
+## ADR-009 — Presence is not a product feature
+
+**Decision:** Do not derive or display online/offline presence. Messaging shows delivery and read
+state; it does not show whether a person is currently online.
+
+**Reason:** Beta report #22 warned against equating push reachability with presence. The backend
+already avoids that — "offline" is derived from `manager.user_socket_count()` and device tokens are
+consulted only *after* that decision, so presence gates push and never the reverse. Adding a
+presence *feature* is the part that would be wrong: it needs cross-instance state (Redis, currently
+deferred by ADR-003), it invites privacy objections on a campus social app, and it degrades badly on
+mobile because the socket is torn down on background by design — a user with the app in their pocket
+would read as "offline" while being perfectly reachable. An "Online" badge that is wrong half the
+time is worse than none.
+
+**If revisited:** derive from a throttled `users.last_active_at` written on WS auth and at most once
+per heartbeat, present it as "Active recently" rather than a binary dot, and gate it behind an
+explicit per-user privacy toggle defaulting to off. Never from device-token existence. Requires
+Redis for cross-instance correctness, so strictly after the Redis/worker milestone.
+
+## ADR-010 — Read receipts are unconditional in v1
+
+**Decision:** Read receipts remain always-on, with no per-user opt-out, for the first release of the
+delivery/read work (Phase 3).
+
+**Reason:** Recorded so it reads as a choice rather than an oversight. An always-on "seen" signal on
+a campus social app is a legitimate privacy objection, and the conventional remedy is a per-user
+toggle with reciprocity — disable yours and you stop seeing others'. That is deliberately deferred:
+it adds a settings surface, a user column, and a branch in the receipt path, for a concern no beta
+tester has raised yet.
+
+**If revisited:** the reciprocity rule is the important part. A toggle that hides your receipts while
+still showing you everyone else's is the version users object to.
+
