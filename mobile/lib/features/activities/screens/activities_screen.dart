@@ -1,3 +1,4 @@
+import '../../../shared/util/caching.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -60,7 +61,10 @@ class ActivitiesScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 12),
             Expanded(
-              child: async.when(
+              // `cached` so changing the category chip keeps the current list on screen while the
+              // filtered one loads. The fetch itself is legitimate — a different filter is
+              // different data — but blanking the screen for it is not.
+              child: async.cached(
                 loading: () => const AppActivityListSkeleton(),
                 error: (e, _) => _ErrorState(
                   onRetry: () =>

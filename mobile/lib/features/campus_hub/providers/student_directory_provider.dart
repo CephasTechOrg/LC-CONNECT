@@ -1,3 +1,4 @@
+import '../../../shared/util/caching.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_client.dart';
@@ -35,6 +36,9 @@ class StudentEntry {
 /// The staff-only student directory. `query` (trimmed) searches name/major; empty lists everyone.
 final studentDirectoryProvider =
     FutureProvider.autoDispose.family<List<StudentEntry>, String>((ref, query) async {
+  // Cached per search term: backspacing through a query re-renders earlier results instantly
+  // instead of firing a request per keystroke's worth of deletion.
+  cacheFor(ref);
   final params = <String, dynamic>{'limit': 50};
   if (query.trim().isNotEmpty) params['query'] = query.trim();
   final resp = await ref.read(apiClientProvider).dio.get('/campus-hub/students', queryParameters: params);

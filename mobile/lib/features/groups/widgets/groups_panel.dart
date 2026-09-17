@@ -1,3 +1,4 @@
+import '../../../shared/util/caching.dart';
 import 'dart:async';
 
 import 'package:cached_network_image/cached_network_image.dart';
@@ -123,7 +124,10 @@ class _GroupsPanelState extends ConsumerState<GroupsPanel> {
       onRefresh: () async {
         ref.invalidate(myGroupsProvider);
         ref.invalidate(myInvitesProvider);
-        await ref.refresh(discoverGroupsProvider(_discoverArgs).future);
+        // Invalidate-then-read rather than `refresh`, which is `@useResult` and warned when
+        // awaited for its side effect. Same behaviour, consistent with the two lines above.
+        ref.invalidate(discoverGroupsProvider(_discoverArgs));
+        await ref.read(discoverGroupsProvider(_discoverArgs).future);
       },
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
@@ -176,7 +180,9 @@ class _GroupsPanelState extends ConsumerState<GroupsPanel> {
             ],
           ),
         ),
-        async.when(
+        // `cached`, not `when`: a skeleton replacing a list the user is already reading is the
+        // "everything reloads" complaint. Cached results stay put while fresh ones load behind.
+        async.cached(
           loading: () => const AppListSkeleton(count: 2, padding: EdgeInsets.fromLTRB(20, 60, 20, 20)),
           error: (e, _) => _PanelMessage(
             text: 'Couldn\'t load groups',

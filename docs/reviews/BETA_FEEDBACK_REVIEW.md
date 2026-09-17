@@ -1944,13 +1944,25 @@ Notation: **[be]** backend · **[fe]** mobile · **[cfg]** config/ops · **[msr]
 
 ### Phase 2 — Reliability & performance
 
-- [ ] **2.1** [msr] Run Part 5 items 1–4 and 7 *(item 5 already resolved)* — **blocked: needs
+- [ ] **2.0** [cfg] **Co-locate the API with the database** (Part 5 item 2) — API in Oregon, DB in
+      Ohio, ~50–70 ms on every round trip. Moving the API to Render's Ohio region fixes that *and*
+      halves the NC client's own hop. No data migration; a service region cannot be changed in
+      place, so it means creating the service in Ohio and cutting over. **Highest-leverage item in
+      this document** — evaluate before any further #12 work.
+- [ ] **2.1** [msr] Run Part 5 items 1–4 and 7 *(items 2, 3 and 5 resolved)* — **blocked: needs
       production access** (Render logs, Supabase dashboard, a read-only prod query). Cannot be done
       from the repo.
 - [x] **2.2** [fe] **#17 images** — `cached_network_image` across all 11 sites; skeleton (not silhouette)
       placeholder; raise object `Cache-Control` to immutable
-- [ ] **2.3** [fe] **#17 data** — `autoDispose` → `keepAlive` + stale-while-revalidate; request dedup;
-      per-filter memoization; replace shotgun invalidation with targeted updates
+- [x] **2.3** [fe] **#17 data** — `cacheFor` (TTL-bounded `keepAlive`) on the group, directory and
+      participant providers; `AsyncValue.cached` so a revalidation no longer replaces content with a
+      skeleton; `DedupeGetInterceptor` collapses concurrent identical GETs.
+      **Two items deliberately not done:** per-filter memoization of `activitiesNotifierProvider`
+      (a different filter is genuinely different data — `cached` rendering fixes the blanking, and
+      splitting the notifier from its optimistic `join`/`leave` mutations is a Phase-3-sized
+      refactor for no correctness gain), and "replace shotgun invalidation" — on inspection the
+      4-way fan-out in `pending_invites.dart` is *correct*: accepting an invite really does change
+      invites, my-groups, discovery state and the inbox. The review mislabelled it.
 - [x] **2.4** [be][snap] **#13 notifications** — composite `(user_id, created_at DESC)` + partial unread
       index; keyset pagination + `(created_at, id)` ordering; insert-from-WS instead of refetch
 - [x] **2.5** [fe] **#12 P1** — race WS+REST instead of a fixed 6 s wait; adaptive ack timeout;
@@ -1963,10 +1975,10 @@ Notation: **[be]** backend · **[fe]** mobile · **[cfg]** config/ops · **[msr]
       both id shapes in one query instead of a guaranteed miss for every DM; the block check is a
       single set-based query. **~11 → ~6 round trips per send.**
 - [ ] **2.8** [be] **#12 P3** — cache send authorization per `(Connection, conversation)` at subscribe;
-      invalidate via the existing control-event plane. **Deliberately held for 2.6**: it is the only
-      item here that trades a security-relevant read for cached state, and its value depends on how
-      much of the latency is actually server-side. 2.7 already took the send path from ~11 round
-      trips to ~6 without that trade.
+      invalidate via the existing control-event plane. **Now justified by measurement** (Part 5
+      item 2): at 50–70 ms RTT the ~4 authorization round trips it removes are worth ~200–280 ms
+      per message. Still do it **after** the region decision — co-locating drops the same 4 trips
+      to ~8–20 ms total, which may make the security trade not worth making at all.
 - [ ] **2.9** [be][fe] Part 3 additional findings 1–7, 11, 17
 - [ ] **2.10** [cfg] **Only if 2.1/2.6 justify it**: Redis first, *then* workers — never the reverse
 - [x] **2.11a** [be] **Fresh-environment bootstrap + migration tests** (Part 3 finding 18) —
@@ -2029,16 +2041,42 @@ These are the points where an architectural decision must not be made without da
    health pinger). If the round-trip budget dominates, the fix is #12 P2/P3. In **neither** case is
    the answer workers, Redis, or more CPU. Render logs plus the existing `X-Request-ID` middleware
    ([request_context.py](../../backend/app/shared/request_context.py)) give most of the REST half already.
-2. **Database region and measured RTT — now the highest-value single measurement.** Confirm the
-   Supabase project region relative to `region: oregon` ([render.yaml:5](../../render.yaml#L5)) and time
-   a `SELECT 1` loop from the API instance. #12's cost table turns that one number into an answer:
-   at 2–5 ms a message send costs 20–55 ms and the report is cold-start-only; at 70–150 ms the same
-   send costs 0.8–1.6 s and the report is fully explained with no cold start involved. Co-locating
-   the DB is also worth more than every index in this document combined.
-3. **Role misclassification (blocks #7).** Query production for users with an active
-   `presidential_scholars` `ProgramMembership` **and** `role != 'student'`. If non-empty, the
-   email-domain inference is the direct cause of "some eligible users don't get the card", and the fix
-   is a role-override mechanism, not client code. **Read-only query; no data changes.**
+2. ~~**Database region and measured RTT.**~~ **RESOLVED 2026-09-17 — and it is the single most
+   important finding in this document.**
+
+   **The API and the database are on opposite coasts.** Render runs in `region: oregon`
+   (`us-west-2`, [render.yaml:5](../../render.yaml#L5)); the Supabase primary is **East US (Ohio),
+   `us-east-2`**, on `t4g.nano` compute. Cross-country RTT is roughly **50–70 ms**, and it is paid
+   on *every* round trip of *every* query in the app.
+
+   Applied to #12's cost table, this lands squarely in the bad column. A message send makes ~6
+   serial round trips after the reductions in 2.7 (`recheck_account` → `resolve_conversation` →
+   `active_members_with_mute` → `is_active_member` → `any_blocked_between` → INSERT → COMMIT),
+   so:
+
+   | | round trips | pure network |
+   |---|---|---|
+   | before 2.7 | ~11 | **550–770 ms** |
+   | after 2.7 | ~6 | **300–420 ms** |
+   | co-located (2–5 ms RTT) | ~6 | **12–30 ms** |
+
+   That is the report, explained, with no cold start required — and it is why #12's decision tree
+   points at the round-trip budget rather than at spin-up.
+
+   **The geography is worse than it looks.** Livingstone College is in Salisbury, North Carolina.
+   Today a request goes NC → Oregon (~70 ms) → Ohio (~60 ms) and back. Moving the **API** to
+   Render's Ohio region would co-locate it with the database *and* halve the client's own hop, so
+   it fixes two legs at once and needs no data migration — a service region cannot be changed in
+   place, so it means creating the service in Ohio and cutting over. That is worth more than every
+   index, cache, and query change in this document combined, and it should be evaluated before
+   any further #12 work.
+3. ~~**Role misclassification (blocks #7).**~~ **RESOLVED 2026-09-17 — ruled out.** The query
+   returned **no rows**: every active `presidential_scholars` member has `role = 'student'`, so the
+   email-domain inference in [email_roles.py:36-54](../../backend/app/shared/email_roles.py#L36-L54) is
+   not misclassifying anyone today. #7's remaining causes are therefore the two client-side ones
+   already fixed in 1.3 (error-to-hidden collapse, and the realtime notification not refreshing
+   attendance state). Worth re-running if a student ever reports it again, since the inference is
+   re-applied on **every** bootstrap and a changed campus address would silently flip a role.
 4. **Actual Supabase token lifetimes (blocks #10 recommendations).** Read JWT expiry, refresh-token
    rotation, and reuse interval from the Supabase dashboard and **record them in the doc**. They
    exist in no file in this repo. Do not change them before reading them.

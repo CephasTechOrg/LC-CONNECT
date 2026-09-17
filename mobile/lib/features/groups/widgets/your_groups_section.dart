@@ -49,7 +49,8 @@ class _YourGroupsSectionState extends ConsumerState<YourGroupsSection> {
 
   @override
   Widget build(BuildContext context) {
-    final groups = ref.watch(myGroupsProvider).asData?.value ?? const <GroupSummary>[];
+    // See `pending_invites.dart` — `asData` is null mid-refresh, which made this list flicker.
+    final groups = ref.watch(myGroupsProvider).value ?? const <GroupSummary>[];
     if (groups.isEmpty) return const SizedBox.shrink();
 
     return Column(

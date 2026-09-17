@@ -1,3 +1,4 @@
+import '../../../shared/util/caching.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -179,32 +180,40 @@ typedef DiscoverArgs = ({String? category, String? query});
 /// Discover public groups, optionally filtered by category and/or a name search. `null` = all.
 final discoverGroupsProvider =
     FutureProvider.autoDispose.family<List<GroupSummary>, DiscoverArgs>((ref, args) {
+  // Cached per (category, query), so clearing a search or stepping back through categories
+  // reuses the earlier result instead of re-querying.
+  cacheFor(ref);
   return ref.watch(groupsRepositoryProvider).discover(category: args.category, query: args.query);
 });
 
 final myGroupsProvider = FutureProvider.autoDispose<List<GroupSummary>>((ref) {
+  cacheFor(ref);
   return ref.watch(groupsRepositoryProvider).myGroups();
 });
 
 /// Groups the current user has been invited to — drives the Pending invites section.
 final myInvitesProvider = FutureProvider.autoDispose<List<GroupSummary>>((ref) {
+  cacheFor(ref);
   return ref.watch(groupsRepositoryProvider).myInvites();
 });
 
 /// Full group detail (name, description, my role, counts) — the header of the detail screen.
 final groupDetailProvider =
     FutureProvider.autoDispose.family<GroupRead, String>((ref, groupId) {
+  cacheFor(ref);
   return ref.watch(groupsRepositoryProvider).get(groupId);
 });
 
 /// Active members of a group, for the members list.
 final groupMembersProvider =
     FutureProvider.autoDispose.family<List<GroupMember>, String>((ref, groupId) {
+  cacheFor(ref);
   return ref.watch(groupsRepositoryProvider).members(groupId);
 });
 
 /// Pending join requests — admin-only; the endpoint 403s for non-admins.
 final groupRequestsProvider =
     FutureProvider.autoDispose.family<List<GroupMember>, String>((ref, groupId) {
+  cacheFor(ref);
   return ref.watch(groupsRepositoryProvider).requests(groupId);
 });

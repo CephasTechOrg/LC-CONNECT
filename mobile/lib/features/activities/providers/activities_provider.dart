@@ -1,3 +1,4 @@
+import '../../../shared/util/caching.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/api/api_client.dart';
@@ -97,6 +98,7 @@ class ActivityParticipant {
 /// The roster for one activity.
 final activityParticipantsProvider =
     FutureProvider.autoDispose.family<List<ActivityParticipant>, String>((ref, activityId) async {
+  cacheFor(ref);
   final resp = await ref.read(apiClientProvider).dio.get('/activities/$activityId/participants');
   return (resp.data as List)
       .map((j) => ActivityParticipant.fromJson(j as Map<String, dynamic>))

@@ -57,7 +57,9 @@ class _PendingInvitesSectionState extends ConsumerState<PendingInvitesSection> {
 
   @override
   Widget build(BuildContext context) {
-    final invites = ref.watch(myInvitesProvider).asData?.value ?? const <GroupSummary>[];
+    // `.value`, not `asData?.value`: during a refresh the state is AsyncLoading *carrying* the
+    // previous value, so `asData` is null and the section used to vanish and reappear.
+    final invites = ref.watch(myInvitesProvider).value ?? const <GroupSummary>[];
     if (invites.isEmpty) return const SizedBox.shrink();
 
     return Column(
