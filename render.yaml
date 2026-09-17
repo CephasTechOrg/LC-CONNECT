@@ -2,7 +2,15 @@ services:
   - type: web
     name: lc-connect-api
     env: python
-    region: oregon
+    # Ohio, to sit next to the Supabase database. The API was in Oregon while the database was in
+    # Ohio (us-east-2), so every query crossed the country — ~50-70ms, paid ~6 times on a single
+    # message send. It is also the closer region to a North Carolina campus, so the client's own
+    # hop shortens too. Review Part 5 item 2 / checklist 2.0.
+    #
+    # A Render service's region cannot be changed in place: this value only takes effect when the
+    # service is *created*. It is written here so a re-create cannot silently land back in Oregon
+    # and quietly undo the single highest-leverage fix in the review.
+    region: ohio
     plan: free
     branch: main
     rootDir: backend
@@ -95,7 +103,11 @@ services:
   - type: web
     name: lc-connect-admin
     env: node
-    region: oregon
+    # Ohio for both reasons that moved the API: these are SSR services that call the API on every
+    # request, and their users are on campus in North Carolina. **Still running in Oregon today** —
+    # the region applies on create, so this one takes effect whenever the service is next
+    # re-created, which is the only way to move it.
+    region: ohio
     plan: free
     branch: main
     rootDir: admin
@@ -118,7 +130,8 @@ services:
   - type: web
     name: lc-connect-employer
     env: node
-    region: oregon
+    # See lc-connect-admin above — same reasoning, also still in Oregon until re-created.
+    region: ohio
     plan: free
     branch: main
     rootDir: employer-portal

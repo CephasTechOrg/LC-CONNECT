@@ -1944,11 +1944,14 @@ Notation: **[be]** backend · **[fe]** mobile · **[cfg]** config/ops · **[msr]
 
 ### Phase 2 — Reliability & performance
 
-- [ ] **2.0** [cfg] **Co-locate the API with the database** (Part 5 item 2) — API in Oregon, DB in
-      Ohio, ~50–70 ms on every round trip. Moving the API to Render's Ohio region fixes that *and*
-      halves the NC client's own hop. No data migration; a service region cannot be changed in
-      place, so it means creating the service in Ohio and cutting over. **Highest-leverage item in
-      this document** — evaluate before any further #12 work.
+- [x] **2.0** [cfg] **Co-locate the API with the database** (Part 5 item 2) — was API in Oregon, DB
+      in Ohio, ~50–70 ms on every round trip, paid ~6 times on a single message send. **Done:** the
+      API now runs in Render's Ohio region, which also halves the NC client's own hop.
+      `render.yaml` updated to `region: ohio` so a service re-create cannot silently revert it —
+      the region only applies at creation, which is also why the move required a new service rather
+      than an edit. The two Next.js portals are declared `ohio` too but are **still running in
+      Oregon** until they are next re-created.
+      *Not yet measured:* the before/after latency is 2.1, which still needs production access.
 - [ ] **2.1** [msr] Run Part 5 items 1–4 and 7 *(items 2, 3 and 5 resolved)* — **blocked: needs
       production access** (Render logs, Supabase dashboard, a read-only prod query). Cannot be done
       from the repo.
