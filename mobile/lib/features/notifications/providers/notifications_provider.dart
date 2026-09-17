@@ -66,8 +66,15 @@ class NotificationCountNotifier extends Notifier<int> {
   void _onEvent(InboundEvent event) {
     if (event is! NotificationEvent) return;
     state = state + 1;
-    // Inbox open? Pull the new row in without waiting for pull-to-refresh.
-    ref.invalidate(notificationsListProvider);
+    // Insert the row we were just handed rather than refetching the page for it.
+    try {
+      ref
+          .read(notificationsListProvider.notifier)
+          .prepend(AppNotification.fromJson(event.notification));
+    } catch (_) {
+      // Malformed or unknown payload — the next refresh will pick it up properly.
+      ref.invalidate(notificationsListProvider);
+    }
   }
 
   /// Explicit "mark all read" action. Clears the badge locally, then the server.
@@ -79,7 +86,7 @@ class NotificationCountNotifier extends Notifier<int> {
     state = 0;
     try {
       await ref.read(apiClientProvider).dio.post('/notifications/read');
-      ref.invalidate(notificationsListProvider);
+      await ref.read(notificationsListProvider.notifier).refresh();
     } catch (_) {/* re-seed will correct on next reconnect/resume */}
   }
 
@@ -95,13 +102,79 @@ class NotificationCountNotifier extends Notifier<int> {
   }
 }
 
-/// The notification list for the screen. Autoloads the newest notifications.
-final notificationsListProvider = FutureProvider.autoDispose<List<AppNotification>>((ref) async {
-  final resp = await ref.read(apiClientProvider).dio.get('/notifications');
-  return (resp.data as List)
-      .map((j) => AppNotification.fromJson(j as Map<String, dynamic>))
-      .toList();
-});
+/// The notification list for the screen.
+///
+/// `keepAlive`, not `autoDispose`: every open of the inbox was a cold fetch behind a skeleton,
+/// with no cached first paint, which is most of what made the screen feel slow (#13). Cached rows
+/// render immediately and a refresh runs behind them.
+final notificationsListProvider =
+    AsyncNotifierProvider<NotificationsListNotifier, List<AppNotification>>(
+  NotificationsListNotifier.new,
+);
+
+class NotificationsListNotifier extends AsyncNotifier<List<AppNotification>> {
+  /// Rows per page. The endpoint caps at 100.
+  static const pageSize = 30;
+
+  bool _reachedEnd = false;
+
+  /// Whether every page has been loaded.
+  bool get reachedEnd => _reachedEnd;
+
+  @override
+  Future<List<AppNotification>> build() async {
+    ref.keepAlive();
+    ref.watch(authNotifierProvider);
+    return _fetch();
+  }
+
+  Future<List<AppNotification>> _fetch({AppNotification? after}) async {
+    final resp = await ref.read(apiClientProvider).dio.get(
+      '/notifications',
+      queryParameters: {
+        'limit': pageSize,
+        if (after != null) ...{
+          'before_created_at': after.createdAt.toUtc().toIso8601String(),
+          'before_id': after.id,
+        },
+      },
+    );
+    final rows = (resp.data as List)
+        .map((j) => AppNotification.fromJson(j as Map<String, dynamic>))
+        .toList();
+    if (rows.length < pageSize) _reachedEnd = true;
+    return rows;
+  }
+
+  /// Re-reads the newest page, keeping the current rows visible while it runs.
+  Future<void> refresh() async {
+    _reachedEnd = false;
+    state = await AsyncValue.guard(_fetch);
+  }
+
+  /// Appends the next page. No-op once everything is loaded or while a load is in flight.
+  Future<void> loadMore() async {
+    final current = state.value;
+    if (_reachedEnd || current == null || current.isEmpty || state.isLoading) return;
+    try {
+      final next = await _fetch(after: current.last);
+      final known = current.map((n) => n.id).toSet();
+      state = AsyncData([...current, ...next.where((n) => !known.contains(n.id))]);
+    } catch (_) {/* keep what we have; the user can pull to refresh */}
+  }
+
+  /// Inserts a notification that arrived over the WebSocket.
+  ///
+  /// The frame already carries the full serialized row — the same shape `GET /notifications`
+  /// returns — so refetching the whole page per event was pure waste. With the inbox open, ten
+  /// notifications meant ten full list requests.
+  void prepend(AppNotification notification) {
+    final current = state.value;
+    if (current == null) return; // nothing loaded yet; the first fetch will include it
+    if (current.any((n) => n.id == notification.id)) return;
+    state = AsyncData([notification, ...current]);
+  }
+}
 
 class _ResumeObserver extends WidgetsBindingObserver {
   final VoidCallback onResume;

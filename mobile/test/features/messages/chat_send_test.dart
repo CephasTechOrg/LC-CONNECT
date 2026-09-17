@@ -111,7 +111,10 @@ void main() {
     dotenv.loadFromString(envString: 'API_BASE_URL=http://localhost:8000/api/v1\nENV=test');
   });
 
-  group('send escalates to REST when the socket does not ack', () {
+  /// The realtime client in this scope never reaches `ready`, which is the situation the REST
+  /// path exists for — and, since the socket is torn down on every app background, the situation
+  /// the *first message after resuming* is always in.
+  group('send falls back to REST when the socket cannot carry it', () {
     testWidgets('posts the same client_message_id so the server can dedupe', (tester) async {
       final adapter = _RecordingAdapter(postBody: {
         'id': 'server-1',
@@ -127,13 +130,12 @@ void main() {
       await tester.pump(const Duration(milliseconds: 50));
 
       await _type(tester, 'hello there');
-      expect(adapter.posts, isEmpty, reason: 'WebSocket gets first refusal');
+      await tester.pump(const Duration(milliseconds: 10)); // let the POST dispatch
 
-      // Past the ack timeout → escalate.
-      await tester.pump(const Duration(seconds: 7));
-      await tester.pump();
-
-      expect(adapter.posts.length, 1, reason: 'an unacked send must fall back to HTTP');
+      // A not-ready socket queues the frame in the outbox until the next `auth.ok`, so waiting
+      // out the ack timer would buy nothing — HTTP starts immediately instead. Safe only because
+      // the server is idempotent on `client_message_id`, which the assertions below pin.
+      expect(adapter.posts.length, 1, reason: 'no reason to stall behind a socket that is down');
       final post = adapter.posts.single;
       expect(post.path, '/messages/threads/match-001');
       final body = post.data as Map;
@@ -144,16 +146,20 @@ void main() {
       await tester.pump(const Duration(seconds: 1));
     });
 
-    testWidgets('does not post before the ack timeout elapses', (tester) async {
+    testWidgets('sends exactly once — the race must not double-post', (tester) async {
       final adapter = _RecordingAdapter();
       await tester.pumpWidget(_chatScope(adapter));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 50));
 
-      await _type(tester, 'too early');
-      await tester.pump(const Duration(seconds: 3));
+      await _type(tester, 'only once');
+      await tester.pump(const Duration(milliseconds: 10));
+      expect(adapter.posts.length, 1);
 
-      expect(adapter.posts, isEmpty);
+      // Well past the old 6s ack timeout: the immediate escalation must have cancelled the
+      // pending WS send, so no second attempt is armed.
+      await tester.pump(const Duration(seconds: 8));
+      expect(adapter.posts.length, 1, reason: 'the ack timer must not fire a duplicate');
       await tester.pump(const Duration(seconds: 10));
     });
 

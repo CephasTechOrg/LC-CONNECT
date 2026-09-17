@@ -34,6 +34,9 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
+  # Disk-backed image cache. `Image.network` keeps decoded frames in RAM only, so every cold start
+  # re-downloaded every avatar — the "the same unchanged profile image reloads repeatedly" report.
+  cached_network_image: ^3.4.1
   dio: ^5.9.2
   flutter_secure_storage: ^10.0.0
   go_router: ^17.2.3

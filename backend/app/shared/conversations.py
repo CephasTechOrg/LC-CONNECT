@@ -14,7 +14,7 @@ from __future__ import annotations
 from uuid import UUID
 
 from fastapi import HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
@@ -122,12 +122,27 @@ async def resolve_conversation(db: AsyncSession, ref: UUID) -> Conversation | No
     """Resolve a client-supplied id to a conversation.
 
     `ref` may be a **conversation id** (groups address their chat directly) or a **match id**
-    (DMs are still addressed by match during the transition). Tries the conversation table
-    first, then falls back to the match → DM-conversation path.
+    (DMs are still addressed by match during the transition).
+
+    Both shapes are matched in one query. The previous try-then-fallback did `db.get(Conversation,
+    ref)` first, which is a **guaranteed miss for every DM** — the mobile client addresses DMs by
+    match id — and only then looked up the match. That wasted round trip was paid on every
+    message sent, every subscribe, and every read receipt in every direct conversation.
+
+    `match_id` is UNIQUE and `id` is the primary key, so at most one row can match either arm.
+    The provisioning path below is reached only when no conversation exists yet.
     """
-    conversation = await db.get(Conversation, ref)
+    conversation = (
+        await db.execute(
+            select(Conversation)
+            .where(or_(Conversation.id == ref, Conversation.match_id == ref))
+            .limit(1)
+        )
+    ).scalar_one_or_none()
     if conversation is not None:
         return conversation
+    # No row for either shape: if `ref` is a match that has never been messaged, provision its
+    # conversation now.
     return await conversation_for_match_id(db, ref)
 
 

@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import delete, func, select, tuple_, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
@@ -79,19 +80,40 @@ def _to_read(n: Notification, group_name: str | None, actor_name: str | None, ac
     )
 
 
-async def list_notifications(db: AsyncSession, user_id: UUID, *, limit: int = 50) -> list[NotificationRead]:
-    """Newest-first, resolving the group name + actor profile in one query (no N+1)."""
+async def list_notifications(
+    db: AsyncSession,
+    user_id: UUID,
+    *,
+    limit: int = 50,
+    before_created_at: datetime | None = None,
+    before_id: UUID | None = None,
+) -> list[NotificationRead]:
+    """Newest-first page, resolving the group name + actor profile in one query (no N+1).
+
+    Ordered by `(created_at DESC, id DESC)`. The tiebreaker is not cosmetic: the attendance
+    fan-out inserts one row per member in a single commit, so ties are the norm rather than the
+    exception, and ordering by `created_at` alone returned them in a different order on each call.
+    That is invisible in a single fixed page and corrupts a paged one — a row could repeat or be
+    skipped at the boundary.
+
+    Pagination is keyset, matching `messages.list_thread`: pass the last row of the previous page
+    as `before_created_at`/`before_id`. OFFSET would re-scan everything it skips and would still
+    drift whenever a new notification arrives mid-scroll.
+    """
     actor = aliased(Profile)
-    rows = (
-        await db.execute(
-            select(Notification, Group.name, actor.display_name, actor.avatar_url)
-            .outerjoin(Group, Group.id == Notification.group_id)
-            .outerjoin(actor, actor.user_id == Notification.actor_id)
-            .where(Notification.user_id == user_id)
-            .order_by(Notification.created_at.desc())
-            .limit(limit)
+    stmt = (
+        select(Notification, Group.name, actor.display_name, actor.avatar_url)
+        .outerjoin(Group, Group.id == Notification.group_id)
+        .outerjoin(actor, actor.user_id == Notification.actor_id)
+        .where(Notification.user_id == user_id)
+    )
+    if before_created_at is not None and before_id is not None:
+        stmt = stmt.where(
+            tuple_(Notification.created_at, Notification.id) < tuple_(before_created_at, before_id)
         )
-    ).all()
+    stmt = stmt.order_by(Notification.created_at.desc(), Notification.id.desc()).limit(limit)
+
+    rows = (await db.execute(stmt)).all()
     return [_to_read(n, group_name, actor_name, actor_avatar) for n, group_name, actor_name, actor_avatar in rows]
 
 

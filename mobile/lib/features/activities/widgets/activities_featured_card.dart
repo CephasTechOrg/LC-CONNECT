@@ -68,10 +68,10 @@ class _FeaturedCardState extends ConsumerState<_FeaturedCard> {
                 fit: StackFit.expand,
                 children: [
                   if (hasBanner)
-                    Image.network(
-                      a.bannerUrl!,
+                    CachedNetworkImage(
+                      imageUrl: a.bannerUrl!,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => const ColoredBox(color: AppColors.primaryPale),
+                      errorWidget: (_, _, _) => const ColoredBox(color: AppColors.primaryPale),
                     )
                   else ...[
                     const ColoredBox(color: AppColors.primaryPale),

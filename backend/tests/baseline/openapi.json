@@ -14125,6 +14125,7 @@
     },
     "/api/v1/notifications": {
       "get": {
+        "description": "One page of notifications, newest first.\n\nBoth cursor parameters must be supplied together; either alone is ignored, which keeps a\nmalformed client request returning the first page rather than an error.",
         "operationId": "list_my_notifications_api_v1_notifications_get",
         "parameters": [
           {
@@ -14137,6 +14138,44 @@
               "minimum": 1,
               "title": "Limit",
               "type": "integer"
+            }
+          },
+          {
+            "description": "Keyset cursor: `created_at` of the last row of the previous page.",
+            "in": "query",
+            "name": "before_created_at",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Keyset cursor: `created_at` of the last row of the previous page.",
+              "title": "Before Created At"
+            }
+          },
+          {
+            "description": "Keyset cursor: `id` of the last row of the previous page.",
+            "in": "query",
+            "name": "before_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Keyset cursor: `id` of the last row of the previous page.",
+              "title": "Before Id"
             }
           }
         ],

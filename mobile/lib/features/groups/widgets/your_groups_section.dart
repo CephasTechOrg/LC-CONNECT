@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -96,8 +97,13 @@ class _GroupBubble extends StatelessWidget {
               alignment: Alignment.center,
               decoration: const BoxDecoration(color: AppColors.primarySoft, shape: BoxShape.circle),
               child: group.avatarUrl != null
-                  ? Image.network(group.avatarUrl!, width: 54, height: 54, fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => const Icon(Icons.groups_outlined, size: 24, color: AppColors.primary))
+                  ? CachedNetworkImage(
+                      imageUrl: group.avatarUrl!,
+                      width: 54,
+                      height: 54,
+                      fit: BoxFit.cover,
+                      errorWidget: (_, _, _) =>
+                          const Icon(Icons.groups_outlined, size: 24, color: AppColors.primary))
                   : const Icon(Icons.groups_outlined, size: 24, color: AppColors.primary),
             ),
             const SizedBox(height: 6),

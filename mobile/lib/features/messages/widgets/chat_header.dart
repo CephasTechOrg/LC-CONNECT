@@ -128,8 +128,13 @@ class _HeaderAvatar extends StatelessWidget {
       alignment: Alignment.center,
       decoration: const BoxDecoration(color: AppColors.primarySoft, shape: BoxShape.circle),
       child: url != null
-          ? Image.network(url!, width: 38, height: 38, fit: BoxFit.cover,
-              errorBuilder: (_, _, _) => const Icon(Icons.groups_outlined, size: 20, color: AppColors.primary))
+          ? CachedNetworkImage(
+              imageUrl: url!,
+              width: 38,
+              height: 38,
+              fit: BoxFit.cover,
+              errorWidget: (_, _, _) =>
+                  const Icon(Icons.groups_outlined, size: 20, color: AppColors.primary))
           : const Icon(Icons.groups_outlined, size: 20, color: AppColors.primary),
     );
   }

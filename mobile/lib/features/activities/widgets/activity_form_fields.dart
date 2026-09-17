@@ -14,7 +14,8 @@ class _BannerPicker extends StatelessWidget {
     if (picked != null) {
       content = Image.file(File(picked!.path), fit: BoxFit.cover);
     } else if (existingUrl != null) {
-      content = Image.network(existingUrl!, fit: BoxFit.cover, errorBuilder: (_, _, _) => _placeholder());
+      content = CachedNetworkImage(
+          imageUrl: existingUrl!, fit: BoxFit.cover, errorWidget: (_, _, _) => _placeholder());
     } else {
       content = _placeholder();
     }

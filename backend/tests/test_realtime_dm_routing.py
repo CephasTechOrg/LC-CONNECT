@@ -77,8 +77,9 @@ def routing(monkeypatch):
         async def ok_recheck(db, user_id):
             return object()
 
+        # (conversation, members) — see the gateway test for why authorization returns both.
         async def ok_authorize(db, user_id, ref):
-            return conversation
+            return conversation, [(uuid4(), False)]
 
         async def ok_members(db, conversation_id, *, exclude=None):
             return [uuid4()]
@@ -107,7 +108,6 @@ def routing(monkeypatch):
         monkeypatch.setattr(service, 'recheck_account', ok_recheck)
         monkeypatch.setattr(service, 'authorize_conversation', ok_authorize)
         monkeypatch.setattr(gateway, 'active_member_ids', ok_members)
-        monkeypatch.setattr(gateway, 'active_members_with_mute', ok_members_muted)
         monkeypatch.setattr(gateway, 'persist_message_idempotent', persist)
 
     return install

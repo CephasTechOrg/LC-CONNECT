@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -109,8 +110,13 @@ class _InviteCard extends StatelessWidget {
             alignment: Alignment.center,
             decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(12)),
             child: group.avatarUrl != null
-                ? Image.network(group.avatarUrl!, fit: BoxFit.cover, width: 40, height: 40,
-                    errorBuilder: (_, _, _) => const Icon(Icons.groups_outlined, size: 18, color: AppColors.primary))
+                ? CachedNetworkImage(
+                    imageUrl: group.avatarUrl!,
+                    fit: BoxFit.cover,
+                    width: 40,
+                    height: 40,
+                    errorWidget: (_, _, _) =>
+                        const Icon(Icons.groups_outlined, size: 18, color: AppColors.primary))
                 : const Icon(Icons.groups_outlined, size: 18, color: AppColors.primary),
           ),
           const SizedBox(width: 11),

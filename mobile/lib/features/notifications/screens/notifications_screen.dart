@@ -26,7 +26,8 @@ class NotificationsScreen extends ConsumerStatefulWidget {
   const NotificationsScreen({super.key});
 
   @override
-  ConsumerState<NotificationsScreen> createState() => _NotificationsScreenState();
+  ConsumerState<NotificationsScreen> createState() =>
+      _NotificationsScreenState();
 }
 
 class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
@@ -85,8 +86,13 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
       appBar: AppBar(
         backgroundColor: AppColors.surface,
         elevation: 0,
-        title: Text('Notifications',
-            style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, color: AppColors.textDark)),
+        title: Text(
+          'Notifications',
+          style: GoogleFonts.dmSans(
+            fontWeight: FontWeight.w700,
+            color: AppColors.textDark,
+          ),
+        ),
         iconTheme: const IconThemeData(color: AppColors.textDark),
         actions: [
           if (ref.watch(notificationCountProvider) > 0)
@@ -105,39 +111,57 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
         ],
       ),
       body: RefreshIndicator(
+        // `refresh()` rather than `invalidate`: the provider is keepAlive so the rows stay on
+        // screen while it re-reads, instead of collapsing to a skeleton.
         onRefresh: () async {
-          ref.invalidate(notificationsListProvider);
           ref.invalidate(connectionsNotifierProvider);
+          await ref.read(notificationsListProvider.notifier).refresh();
         },
-        child: ListView(
-          children: [
-            const _ConnectionRequestsRow(), // pinned: always the way into Connections
-            const Divider(height: 1, color: AppColors.border),
-            ...async.when(
-              loading: () => const [
-                AppThreadRowSkeleton(),
-                AppThreadRowSkeleton(),
-                AppThreadRowSkeleton(),
-              ],
-              error: (_, _) => [
-                _Message(text: "Couldn't load notifications", onRetry: () => ref.invalidate(notificationsListProvider)),
-              ],
-              data: (items) {
-                _snapshot(items);
-                if (items.isEmpty) return [const _Message(text: "You're all caught up.")];
-                return [
-                  for (final n in items) ...[
-                    _NotificationTile(
-                      notification: n,
-                      unread: _isUnread(n),
-                      onOpen: () => _open(n),
-                    ),
-                    const Divider(height: 1, color: AppColors.border),
-                  ],
-                ];
-              },
-            ),
-          ],
+        child: NotificationListener<ScrollNotification>(
+          // Older notifications are now paged rather than capped at a single fixed request, so
+          // the list has to be able to ask for the next page.
+          onNotification: (notification) {
+            if (notification.metrics.extentAfter < 400) {
+              ref.read(notificationsListProvider.notifier).loadMore();
+            }
+            return false;
+          },
+          child: ListView(
+            children: [
+              const _ConnectionRequestsRow(), // pinned: always the way into Connections
+              const Divider(height: 1, color: AppColors.border),
+              ...async.when(
+                loading: () => const [
+                  AppThreadRowSkeleton(),
+                  AppThreadRowSkeleton(),
+                  AppThreadRowSkeleton(),
+                ],
+                error: (_, _) => [
+                  _Message(
+                    text: "Couldn't load notifications",
+                    onRetry: () =>
+                        ref.read(notificationsListProvider.notifier).refresh(),
+                  ),
+                ],
+                data: (items) {
+                  _snapshot(items);
+                  if (items.isEmpty) {
+                    return [const _Message(text: "You're all caught up.")];
+                  }
+                  return [
+                    for (final n in items) ...[
+                      _NotificationTile(
+                        notification: n,
+                        unread: _isUnread(n),
+                        onOpen: () => _open(n),
+                      ),
+                      const Divider(height: 1, color: AppColors.border),
+                    ],
+                  ];
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -150,22 +174,38 @@ class _ConnectionRequestsRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final count = ref.watch(connectionsNotifierProvider).asData?.value.incoming.length ?? 0;
+    final count =
+        ref.watch(connectionsNotifierProvider).asData?.value.incoming.length ??
+        0;
     return ListTile(
       onTap: () => context.push('/connections'),
       leading: const CircleAvatar(
         backgroundColor: AppColors.primarySoft,
-        child: Icon(Icons.people_alt_outlined, size: 20, color: AppColors.primary),
+        child: Icon(
+          Icons.people_alt_outlined,
+          size: 20,
+          color: AppColors.primary,
+        ),
       ),
       title: Text(
         'Connection requests',
-        style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textDark),
+        style: GoogleFonts.dmSans(
+          fontSize: 14,
+          fontWeight: FontWeight.w700,
+          color: AppColors.textDark,
+        ),
       ),
       subtitle: Text(
         count > 0 ? '$count pending' : 'View sent & received',
-        style: GoogleFonts.dmSans(fontSize: 12, color: count > 0 ? AppColors.primary : AppColors.textMuted),
+        style: GoogleFonts.dmSans(
+          fontSize: 12,
+          color: count > 0 ? AppColors.primary : AppColors.textMuted,
+        ),
       ),
-      trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
+      trailing: const Icon(
+        Icons.chevron_right_rounded,
+        color: AppColors.textMuted,
+      ),
     );
   }
 }
@@ -199,10 +239,18 @@ class _NotificationTile extends StatelessWidget {
       onTap: onOpen ?? (route != null ? () => context.push(route) : null),
       tileColor: unread ? AppColors.primarySoft.withValues(alpha: 0.35) : null,
       leading: notification.isActorCentric
-          ? AvatarWidget(imageUrl: notification.actorAvatarUrl, size: 40, cacheScope: notification.actorName)
+          ? AvatarWidget(
+              imageUrl: notification.actorAvatarUrl,
+              size: 40,
+              cacheScope: notification.actorName,
+            )
           : CircleAvatar(
               backgroundColor: AppColors.primarySoft,
-              child: Icon(_iconFor(notification.type), size: 20, color: AppColors.primary),
+              child: Icon(
+                _iconFor(notification.type),
+                size: 20,
+                color: AppColors.primary,
+              ),
             ),
       title: Text(
         notification.message,
@@ -225,9 +273,13 @@ class _NotificationTile extends StatelessWidget {
               width: 8,
               height: 8,
               margin: const EdgeInsets.only(right: 6),
-              decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
+              decoration: const BoxDecoration(
+                color: AppColors.primary,
+                shape: BoxShape.circle,
+              ),
             ),
-          if (route != null) const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
+          if (route != null)
+            const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
         ],
       ),
     );
@@ -249,7 +301,13 @@ class _Message extends StatelessWidget {
           if (onRetry != null)
             TextButton(
               onPressed: onRetry,
-              child: Text('Retry', style: GoogleFonts.dmSans(color: AppColors.primary, fontWeight: FontWeight.w600)),
+              child: Text(
+                'Retry',
+                style: GoogleFonts.dmSans(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
         ],
       ),
@@ -258,19 +316,19 @@ class _Message extends StatelessWidget {
 }
 
 IconData _iconFor(String type) => switch (type) {
-      'group_invite' => Icons.mark_email_unread_outlined,
-      'group_request_approved' => Icons.check_circle_outline_rounded,
-      'group_request_rejected' => Icons.cancel_outlined,
-      'group_made_admin' => Icons.shield_outlined,
-      'group_removed_admin' => Icons.remove_moderator_outlined,
-      'group_removed' => Icons.person_remove_outlined,
-      'group_join_request' => Icons.group_add_outlined,
-      'connection_request' => Icons.person_add_alt_1_outlined,
-      'connection_accepted' => Icons.how_to_reg_outlined,
-      'admin_membership_invited' => Icons.admin_panel_settings_outlined,
-      'program_membership_verified' => Icons.workspace_premium_outlined,
-      _ => Icons.notifications_outlined,
-    };
+  'group_invite' => Icons.mark_email_unread_outlined,
+  'group_request_approved' => Icons.check_circle_outline_rounded,
+  'group_request_rejected' => Icons.cancel_outlined,
+  'group_made_admin' => Icons.shield_outlined,
+  'group_removed_admin' => Icons.remove_moderator_outlined,
+  'group_removed' => Icons.person_remove_outlined,
+  'group_join_request' => Icons.group_add_outlined,
+  'connection_request' => Icons.person_add_alt_1_outlined,
+  'connection_accepted' => Icons.how_to_reg_outlined,
+  'admin_membership_invited' => Icons.admin_panel_settings_outlined,
+  'program_membership_verified' => Icons.workspace_premium_outlined,
+  _ => Icons.notifications_outlined,
+};
 
 String _timeAgo(DateTime time) {
   final diff = DateTime.now().difference(time.toLocal());

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -297,12 +298,12 @@ class _GroupListTile extends StatelessWidget {
                 alignment: Alignment.center,
                 clipBehavior: Clip.antiAlias,
                 child: group.avatarUrl != null
-                    ? Image.network(
-                        group.avatarUrl!,
+                    ? CachedNetworkImage(
+                        imageUrl: group.avatarUrl!,
                         fit: BoxFit.cover,
                         width: 42,
                         height: 42,
-                        errorBuilder: (_, _, _) => Icon(
+                        errorWidget: (_, _, _) => Icon(
                           _iconFor(group.category),
                           size: 18,
                           color: AppColors.primary,

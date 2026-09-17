@@ -34,7 +34,7 @@ from app.features.realtime.runtime import (
     typing_limiter,
 )
 from app.features.realtime.ws_io import FrameTooLarge, receive_json_bounded
-from app.shared.conversations import active_member_ids, active_members_with_mute
+from app.shared.conversations import active_member_ids
 
 logger = logging.getLogger('lc_connect.realtime')
 
@@ -189,7 +189,7 @@ async def _on_subscribe(conn: Connection, frame: protocol.SubscribeFrame) -> Non
     async with AsyncSessionLocal() as db:
         try:
             await service.recheck_account(db, conn.user_id)
-            conversation = await service.authorize_conversation(db, conn.user_id, frame.conversation_id)
+            conversation, _ = await service.authorize_conversation(db, conn.user_id, frame.conversation_id)
             others = await active_member_ids(db, conversation.id, exclude=conn.user_id)
         except service.WsForbidden:
             manager.send(conn, protocol.error(ErrorCode.FORBIDDEN, 'Forbidden', frame.request_id))
@@ -227,9 +227,12 @@ async def _on_send(conn: Connection, frame: protocol.SendFrame) -> None:
     async with AsyncSessionLocal() as db:
         try:
             await service.recheck_account(db, conn.user_id)
-            conversation = await service.authorize_conversation(db, conn.user_id, frame.conversation_id)
-            # (user_id, muted) for every other active member — live to all, push skips muted.
-            recipients = await active_members_with_mute(db, conversation.id, exclude=conn.user_id)
+            # One call returns both: the member list it needs for the block check is the same
+            # `(user_id, muted)` list this path needs for fan-out. Reading it twice was a wasted
+            # round trip on every message sent.
+            conversation, recipients = await service.authorize_conversation(
+                db, conn.user_id, frame.conversation_id
+            )
         except service.WsForbidden:
             manager.send(conn, protocol.error(ErrorCode.FORBIDDEN, 'Forbidden', frame.request_id))
             return
@@ -271,7 +274,7 @@ async def _on_read(conn: Connection, frame: protocol.ReadFrame) -> None:
     async with AsyncSessionLocal() as db:
         try:
             await service.recheck_account(db, conn.user_id)
-            conversation = await service.authorize_conversation(db, conn.user_id, frame.conversation_id)
+            conversation, _ = await service.authorize_conversation(db, conn.user_id, frame.conversation_id)
         except service.WsForbidden:
             return
         read_at = await service.mark_read(

@@ -90,7 +90,10 @@ async def test_persist_creates_on_clean_insert():
     assert created is True
     assert isinstance(msg, Message)
     db.commit.assert_awaited_once()
-    db.refresh.assert_awaited_once()
+    # No `refresh` after commit: `Message` sets `eager_defaults`, so the INSERT's RETURNING
+    # already carries `created_at`. That refresh was a third round trip on the critical path of
+    # every message sent, purely to read back one column the INSERT had just generated.
+    db.refresh.assert_not_awaited()
     db.rollback.assert_not_awaited()
 
 

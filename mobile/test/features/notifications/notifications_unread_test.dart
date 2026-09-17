@@ -32,7 +32,7 @@ void main() {
   /// a `MaterialApp(home:)` has no router in scope and the tap throws.
   Widget screen(List<AppNotification> items, {int badge = 1}) => ProviderScope(
         overrides: [
-          notificationsListProvider.overrideWith((ref) async => items),
+          notificationsListProvider.overrideWith(() => _FixedList(items)),
           connectionsNotifierProvider.overrideWith(_NoConnections.new),
           notificationCountProvider.overrideWith(() => _FixedCount(badge)),
         ],
@@ -91,7 +91,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          notificationsListProvider.overrideWith((ref) async => [note('n1'), note('n2')]),
+          notificationsListProvider.overrideWith(() => _FixedList([note('n1'), note('n2')])),
           connectionsNotifierProvider.overrideWith(_NoConnections.new),
           notificationCountProvider.overrideWith(() => badge),
         ],
@@ -201,4 +201,16 @@ class _FixedCount extends NotificationCountNotifier {
     markAllCalls++;
     state = 0;
   }
+}
+
+/// List stub. The real notifier fetches a page and self-heals; these tests supply fixed rows.
+class _FixedList extends NotificationsListNotifier {
+  _FixedList(this._rows);
+  final List<AppNotification> _rows;
+
+  @override
+  Future<List<AppNotification>> build() async => _rows;
+
+  @override
+  Future<void> refresh() async => state = AsyncData(_rows);
 }

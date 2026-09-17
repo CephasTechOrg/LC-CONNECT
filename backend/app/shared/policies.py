@@ -39,6 +39,27 @@ async def users_are_blocked(db: AsyncSession, user_a: UUID, user_b: UUID) -> boo
     return result.scalar_one_or_none() is not None
 
 
+async def any_blocked_between(db: AsyncSession, user_id: UUID, others: Sequence[UUID]) -> bool:
+    """Whether a block exists between `user_id` and **any** of `others`, in one query.
+
+    Replaces a `for other in members: await users_are_blocked(...)` loop on the message send path.
+    With today's two-person DMs that loop is a single query, so this is not a win yet — it removes
+    the N+1 *shape* before group blocking or multi-party staff threads make it one.
+    """
+    if not others:
+        return False
+    others = list(others)
+    result = await db.execute(
+        select(Block.id).where(
+            or_(
+                (Block.blocker_id == user_id) & (Block.blocked_id.in_(others)),
+                (Block.blocked_id == user_id) & (Block.blocker_id.in_(others)),
+            )
+        ).limit(1)
+    )
+    return result.scalar_one_or_none() is not None
+
+
 async def users_are_connected(db: AsyncSession, user_a: UUID, user_b: UUID) -> bool:
     """True if the two users share an accepted connection. A `Match` row exists once two
     students connect, so its presence (in either pair order) is the signal — used to gate

@@ -1893,20 +1893,29 @@ Notation: **[be]** backend · **[fe]** mobile · **[cfg]** config/ops · **[msr]
 
 ### Phase 2 — Reliability & performance
 
-- [ ] **2.1** [msr] Run Part 5 items 1–4 and 7 *(item 5 already resolved)*
-- [ ] **2.2** [fe] **#17 images** — `cached_network_image` across all 11 sites; skeleton (not silhouette)
+- [ ] **2.1** [msr] Run Part 5 items 1–4 and 7 *(item 5 already resolved)* — **blocked: needs
+      production access** (Render logs, Supabase dashboard, a read-only prod query). Cannot be done
+      from the repo.
+- [x] **2.2** [fe] **#17 images** — `cached_network_image` across all 11 sites; skeleton (not silhouette)
       placeholder; raise object `Cache-Control` to immutable
 - [ ] **2.3** [fe] **#17 data** — `autoDispose` → `keepAlive` + stale-while-revalidate; request dedup;
       per-filter memoization; replace shotgun invalidation with targeted updates
-- [ ] **2.4** [be][snap] **#13 notifications** — composite `(user_id, created_at DESC)` + partial unread
+- [x] **2.4** [be][snap] **#13 notifications** — composite `(user_id, created_at DESC)` + partial unread
       index; keyset pagination + `(created_at, id)` ordering; insert-from-WS instead of refetch
-- [ ] **2.5** [fe] **#12 P1** — race WS+REST instead of a fixed 6 s wait; adaptive ack timeout;
+- [x] **2.5** [fe] **#12 P1** — race WS+REST instead of a fixed 6 s wait; adaptive ack timeout;
       "connecting…" state; overlap socket connect with bootstrap · *deliberately **not** gated on 2.1*
 - [ ] **2.6** [msr] **#12 instrumentation** — time-to-ack by transport; server send-time split; DB RTT probe
-- [ ] **2.7** [be] **#12 P2** — `INSERT ... RETURNING` instead of `refresh`; drop the duplicate member
-      read; remove the guaranteed DM conversation-lookup miss; de-loop the block check *(−4 round trips)*
+      — **blocked on 2.1**; the client-side half (2.5) shipped without it by design, see Adopted
+      decision 3.
+- [x] **2.7** [be] **#12 P2** — `eager_defaults` removes the post-commit `refresh`; authorization now
+      returns the member list it already read (was queried twice); `resolve_conversation` matches
+      both id shapes in one query instead of a guaranteed miss for every DM; the block check is a
+      single set-based query. **~11 → ~6 round trips per send.**
 - [ ] **2.8** [be] **#12 P3** — cache send authorization per `(Connection, conversation)` at subscribe;
-      invalidate via the existing control-event plane *(~11 → 2 round trips)*
+      invalidate via the existing control-event plane. **Deliberately held for 2.6**: it is the only
+      item here that trades a security-relevant read for cached state, and its value depends on how
+      much of the latency is actually server-side. 2.7 already took the send path from ~11 round
+      trips to ~6 without that trade.
 - [ ] **2.9** [be][fe] Part 3 additional findings 1–7, 11, 17
 - [ ] **2.10** [cfg] **Only if 2.1/2.6 justify it**: Redis first, *then* workers — never the reverse
 

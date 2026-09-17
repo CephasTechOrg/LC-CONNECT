@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -122,10 +123,10 @@ class LinkPreviewCard extends StatelessWidget {
           if (_imageUrl != null)
             AspectRatio(
               aspectRatio: 1.91,
-              child: Image.network(
-                _imageUrl!,
+              child: CachedNetworkImage(
+                imageUrl: _imageUrl!,
                 fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => const _ImageFallback(tall: true),
+                errorWidget: (_, _, _) => const _ImageFallback(tall: true),
               ),
             ),
           Padding(
@@ -205,10 +206,10 @@ class _Thumb extends StatelessWidget {
         height: size,
         child: imageUrl == null
             ? const _ImageFallback()
-            : Image.network(
-                imageUrl!,
+            : CachedNetworkImage(
+                imageUrl: imageUrl!,
                 fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => const _ImageFallback(),
+                errorWidget: (_, _, _) => const _ImageFallback(),
               ),
       ),
     );

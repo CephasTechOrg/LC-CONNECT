@@ -15,8 +15,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Conversation, ConversationMember, Message, User
 from app.security import verify_supabase_access_token
-from app.shared.conversations import active_member_ids, is_active_member, resolve_conversation
-from app.shared.policies import staff_thread_is_open, users_are_blocked
+from app.shared.conversations import active_members_with_mute, is_active_member, resolve_conversation
+from app.shared.policies import any_blocked_between, staff_thread_is_open
 
 # Kept in sync with `app.shared.conversations._BLOCKABLE_KINDS`.
 _BLOCKABLE_KINDS = ('dm', 'staff_dm')
@@ -62,26 +62,39 @@ def _ensure_account_ok(user: User) -> None:
         raise WsForbidden('Verified account required')
 
 
-async def authorize_conversation(db: AsyncSession, user_id: UUID, conversation_ref: UUID) -> Conversation:
+async def authorize_conversation(
+    db: AsyncSession,
+    user_id: UUID,
+    conversation_ref: UUID,
+) -> tuple[Conversation, list[tuple[UUID, bool]]]:
     """Confirm the user may access the conversation. Generic forbidden on any failure.
 
     Authorization is **membership-based** (`ConversationMember`), which reads identically for a
     2-person DM and an N-person group. `conversation_ref` is a group's conversation id or a DM's
     match id (resolved here) — so the same gateway path serves both.
+
+    Returns the conversation **and** its other active members as `(user_id, muted)`, because the
+    caller needs both and the two used to be read separately: the block check loaded the member
+    list here, then the gateway loaded the same rows again for fan-out. Two queries for one answer,
+    on the critical path of every message sent. Returning them together also keeps this the single
+    place a caller has to authorize through.
     """
     conversation = await resolve_conversation(db, conversation_ref)
-    if conversation is None or not await is_active_member(db, conversation.id, user_id):
+    if conversation is None:
+        raise WsForbidden('Conversation not accessible')
+
+    members = await active_members_with_mute(db, conversation.id, exclude=user_id)
+    if not await is_active_member(db, conversation.id, user_id):
         raise WsForbidden('Conversation not accessible')
 
     # DM-only relationship rule: a block closes the conversation for both sides.
     if conversation.kind in _BLOCKABLE_KINDS:
-        for other_id in await active_member_ids(db, conversation.id, exclude=user_id):
-            if await users_are_blocked(db, user_id, other_id):
-                raise WsForbidden('Conversation not accessible')
+        if await any_blocked_between(db, user_id, [uid for uid, _ in members]):
+            raise WsForbidden('Conversation not accessible')
     # A staff thread closes once the staff side is no longer official (position revoked).
     if conversation.kind == 'staff_dm' and not await staff_thread_is_open(db, conversation.id):
         raise WsForbidden('Conversation not accessible')
-    return conversation
+    return conversation, members
 
 
 async def mark_read(

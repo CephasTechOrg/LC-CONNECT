@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -145,10 +146,11 @@ class _ActivityDetailScreenState extends ConsumerState<ActivityDetailScreen> {
                 fit: StackFit.expand,
                 children: [
                   if (activity.bannerUrl != null)
-                    Image.network(
-                      activity.bannerUrl!,
+                    CachedNetworkImage(
+                      imageUrl: activity.bannerUrl!,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => Image.asset('assets/images/school.webp', fit: BoxFit.cover),
+                      errorWidget: (_, _, _) =>
+                          Image.asset('assets/images/school.webp', fit: BoxFit.cover),
                     )
                   else
                     Image.asset('assets/images/school.webp', fit: BoxFit.cover),

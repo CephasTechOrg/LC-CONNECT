@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, func
+from sqlalchemy import DateTime, ForeignKey, Index, String, func, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -26,6 +26,23 @@ class Notification(Base):
     the client composes the sentence. `read_at` drives the unread badge."""
 
     __tablename__ = 'notifications'
+    __table_args__ = (
+        # Keyset listing: WHERE user_id = ? ORDER BY created_at DESC, id DESC. The single-column
+        # indexes this table shipped with left the sort to be done per request.
+        Index(
+            'ix_notifications_user_created_id',
+            text('user_id'),
+            text('created_at DESC'),
+            text('id DESC'),
+        ),
+        # Unread badge. Partial, so it holds only unread rows and stays small as history grows —
+        # the same shape as `ix_messages_unread`.
+        Index(
+            'ix_notifications_unread',
+            'user_id',
+            postgresql_where=text('read_at IS NULL'),
+        ),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('users.id', ondelete='CASCADE'), index=True, nullable=False)
@@ -33,4 +50,4 @@ class Notification(Base):
     group_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey('groups.id', ondelete='CASCADE'), index=True, nullable=True)
     actor_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
     read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)

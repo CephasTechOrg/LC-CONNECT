@@ -41,8 +41,20 @@ class SupabaseStorageService:
                 bucket.remove([f'{prefix}/{name}.{ext}'])
             except Exception:
                 pass
-        bucket.upload(path=path, file=data, file_options={'content-type': content_type, 'cache-control': '3600'})
-        # `?v=<ts>` busts Flutter's Image.network cache after every update.
+        # One year, immutable. Safe *because* the returned URL is content-versioned below: the
+        # object at `?v=<ts>` never changes, and an update produces a different URL. The previous
+        # one-hour max-age forced a revalidation round trip per avatar per hour for no benefit —
+        # the client cannot be serving a stale image when the URL itself encodes the version.
+        bucket.upload(
+            path=path,
+            file=data,
+            file_options={
+                'content-type': content_type,
+                'cache-control': 'public, max-age=31536000, immutable',
+            },
+        )
+        # `?v=<upload timestamp>` is what makes the URL safe to cache forever: it changes on every
+        # upload, so a new picture is a new URL rather than a cache to bust.
         return f'{str(bucket.get_public_url(path))}?v={int(time.time())}'
 
     def upload_profile_image(self, user_id: UUID, content_type: str, data: bytes) -> str:

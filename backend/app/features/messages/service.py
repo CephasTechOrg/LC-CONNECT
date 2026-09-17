@@ -246,6 +246,10 @@ async def persist_message_idempotent(
     )
     db.add(message)
     try:
+        # `populate_existing`-style read-back without a second round trip: the INSERT returns the
+        # server-generated `created_at`, so the `db.refresh(message)` that used to follow the
+        # commit is unnecessary. That refresh was a third round trip on the critical path of every
+        # single message, purely to read back one column the INSERT already knew.
         await db.flush()
     except IntegrityError:
         await db.rollback()
@@ -260,7 +264,6 @@ async def persist_message_idempotent(
         return existing, False
 
     await db.commit()
-    await db.refresh(message)  # populate server-side created_at
     return message, True
 
 

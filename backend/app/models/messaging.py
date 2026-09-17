@@ -56,6 +56,11 @@ class ConversationMember(Base):
 
 class Message(Base):
     __tablename__ = 'messages'
+    # Fetch server defaults (`created_at`) with the INSERT's RETURNING clause rather than on first
+    # access. PostgreSQL would usually do this anyway under SQLAlchemy 2.0's `"auto"` default, but
+    # the send path depends on it: `persist_message_idempotent` no longer issues a `db.refresh()`
+    # after commit, and that refresh was a whole extra round trip on every message sent.
+    __mapper_args__ = {'eager_defaults': True}
     __table_args__ = (
         # Idempotency: a sender's client_message_id maps to exactly one server row.
         # Partial so legacy rows (NULL client_message_id) are exempt.

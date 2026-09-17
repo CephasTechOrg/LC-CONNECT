@@ -69,20 +69,18 @@ def happy_auth(monkeypatch):
     async def ok_recheck(db, user_id):
         return user
 
+    # Returns (conversation, members): authorization now hands back the member list it had to
+    # read anyway, so the send path does not query conversation_members a second time.
     async def ok_authorize(db, user_id, match_id):
-        return _Conversation(kind='dm', match_id=match_id)
+        return _Conversation(kind='dm', match_id=match_id), [(partner_id, False)]
 
     async def ok_members(db, conversation_id, *, exclude=None):
         return [partner_id]
-
-    async def ok_members_muted(db, conversation_id, *, exclude=None):
-        return [(partner_id, False)]  # one other member, not muted
 
     monkeypatch.setattr(service, 'authenticate', ok_authenticate)
     monkeypatch.setattr(service, 'recheck_account', ok_recheck)
     monkeypatch.setattr(service, 'authorize_conversation', ok_authorize)
     monkeypatch.setattr('app.features.realtime.gateway.active_member_ids', ok_members)
-    monkeypatch.setattr('app.features.realtime.gateway.active_members_with_mute', ok_members_muted)
     return user
 
 

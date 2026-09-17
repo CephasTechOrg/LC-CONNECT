@@ -39,6 +39,9 @@ mixin _ChatSendLogic on _ChatScreenStateBase {
 
   void dispatchSend(String clientId, String body) {
     sendStartedAt.putIfAbsent(clientId, DateTime.now);
+    // Captured before the send: `sendMessage` queues to the outbox when the socket is not ready,
+    // and a queued frame goes nowhere until the next `auth.ok`.
+    final socketReady = rt.status.value == RealtimeStatus.ready;
     final accepted = rt.sendMessage(
       conversationId: widget.matchId,
       clientMessageId: clientId,
@@ -51,13 +54,55 @@ mixin _ChatSendLogic on _ChatScreenStateBase {
       if (mounted) _showOutboxFullSnack(context);
       return;
     }
+
+    if (!socketReady) {
+      // The socket is knowably not ready, so waiting out the ack timer would buy nothing — the
+      // frame is sitting in the outbox waiting for a handshake that may take seconds (the WS
+      // connect timeout is 30s for cold starts). Racing HTTP now is safe *because* the server is
+      // idempotent on `client_message_id`: whichever arrives second returns the same row with
+      // `duplicate: true`, and `escalateToRest` cancels the pending WS send on success.
+      //
+      // This is what removes a fixed multi-second stall from the first message after every
+      // app resume — the socket is torn down on background by design.
+      unawaited(escalateToRest(clientId, body));
+      return;
+    }
     armAckTimer(clientId, body);
+  }
+
+  /// How long to wait for an ack before trying HTTP.
+  ///
+  /// A healthy ack is tens of milliseconds, so a flat 6s meant a genuinely lost frame stalled far
+  /// longer than the evidence warranted. Three times the slowest of the last few acks adapts to
+  /// the actual connection — a good one escalates fast, a slow-but-working one is not cut off
+  /// mid-flight — clamped to [_ChatScreenStateBase.ackTimeout] so it can never exceed the old
+  /// behaviour.
+  Duration ackTimeoutFor() {
+    if (ackLatencies.isEmpty) return _ChatScreenStateBase.ackTimeout;
+    var worst = Duration.zero;
+    for (final sample in ackLatencies) {
+      if (sample > worst) worst = sample;
+    }
+    final scaled = worst * 3;
+    if (scaled < _ChatScreenStateBase.minAckTimeout) {
+      return _ChatScreenStateBase.minAckTimeout;
+    }
+    return scaled > _ChatScreenStateBase.ackTimeout ? _ChatScreenStateBase.ackTimeout : scaled;
+  }
+
+  /// Records an observed ack round-trip, keeping only the recent window.
+  void recordAckLatency(Duration latency) {
+    if (latency <= Duration.zero) return;
+    ackLatencies.add(latency);
+    while (ackLatencies.length > _ChatScreenStateBase.ackSampleSize) {
+      ackLatencies.removeAt(0);
+    }
   }
 
   /// Not a failure timer: when it fires we try the other road.
   void armAckTimer(String clientId, String body) {
     sendTimers[clientId]?.cancel();
-    sendTimers[clientId] = Timer(_ChatScreenStateBase.ackTimeout, () {
+    sendTimers[clientId] = Timer(ackTimeoutFor(), () {
       if (!mounted || !isStillSending(clientId)) return;
       unawaited(escalateToRest(clientId, body));
     });
@@ -149,7 +194,10 @@ mixin _ChatSendLogic on _ChatScreenStateBase {
     final cid = server.clientMessageId;
     final idx = cid == null ? -1 : messages.indexWhere((m) => m.clientMessageId == cid);
     sendTimers.remove(cid)?.cancel();
-    sendStartedAt.remove(cid);
+    final startedAt = sendStartedAt.remove(cid);
+    // Feeds the adaptive ack window. Only a timer that was still pending counts as a clean
+    // round-trip — a reconcile arriving after escalation says nothing about socket latency.
+    if (startedAt != null) recordAckLatency(DateTime.now().difference(startedAt));
     setState(() {
       seenServerIds.add(server.id);
       if (idx == -1) {

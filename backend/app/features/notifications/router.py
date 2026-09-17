@@ -1,3 +1,4 @@
+from datetime import datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, status
@@ -25,10 +26,27 @@ inbox_router = APIRouter(prefix='/notifications', tags=['notifications'])
 @inbox_router.get('', response_model=list[NotificationRead])
 async def list_my_notifications(
     limit: int = Query(default=50, ge=1, le=100),
+    before_created_at: datetime | None = Query(
+        default=None, description='Keyset cursor: `created_at` of the last row of the previous page.'
+    ),
+    before_id: UUID | None = Query(
+        default=None, description='Keyset cursor: `id` of the last row of the previous page.'
+    ),
     current_user: User = Depends(require_email_confirmed_user),
     db: AsyncSession = Depends(get_db),
 ):
-    return await list_notifications(db, current_user.id, limit=limit)
+    """One page of notifications, newest first.
+
+    Both cursor parameters must be supplied together; either alone is ignored, which keeps a
+    malformed client request returning the first page rather than an error.
+    """
+    return await list_notifications(
+        db,
+        current_user.id,
+        limit=limit,
+        before_created_at=before_created_at,
+        before_id=before_id,
+    )
 
 
 @inbox_router.get('/unread-count', response_model=UnreadCount)

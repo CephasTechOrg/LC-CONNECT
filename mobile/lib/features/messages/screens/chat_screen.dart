@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -61,9 +62,20 @@ class ChatScreen extends ConsumerStatefulWidget {
 abstract class _ChatScreenStateBase extends ConsumerState<ChatScreen> {
   static const pageSize = 50;
 
-  /// How long to wait for a WebSocket `message.ack` before falling back to HTTP. Short, because
-  /// missing it is cheap now — it escalates rather than failing.
+  /// Ceiling on how long to wait for a WebSocket `message.ack` before falling back to HTTP.
+  /// Short, because missing it is cheap — it escalates rather than failing.
+  ///
+  /// This is now only the *upper bound*: [_ChatSendLogic.ackTimeoutFor] shortens it towards
+  /// [minAckTimeout] based on recently observed ack latency, so a healthy socket (acks in tens of
+  /// milliseconds) does not make a genuinely stuck message sit for six seconds.
   static const ackTimeout = Duration(seconds: 6);
+
+  /// Floor for the adaptive ack wait. Below this a brief scheduling hiccup would start
+  /// duplicating work on every send for no benefit.
+  static const minAckTimeout = Duration(milliseconds: 1500);
+
+  /// Rolling window of recent ack round-trips, used to size the adaptive wait.
+  static const ackSampleSize = 10;
 
   /// Gap between HTTP retries while the network (or a cold-started server) is unavailable.
   static const restRetryDelay = Duration(seconds: 20);
@@ -76,6 +88,9 @@ abstract class _ChatScreenStateBase extends ConsumerState<ChatScreen> {
   final scrollController = ScrollController();
   final messages = <ChatMessage>[];
   final seenServerIds = <String>{};
+
+  /// Recent WebSocket ack round-trips, newest last. See [_ChatSendLogic.ackTimeoutFor].
+  final ackLatencies = <Duration>[];
   final sendTimers = <String, Timer>{};
 
   /// When each in-flight send was first attempted, for the `sendDeadline` check.
