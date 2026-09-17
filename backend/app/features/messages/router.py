@@ -19,6 +19,7 @@ from app.features.messages.schema import (
 )
 from app.features.messages.service import (
     delete_message,
+    delivery_cursor,
     list_threads_for_user,
     message_read,
     page_thread,
@@ -97,6 +98,28 @@ async def get_unread_summary(current_user: User = Depends(require_verified_user)
     return UnreadSummary(total=sum(external.values()), per_conversation=external)
 
 
+def _with_delivery(
+    messages: list, cursor: tuple | None, *, sender_id: UUID
+) -> list[MessageRead]:
+    """Serialize a page, marking the requester's own messages delivered up to `cursor`.
+
+    Only the requester's own messages carry the flag: "delivered" is a fact about *my* message
+    reaching someone else, and it is the sender who is shown the tick. Reporting it on a message
+    somebody else sent would be telling you about your own receipt, which you already know.
+    """
+    return [
+        message_read(
+            message,
+            delivered=(
+                cursor is not None
+                and message.sender_id == sender_id
+                and (message.created_at, message.id) <= cursor
+            ),
+        )
+        for message in messages
+    ]
+
+
 @router.get('/threads/{match_id}', response_model=list[MessageRead])
 async def get_thread(
     match_id: UUID,
@@ -112,7 +135,9 @@ async def get_thread(
     messages = await page_thread(
         db, conversation.id, before_created_at=before_created_at, before_id=before_id, limit=limit
     )
-    return [message_read(message) for message in messages]
+    # One query for the whole page — see `delivery_cursor`.
+    cursor = await delivery_cursor(db, conversation.id, exclude=current_user.id)
+    return _with_delivery(messages, cursor, sender_id=current_user.id)
 
 
 @router.get('/threads/{match_id}/sync', response_model=list[MessageRead])
@@ -129,7 +154,8 @@ async def sync_thread_endpoint(
     messages = await sync_thread(
         db, conversation.id, after_created_at=after_created_at, after_id=after_id, limit=limit
     )
-    return [message_read(message) for message in messages]
+    cursor = await delivery_cursor(db, conversation.id, exclude=current_user.id)
+    return _with_delivery(messages, cursor, sender_id=current_user.id)
 
 
 @router.post('/threads/{match_id}', response_model=MessageRead, status_code=status.HTTP_201_CREATED)

@@ -115,6 +115,11 @@ class Settings(BaseSettings):
     ws_subscribe_rate_per_10s: int = Field(default=15, alias='WS_SUBSCRIBE_RATE_PER_10S')
     ws_ping_rate_per_10s: int = Field(default=6, alias='WS_PING_RATE_PER_10S')
     ws_max_malformed_frames: int = Field(default=10, alias='WS_MAX_MALFORMED_FRAMES')
+    # Replies to frames this server does not implement, per connection per minute. Unlike the
+    # malformed budget this never closes the socket — going over just stops the replies. Generous
+    # because the legitimate cause is a newer client probing a feature, which happens in bursts on
+    # connect, not steadily.
+    ws_max_unsupported_replies: int = Field(default=20, alias='WS_MAX_UNSUPPORTED_REPLIES')
     ws_outbox_max_size: int = Field(default=256, alias='WS_OUTBOX_MAX_SIZE')
 
     # Soft-deleted messages are hidden from clients immediately; rows (and bodies) are

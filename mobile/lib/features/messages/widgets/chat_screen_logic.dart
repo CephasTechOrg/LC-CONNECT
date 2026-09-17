@@ -239,11 +239,11 @@ mixin _ChatScreenLogic on _ChatScreenStateBase, _ChatDraftLogic, _ChatSendLogic 
 
   /// Mark my messages up to and including [throughMessageId] as read.
   void markMineReadThrough(String throughMessageId) =>
-      _advanceMine(throughMessageId, (m, at) => m.copyWith(readAt: at, deliveredAt: at));
+      _advanceMine(throughMessageId, (m, at) => m.copyWith(readAt: at, delivered: true));
 
   /// Mark my messages up to and including [throughMessageId] as delivered.
   void markMineDeliveredThrough(String throughMessageId) =>
-      _advanceMine(throughMessageId, (m, at) => m.copyWith(deliveredAt: at));
+      _advanceMine(throughMessageId, (m, at) => m.copyWith(delivered: true));
 
   /// Apply [stamp] to every message of mine at or before [throughMessageId].
   ///
@@ -291,7 +291,7 @@ mixin _ChatScreenLogic on _ChatScreenStateBase, _ChatDraftLogic, _ChatSendLogic 
     void Function() onChanged,
   ) {
     final next = stamp(message, at);
-    if (next.readAt == message.readAt && next.deliveredAt == message.deliveredAt) return message;
+    if (next.readAt == message.readAt && next.delivered == message.delivered) return message;
     onChanged();
     return next;
   }

@@ -151,7 +151,12 @@ async def _member_for(
 
 
 async def mark_delivered(
-    db: AsyncSession, *, recipient_id: UUID, match_id: UUID, through_message_id: UUID
+    db: AsyncSession,
+    *,
+    recipient_id: UUID,
+    match_id: UUID,
+    through_message_id: UUID,
+    conversation: Conversation | None = None,
 ) -> datetime | None:
     """Advance the recipient's delivery boundary. Returns the timestamp, or None if it did not apply.
 
@@ -161,8 +166,18 @@ async def mark_delivered(
     Returning None covers every "nothing to do" case alike — unknown conversation, a message from
     another conversation, a non-member — because the caller does the same thing with all of them:
     stay quiet. A delivery acknowledgement is not a request, so there is nothing to report.
+
+    Pass `conversation` when the caller has already resolved it. `resolve_conversation` is always
+    a round trip and never an identity-map hit — by design, since it matches a conversation id
+    *or* a match id in one statement — and the gateway must resolve it to authorize anyway. That
+    function's own docstring notes the wasted round trip "was paid on every read receipt";
+    re-resolving here reintroduced exactly that, at ~60ms a time across regions.
+
+    The parameter is an optimisation, not an authorization bypass: nothing downstream trusts it.
+    A conversation the caller has no business in still finds no `ConversationMember` row for
+    `recipient_id`, and still returns None.
     """
-    conversation = await resolve_conversation(db, match_id)
+    conversation = conversation or await resolve_conversation(db, match_id)
     if conversation is None:
         return None
 
@@ -180,7 +195,12 @@ async def mark_delivered(
 
 
 async def mark_read(
-    db: AsyncSession, *, reader_id: UUID, match_id: UUID, through_message_id: UUID
+    db: AsyncSession,
+    *,
+    reader_id: UUID,
+    match_id: UUID,
+    through_message_id: UUID,
+    conversation: Conversation | None = None,
 ) -> datetime | None:
     # `match_id` here is really a conversation-ref (DM match id or group conversation id).
     """Advance the reader's boundary to `through_message_id`. Returns the timestamp.
@@ -191,7 +211,8 @@ async def mark_read(
     2. `Message.read_at` — kept for **DM read receipts** (a single column can't express
        per-member read state, so it is display-only, not the unread source of truth).
     """
-    conversation = await resolve_conversation(db, match_id)
+    # See `mark_delivered` for why a caller may pass `conversation`.
+    conversation = conversation or await resolve_conversation(db, match_id)
     if conversation is None:
         return None
 
@@ -207,6 +228,11 @@ async def mark_read(
     if member is None:
         return None
     await _advance_boundary(db, member, 'last_read_message_id', cursor)
+    # Reading a message required receiving it, so the delivery boundary advances with it. Without
+    # this a row could hold "read through m5, delivered through m2" — a state that cannot
+    # physically occur, which any later reader of the delivery boundary would take at face value.
+    # Free: same row, already loaded, no extra query.
+    await _advance_boundary(db, member, 'last_delivered_message_id', cursor)
 
     # 2. Keep DM receipts working.
     await db.execute(

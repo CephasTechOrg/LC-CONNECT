@@ -495,3 +495,132 @@ the row's outgoing state, and `GET /messages/{message_id}/read-by` behind a long
 
 Steps 1–2 are prerequisites and touch no feature behaviour. Step 5 is the only migration, and it is
 one nullable column. Deploy order remains server before client throughout.
+
+
+---
+
+## 9. Hardening pass over Batch 1
+
+An audit of the shipped batch against security, latency, data structures and tradeoffs. Six real
+defects, one of them a regression introduced by this batch. Everything below is fixed and covered by
+tests unless marked otherwise.
+
+### 9.1 Unsupported frames had no bound at all — *security, regression*
+
+Splitting "unsupported" from "malformed" in step 1 removed the **only** limit on unknown frames.
+Every other inbound frame type has a limiter (`send`, `typing`, `subscribe`, `ping`, `malformed`);
+this one had none, so a peer could flood unknown frames indefinitely and have each parsed and
+answered. The error also echoed the client's own `type` back verbatim, and frames run to
+`WS_MAX_FRAME_BYTES` (8KiB) — a cheap way to make the server generate output.
+
+**Fixed.** `unsupported_limiter` (`WS_MAX_UNSUPPORTED_REPLIES`, default 20/60s) and the echoed type
+truncated to 40 characters. Over budget the reply is **dropped silently** — not answered, and not
+punished with a close, which is what `_on_ping` already does and the only choice that bounds the work
+without bringing back the ban-then-reconnect loop the split exists to prevent. No `render.yaml` entry
+needed: it has a safe default.
+
+The limiter tests assert exact reply counts, and the realtime limiters key on `id(conn)` — which
+CPython reuses after a free, so a test could inherit a drained bucket from an earlier test's closed
+connection. An autouse `prune_idle_buckets(0)` fixture now isolates them; verified stable over
+repeated random-ordered runs.
+
+### 9.2 Delivery acknowledgements were quadratic in group size — *latency*
+
+A group bubble shows no delivered tick (§2.1), but every member's device acknowledged every message.
+One message in a 30-member group meant 29 acknowledgements, each costing an account recheck, an
+authorization, four further queries and a fan-out to all 30 sockets — roughly **170 queries and 870
+socket writes to drive a glyph that is never drawn**, growing with the square of group size.
+
+**Fixed** on both sides. The gateway drops a group acknowledgement before any write; the client skips
+sending one when it knows the conversation is a group. Server-side is the authoritative bound, since
+an older or modified client would otherwise reintroduce the entire cost; the client-side check is the
+one that avoids the frames. The client **fails open** when the thread list has not loaded — sending
+an acknowledgement the server discards is much better than withholding one a DM's second tick needs.
+
+Read receipts are deliberately *not* suppressed for groups: they drive unread counts, which groups
+very much have. Conflating the two would have silently broken group unread.
+
+### 9.3 The boundary write re-resolved the conversation — *latency*
+
+`_on_read` and `_on_delivered` resolve and authorize the conversation, then `mark_read` /
+`mark_delivered` resolved it **again**. `resolve_conversation` is always a round trip and never an
+identity-map hit — by design, since it matches a conversation id *or* a match id in one statement —
+and its own docstring records that this wasted trip "was paid on every read receipt". So this
+reintroduced exactly the cost someone had already removed, at ~60ms a time across regions.
+
+**Fixed** by passing the resolved conversation as an optional parameter. Optional rather than
+required to avoid churning 21 test call sites for one round trip, and it is an optimisation hint
+rather than a second semantic path: nothing downstream trusts it, so a conversation the caller has no
+business in still finds no member row and still returns None.
+
+### 9.4 The delivered tick was not durable — *data structure*
+
+The boundary was persisted per member, but **nothing ever returned it**. The state lived only in the
+live `messages.delivery` frame, so every page load, app restart and cache miss dropped every second
+tick back to one — which a sender reads as "it never arrived". The client was parsing a
+`delivered_at` key the server never sent.
+
+**Fixed.** `MessageRead.delivered` is computed from `delivery_cursor`, one query per page rather than
+per message (a per-message check over a 50-row page would be ~3 seconds across regions). It is the
+**minimum** boundary across other active members, so it means "everyone has it" — and for a DM, where
+there is one other member, simply that member's boundary. A member who has acknowledged nothing holds
+it at nothing, which is why a group reports nothing rather than something misleading.
+
+**It is a boolean, not a timestamp**, and that is the substantive design change. Delivery is recorded
+as a per-member boundary, which does not store *when* it passed any particular older message — so a
+`delivered_at` would be a fabricated time for every message but the newest. `read_at` stays a
+timestamp because `messages.read_at` is a real per-row column. Two representations of one concept
+(a timestamp from the live frame, a boolean from the page) would have been the worse option.
+
+### 9.5 Reading could outrun delivery — *data integrity*
+
+`mark_read` advanced only the read boundary, so a row could hold "read through m5, delivered through
+m2" — a state that cannot physically occur, and which anything reading the delivery boundary would
+take at face value. **Fixed:** reading advances both. Free — same row, already loaded, no extra query.
+
+### 9.6 `read_by` over-fetched and over-disclosed — *security, latency*
+
+It embedded the full `ProfilePublic` per reader: bio, interests, languages, looking-for, class year,
+and a staff `contact_email` — none of which the list renders — and loading it cost four extra
+`selectinload` queries **per reader**. A 30-member group meant kilobytes of unrelated personal data
+to draw a name and an avatar.
+
+**Fixed:** the row is `{user_id, display_name, avatar_url}`, selected as three columns in the single
+existing query. Smaller payload, fewer queries, and a smaller disclosure. The client already parsed
+only those two fields, so nothing was lost.
+
+### 9.7 Considered and deliberately not changed
+
+* **Acknowledging the `/sync` backlog.** §2.1 says the boundary "advances when they reconnect and
+  `/sync` returns the backlog". Nothing acknowledges that path, and on inspection it should not: a
+  message sitting on the server while the recipient was offline is *not* on their device, so
+  acknowledging it would be false. The case that matters — catching up in an open conversation — is
+  covered, because `sendRead` fires there and reading now advances delivery too (9.5).
+* **`id(conn)` as a limiter key** is reused by CPython after a free, so a fresh connection can
+  inherit a closed one's bucket. Pre-existing for every realtime limiter, bounded by the idle-bucket
+  pruner, and not worth a keying change on its own — but worth knowing before anyone relies on these
+  buckets being per-connection with certainty.
+* **`_advanceMine` copies the message list per receipt.** O(n) with n ≤ 150 (the cache cap) at human
+  pace, and `_stampIfNeeded` already suppresses the rebuild when a re-sent receipt changes nothing —
+  which is the case that actually recurs, after every reconnect.
+
+### 9.8 Open decision for the product owner
+
+**Drafts and cached message bodies sit in a backed-up directory.** Both live under
+`getApplicationDocumentsDirectory()`, which iOS includes in iCloud backups and Android in auto-backup.
+The message cache predates this work, but **unsent draft text is new**, and it is the most private
+content in the feature — it was never shown to anyone.
+
+The options are a genuine tradeoff, not an oversight to fix silently:
+
+| | Privacy | Cost |
+|---|---|---|
+| Leave in Documents *(current)* | Drafts and cached conversations reach the user's cloud backup | None; drafts survive a device restore |
+| Move to the cache directory | Never backed up | The OS may purge a draft under storage pressure |
+| Exclude from backup via platform code | Never backed up, never purged | Per-platform native code in both targets |
+
+Logout and account deletion already clear both (deletion routes through `logout()`, verified), so
+this is only about the backup surface of an *active* session. Recommendation: move drafts to the
+cache directory — the 30-day prune already treats them as transient — and leave the message cache
+where it is, since it is disposable by definition and predates this batch. Not done, because it
+changes behaviour users can notice.

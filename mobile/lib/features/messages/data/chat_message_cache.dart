@@ -142,7 +142,7 @@ Map<String, dynamic> _toCacheJson(ChatMessage m) => {
       'body': m.body,
       'created_at': m.createdAt.toUtc().toIso8601String(),
       'read_at': m.readAt?.toUtc().toIso8601String(),
-      'delivered_at': m.deliveredAt?.toUtc().toIso8601String(),
+      'delivered': m.delivered,
       'status': m.status.name,
       'deleted': m.deleted,
     };
@@ -158,7 +158,7 @@ ChatMessage _fromCacheJson(Map<String, dynamic> j) {
     readAt: j['read_at'] != null ? DateTime.parse(j['read_at'] as String) : null,
     // Absent in files written before protocol 2 — an additive field, which is exactly the kind
     // the envelope's version does not need to change for.
-    deliveredAt: j['delivered_at'] != null ? DateTime.parse(j['delivered_at'] as String) : null,
+    delivered: j['delivered'] as bool? ?? false,
     status: _statusOf(j['status']),
     deleted: j['deleted'] as bool? ?? false,
   );

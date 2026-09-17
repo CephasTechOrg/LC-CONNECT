@@ -8,9 +8,9 @@ import '../providers/messages_provider.dart';
 /// What an outgoing message's progress looks like to its sender.
 ///
 /// Derived rather than stored: [MessageStatus] describes the *send attempt*, while delivery and
-/// read are facts carried by timestamps. Adding `delivered` and `read` as enum cases would put
-/// them in the same field as `failed`, which they can coexist with — a message can be delivered
-/// and then have a retry fail.
+/// read are separate facts. Adding `delivered` and `read` as enum cases would put them in the
+/// same field as `failed`, which they can coexist with — a message can be delivered and then
+/// have a retry fail.
 enum OutgoingState {
   /// Handed to the outbox or in flight; no acknowledgement yet.
   sending,
@@ -35,7 +35,7 @@ enum OutgoingState {
     if (message.status == MessageStatus.failed) return OutgoingState.failed;
     if (message.status == MessageStatus.sending) return OutgoingState.sending;
     if (message.readAt != null) return OutgoingState.read;
-    if (message.deliveredAt != null) return OutgoingState.delivered;
+    if (message.delivered) return OutgoingState.delivered;
     return OutgoingState.sent;
   }
 }
@@ -125,8 +125,8 @@ class MessageStatusIcon extends StatelessWidget {
         OutgoingState.sending => 'Sending',
         OutgoingState.failed => 'Not sent. Double tap to retry.',
         OutgoingState.sent => 'Sent',
-        OutgoingState.delivered =>
-          'Delivered ${AppDateFormat.time(message.deliveredAt!)}',
+        // No time: delivery has no per-message timestamp to report — see `ChatMessage.delivered`.
+        OutgoingState.delivered => 'Delivered',
         OutgoingState.read => 'Read ${AppDateFormat.time(message.readAt!)}',
       };
 }

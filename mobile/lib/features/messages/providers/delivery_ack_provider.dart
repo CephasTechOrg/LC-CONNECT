@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/realtime/realtime_client.dart';
 import '../../../core/realtime/ws_protocol.dart';
 import '../../auth/providers/auth_provider.dart';
+import 'messages_provider.dart';
 
 /// Acknowledges receipt of incoming messages, so their senders get a delivered tick
 /// (report #21). Watch once at the app root.
@@ -38,6 +39,16 @@ final deliveryAckProvider = Provider<void>((ref) {
     final messageId = event.message['id'] as String?;
     if (messageId == null) return;
 
+    // Groups carry no delivered tick (design §2.1), so acknowledging one is work that drives
+    // nothing — and it is work per *member*: one message in a 30-member group meant 29
+    // acknowledgements, each a boundary write and a fan-out to all 30 sockets. The server drops
+    // these too, which is the authoritative bound; this just avoids sending them.
+    //
+    // Fails open. When the thread list has not loaded there is no way to tell a group from a DM
+    // here, and sending an acknowledgement the server discards is much better than withholding
+    // one that a DM's second tick depends on.
+    if (_isKnownGroup(ref, event.conversationId)) return;
+
     // Returns false against a protocol 1 server, where nothing understands the frame. Nothing to
     // do about that here: the sender simply keeps one tick, which understates progress rather
     // than claiming something untrue.
@@ -46,3 +57,15 @@ final deliveryAckProvider = Provider<void>((ref) {
 
   ref.onDispose(sub.cancel);
 });
+
+/// Whether [conversationId] is *known* to be a group. False when unknown — see the call site.
+bool _isKnownGroup(Ref ref, String conversationId) {
+  final threads = ref.read(threadsNotifierProvider).asData?.value;
+  if (threads == null) return false;
+  for (final thread in threads) {
+    // Addressed the way the event frame addresses it: match id for a DM, conversation id for a
+    // group or staff thread.
+    if (thread.addressingId == conversationId) return thread.isGroup;
+  }
+  return false;
+}

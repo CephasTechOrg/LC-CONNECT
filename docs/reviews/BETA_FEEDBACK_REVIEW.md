@@ -1990,10 +1990,16 @@ Notation: **[be]** backend · **[fe]** mobile · **[cfg]** config/ops · **[msr]
 
 ### Phase 3 — Messaging
 
-> **Batch 1 is complete.** Sequenced and recorded step by step in
+> **Batch 1 is complete and hardened.** Sequenced step by step in
 > [`docs/features/messaging/phase3_design.md`](../features/messaging/phase3_design.md) §8, which also
 > carries the two prerequisites the review missed (the abuse-budget ban on unknown frames, and the
 > unversioned message cache) and every deviation from the design with its reason.
+>
+> §9 of the same document records the hardening pass over the batch — six real defects, including an
+> unbounded unsupported-frame reply path introduced by the batch itself, delivery acknowledgements
+> that were quadratic in group size, and a delivered tick that was not durable across a page load.
+> §9.8 leaves one decision open: drafts and cached message bodies sit in a directory iOS and Android
+> include in cloud backups.
 
 - [x] **3.1** [fe] **#2** chat routes out of the `ShellRoute` + legacy `/messages/:id` redirect —
       conversations are `/chat/:matchId` and `/chat/group/:conversationId`; the ten inline path

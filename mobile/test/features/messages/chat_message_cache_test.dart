@@ -216,4 +216,43 @@ void main() {
       expect((await cache.load('conv-1'))!.single.status, MessageStatus.sent);
     });
   });
+
+
+  /// The delivered flag has to survive the cache, or reopening a conversation offline drops
+  /// every second tick back to one — which a sender reads as "it never arrived".
+  group('delivery state round-trips', () {
+    test('a delivered message stays delivered', () async {
+      await cache.save('conv-1', [
+        ChatMessage(
+          id: 'srv-1',
+          matchId: 'conv-1',
+          senderId: 'me',
+          body: 'hello',
+          createdAt: DateTime.utc(2025, 5, 1, 10),
+          delivered: true,
+        ),
+      ]);
+
+      expect((await cache.load('conv-1'))!.single.delivered, isTrue);
+    });
+
+    test('a file written before the flag existed reads as not delivered', () async {
+      // Understating progress is a missing tick; overstating it is a false claim about someone
+      // else's device.
+      await File('${tempDir.path}/conv-1.json').writeAsString(jsonEncode({
+        'v': chatCacheFormatVersion,
+        'messages': [
+          {
+            'id': 'srv-1',
+            'match_id': 'conv-1',
+            'sender_id': 'me',
+            'body': 'hello',
+            'created_at': '2025-05-01T10:00:00.000Z',
+          }
+        ],
+      }));
+
+      expect((await cache.load('conv-1'))!.single.delivered, isFalse);
+    });
+  });
 }

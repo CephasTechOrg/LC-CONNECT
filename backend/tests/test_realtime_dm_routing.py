@@ -192,7 +192,9 @@ async def test_read_receipt_reaches_dm_partner(conns, routing, monkeypatch):
 
     read_at = datetime.now(UTC)
 
-    async def ok_mark_read(db, *, reader_id, match_id, through_message_id):
+    # `conversation` is passed by the gateway so the boundary write does not re-resolve what
+    # authorization already loaded. A stub that omits it silently breaks the seam.
+    async def ok_mark_read(db, *, reader_id, match_id, through_message_id, conversation=None):
         return read_at
 
     monkeypatch.setattr(service, 'mark_read', ok_mark_read)
@@ -264,7 +266,9 @@ async def test_delivery_receipt_reaches_dm_partner(conns, routing, monkeypatch):
 
     delivered_at = datetime.now(UTC)
 
-    async def ok_mark_delivered(db, *, recipient_id, match_id, through_message_id):
+    async def ok_mark_delivered(
+        db, *, recipient_id, match_id, through_message_id, conversation=None
+    ):
         return delivered_at
 
     monkeypatch.setattr(service, 'mark_delivered', ok_mark_delivered)
@@ -290,7 +294,9 @@ async def test_delivery_receipt_is_not_echoed_to_the_acknowledger(conns, routing
     match_id = uuid4()
     routing(_Conversation(match_id=match_id))
 
-    async def ok_mark_delivered(db, *, recipient_id, match_id, through_message_id):
+    async def ok_mark_delivered(
+        db, *, recipient_id, match_id, through_message_id, conversation=None
+    ):
         return datetime.now(UTC)
 
     monkeypatch.setattr(service, 'mark_delivered', ok_mark_delivered)
@@ -312,7 +318,7 @@ async def test_delivery_that_does_not_apply_publishes_nothing(conns, routing, mo
     match_id = uuid4()
     routing(_Conversation(match_id=match_id))
 
-    async def no_op(db, *, recipient_id, match_id, through_message_id):
+    async def no_op(db, *, recipient_id, match_id, through_message_id, conversation=None):
         return None
 
     monkeypatch.setattr(service, 'mark_delivered', no_op)
@@ -326,3 +332,61 @@ async def test_delivery_that_does_not_apply_publishes_nothing(conns, routing, mo
     await _tick()
 
     assert _frames(sock_b, 'messages.delivery') == []
+
+
+async def test_group_delivery_ack_is_dropped_before_any_write(conns, routing, monkeypatch):
+    """The quadratic case.
+
+    A group bubble shows no delivered tick, but every member's device acknowledges every message.
+    One message in a 30-member group therefore produced 29 acknowledgements, each costing an
+    account recheck, an authorization, four further queries and a fan-out to all 30 sockets —
+    roughly 170 queries and 870 socket writes to drive a glyph that is never drawn.
+
+    Enforced server-side because the client cannot be trusted to keep suppressing it: an older
+    build, or a modified one, would reintroduce the whole cost.
+    """
+    conversation_id = uuid4()
+    routing(_Conversation())  # match_id None ⇒ kind 'group'
+
+    calls = []
+
+    async def spy(db, *, recipient_id, match_id, through_message_id, conversation=None):
+        calls.append(match_id)
+        return datetime.now(UTC)
+
+    monkeypatch.setattr(service, 'mark_delivered', spy)
+
+    conn_a, _ = conns()
+    conn_b, sock_b = conns()
+    await _subscribe(conn_b, conversation_id)
+    await gateway._on_delivered(conn_a, protocol.DeliveredFrame(
+        type='messages.delivered', conversation_id=conversation_id,
+        through_message_id=uuid4(),
+    ))
+    await _tick()
+
+    assert calls == [], 'no boundary write for a group'
+    assert _frames(sock_b, 'messages.delivery') == [], 'and no fan-out either'
+
+
+async def test_group_read_receipt_is_still_delivered(conns, routing, monkeypatch):
+    """Read is *not* suppressed for groups — it drives unread counts, which groups very much
+    have. Only the cosmetic delivery tick is DM-only, and conflating the two would silently break
+    group unread."""
+    conversation_id = uuid4()
+    routing(_Conversation())  # group
+
+    async def ok_mark_read(db, *, reader_id, match_id, through_message_id, conversation=None):
+        return datetime.now(UTC)
+
+    monkeypatch.setattr(service, 'mark_read', ok_mark_read)
+
+    conn_a, _ = conns()
+    conn_b, sock_b = conns()
+    await _subscribe(conn_b, conversation_id)
+    await gateway._on_read(conn_a, protocol.ReadFrame(
+        type='messages.read', conversation_id=conversation_id, through_message_id=uuid4(),
+    ))
+    await _tick()
+
+    assert len(_frames(sock_b, 'messages.receipt')) == 1

@@ -11,14 +11,13 @@ class MessageReader {
   final String? displayName;
   final String? avatarUrl;
 
-  factory MessageReader.fromJson(Map<String, dynamic> j) {
-    final profile = j['profile'] as Map<String, dynamic>?;
-    return MessageReader(
-      userId: j['user_id'] as String,
-      displayName: profile?['display_name'] as String?,
-      avatarUrl: profile?['avatar_url'] as String?,
-    );
-  }
+  /// Flat, matching the endpoint: it returns a name and an avatar rather than a whole profile,
+  /// because a row shows nothing else and embedding one cost four extra queries per reader.
+  factory MessageReader.fromJson(Map<String, dynamic> j) => MessageReader(
+        userId: j['user_id'] as String,
+        displayName: j['display_name'] as String?,
+        avatarUrl: j['avatar_url'] as String?,
+      );
 
   /// Never empty, so a row always renders something: a member whose profile is missing or hidden
   /// still has to appear, or the count silently disagrees with the list.

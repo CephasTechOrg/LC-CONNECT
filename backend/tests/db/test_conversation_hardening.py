@@ -14,7 +14,11 @@ from sqlalchemy import func, select
 
 from app.features.groups import service as group_service
 from app.features.groups.schema import GroupCreate
-from app.features.messages.service import unread_summary
+from app.features.messages.service import (
+    delivery_cursor,
+    persist_message_idempotent,
+    unread_summary,
+)
 from app.features.realtime.service import mark_delivered, mark_read
 from app.models import Conversation, ConversationMember
 from app.shared.conversations import blockable_conversation_ids_between, ensure_dm_conversation
@@ -223,3 +227,108 @@ async def test_delivery_and_read_boundaries_are_independent(db, factory):
 
     total, _ = await unread_summary(db, b.id)
     assert total == 2, 'delivery must not mark anything read'
+
+
+# ── delivery durability (report #21) ──────────────────────────────────────────
+#
+# The delivered tick used to exist only in the live `messages.delivery` frame: the boundary was
+# persisted per member, but nothing returned it. Every page load, app restart and cache miss
+# dropped every second tick back to one — which a sender reads as "it never arrived".
+
+async def test_delivery_cursor_is_none_before_anyone_acknowledges(db, factory):
+    a = await factory.user(display_name='A')
+    b = await factory.user(display_name='B')
+    match = await factory.match(a, b)
+    await factory.message(match, a, 'm', created_at=BASE)
+    conversation_id = (
+        await db.execute(select(Conversation.id).where(Conversation.match_id == match.id))
+    ).scalar_one()
+
+    assert await delivery_cursor(db, conversation_id, exclude=a.id) is None
+
+
+async def test_delivery_cursor_reports_the_partner_boundary(db, factory):
+    a = await factory.user(display_name='A')
+    b = await factory.user(display_name='B')
+    match = await factory.match(a, b)
+    msgs = [await factory.message(match, a, f'm{i}', created_at=BASE + timedelta(minutes=i))
+            for i in range(3)]
+    conversation_id = (
+        await db.execute(select(Conversation.id).where(Conversation.match_id == match.id))
+    ).scalar_one()
+
+    await mark_delivered(db, recipient_id=b.id, match_id=match.id,
+                         through_message_id=msgs[1].id)
+
+    cursor = await delivery_cursor(db, conversation_id, exclude=a.id)
+    assert cursor == (msgs[1].created_at, msgs[1].id)
+
+
+async def test_delivery_cursor_excludes_the_asker(db, factory):
+    """The sender's own boundary says nothing about whether their message reached anyone. Leaving
+    it in would report every message delivered the moment the sender opened the chat."""
+    a = await factory.user(display_name='A')
+    b = await factory.user(display_name='B')
+    match = await factory.match(a, b)
+    msg = await factory.message(match, a, 'm', created_at=BASE)
+    conversation_id = (
+        await db.execute(select(Conversation.id).where(Conversation.match_id == match.id))
+    ).scalar_one()
+
+    await mark_delivered(db, recipient_id=a.id, match_id=match.id, through_message_id=msg.id)
+
+    assert await delivery_cursor(db, conversation_id, exclude=a.id) is None
+
+
+async def _group_of(db, factory, n_members):
+    """A group with `n_members`, owner first."""
+    owner = await factory.user(display_name='Owner')
+    group = await group_service.create_group(
+        db, owner, GroupCreate(name='CS Club', category='club', visibility='public',
+                               join_policy='open')
+    )
+    members = [owner]
+    for i in range(n_members - 1):
+        member = await factory.user(display_name=f'M{i}')
+        await group_service.join_group(db, group, member)
+        members.append(member)
+    await db.commit()
+    return group, members
+
+
+async def test_delivery_cursor_requires_every_member(db, factory):
+    """"Delivered" is the minimum across members, so one member who has acknowledged nothing
+    holds the whole conversation at "nothing" — the correct reading of "everyone has it"."""
+    group, members = await _group_of(db, factory, 3)
+    sender, quick, silent = members
+    message, _ = await persist_message_idempotent(
+        db, sender_id=sender.id, match_id=None, conversation_id=group.conversation_id,
+        body='hello', client_message_id=None,
+    )
+    await mark_delivered(db, recipient_id=quick.id, match_id=group.conversation_id,
+                         through_message_id=message.id)
+
+    assert await delivery_cursor(db, group.conversation_id, exclude=sender.id) is None
+
+    await mark_delivered(db, recipient_id=silent.id, match_id=group.conversation_id,
+                         through_message_id=message.id)
+    assert await delivery_cursor(db, group.conversation_id, exclude=sender.id) is not None
+
+
+async def test_reading_also_advances_delivery(db, factory):
+    """A read message was necessarily received. Without this the row could hold "read through m5,
+    delivered through m2", which cannot physically happen — and anything reading the delivery
+    boundary would take that at face value."""
+    a = await factory.user(display_name='A')
+    b = await factory.user(display_name='B')
+    match = await factory.match(a, b)
+    msgs = [await factory.message(match, a, f'm{i}', created_at=BASE + timedelta(minutes=i))
+            for i in range(3)]
+    conversation_id = (
+        await db.execute(select(Conversation.id).where(Conversation.match_id == match.id))
+    ).scalar_one()
+
+    # Read without any prior delivery acknowledgement — the ordinary case on a busy connection.
+    await mark_read(db, reader_id=b.id, match_id=match.id, through_message_id=msgs[2].id)
+
+    assert await _delivered_id(db, conversation_id, b.id) == msgs[2].id

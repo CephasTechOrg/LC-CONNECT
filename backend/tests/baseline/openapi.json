@@ -4556,6 +4556,11 @@
             "title": "Deleted",
             "type": "boolean"
           },
+          "delivered": {
+            "default": false,
+            "title": "Delivered",
+            "type": "boolean"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -4604,15 +4609,27 @@
       "MessageReadBy": {
         "description": "A member who has read a given message.",
         "properties": {
-          "profile": {
+          "avatar_url": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/ProfilePublic"
+                "type": "string"
               },
               {
                 "type": "null"
               }
-            ]
+            ],
+            "title": "Avatar Url"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
           },
           "user_id": {
             "format": "uuid",
@@ -4621,8 +4638,7 @@
           }
         },
         "required": [
-          "user_id",
-          "profile"
+          "user_id"
         ],
         "title": "MessageReadBy",
         "type": "object"

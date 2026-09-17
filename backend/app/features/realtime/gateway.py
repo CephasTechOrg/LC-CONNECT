@@ -33,6 +33,7 @@ from app.features.realtime.runtime import (
     send_limiter,
     subscribe_limiter,
     typing_limiter,
+    unsupported_limiter,
 )
 from app.features.realtime.ws_io import FrameTooLarge, receive_json_bounded
 from app.shared.conversations import active_member_ids
@@ -148,15 +149,31 @@ async def _serve(websocket: WebSocket, conn: Connection) -> None:
             manager.send(conn, protocol.error(ErrorCode.INTERNAL, 'Server error'))
 
 
+#: Longest client-supplied frame type echoed back in an error message. Frames are already capped
+#: at `WS_MAX_FRAME_BYTES` (8KiB), so without this a peer could make the server echo ~8KiB of its
+#: own input per frame — cheap to send, more expensive to answer.
+_MAX_ECHOED_TYPE_CHARS = 40
+
+
 def _reject_unsupported(conn: Connection, raw: Any) -> None:
     """Tell the client this server does not implement the frame, and move on.
 
-    Deliberately does **not** consume the abuse budget and does **not** close the connection: the
-    client is behaving correctly for a protocol version this server predates. It learns the real
-    version from `auth.ok` and should gate on it, but a client that does not must still be able to
-    keep chatting on the frames that *are* supported.
+    Deliberately does **not** consume the malformed budget and does **not** close the connection:
+    the client is behaving correctly for a protocol version this server predates. It learns the
+    real version from `auth.ok` and should gate on it, but a client that does not must still be
+    able to keep chatting on the frames that *are* supported.
+
+    It is still **bounded**, which the first version of this was not. Every other inbound frame
+    has a limiter; this one had none, so a peer could flood unknown frames indefinitely and make
+    the server parse and answer each one. Over budget the reply is dropped silently rather than
+    answered or punished — the same choice `_on_ping` makes, and the only one that bounds the work
+    without bringing back the ban-then-reconnect loop this split exists to prevent.
     """
+    if not unsupported_limiter.allow(id(conn)):
+        return
     frame_type = raw.get('type') if isinstance(raw, dict) else None
+    if isinstance(frame_type, str) and len(frame_type) > _MAX_ECHOED_TYPE_CHARS:
+        frame_type = frame_type[:_MAX_ECHOED_TYPE_CHARS] + '…'
     manager.send(
         conn,
         protocol.error(
@@ -317,11 +334,27 @@ async def _on_delivered(conn: Connection, frame: protocol.DeliveredFrame) -> Non
             conversation, _ = await service.authorize_conversation(db, conn.user_id, frame.conversation_id)
         except service.WsForbidden:
             return
+        # Groups are skipped, and this is the load-bearing line of the handler.
+        #
+        # A group bubble shows no delivered tick (design §2.1: that needs a rule for which
+        # members count, plus every member's boundary held client-side). But every member's
+        # device acknowledges every message — so one message in a 30-member group produced 29
+        # acknowledgements, each costing an account recheck, an authorization, four more queries
+        # and a fan-out to all 30 sockets. Roughly 170 queries and 870 socket writes to drive a
+        # glyph that is never drawn, and quadratic in group size.
+        #
+        # Enforced here rather than trusted to the client: the client also suppresses it, but
+        # only the server can bound what an old or modified client sends.
+        if conversation.kind == 'group':
+            return
         delivered_at = await service.mark_delivered(
             db,
             recipient_id=conn.user_id,
             match_id=frame.conversation_id,
             through_message_id=frame.through_message_id,
+            # Already resolved by `authorize_conversation` above; re-resolving is a wasted
+            # cross-region round trip on the hottest realtime path.
+            conversation=conversation,
         )
     if delivered_at is None:
         return
@@ -350,6 +383,7 @@ async def _on_read(conn: Connection, frame: protocol.ReadFrame) -> None:
             reader_id=conn.user_id,
             match_id=frame.conversation_id,
             through_message_id=frame.through_message_id,
+            conversation=conversation,  # see `_on_delivered`
         )
     if read_at is None:
         return

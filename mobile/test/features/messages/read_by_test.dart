@@ -34,9 +34,8 @@ class _ReadByAdapter implements HttpClientAdapter {
 
 Map<String, dynamic> _row(String id, {String? name, String? avatar}) => {
       'user_id': id,
-      'profile': name == null && avatar == null
-          ? null
-          : {'display_name': name, 'avatar_url': avatar},
+      'display_name': name,
+      'avatar_url': avatar,
     };
 
 void main() {
@@ -58,16 +57,16 @@ void main() {
   }
 
   group('MessageReader', () {
-    test('reads the name and avatar out of the nested profile', () {
+    test('reads the name and avatar', () {
       final reader = MessageReader.fromJson(_row('u1', name: 'Maya Chen', avatar: 'a.jpg'));
       expect(reader.userId, 'u1');
       expect(reader.name, 'Maya Chen');
       expect(reader.avatarUrl, 'a.jpg');
     });
 
-    test('a member with no profile still has a usable name', () {
-      // A hidden or missing profile must not drop the row: the list would then disagree with
-      // itself about how many people have read the message.
+    test('a member with no profile row still has a usable name', () {
+      // A missing profile must not drop the row: the list would then disagree with itself about
+      // how many people have read the message.
       expect(MessageReader.fromJson(_row('u1')).name, 'Member');
     });
 

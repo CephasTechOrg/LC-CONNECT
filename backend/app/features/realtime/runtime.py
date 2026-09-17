@@ -56,6 +56,10 @@ subscribe_limiter = RateLimiter(settings.ws_subscribe_rate_per_10s, 10, name='ws
 # ping a little early. Over budget we drop silently rather than error (see gateway._on_ping).
 ping_limiter = RateLimiter(settings.ws_ping_rate_per_10s, 10, name='ws_ping')
 malformed_limiter = RateLimiter(settings.ws_max_malformed_frames, 60, name='ws_malformed')
+# Bounds the *reply* to an unimplemented frame, not the frame itself. Over budget the gateway goes
+# quiet instead of closing (see gateway._reject_unsupported): closing is what produced the
+# reconnect-ban loop that splitting these two cases fixed, so the bound must not reintroduce it.
+unsupported_limiter = RateLimiter(settings.ws_max_unsupported_replies, 60, name='ws_unsupported')
 
 
 def use_redis_event_bus() -> RedisEventBus | None:

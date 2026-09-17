@@ -15,6 +15,7 @@ from app.features.realtime import service
 from app.features.realtime.protocol import CloseCode
 from app.main import app
 from app.models import Message
+from app.shared.rate_limit import prune_idle_buckets
 
 
 class _User:
@@ -54,6 +55,20 @@ def _make_message(match_id, sender_id, client_message_id, body):
         created_at=datetime.now(UTC),
         read_at=None,
     )
+
+
+@pytest.fixture(autouse=True)
+def _fresh_rate_limits():
+    """Clear every limiter bucket between tests.
+
+    The realtime limiters key on `id(conn)`, and CPython reuses the address of a freed object — so
+    a test could inherit a partly-drained bucket from an earlier test's closed connection. The
+    tests that assert exact reply counts would then fail depending on ordering, which is precisely
+    the kind of flake that gets a suite ignored.
+    """
+    prune_idle_buckets(0)
+    yield
+    prune_idle_buckets(0)
 
 
 @pytest.fixture
@@ -285,7 +300,8 @@ def test_unknown_frames_do_not_get_the_connection_banned(happy_auth):
         ws.send_json({'type': 'auth', 'access_token': 'good'})
         assert ws.receive_json()['type'] == 'auth.ok'
 
-        # Comfortably past the 10-per-60s budget.
+        # Comfortably past the 10-per-60s *malformed* budget, and within the separate
+        # unsupported-reply budget (20/60s), so every one of these is still answered.
         for _ in range(20):
             ws.send_json({'type': 'some.future.frame'})
             frame = ws.receive_json()
@@ -365,3 +381,41 @@ def test_ping_flood_is_dropped_without_error_frames(happy_auth):
                 break
         assert 'subscribed' in seen, 'socket stopped serving after a ping flood'
         assert 'error' not in seen
+
+
+def test_unsupported_frame_replies_are_bounded(happy_auth):
+    """The reply is rate limited, because the first version of this was not.
+
+    Splitting "unsupported" out of "malformed" removed the only bound on unknown frames, so a peer
+    could flood them indefinitely and have every one parsed and answered. Every other inbound
+    frame type has a limiter; this one now does too.
+    """
+    with _client().websocket_connect('/api/v1/ws') as ws:
+        ws.send_json({'type': 'auth', 'access_token': 'good'})
+        assert ws.receive_json()['type'] == 'auth.ok'
+
+        # Well past the 20-per-60s reply budget.
+        for _ in range(40):
+            ws.send_json({'type': 'some.future.frame'})
+
+        # The socket is still alive and still serving real frames — the bound must not have
+        # reintroduced the close that caused the reconnect-ban loop.
+        ws.send_json({'type': 'ping'})
+        replies = [ws.receive_json() for _ in range(21)]
+
+    errors = [f for f in replies if f.get('code') == 'unsupported_frame']
+    assert len(errors) == 20, 'replies past the budget must be dropped, not answered'
+    assert replies[-1]['type'] == 'pong', 'a supported frame still works while over budget'
+
+
+def test_unsupported_frame_error_does_not_echo_unbounded_input(happy_auth):
+    """Frames are capped at 8KiB, so echoing the client's `type` verbatim let a peer make the
+    server generate ~8KiB of output per cheap frame."""
+    with _client().websocket_connect('/api/v1/ws') as ws:
+        ws.send_json({'type': 'auth', 'access_token': 'good'})
+        assert ws.receive_json()['type'] == 'auth.ok'
+        ws.send_json({'type': 'x' * 4000})
+        frame = ws.receive_json()
+
+    assert frame['code'] == 'unsupported_frame'
+    assert len(frame['message']) < 200

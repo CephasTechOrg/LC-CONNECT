@@ -253,17 +253,18 @@ async def test_read_by_excludes_the_caller(db, factory):
     assert listed == {other.id}
 
 
-async def test_read_by_carries_the_profile_for_display(db, factory):
+async def test_read_by_carries_just_enough_to_render_a_row(db, factory):
     group, members = await _group_with_members(db, factory, n_members=2)
     sender, other = members
     message = await _send(db, group, sender, 'hello', at=BASE)
     await mark_read(db, reader_id=other.id, match_id=group.conversation_id,
                     through_message_id=message.id)
 
-    # A list of bare user ids would need a second request per row to render a name.
+    # Enough that the row needs no second request, and no more: embedding `ProfilePublic` would
+    # have shipped bio, interests, languages and a staff contact email to draw a name.
     entry = (await read_by(db, message.id, sender.id))[0]
-    assert entry.profile is not None
-    assert entry.profile.display_name == 'M0'
+    assert entry.display_name == 'M0'
+    assert not hasattr(entry, 'profile')
 
 
 async def test_read_by_is_not_advanced_by_delivery(db, factory):

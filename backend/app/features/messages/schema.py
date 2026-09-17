@@ -13,12 +13,19 @@ from app.shared.schemas import ProfilePublic
 # a read time for an older message would be a guess presented as a fact. `Message.read_at` cannot
 # help — it is a single column, which is exactly why the boundary exists.
 #
+# It also deliberately does **not** embed `ProfilePublic`. That object carries bio, interests,
+# languages, looking-for and a staff contact email — none of which a "read by" row renders, and
+# loading it costs four extra `selectinload` queries *per reader*. A 30-member group would have
+# meant kilobytes of unrelated personal data over the wire to draw a name and an avatar. Two
+# fields is both the smaller payload and the smaller disclosure.
+#
 # The docstring below is the public OpenAPI description, so it stays about the contract.
 class MessageReadBy(BaseModel):
     """A member who has read a given message."""
 
     user_id: UUID
-    profile: ProfilePublic | None
+    display_name: str | None = None
+    avatar_url: str | None = None
 
 
 class MessageCreate(BaseModel):
@@ -44,6 +51,13 @@ class MessageRead(BaseModel):
     body: str  # empty when deleted — the original is never sent to clients
     created_at: datetime
     read_at: datetime | None
+    # Whether every other member has acknowledged receipt — the sender's second tick.
+    #
+    # A boolean rather than a timestamp on purpose: delivery is recorded as a per-member
+    # *boundary*, which does not store when it passed any particular older message. A
+    # `delivered_at` would therefore be a fabricated time for every message but the newest.
+    # `read_at` can be a timestamp because `messages.read_at` is a real per-row column.
+    delivered: bool = False
     deleted: bool = False
 
 

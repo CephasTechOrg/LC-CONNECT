@@ -9,7 +9,7 @@ void main() {
 
   ChatMessage mine({
     MessageStatus status = MessageStatus.sent,
-    DateTime? deliveredAt,
+    bool delivered = false,
     DateTime? readAt,
   }) =>
       ChatMessage(
@@ -19,7 +19,7 @@ void main() {
         body: 'hello',
         createdAt: createdAt,
         status: status,
-        deliveredAt: deliveredAt,
+        delivered: delivered,
         readAt: readAt,
       );
 
@@ -33,19 +33,19 @@ void main() {
     });
 
     test('an acknowledged message is delivered', () {
-      expect(OutgoingState.of(mine(deliveredAt: createdAt)), OutgoingState.delivered);
+      expect(OutgoingState.of(mine(delivered: true)), OutgoingState.delivered);
     });
 
     test('read outranks delivered', () {
       // Both timestamps are set for a read message; showing "delivered" would understate it.
       expect(
-        OutgoingState.of(mine(deliveredAt: createdAt, readAt: createdAt)),
+        OutgoingState.of(mine(delivered: true, readAt: createdAt)),
         OutgoingState.read,
       );
     });
 
-    test('a read message with no delivery timestamp still reads as read', () {
-      // A protocol 1 server sends no delivery timestamp at all. Read must not depend on one.
+    test('a read message with no delivery flag still reads as read', () {
+      // A protocol 1 server sends no acknowledgement at all. Read must not depend on one.
       expect(OutgoingState.of(mine(readAt: createdAt)), OutgoingState.read);
     });
 
@@ -53,7 +53,7 @@ void main() {
       // A retry can fail after the original was delivered. The sender needs to see the failure —
       // it is the only state with an action attached.
       expect(
-        OutgoingState.of(mine(status: MessageStatus.failed, deliveredAt: createdAt)),
+        OutgoingState.of(mine(status: MessageStatus.failed, delivered: true)),
         OutgoingState.failed,
       );
     });
@@ -83,17 +83,17 @@ void main() {
     });
 
     testWidgets('delivered shows two ticks', (tester) async {
-      await pump(tester, mine(deliveredAt: createdAt));
+      await pump(tester, mine(delivered: true));
       expect(find.byIcon(Icons.done_all_rounded), findsOneWidget);
     });
 
     testWidgets('delivered and read differ by colour, not by glyph', (tester) async {
       // Both are `done_all`, so colour is the only distinction — which is precisely why the
       // semantics label below is not optional.
-      await pump(tester, mine(deliveredAt: createdAt));
+      await pump(tester, mine(delivered: true));
       final delivered = tester.widget<Icon>(find.byIcon(Icons.done_all_rounded)).color;
 
-      await pump(tester, mine(deliveredAt: createdAt, readAt: createdAt));
+      await pump(tester, mine(delivered: true, readAt: createdAt));
       final read = tester.widget<Icon>(find.byIcon(Icons.done_all_rounded)).color;
 
       expect(delivered, isNot(read));
@@ -105,8 +105,8 @@ void main() {
       for (final message in [
         mine(status: MessageStatus.sending),
         mine(),
-        mine(deliveredAt: createdAt),
-        mine(deliveredAt: createdAt, readAt: createdAt),
+        mine(delivered: true),
+        mine(delivered: true, readAt: createdAt),
       ]) {
         await pump(tester, message);
         expect(tester.widget<Icon>(find.byType(Icon)).size, greaterThanOrEqualTo(14));
@@ -158,23 +158,22 @@ void main() {
       final labels = {
         MessageStatusIcon.semanticsLabelFor(mine(status: MessageStatus.sending)),
         MessageStatusIcon.semanticsLabelFor(mine()),
-        MessageStatusIcon.semanticsLabelFor(mine(deliveredAt: createdAt)),
-        MessageStatusIcon.semanticsLabelFor(mine(deliveredAt: createdAt, readAt: createdAt)),
+        MessageStatusIcon.semanticsLabelFor(mine(delivered: true)),
+        MessageStatusIcon.semanticsLabelFor(mine(delivered: true, readAt: createdAt)),
         MessageStatusIcon.semanticsLabelFor(mine(status: MessageStatus.failed)),
       };
       expect(labels, hasLength(5));
     });
 
-    test('read and delivered labels carry the time', () {
-      // "Read" alone answers a different question from the one a sender is asking.
+    test('the read label carries the time; delivered cannot', () {
+      // "Read" alone answers a different question from the one a sender is asking, and
+      // `messages.read_at` is a real per-row column so the time is honest.
       expect(
-        MessageStatusIcon.semanticsLabelFor(mine(deliveredAt: createdAt, readAt: createdAt)),
+        MessageStatusIcon.semanticsLabelFor(mine(delivered: true, readAt: createdAt)),
         startsWith('Read '),
       );
-      expect(
-        MessageStatusIcon.semanticsLabelFor(mine(deliveredAt: createdAt)),
-        startsWith('Delivered '),
-      );
+      // Delivery is a per-member boundary with no per-message time, so there is none to state.
+      expect(MessageStatusIcon.semanticsLabelFor(mine(delivered: true)), 'Delivered');
     });
 
     test('a failure says what to do about it', () {
@@ -186,7 +185,7 @@ void main() {
 
     testWidgets('the label reaches the semantics tree', (tester) async {
       final handle = tester.ensureSemantics();
-      final message = mine(deliveredAt: createdAt, readAt: createdAt);
+      final message = mine(delivered: true, readAt: createdAt);
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(body: MessageStatusIcon(message: message)),
       ));

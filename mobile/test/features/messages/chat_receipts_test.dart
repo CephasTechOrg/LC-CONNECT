@@ -49,6 +49,7 @@ class _PageAdapter implements HttpClientAdapter {
             'body': 'message $i',
             'created_at': '2026-01-01T10:0$i:00.000Z',
             'read_at': null,
+            'delivered': false,
           },
       ]),
       200,

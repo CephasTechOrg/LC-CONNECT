@@ -189,7 +189,7 @@ async def list_threads_for_user(db: AsyncSession, user_id: UUID) -> list[Message
     return threads
 
 
-def message_read(message: Message) -> MessageRead:
+def message_read(message: Message, *, delivered: bool = False) -> MessageRead:
     deleted = message.deleted_at is not None
     return MessageRead(
         id=message.id,
@@ -200,8 +200,50 @@ def message_read(message: Message) -> MessageRead:
         body='' if deleted else message.body,  # never leak the original body of a deleted message
         created_at=message.created_at,
         read_at=message.read_at,
+        delivered=delivered,
         deleted=deleted,
     )
+
+
+async def delivery_cursor(
+    db: AsyncSession, conversation_id: UUID, *, exclude: UUID
+) -> tuple[datetime, UUID] | None:
+    """The `(created_at, id)` every *other* member has acknowledged receipt through, or None.
+
+    The minimum across members, so in a group it means "everyone has it" — and for a DM, where
+    there is one other member, it is simply that member's boundary. That is the only definition
+    the sender's tick can honestly carry.
+
+    Exists because the delivered tick was otherwise **not durable**: the boundary is persisted
+    per member, but nothing returned it, so the state lived only in the live `messages.delivery`
+    frame. Every page load, app restart and cache miss silently dropped every second tick back to
+    one — which reads as "the message never arrived".
+
+    One query per page, not per message. With the API and the database in different regions a
+    per-message check over a 50-row page would be ~3 seconds.
+    """
+    boundary = aliased(Message)
+    rows = (
+        await db.execute(
+            select(boundary.created_at, boundary.id)
+            .select_from(ConversationMember)
+            .outerjoin(boundary, boundary.id == ConversationMember.last_delivered_message_id)
+            .where(
+                ConversationMember.conversation_id == conversation_id,
+                ConversationMember.status == 'active',
+                ConversationMember.user_id != exclude,
+            )
+        )
+    ).all()
+    if not rows:
+        return None
+    # A member who has acknowledged nothing (NULL boundary) holds the minimum at "nothing", so
+    # one silent member means nothing is reported delivered. That is the correct reading of
+    # "everyone has it", and it is why a group — whose acknowledgements are deliberately not
+    # collected at all — reports nothing rather than something misleading.
+    if any(created_at is None for created_at, _ in rows):
+        return None
+    return min(rows)
 
 
 async def read_by(db: AsyncSession, message_id: UUID, actor_id: UUID) -> list[MessageReadBy]:
@@ -241,10 +283,14 @@ async def read_by(db: AsyncSession, message_id: UUID, actor_id: UUID) -> list[Me
     await accessible_conversation(db, conversation_id, actor_id)
 
     boundary = aliased(Message)
+    # Two columns, not a whole profile. `profile_to_public` would have needed
+    # `profile_load_options()` — four `selectinload` queries per reader — to serialize bio,
+    # interests, languages and a staff contact email that this list never shows.
     rows = (
         await db.execute(
-            select(User.id, Profile)
-            .join(ConversationMember, ConversationMember.user_id == User.id)
+            select(User.id, Profile.display_name, Profile.avatar_url)
+            .select_from(ConversationMember)
+            .join(User, User.id == ConversationMember.user_id)
             .join(boundary, boundary.id == ConversationMember.last_read_message_id)
             .outerjoin(Profile, Profile.user_id == User.id)
             .where(
@@ -256,16 +302,12 @@ async def read_by(db: AsyncSession, message_id: UUID, actor_id: UUID) -> list[Me
                 # many rows in one transaction.
                 tuple_(boundary.created_at, boundary.id) >= (created_at, ident),
             )
-            .options(*profile_load_options())
         )
     ).all()
 
     return [
-        MessageReadBy(
-            user_id=user_id,
-            profile=profile_to_public(profile) if profile is not None else None,
-        )
-        for user_id, profile in rows
+        MessageReadBy(user_id=user_id, display_name=display_name, avatar_url=avatar_url)
+        for user_id, display_name, avatar_url in rows
     ]
 
 
