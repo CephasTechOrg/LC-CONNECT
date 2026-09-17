@@ -47,8 +47,7 @@ from alembic import command
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app import models  # noqa: E402, F401 — registers every model with the metadata
-from app.config import settings  # noqa: E402
-from app.database import Base  # noqa: E402
+from app.database import Base, _connect_args, _db_url  # noqa: E402
 from app.seed import seed_lookup_data  # noqa: E402
 
 # Presence of this table means Alembic owns the schema.
@@ -77,7 +76,12 @@ async def _own_engine() -> AsyncIterator[AsyncEngine]:
     engine across them fails with "attached to a different loop". `NullPool` because a one-shot
     script has nothing to pool.
     """
-    engine = create_async_engine(settings.database_url, poolclass=NullPool)
+    # `_db_url` / `_connect_args` come from `app.database` rather than being rebuilt here. That is
+    # not tidiness — production connects through Supabase's **transaction pooler** (pgbouncer, port
+    # 6543), which requires `ssl: require` and `statement_cache_size: 0` (pgbouncer keeps no
+    # per-connection state, so asyncpg's prepared-statement cache breaks against it). An engine
+    # built from the bare URL connects fine locally and fails on every deploy.
+    engine = create_async_engine(_db_url, poolclass=NullPool, connect_args=_connect_args)
     try:
         yield engine
     finally:
