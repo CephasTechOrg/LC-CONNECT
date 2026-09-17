@@ -1,22 +1,25 @@
-import asyncio
+"""Deprecated shim — use `scripts/bootstrap_db.py`.
 
-from app import models  # noqa: F401 — registers all models with metadata
-from app.database import AsyncSessionLocal, Base, engine
-from app.seed import seed_lookup_data
+This script used to call `Base.metadata.create_all` unconditionally and then seed. That was wrong
+in two ways once Alembic arrived: it never recorded the schema version, so a freshly created
+database still looked un-migrated to Alembic; and it ran *after* `alembic upgrade head` in the
+deploy command, which is backwards — the migration ran first and failed on an empty database
+before this script ever got the chance to build anything.
 
+It is kept because several docs still name it (`README.md`, `docs/getting-started/setup.md`,
+`docs/product/todo.md`). Rather than leave those instructions doing the wrong thing, it now
+delegates, so following an older doc still produces a correct database.
+"""
 
-async def main() -> None:
-    # Alembic handles schema migrations now.
-    # Base.metadata.create_all is kept as a fallback for local testing without alembic, 
-    # but in production alembic should run first.
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+from __future__ import annotations
 
-    async with AsyncSessionLocal() as db:
-        await seed_lookup_data(db)
+import sys
+from pathlib import Path
 
-    print('Database tables created/updated and lookup data seeded.')
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from bootstrap_db import main  # noqa: E402
 
 if __name__ == '__main__':
-    asyncio.run(main())
+    print('note: init_db.py is deprecated — use `python scripts/bootstrap_db.py`\n')
+    raise SystemExit(main())

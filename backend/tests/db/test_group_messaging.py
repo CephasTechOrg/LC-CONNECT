@@ -40,7 +40,7 @@ async def test_group_member_can_send_and_it_is_addressed_by_conversation_id(db, 
     sender = members[1]
 
     # Group chat is addressed by the conversation id directly (not a match).
-    conversation = await authorize_conversation(db, sender.id, group.conversation_id)
+    conversation, _ = await authorize_conversation(db, sender.id, group.conversation_id)
     assert conversation.id == group.conversation_id and conversation.kind == 'group'
 
     msg, created = await persist_message_idempotent(

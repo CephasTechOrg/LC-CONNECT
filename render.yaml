@@ -9,7 +9,11 @@ services:
     buildCommand: |
       pip install --upgrade pip
       pip install -r requirements.txt
-    startCommand: alembic upgrade head && PYTHONPATH=. python scripts/init_db.py && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    # One bootstrap step, not two. `alembic upgrade head` cannot build this database from empty
+    # (see docs/reviews/BETA_FEEDBACK_REVIEW.md finding 18), and it ran *before* the create_all in
+    # init_db.py — so a brand-new environment failed to deploy. bootstrap_db.py inspects the
+    # database and takes the correct path: create+stamp when empty, upgrade when already managed.
+    startCommand: PYTHONPATH=. python scripts/bootstrap_db.py && uvicorn app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
     envVars:
       - key: PYTHON_VERSION

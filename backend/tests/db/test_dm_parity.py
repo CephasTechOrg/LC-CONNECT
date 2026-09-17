@@ -155,8 +155,12 @@ async def test_duplicate_dm_is_prevented_by_the_normalized_pair(db, factory):
 # ── conversation authorization ───────────────────────────────────────────────────
 
 async def test_member_may_access_the_conversation(db, factory):
-    alice, _, match, _ = await _conversation(factory)
-    assert (await authorize_conversation(db, alice.id, match.id)).id == match.conversation.id
+    alice, bob, match, _ = await _conversation(factory)
+    # Returns (conversation, members): authorization hands back the member list it had to read
+    # anyway, so the send path no longer queries conversation_members a second time.
+    conversation, members = await authorize_conversation(db, alice.id, match.id)
+    assert conversation.id == match.conversation.id
+    assert [uid for uid, _ in members] == [bob.id], 'the partner, excluding the caller'
 
 
 async def test_non_member_is_forbidden(db, factory):

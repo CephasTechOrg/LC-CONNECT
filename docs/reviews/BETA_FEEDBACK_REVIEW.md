@@ -1765,13 +1765,62 @@ Not in any report; recorded because they are real.
 17. `asyncio.create_task` is used fire-and-forget for pushes with **no reference retained**
     ([runtime.py:161-167](../../backend/app/features/realtime/runtime.py#L161-L167)) — the task can be
     garbage-collected mid-flight and its exception is never observed.
+18. **A new environment cannot be built from the migration chain.** `alembic upgrade head` against
+    an empty database fails:
+
+    ```
+    DuplicateColumnError: column "auth_user_id" of relation "users" already exists
+    [SQL: ALTER TABLE users ADD COLUMN auth_user_id UUID]
+    ```
+
+    The cause is that `3ffad56200ff_initial_schema.py` does not define the schema column by column
+    — it calls `Base.metadata.create_all` (lines 26-32), which builds the **current** models,
+    `auth_user_id` included. `a1b2c3d4e5f6_add_auth_user_id` then tries to add a column that the
+    "initial" migration already created. Every migration after it that ALTERs a table the models
+    already describe has the same latent conflict.
+
+    Nothing is broken today: existing environments migrated incrementally, and `render.yaml` runs
+    `alembic upgrade head` against an already-provisioned database. What is broken is **rebuilding
+    from scratch** — disaster recovery, a new staging environment, and any contributor starting
+    from an empty database. It also means `tests/db` (which builds from `create_all`, see
+    `tests/db/conftest.py:80`) cannot catch a bad migration, so migrations are effectively
+    untested: verify each one against a scratch database that has been stamped at the previous
+    head.
+
+    **Addressed in two parts, deliberately split.**
+
+    *Done — risk removed.* The adaptive initial revision had the right instinct and was simply
+    never finished: "a fresh database gets the current schema" has to be paired with "and is
+    recorded as already at head", or Alembic tries to migrate it forward from the beginning.
+    `scripts/bootstrap_db.py` completes that pairing. It inspects the database and either
+    `create_all` + `stamp head` (empty) or `upgrade head` (already managed), and **refuses** the
+    ambiguous third state — tables present with no `alembic_version` — rather than guessing, since
+    either choice is destructive in a different way. Skipping the historical revisions on an empty
+    database is correct, not a shortcut: each one either reshapes a table the models already
+    describe or backfills rows that do not exist yet. `render.yaml` now runs this single step
+    instead of `alembic upgrade head && init_db.py`, which was also the wrong order —
+    the migration ran first and failed before `create_all` could build anything.
+
+    `tests/db/test_migrations.py` covers what the rest of the suite structurally cannot: that the
+    bootstrap path produces a schema matching the models (via `compare_metadata`), and that the
+    newest revision applies **and reverses** without drift. It runs Alembic in a **subprocess** —
+    not in-process — because `alembic/env.py` overwrites any caller-supplied URL with
+    `settings.database_url`, and `settings` is an `lru_cache`d singleton built at import, so
+    setting `os.environ` from inside the test process has no effect. Writing it the obvious way
+    stamped and downgraded the local dev database instead of the throwaway one.
+
+    *Outstanding — cleanup.* Squash the chain into a real baseline with explicit DDL, so
+    `alembic upgrade head` is conventionally correct from empty. **Sequencing matters:** a baseline
+    built from current models includes any migration not yet deployed, so stamping production at it
+    would mark changes as applied that are not. Deploy the outstanding revision first, then squash
+    in a deliberate window, and record it in `architecture_review/DECISION_LOG.md`.
 
 **Client**
-18. No `FirebaseMessaging.onMessage` and no `onBackgroundMessage` handler anywhere. See #8.
-19. `NavShell` hardcodes `Semantics(selected: false)` for every tab. See #18.
-20. `AppSkeletonBox` has no shimmer and no semantics. See #18.
-21. Leaked `TextEditingController` in `_promptForCustom`. See #16.
-22. Deep-linked `/activities/:activityId` hard-casts `state.extra as Activity`
+19. No `FirebaseMessaging.onMessage` and no `onBackgroundMessage` handler anywhere. See #8.
+20. `NavShell` hardcodes `Semantics(selected: false)` for every tab. See #18.
+21. `AppSkeletonBox` has no shimmer and no semantics. See #18.
+22. Leaked `TextEditingController` in `_promptForCustom`. See #16.
+23. Deep-linked `/activities/:activityId` hard-casts `state.extra as Activity`
     ([app_router.dart:278-283](../../mobile/lib/core/router/app_router.dart#L278-L283)) — a cold deep link
     with no `extra` throws. Same fragility class as `GroupChatArgs`.
 
@@ -1817,6 +1866,8 @@ Dependency-ordered. **Do not reorder across phase boundaries**: later items assu
 | 2.8 | **#12 P3 (structural)** cache the send authorization per `(Connection, conversation)` at subscribe; invalidate via the existing control-event plane; ~11 → 2 round trips | 2.7 |
 | 2.9 | Additional-findings fixes: #1–#7, #11, #17 from Part 3 (incl. the `ensure_dm_conversation` rollback interaction, which 2.8 removes structurally) | — |
 | 2.10 | **Only if 2.1/2.6 say so**: provision Redis (`REDIS_URL` on every instance) **then** scale workers — never the reverse. Note Redis removes **none** of #12's 11 round trips | 2.1, 2.6 |
+| 2.11a | **Fresh-environment bootstrap + migration tests** — `bootstrap_db.py` inspects and takes the right path; `test_migrations.py` asserts no model/migration drift and that the head revision reverses. Touches no existing revision | — |
+| 2.11b | **Squash the chain into a baseline** — cleanup. Only *after* the outstanding revision is deployed, else stamping production marks undeployed changes as applied | 2.11a, a deploy |
 
 > **On 2.5's placement.** 2.5 intentionally has no dependency on 2.1 or 2.6. Racing the transports
 > and making the ack timeout adaptive are wins whether the cause turns out to be cold start, the
@@ -1918,6 +1969,12 @@ Notation: **[be]** backend · **[fe]** mobile · **[cfg]** config/ops · **[msr]
       trips to ~6 without that trade.
 - [ ] **2.9** [be][fe] Part 3 additional findings 1–7, 11, 17
 - [ ] **2.10** [cfg] **Only if 2.1/2.6 justify it**: Redis first, *then* workers — never the reverse
+- [x] **2.11a** [be] **Fresh-environment bootstrap + migration tests** (Part 3 finding 18) —
+      `scripts/bootstrap_db.py` makes a new environment buildable; `tests/db/test_migrations.py`
+      makes migrations tested. No existing revision or production state touched.
+- [ ] **2.11b** [be] **Squash the chain into a baseline** — cleanup, not risk reduction. Must come
+      **after** the outstanding revision is deployed, or stamping production marks undeployed
+      changes as applied. Record in `DECISION_LOG.md`.
 
 ### Phase 3 — Messaging
 
