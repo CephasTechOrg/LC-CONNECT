@@ -73,6 +73,7 @@ GET /api/v1/messages/threads
 GET /api/v1/messages/threads/{match_id}
 GET /api/v1/messages/threads/{match_id}/sync
 GET /api/v1/messages/unread-summary
+GET /api/v1/messages/{message_id}/read-by
 GET /api/v1/notifications
 GET /api/v1/notifications/unread-count
 GET /api/v1/policies

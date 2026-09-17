@@ -1990,17 +1990,33 @@ Notation: **[be]** backend · **[fe]** mobile · **[cfg]** config/ops · **[msr]
 
 ### Phase 3 — Messaging
 
-- [ ] **3.1** [fe] **#2** chat routes out of the `ShellRoute` + legacy `/messages/:id` redirect
-- [ ] **3.2** [fe] **#19** Messages becomes the hub: `Chats | Groups`; remove the Discovery Groups tab;
-      keep `?tab=groups` redirecting for one release — *also fixes staff being unable to reach Groups*
-- [ ] **3.3** [fe] **#1** `ChatDraftStore` (per conversation, cleared on send, purged on logout)
-- [ ] **3.4** [be][fe][snap] **#21** `last_delivered_message_id` + `messages.delivered` /
-      `messages.delivery` frames; honour `through_message_id` in read receipts
-- [ ] **3.5** [fe] **#23** stronger tick contrast/size + last-message state on the conversation row
+> **Batch 1 is complete.** Sequenced and recorded step by step in
+> [`docs/features/messaging/phase3_design.md`](../features/messaging/phase3_design.md) §8, which also
+> carries the two prerequisites the review missed (the abuse-budget ban on unknown frames, and the
+> unversioned message cache) and every deviation from the design with its reason.
+
+- [x] **3.1** [fe] **#2** chat routes out of the `ShellRoute` + legacy `/messages/:id` redirect —
+      conversations are `/chat/:matchId` and `/chat/group/:conversationId`; the ten inline path
+      literals across seven features now live in `features/messages/utils/chat_routes.dart`, and
+      `appRoutes()` was extracted so the table's *shape* is assertable without an initialised
+      Supabase client (`test/core/router/route_table_test.dart`)
+- [x] **3.2** [fe] **#19** Messages becomes the hub: `Chats | Groups`; Discovery's Groups tab removed;
+      `?tab=groups` redirects — *staff can now reach Groups at all*
+- [x] **3.3** [fe] **#1** `ChatDraftStore` — debounced, flushed on `dispose` **and** on `paused`,
+      30-day prune, cleared on send. Logout cleared *nothing* before this (drafts or cached message
+      bodies); both go now
+- [x] **3.4** [be][fe][snap] **#21** `last_delivered_message_id` (migration `f2b3c4d5e6a7`),
+      `mark_delivered`, the `messages.delivered` / `messages.delivery` pair, `PROTOCOL_VERSION` → 2 —
+      and the read receipt **now honours `through_message_id`**, which it never did: it flipped every
+      message of mine to read regardless of the boundary named
+- [x] **3.5** [fe] **#23** one shared `OutgoingState` + `MessageStatusIcon` at 14px with real
+      contrast steps, used by both the bubble and the conversation row so they cannot disagree;
+      group messages get a `GET /messages/{id}/read-by` list on long-press instead of a tick
 - [ ] **3.6** [be][fe][snap] **#4** reactions — `message_reactions` table, two endpoints, two frames,
-      aggregate in the page query, chip UI *(bump `PROTOCOL_VERSION` once here)*
+      aggregate in the page query, chip UI *(`PROTOCOL_VERSION` is already at 2 — bump to 3 here, and
+      gate the new frames on `RealtimeClient.supportsProtocol`)* — **Batch 2, after TestFlight**
 - [ ] **3.7** [be][fe][snap] **#5** editing — `edited_at` + `message_edits`, `PATCH /messages/{id}`,
-      `message.edited` frame, 15-min window, retention-runbook step
+      `message.edited` frame, 15-min window, retention-runbook step — **Batch 2, after TestFlight**
 - [ ] **3.8** [doc] **#22** record the no-presence decision; revisit only after 2.10
 
 ### Phase 4 — UI/UX polish

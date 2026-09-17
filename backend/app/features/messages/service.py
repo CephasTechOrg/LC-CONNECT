@@ -16,7 +16,12 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
-from app.features.messages.schema import GroupThreadInfo, MessageRead, MessageThreadRead
+from app.features.messages.schema import (
+    GroupThreadInfo,
+    MessageRead,
+    MessageReadBy,
+    MessageThreadRead,
+)
 from app.models import CampusPosition, Conversation, ConversationMember, Group, Match, Message, Profile, User
 from app.shared.policies import open_staff_thread_ids
 from app.shared.profiles import profile_load_options
@@ -197,6 +202,71 @@ def message_read(message: Message) -> MessageRead:
         read_at=message.read_at,
         deleted=deleted,
     )
+
+
+async def read_by(db: AsyncSession, message_id: UUID, actor_id: UUID) -> list[MessageReadBy]:
+    """Members whose read boundary has passed `message_id`.
+
+    This is the group answer to report #21. A group cannot show a delivered or read *tick*: doing
+    so needs a rule about which members count ("all" or "any"), and the client would have to hold
+    every member's boundary to evaluate it — real state for a glyph nobody asked for. A list of
+    who has actually read it is both cheaper and more informative, and it is the affordance mature
+    messengers offer.
+
+    Excludes the actor. You have read your own message by definition, and listing yourself makes
+    a two-person list look like three.
+
+    One query, not one per member: the boundary is a message id, so answering "is this member past
+    that message" needs the boundary row's `(created_at, id)`, which is a join rather than a loop.
+    With the API and database in different regions a per-member round trip would cost ~60ms each.
+    """
+    message = (
+        await db.execute(
+            select(Message.conversation_id, Message.created_at, Message.id).where(
+                Message.id == message_id
+            )
+        )
+    ).one_or_none()
+    if message is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Message not found')
+    conversation_id, created_at, ident = message
+
+    # Local import, as in `delete_message` below — a module-level one closes a load cycle with
+    # `app.shared.conversations`.
+    from app.shared.conversations import accessible_conversation
+
+    # Same gate as every other REST message endpoint: 404 if not a member, 403 if blocked or the
+    # staff thread has closed. Without it this would leak group membership to a non-member holding
+    # a message id.
+    await accessible_conversation(db, conversation_id, actor_id)
+
+    boundary = aliased(Message)
+    rows = (
+        await db.execute(
+            select(User.id, Profile)
+            .join(ConversationMember, ConversationMember.user_id == User.id)
+            .join(boundary, boundary.id == ConversationMember.last_read_message_id)
+            .outerjoin(Profile, Profile.user_id == User.id)
+            .where(
+                ConversationMember.conversation_id == conversation_id,
+                ConversationMember.status == 'active',
+                ConversationMember.user_id != actor_id,
+                # The boundary is at or past this message. Compared as a tuple for the same reason
+                # the write side does: `created_at` is not unique, because a group fan-out commits
+                # many rows in one transaction.
+                tuple_(boundary.created_at, boundary.id) >= (created_at, ident),
+            )
+            .options(*profile_load_options())
+        )
+    ).all()
+
+    return [
+        MessageReadBy(
+            user_id=user_id,
+            profile=profile_to_public(profile) if profile is not None else None,
+        )
+        for user_id, profile in rows
+    ]
 
 
 async def delete_message(db: AsyncSession, message_id: UUID, actor_id: UUID) -> Message:

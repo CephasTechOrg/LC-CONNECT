@@ -15,6 +15,8 @@ import '../../../shared/widgets/verified_badge.dart';
 import '../providers/messages_provider.dart';
 import '../providers/staff_messaging_provider.dart';
 import '../providers/unread_provider.dart';
+import '../widgets/message_status_icon.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../../groups/data/group_models.dart';
 import '../utils/chat_routes.dart';
 import '../widgets/messages_segments.dart';
@@ -139,6 +141,16 @@ class _ThreadCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final latest = thread.latestMessage;
     final unread = ref.watch(unreadProvider.select((s) => s.countFor(thread.addressingId)));
+    // Report #23: the row showed incoming state (an unread bubble, a bold preview) but nothing at
+    // all when the last message was mine — so the one place a sender looks to check on a
+    // conversation they are waiting on said nothing. Groups are excluded: "delivered" there needs
+    // a rule about which members count, which is deliberately out of scope (see the design doc
+    // §2.1); they get a "read by" list in the conversation instead.
+    final myId = ref.watch(authNotifierProvider).asData?.value?.id;
+    final outgoing =
+        (!thread.isGroup && latest != null && myId != null && latest.senderId == myId)
+            ? latest
+            : null;
 
     return InkWell(
       onTap: () => thread.isGroup
@@ -236,6 +248,12 @@ class _ThreadCard extends ConsumerWidget {
                                 ),
                               ),
                       ),
+                      if (outgoing != null) ...[
+                        const SizedBox(width: 8),
+                        // Compact: the conversation row has no room for a "Retry" label, and
+                        // retrying belongs in the conversation anyway.
+                        MessageStatusIcon(message: outgoing, compact: true),
+                      ],
                       if (unread > 0) ...[
                         const SizedBox(width: 8),
                         _UnreadBubble(count: unread),

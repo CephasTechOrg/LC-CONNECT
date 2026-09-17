@@ -2,20 +2,34 @@
 
 Verifies that group conversations flow through the same send/authorize/unread path as DMs:
 group members can send + receive, non-members are rejected, the read boundary works for N
-members, and removal revokes membership.
+members, removal revokes membership, and the "read by" list (report #21) reports exactly the
+members whose boundary has passed a given message.
 """
 
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
+from uuid import uuid4
 
 import pytest
+from fastapi import HTTPException
+from sqlalchemy import select
 
 from app.features.groups import service as group_service
 from app.features.groups.schema import GroupCreate
-from app.features.messages.service import page_thread, persist_message_idempotent, unread_summary
-from app.features.realtime.service import WsForbidden, authorize_conversation, mark_read
-from app.models import Message
+from app.features.messages.service import (
+    page_thread,
+    persist_message_idempotent,
+    read_by,
+    unread_summary,
+)
+from app.features.realtime.service import (
+    WsForbidden,
+    authorize_conversation,
+    mark_delivered,
+    mark_read,
+)
+from app.models import ConversationMember, Message
 from app.shared.conversations import active_member_ids, active_members_with_mute
 
 BASE = datetime(2026, 1, 1, 12, 0, 0, tzinfo=UTC)
@@ -175,3 +189,138 @@ async def test_removed_member_loses_access(db, factory):
 
     with pytest.raises(WsForbidden):
         await authorize_conversation(db, target.id, group.conversation_id)
+
+
+# ── "read by" (report #21) ────────────────────────────────────────────────────
+#
+# A group bubble cannot carry a delivered or read tick: that needs a rule for which members count
+# and every member's boundary held on the client. This list is the answer instead, so it has to be
+# exactly right about who has and has not read.
+
+async def _send(db, group, sender, body, *, at):
+    message, _ = await persist_message_idempotent(
+        db,
+        sender_id=sender.id,
+        match_id=None,
+        conversation_id=group.conversation_id,
+        body=body,
+        client_message_id=None,
+    )
+    return message
+
+
+async def test_read_by_is_empty_before_anyone_reads(db, factory):
+    group, members = await _group_with_members(db, factory, n_members=3)
+    sender = members[0]
+    message = await _send(db, group, sender, 'hello all', at=BASE)
+
+    assert await read_by(db, message.id, sender.id) == []
+
+
+async def test_read_by_lists_only_members_past_the_boundary(db, factory):
+    group, members = await _group_with_members(db, factory, n_members=4)
+    sender, reader, laggard, absent = members
+    first = await _send(db, group, sender, 'first', at=BASE)
+    second = await _send(db, group, sender, 'second', at=BASE + timedelta(minutes=1))
+
+    # One member caught up to the newest message, one only to the older one, one read nothing.
+    await mark_read(db, reader_id=reader.id, match_id=group.conversation_id,
+                    through_message_id=second.id)
+    await mark_read(db, reader_id=laggard.id, match_id=group.conversation_id,
+                    through_message_id=first.id)
+
+    read_first = {r.user_id for r in await read_by(db, first.id, sender.id)}
+    read_second = {r.user_id for r in await read_by(db, second.id, sender.id)}
+
+    assert read_first == {reader.id, laggard.id}
+    assert read_second == {reader.id}, 'the laggard has not reached the second message'
+    assert absent.id not in read_first
+
+
+async def test_read_by_excludes_the_caller(db, factory):
+    """You have read your own message by definition; listing yourself makes a two-person list
+    look like three."""
+    group, members = await _group_with_members(db, factory, n_members=3)
+    sender, other, _ = members
+    message = await _send(db, group, sender, 'hello', at=BASE)
+
+    await mark_read(db, reader_id=sender.id, match_id=group.conversation_id,
+                    through_message_id=message.id)
+    await mark_read(db, reader_id=other.id, match_id=group.conversation_id,
+                    through_message_id=message.id)
+
+    listed = {r.user_id for r in await read_by(db, message.id, sender.id)}
+    assert listed == {other.id}
+
+
+async def test_read_by_carries_the_profile_for_display(db, factory):
+    group, members = await _group_with_members(db, factory, n_members=2)
+    sender, other = members
+    message = await _send(db, group, sender, 'hello', at=BASE)
+    await mark_read(db, reader_id=other.id, match_id=group.conversation_id,
+                    through_message_id=message.id)
+
+    # A list of bare user ids would need a second request per row to render a name.
+    entry = (await read_by(db, message.id, sender.id))[0]
+    assert entry.profile is not None
+    assert entry.profile.display_name == 'M0'
+
+
+async def test_read_by_is_not_advanced_by_delivery(db, factory):
+    """Delivery and read are separate boundaries. A delivered-but-unopened message must not appear
+    in the read-by list — that is the false claim the whole feature has to avoid."""
+    group, members = await _group_with_members(db, factory, n_members=3)
+    sender, other, _ = members
+    message = await _send(db, group, sender, 'hello', at=BASE)
+
+    await mark_delivered(db, recipient_id=other.id, match_id=group.conversation_id,
+                         through_message_id=message.id)
+
+    assert await read_by(db, message.id, sender.id) == []
+
+
+async def test_read_by_rejects_a_non_member(db, factory):
+    """Without the membership gate, anyone holding a message id could enumerate a private group's
+    membership."""
+    group, members = await _group_with_members(db, factory, n_members=2)
+    outsider = await factory.user(display_name='Outsider')
+    message = await _send(db, group, members[0], 'hello', at=BASE)
+
+    with pytest.raises(HTTPException) as exc:
+        await read_by(db, message.id, outsider.id)
+    assert exc.value.status_code == 404
+
+
+async def test_read_by_404s_for_an_unknown_message(db, factory):
+    group, members = await _group_with_members(db, factory, n_members=2)
+    await _send(db, group, members[0], 'hello', at=BASE)
+
+    with pytest.raises(HTTPException) as exc:
+        await read_by(db, uuid4(), members[0].id)
+    assert exc.value.status_code == 404
+
+
+async def test_read_by_drops_a_removed_member(db, factory):
+    """A member who read the message and then left is no longer part of the conversation, so the
+    list must not keep reporting them as an audience."""
+    group, members = await _group_with_members(db, factory, n_members=3)
+    sender, leaver, _ = members
+    message = await _send(db, group, sender, 'hello', at=BASE)
+    await mark_read(db, reader_id=leaver.id, match_id=group.conversation_id,
+                    through_message_id=message.id)
+    assert {r.user_id for r in await read_by(db, message.id, sender.id)} == {leaver.id}
+
+    # `leave_group` takes the membership row, not the user — passing a `User` here set `status`
+    # on the *account* instead, which is a suspension, and did so without complaint.
+    membership = (
+        await db.execute(
+            select(ConversationMember).where(
+                ConversationMember.conversation_id == group.conversation_id,
+                ConversationMember.user_id == leaver.id,
+            )
+        )
+    ).scalar_one()
+    await group_service.leave_group(db, group, membership)
+    await db.commit()
+
+    assert await read_by(db, message.id, sender.id) == []

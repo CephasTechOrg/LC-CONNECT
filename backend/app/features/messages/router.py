@@ -10,6 +10,7 @@ from app.dependencies import require_verified_user
 from app.features.messages.schema import (
     MessageCreate,
     MessageRead,
+    MessageReadBy,
     MessageThreadRead,
     MessagingCapabilities,
     RecipientSearchResult,
@@ -22,6 +23,7 @@ from app.features.messages.service import (
     message_read,
     page_thread,
     persist_message_idempotent,
+    read_by,
     sync_thread,
     unread_summary,
 )
@@ -156,6 +158,21 @@ async def send_message(
             recipients=recipients,
         )
     return message_read(message)
+
+
+@router.get('/{message_id}/read-by', response_model=list[MessageReadBy])
+async def get_message_read_by(
+    message_id: UUID,
+    current_user: User = Depends(require_verified_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Who has read this message.
+
+    A group's answer to "was it seen" (report #21). A group bubble cannot carry a delivered or
+    read tick without a rule for which members count and every member's boundary held on the
+    client; this list is both cheaper and says more. Excludes the caller.
+    """
+    return await read_by(db, message_id, current_user.id)
 
 
 @router.delete('/{message_id}', response_model=MessageRead)

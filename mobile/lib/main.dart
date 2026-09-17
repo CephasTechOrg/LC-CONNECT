@@ -9,6 +9,7 @@ import 'core/router/pending_deep_link.dart';
 import 'core/storage/secure_session_storage.dart';
 import 'core/theme/app_theme.dart';
 import 'features/messages/data/chat_draft_store.dart';
+import 'features/messages/providers/delivery_ack_provider.dart';
 import 'features/messages/providers/in_app_message_listener.dart';
 import 'shared/widgets/dismiss_keyboard.dart';
 import 'shared/widgets/offline_banner.dart';
@@ -50,6 +51,7 @@ class LcConnectApp extends ConsumerWidget {
     ref.watch(notificationRegistrarProvider); // registers the FCM token in step with auth
     ref.watch(deepLinkDrainProvider); // performs queued notification taps once the app can navigate
     ref.watch(inAppMessageListenerProvider); // pops in-app banners for foreground messages
+    ref.watch(deliveryAckProvider); // acknowledges receipt so senders get a delivered tick
     ref.watch(draftPruneProvider); // drops composer drafts untouched for 30 days
     ref.watch(backendStatusProvider); // keep reachability probes alive app-wide
     final router = ref.watch(routerProvider);

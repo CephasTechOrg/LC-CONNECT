@@ -24,6 +24,10 @@ class _BubbleTile extends StatelessWidget {
 
   bool get _canReport => !isMine && onReport != null;
   bool get _canDelete => onDelete != null;
+
+  /// Only for my own group messages. In a DM the tick already answers this precisely, and for
+  /// someone else's message "who has read it" is not mine to ask.
+  bool get _canSeeReadBy => isGroup && isMine && !message.deleted && !message.id.startsWith('local:');
   bool get _hasMenu => !message.deleted && (_canReport || _canDelete);
 
   @override
@@ -168,6 +172,24 @@ class _BubbleTile extends StatelessWidget {
               decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2)),
             ),
             const SizedBox(height: 8),
+            if (_canSeeReadBy)
+              ListTile(
+                leading: const Icon(Icons.done_all_rounded, color: AppColors.primary),
+                title: Text('Read by',
+                    style: GoogleFonts.dmSans(fontWeight: FontWeight.w500, color: AppColors.textDark)),
+                subtitle: Text('See who has read this message',
+                    style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textMuted)),
+                onTap: () {
+                  Navigator.of(sheetCtx).pop();
+                  showModalBottomSheet<void>(
+                    context: context,
+                    shape: const RoundedRectangleBorder(
+                      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                    ),
+                    builder: (_) => _ReadBySheet(messageId: message.id),
+                  );
+                },
+              ),
             if (_canDelete)
               ListTile(
                 leading: const Icon(Icons.delete_outline_rounded, color: AppColors.error),
@@ -198,34 +220,10 @@ class _BubbleTile extends StatelessWidget {
     );
   }
 
-  Widget _status(BuildContext context) {
-    switch (message.status) {
-      case MessageStatus.sending:
-        return const Icon(Icons.schedule_rounded, size: 11, color: AppColors.textMuted);
-      case MessageStatus.failed:
-        return GestureDetector(
-          onTap: () => onRetry?.call(message),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.error_outline_rounded, size: 11, color: AppColors.error),
-              const SizedBox(width: 3),
-              Text(
-                'Retry',
-                style: GoogleFonts.dmSans(fontSize: 10, color: AppColors.error, fontWeight: FontWeight.w600),
-              ),
-            ],
-          ),
-        );
-      case MessageStatus.sent:
-        final read = message.readAt != null;
-        return Icon(
-          read ? Icons.done_all_rounded : Icons.check_rounded,
-          size: 12,
-          color: read ? AppColors.primary : AppColors.textMuted,
-        );
-    }
-  }
+  /// See [MessageStatusIcon] — shared with the conversation row so the two can never show
+  /// different states for the same message.
+  Widget _status(BuildContext context) =>
+      MessageStatusIcon(message: message, onRetry: onRetry);
 }
 
 // ── Input bar ─────────────────────────────────────────────────────

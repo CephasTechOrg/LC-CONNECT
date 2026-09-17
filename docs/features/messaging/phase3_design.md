@@ -344,7 +344,7 @@ The sequence to implement, each step leaving the suite green:
 | 3 | Chat routes to top level; `/messages` → `Chats \| Groups`; legacy redirects | fe | **done** |
 | 4 | `ChatDraftStore` | fe | **done** |
 | 5 | `last_delivered_message_id` + `messages.delivered` / `messages.delivery` frames; `PROTOCOL_VERSION` → 2 | be + fe | **done** (wire only; UI is step 6) |
-| 6 | Delivered tick, stronger contrast, conversation-row state, group "read by" | fe | — |
+| 6 | Delivered tick, stronger contrast, conversation-row state, group "read by" | be + fe | **done** |
 
 **Step 1, as landed.** `protocol.py` gained `ErrorCode.UNSUPPORTED_FRAME` plus
 `KNOWN_INBOUND_TYPES`, derived from the inbound union's own members so the set cannot drift from the
@@ -450,6 +450,48 @@ unavailable on a v1 connection rather than render a tick that never arrives.
 * **A test of mine had to change**, and for the right reason: it used `messages.delivered` as its
   example of an unknown frame type, which protocol 2 made real. It now uses
   `messages.reaction.added` — still unimplemented, and the same rollout direction.
+
+**Step 6, as landed.** `OutgoingState` + `MessageStatusIcon` (one vocabulary, one widget, used by
+both the bubble and the conversation row), `deliveredAt` on `ChatMessage`, `deliveryAckProvider`,
+the row's outgoing state, and `GET /messages/{message_id}/read-by` behind a long-press sheet.
+
+* **The receipt handler ignored its own boundary.** `markMineRead()` flipped *every* unread message
+  of mine to read whatever message the receipt named. That was invisible with one tick — "all" and
+  "up to here" look identical once the partner is caught up, which they usually are — and becomes a
+  false claim about another person the moment delivered and read are distinguishable. It is now
+  `_advanceMine`, comparing `(createdAt, id)`: the same ordering key the server's boundary uses, so
+  the two sides cannot disagree about what "up to here" includes.
+* **Delivery is acknowledged at app level, not in the chat screen.** While a conversation is open
+  the screen already sends `messages.read`, and read implies delivered — so an acknowledgement there
+  adds nothing. The state worth reporting is the other one: the message arrived, this device has it,
+  and the user has not opened the conversation. `deliveryAckProvider` listens for
+  `conversation.updated` on the user channel, which reaches the device wherever the user is. It is
+  deliberately *not* folded into the in-app banner listener: that listener suppresses on being in
+  the conversation, being on the Messages list, and being backgrounded, and **none of those suppress
+  a delivery** — the device has the message in all three.
+* **`OutgoingState` is derived, not a stored enum case.** The review suggested adding `delivered` to
+  `MessageStatus`; that field describes the *send attempt*, and a retry can fail after the original
+  was delivered, so the two belong in different places. Failure outranks delivery, read outranks
+  delivered, and a message with no delivery information reads as `sent` — understating progress
+  rather than claiming something untrue.
+* **The old tick rendered a dead "Retry".** It printed the label unconditionally while calling
+  `onRetry?.call`, so a caller passing no handler got an affordance that did nothing. The label now
+  requires a handler.
+* **The group answer is a list, not a tick.** A group tick needs a rule for which members count
+  *and* every member's boundary held client-side — real state for a glyph nobody asked for.
+  `read_by` is one query with a tuple comparison against each member's boundary row (a per-member
+  round trip would be ~60ms each across regions), gated by `accessible_conversation` so a message id
+  alone cannot enumerate a private group's membership, and it excludes the caller. There is
+  deliberately **no timestamp**: a boundary does not record when it passed any particular older
+  message, and reporting the boundary's own timestamp would be a guess presented as a fact.
+* **The API snapshot changed deliberately** — one route and one schema, verified in the diff before
+  regenerating. `MessageReadBy`'s docstring is the public OpenAPI description, so the rationale sits
+  in a comment above the class rather than leaking into the contract.
+* **A test of mine failed for the right reason twice**: it passed a `User` to `leave_group`, which
+  takes a membership row, and silently set `status` on the *account* instead — a suspension. And the
+  chat receipt tests needed auth resolved before mounting, because `ChatScreen` captures
+  `currentUserId` once in `initState`; a chat that mounts mid-load treats every message as someone
+  else's and renders no tick at all.
 
 Steps 1–2 are prerequisites and touch no feature behaviour. Step 5 is the only migration, and it is
 one nullable column. Deploy order remains server before client throughout.

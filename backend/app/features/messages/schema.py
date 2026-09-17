@@ -6,6 +6,21 @@ from pydantic import BaseModel, Field
 from app.shared.schemas import ProfilePublic
 
 
+# There is deliberately no timestamp here, and the reason is not an omission worth "fixing"
+# later: a group's read state is a per-member *boundary*
+# (`ConversationMember.last_read_message_id`), not a per-message record, so the moment this
+# particular message was passed is not stored anywhere. Reporting the boundary's own timestamp as
+# a read time for an older message would be a guess presented as a fact. `Message.read_at` cannot
+# help — it is a single column, which is exactly why the boundary exists.
+#
+# The docstring below is the public OpenAPI description, so it stays about the contract.
+class MessageReadBy(BaseModel):
+    """A member who has read a given message."""
+
+    user_id: UUID
+    profile: ProfilePublic | None
+
+
 class MessageCreate(BaseModel):
     body: str = Field(min_length=1, max_length=2000)
     # Optional idempotency key; a retry with the same value returns the original message.

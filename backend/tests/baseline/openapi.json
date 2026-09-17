@@ -4601,6 +4601,32 @@
         "title": "MessageRead",
         "type": "object"
       },
+      "MessageReadBy": {
+        "description": "A member who has read a given message.",
+        "properties": {
+          "profile": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProfilePublic"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "user_id": {
+            "format": "uuid",
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "profile"
+        ],
+        "title": "MessageReadBy",
+        "type": "object"
+      },
       "MessageResponse": {
         "properties": {
           "message": {
@@ -14118,6 +14144,59 @@
           }
         ],
         "summary": "Delete Message Endpoint",
+        "tags": [
+          "messages"
+        ]
+      }
+    },
+    "/api/v1/messages/{message_id}/read-by": {
+      "get": {
+        "description": "Who has read this message.\n\nA group's answer to \"was it seen\" (report #21). A group bubble cannot carry a delivered or\nread tick without a rule for which members count and every member's boundary held on the\nclient; this list is both cheaper and says more. Excludes the caller.",
+        "operationId": "get_message_read_by_api_v1_messages__message_id__read_by_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "message_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Message Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MessageReadBy"
+                  },
+                  "title": "Response Get Message Read By Api V1 Messages  Message Id  Read By Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Message Read By",
         "tags": [
           "messages"
         ]

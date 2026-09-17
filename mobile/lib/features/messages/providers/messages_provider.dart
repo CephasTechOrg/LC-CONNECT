@@ -69,6 +69,13 @@ class ChatMessage {
   final String body;
   final DateTime createdAt;
   final DateTime? readAt;
+
+  /// When the recipient's device acknowledged receipt (`messages.delivery`, protocol 2).
+  ///
+  /// Null means "not yet, or not knowable" — the latter on a protocol 1 server, where no client
+  /// ever sends the acknowledgement. Both read as "sent", which understates progress rather than
+  /// overstating it.
+  final DateTime? deliveredAt;
   final MessageStatus status;
   final bool deleted;
 
@@ -80,6 +87,7 @@ class ChatMessage {
     required this.body,
     required this.createdAt,
     this.readAt,
+    this.deliveredAt,
     this.status = MessageStatus.sent,
     this.deleted = false,
   });
@@ -92,11 +100,24 @@ class ChatMessage {
         body: j['body'] as String,
         createdAt: DateTime.parse(j['created_at'] as String),
         readAt: j['read_at'] != null ? DateTime.parse(j['read_at'] as String) : null,
+        // A read message was necessarily delivered, so `read_at` stands in when the server sends
+        // no delivery timestamp of its own. Without this, opening a conversation whose history is
+        // already read would show one tick on messages that are demonstrably read.
+        deliveredAt: j['delivered_at'] != null
+            ? DateTime.parse(j['delivered_at'] as String)
+            : (j['read_at'] != null ? DateTime.parse(j['read_at'] as String) : null),
         status: MessageStatus.sent,
         deleted: j['deleted'] as bool? ?? false,
       );
 
-  ChatMessage copyWith({String? id, DateTime? readAt, MessageStatus? status, bool? deleted}) => ChatMessage(
+  ChatMessage copyWith({
+    String? id,
+    DateTime? readAt,
+    DateTime? deliveredAt,
+    MessageStatus? status,
+    bool? deleted,
+  }) =>
+      ChatMessage(
         id: id ?? this.id,
         matchId: matchId,
         senderId: senderId,
@@ -104,6 +125,7 @@ class ChatMessage {
         body: body,
         createdAt: createdAt,
         readAt: readAt ?? this.readAt,
+        deliveredAt: deliveredAt ?? this.deliveredAt,
         status: status ?? this.status,
         deleted: deleted ?? this.deleted,
       );
