@@ -2,6 +2,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../groups/data/group_models.dart';
 import '../providers/messages_provider.dart';
+import 'chat_routes.dart';
 
 /// Open a conversation from a push or an in-app banner, using the same routing rules as the inbox.
 ///
@@ -30,7 +31,7 @@ void openMessageConversation({
   if (onUnresolved == null) {
     // No way to resolve the kind. The DM route still handles a conversation id correctly
     // server-side; it is only the group chrome that would be missing.
-    router.push('/messages/$conversationId');
+    router.push(dmChatPath(conversationId));
     return;
   }
 
@@ -50,7 +51,7 @@ MessageThread? _find(List<MessageThread>? threads, String conversationId) {
 void _push(GoRouter router, String conversationId, MessageThread? thread) {
   if (thread != null && thread.isGroup) {
     router.push(
-      '/messages/group/${thread.conversationId}',
+      groupChatPath(thread.conversationId),
       extra: GroupChatArgs(
         name: thread.groupName ?? 'Group',
         groupId: thread.groupId,
@@ -59,5 +60,5 @@ void _push(GoRouter router, String conversationId, MessageThread? thread) {
     );
     return;
   }
-  router.push('/messages/$conversationId', extra: thread);
+  router.push(dmChatPath(conversationId), extra: thread);
 }

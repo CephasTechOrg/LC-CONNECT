@@ -12,6 +12,7 @@ import '../../discovery/providers/discovery_provider.dart';
 import '../../messages/providers/messages_provider.dart';
 import '../../messages/providers/staff_messaging_provider.dart';
 import '../providers/profile_provider.dart';
+import '../../messages/utils/chat_routes.dart';
 
 part '../widgets/public_profile_connect_bar.dart';
 part '../widgets/public_profile_staff.dart';
@@ -91,7 +92,7 @@ class _PublicBodyState extends ConsumerState<_PublicBody> {
       if (!mounted) return;
       // This screen sits outside the shell navigator; switching into the messages branch with
       // `push` can lock the navigator during the cross-stack transition. Use `go` here instead.
-      context.go('/messages/${thread.addressingId}', extra: thread);
+      context.go(dmChatPath(thread.addressingId), extra: thread);
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

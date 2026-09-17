@@ -16,6 +16,8 @@ import '../providers/messages_provider.dart';
 import '../providers/staff_messaging_provider.dart';
 import '../providers/unread_provider.dart';
 import '../../groups/data/group_models.dart';
+import '../utils/chat_routes.dart';
+import '../widgets/messages_segments.dart';
 
 class MessagesScreen extends ConsumerStatefulWidget {
   const MessagesScreen({super.key});
@@ -62,7 +64,7 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
       backgroundColor: AppColors.background,
       floatingActionButton: canMessageAnyone
           ? FloatingActionButton(
-              onPressed: () => context.push('/messages/new'),
+              onPressed: () => context.push(newMessagePath),
               backgroundColor: AppColors.primary,
               child: const Icon(Icons.edit_outlined, color: Colors.white),
             )
@@ -71,6 +73,7 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
         child: Column(
           children: [
             const AppShellHeader(title: 'Messages'),
+            const MessagesSegments(active: MessagesSegment.chats),
             // Search only appears once there are conversations to search.
             if ((async.asData?.value ?? const []).isNotEmpty)
               AppSearchField(
@@ -139,10 +142,10 @@ class _ThreadCard extends ConsumerWidget {
 
     return InkWell(
       onTap: () => thread.isGroup
-          ? context.push('/messages/group/${thread.conversationId}',
+          ? context.push(groupChatPath(thread.conversationId),
               extra: GroupChatArgs(
                   name: thread.groupName ?? 'Group', groupId: thread.groupId, avatarUrl: thread.avatarUrl))
-          : context.push('/messages/${thread.addressingId}', extra: thread),
+          : context.push(dmChatPath(thread.addressingId), extra: thread),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         child: Row(

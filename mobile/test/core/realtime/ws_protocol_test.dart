@@ -123,4 +123,61 @@ void main() {
       expect(e.requestId, isNull);
     });
   });
+
+  /// Protocol 2 — the delivered tick (report #21).
+  group('delivery frames', () {
+    test('deliveredFrame carries the boundary, not a message flag', () {
+      final frame = deliveredFrame('conv-1', 'msg-9');
+      expect(frame['type'], 'messages.delivered');
+      expect(frame['conversation_id'], 'conv-1');
+      expect(frame['through_message_id'], 'msg-9');
+    });
+
+    test('parseInbound understands messages.delivery', () {
+      final event = parseInbound({
+        'type': 'messages.delivery',
+        'conversation_id': 'conv-1',
+        'user_id': 'them',
+        'through_message_id': 'msg-9',
+        'delivered_at': '2026-01-01T00:00:00.000Z',
+      });
+
+      expect(event, isA<DeliveryReceipt>());
+      final receipt = event as DeliveryReceipt;
+      expect(receipt.conversationId, 'conv-1');
+      expect(receipt.userId, 'them');
+      expect(receipt.throughMessageId, 'msg-9');
+      expect(receipt.deliveredAt, '2026-01-01T00:00:00.000Z');
+    });
+
+    test('a delivery receipt is not confused with a read receipt', () {
+      // Two ticks now hang off these, and mixing them up shows "read" for a message nobody has
+      // opened — a claim about another person that is simply false.
+      final delivery = parseInbound({
+        'type': 'messages.delivery',
+        'conversation_id': 'c',
+        'user_id': 'u',
+        'through_message_id': 'm',
+        'delivered_at': '2026-01-01T00:00:00.000Z',
+      });
+      final read = parseInbound({
+        'type': 'messages.receipt',
+        'conversation_id': 'c',
+        'user_id': 'u',
+        'through_message_id': 'm',
+        'read_at': '2026-01-01T00:00:00.000Z',
+      });
+
+      expect(delivery, isA<DeliveryReceipt>());
+      expect(delivery, isNot(isA<ReadReceipt>()));
+      expect(read, isA<ReadReceipt>());
+      expect(read, isNot(isA<DeliveryReceipt>()));
+    });
+
+    test('the client advertises protocol 2', () {
+      expect(kProtocolVersion, 2);
+      expect(kDeliveryProtocolVersion, 2);
+      expect(authFrame('tok')['protocol_version'], 2);
+    });
+  });
 }

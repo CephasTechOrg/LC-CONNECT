@@ -1,6 +1,7 @@
 """P1/P2 hardening — edge cases beyond the parity net.
 
 - `mark_read` boundary is forward-only (out-of-order reads can't "un-read")
+- `mark_delivered` boundary is forward-only and idempotent (report #21's delivered tick)
 - `ensure_dm_conversation` is idempotent (never a second conversation / duplicate members)
 - new-match provisioning + the DM block rule at the membership layer
 """
@@ -14,7 +15,7 @@ from sqlalchemy import func, select
 from app.features.groups import service as group_service
 from app.features.groups.schema import GroupCreate
 from app.features.messages.service import unread_summary
-from app.features.realtime.service import mark_read
+from app.features.realtime.service import mark_delivered, mark_read
 from app.models import Conversation, ConversationMember
 from app.shared.conversations import blockable_conversation_ids_between, ensure_dm_conversation
 
@@ -92,3 +93,133 @@ async def test_new_matches_are_provisioned_with_a_conversation(db, factory):
         await db.execute(select(ConversationMember.user_id).where(ConversationMember.conversation_id == conversation.id))
     ).scalars().all()
     assert set(members) == {a.id, b.id}
+
+
+# ── delivery boundary (report #21) ────────────────────────────────────────────
+#
+# The client re-sends boundaries after every reconnect, and the socket is torn down on every app
+# background — so "an acknowledgement arrives twice, or out of order" is the normal case here,
+# not an edge case. These pin exactly that.
+
+async def _delivered_id(db, conversation_id, user_id):
+    return (
+        await db.execute(
+            select(ConversationMember.last_delivered_message_id).where(
+                ConversationMember.conversation_id == conversation_id,
+                ConversationMember.user_id == user_id,
+            )
+        )
+    ).scalar_one()
+
+
+async def test_mark_delivered_advances_the_boundary(db, factory):
+    a = await factory.user(display_name='A')
+    b = await factory.user(display_name='B')
+    match = await factory.match(a, b)
+    msgs = [await factory.message(match, a, f'm{i}', created_at=BASE + timedelta(minutes=i))
+            for i in range(3)]
+    conversation_id = (
+        await db.execute(select(Conversation.id).where(Conversation.match_id == match.id))
+    ).scalar_one()
+
+    assert await _delivered_id(db, conversation_id, b.id) is None, 'nothing acknowledged yet'
+
+    await mark_delivered(db, recipient_id=b.id, match_id=match.id, through_message_id=msgs[2].id)
+
+    assert await _delivered_id(db, conversation_id, b.id) == msgs[2].id
+
+
+async def test_mark_delivered_boundary_only_moves_forward(db, factory):
+    a = await factory.user(display_name='A')
+    b = await factory.user(display_name='B')
+    match = await factory.match(a, b)
+    msgs = [await factory.message(match, a, f'm{i}', created_at=BASE + timedelta(minutes=i))
+            for i in range(5)]
+    conversation_id = (
+        await db.execute(select(Conversation.id).where(Conversation.match_id == match.id))
+    ).scalar_one()
+
+    await mark_delivered(db, recipient_id=b.id, match_id=match.id, through_message_id=msgs[3].id)
+    # An older acknowledgement arriving late must not "un-deliver" m2 and m3.
+    await mark_delivered(db, recipient_id=b.id, match_id=match.id, through_message_id=msgs[1].id)
+
+    assert await _delivered_id(db, conversation_id, b.id) == msgs[3].id
+
+
+async def test_mark_delivered_is_idempotent(db, factory):
+    a = await factory.user(display_name='A')
+    b = await factory.user(display_name='B')
+    match = await factory.match(a, b)
+    msg = await factory.message(match, a, 'm', created_at=BASE)
+    conversation_id = (
+        await db.execute(select(Conversation.id).where(Conversation.match_id == match.id))
+    ).scalar_one()
+
+    for _ in range(3):
+        await mark_delivered(db, recipient_id=b.id, match_id=match.id, through_message_id=msg.id)
+
+    assert await _delivered_id(db, conversation_id, b.id) == msg.id
+
+
+async def test_mark_delivered_ignores_a_message_from_another_conversation(db, factory):
+    a = await factory.user(display_name='A')
+    b = await factory.user(display_name='B')
+    c = await factory.user(display_name='C')
+    match_ab = await factory.match(a, b)
+    match_ac = await factory.match(a, c)
+    elsewhere = await factory.message(match_ac, a, 'not yours', created_at=BASE)
+    conversation_ab = (
+        await db.execute(select(Conversation.id).where(Conversation.match_id == match_ab.id))
+    ).scalar_one()
+
+    # A cross-conversation cursor would otherwise set a boundary to a message the member cannot
+    # even see, and the comparison against it on the next advance would be meaningless.
+    result = await mark_delivered(
+        db, recipient_id=b.id, match_id=match_ab.id, through_message_id=elsewhere.id
+    )
+
+    assert result is None
+    assert await _delivered_id(db, conversation_ab, b.id) is None
+
+
+async def test_mark_delivered_ignores_a_non_member(db, factory):
+    a = await factory.user(display_name='A')
+    b = await factory.user(display_name='B')
+    outsider = await factory.user(display_name='Outsider')
+    match = await factory.match(a, b)
+    msg = await factory.message(match, a, 'm', created_at=BASE)
+
+    assert await mark_delivered(
+        db, recipient_id=outsider.id, match_id=match.id, through_message_id=msg.id
+    ) is None
+
+
+async def test_delivery_and_read_boundaries_are_independent(db, factory):
+    """The two share `_advance_boundary`, so a bug there could cross them — which would either
+    mark messages read on delivery (destroying unread counts) or hold the read tick back."""
+    a = await factory.user(display_name='A')
+    b = await factory.user(display_name='B')
+    match = await factory.match(a, b)
+    msgs = [await factory.message(match, a, f'm{i}', created_at=BASE + timedelta(minutes=i))
+            for i in range(3)]
+    conversation_id = (
+        await db.execute(select(Conversation.id).where(Conversation.match_id == match.id))
+    ).scalar_one()
+
+    # Delivered everything, read only the first — the normal state for an unopened chat.
+    await mark_delivered(db, recipient_id=b.id, match_id=match.id, through_message_id=msgs[2].id)
+    await mark_read(db, reader_id=b.id, match_id=match.id, through_message_id=msgs[0].id)
+
+    member = (
+        await db.execute(
+            select(ConversationMember).where(
+                ConversationMember.conversation_id == conversation_id,
+                ConversationMember.user_id == b.id,
+            )
+        )
+    ).scalar_one()
+    assert member.last_delivered_message_id == msgs[2].id
+    assert member.last_read_message_id == msgs[0].id
+
+    total, _ = await unread_summary(db, b.id)
+    assert total == 2, 'delivery must not mark anything read'

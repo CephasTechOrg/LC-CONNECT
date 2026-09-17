@@ -50,6 +50,17 @@ class ConversationMember(Base):
     last_read_message_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey('messages.id', ondelete='SET NULL'), nullable=True
     )
+    # Per-member delivery boundary — "this member's device has everything up to here". Same
+    # shape and same reasoning as the read boundary above, and for the same reason it is not a
+    # column on `messages`: one column cannot say *who* has it.
+    #
+    # Also deliberately not a `message_deliveries` table: that is messages x members rows for a
+    # cosmetic tick, where a boundary is O(members). Advanced only by an explicit client
+    # acknowledgement (`messages.delivered`), never by the server's own fan-out — an enqueue to a
+    # half-open socket is not a delivery.
+    last_delivered_message_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey('messages.id', ondelete='SET NULL'), nullable=True
+    )
     muted: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     joined_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 

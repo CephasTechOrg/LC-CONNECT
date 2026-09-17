@@ -15,7 +15,6 @@ import '../../notifications/widgets/notifications_bell_button.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../campus_hub/widgets/staff_student_directory.dart';
 import '../../connections/widgets/connection_requests_button.dart';
-import '../../groups/widgets/groups_panel.dart';
 import '../providers/discovery_provider.dart';
 import '../../safety/providers/safety_provider.dart';
 import '../../safety/widgets/safety_sheet.dart';
@@ -32,7 +31,11 @@ const _filters = [
   ('open_connection', 'Open Connection'),
 ];
 
-const _tabs = ['Students', 'Study Partners', 'Groups'];
+// Groups moved to the Messages hub (report #19): here they sat behind a header reading
+// "Connect" — which is why testers described them as being in Connections — four levels of
+// chrome deep, and unreachable entirely for staff, since this screen returns the staff
+// directory outright for any non-student role. '/discover?tab=groups' now redirects.
+const _tabs = ['Students', 'Study Partners'];
 
 class DiscoveryScreen extends ConsumerStatefulWidget {
   const DiscoveryScreen({super.key});
@@ -60,7 +63,7 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
     if (tabParam == _lastQueryTab) return;
     _lastQueryTab = tabParam;
     final next = switch (tabParam) {
-      'groups' => 'Groups',
+      // 'groups' is absent deliberately: the route redirects it to the Messages hub.
       'study' || 'study_partners' || 'studypartners' => 'Study Partners',
       'students' => 'Students',
       _ => null,
@@ -124,32 +127,28 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
           children: [
             _buildHeader(),
             _buildSegmentTabs(),
-            if (_tab == 'Groups')
-              const Expanded(child: GroupsPanel())
-            else ...[
-              const SizedBox(height: 12),
-              _buildSearchBar(),
-              const SizedBox(height: 12),
-              _buildFilterRow(),
-              const SizedBox(height: 12),
-              Expanded(
-                child: discoveryState.when(
-                  loading: () => const AppListSkeleton(count: 2),
-                  error: (e, _) => _buildError(),
-                  data: (cards) {
-                    final filtered = _applyFilters(cards);
-                    return RefreshIndicator(
-                      color: AppColors.primary,
-                      onRefresh: () =>
-                          ref.refresh(discoveryNotifierProvider.future),
-                      child: filtered.isEmpty
-                          ? _buildEmpty()
-                          : _buildList(filtered),
-                    );
-                  },
-                ),
+            const SizedBox(height: 12),
+            _buildSearchBar(),
+            const SizedBox(height: 12),
+            _buildFilterRow(),
+            const SizedBox(height: 12),
+            Expanded(
+              child: discoveryState.when(
+                loading: () => const AppListSkeleton(count: 2),
+                error: (e, _) => _buildError(),
+                data: (cards) {
+                  final filtered = _applyFilters(cards);
+                  return RefreshIndicator(
+                    color: AppColors.primary,
+                    onRefresh: () =>
+                        ref.refresh(discoveryNotifierProvider.future),
+                    child: filtered.isEmpty
+                        ? _buildEmpty()
+                        : _buildList(filtered),
+                  );
+                },
               ),
-            ],
+            ),
           ],
         ),
       ),
@@ -159,7 +158,7 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
   Widget _buildHeader() {
     return AppShellHeader(
       title: 'Connect',
-      subtitle: 'Students, study partners & groups at Livingstone',
+      subtitle: 'Students & study partners at Livingstone',
       trailing: const Row(
         mainAxisSize: MainAxisSize.min,
         children: [

@@ -7,6 +7,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
 import '../data/group_models.dart';
 import '../providers/groups_provider.dart';
+import '../../messages/utils/chat_routes.dart';
 
 /// A quick-access strip of the groups you're in, at the top of the Groups panel. Tapping one
 /// opens its chat. Renders nothing until you've joined at least one group.
@@ -28,7 +29,7 @@ class _YourGroupsSectionState extends ConsumerState<YourGroupsSection> {
       final full = await ref.read(groupsRepositoryProvider).get(group.id);
       if (!mounted) return;
       context.push(
-        '/messages/group/${full.conversationId}',
+        groupChatPath(full.conversationId),
         extra: GroupChatArgs(name: full.name, groupId: full.id, avatarUrl: full.avatarUrl),
       );
     } catch (_) {

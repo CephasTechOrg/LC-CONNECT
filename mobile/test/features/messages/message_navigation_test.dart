@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lc_connect/features/groups/data/group_models.dart';
 import 'package:lc_connect/features/messages/providers/messages_provider.dart';
+import 'package:lc_connect/features/messages/utils/chat_routes.dart';
 import 'package:lc_connect/features/messages/utils/message_navigation.dart';
 
 /// Opening a conversation from a notification has to decide DM vs group, and that decision was
@@ -27,16 +28,21 @@ void main() {
   );
 
   /// A router with stub destinations, so we assert routing rather than screen rendering.
+  ///
+  /// The paths come from `chat_routes.dart` rather than being written out again here: when chat
+  /// moved out of the navigation shell, a literal copy of the route table in this file was the
+  /// only thing that broke, and it broke silently in the sense that the test was asserting a
+  /// location the app no longer navigates to.
   Future<GoRouter> pumpRouter(WidgetTester tester) async {
     final router = GoRouter(
-      initialLocation: '/messages',
+      initialLocation: messagesPath,
       routes: [
-        GoRoute(path: '/messages', builder: (_, _) => const Text('inbox')),
+        GoRoute(path: messagesPath, builder: (_, _) => const Text('inbox')),
         GoRoute(
-          path: '/messages/group/:conversationId',
+          path: '/chat/group/:conversationId',
           builder: (_, _) => const Text('group chat'),
         ),
-        GoRoute(path: '/messages/:matchId', builder: (_, _) => const Text('dm chat')),
+        GoRoute(path: '/chat/:matchId', builder: (_, _) => const Text('dm chat')),
       ],
     );
     await tester.pumpWidget(MaterialApp.router(routerConfig: router));
@@ -55,7 +61,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(router.state.matchedLocation, '/messages/group/conv-group');
+    expect(router.state.matchedLocation, groupChatPath('conv-group'));
     expect(router.state.extra, isA<GroupChatArgs>());
     expect((router.state.extra as GroupChatArgs).groupId, 'grp-1');
     expect((router.state.extra as GroupChatArgs).name, 'Study Crew');
@@ -71,7 +77,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(router.state.matchedLocation, '/messages/match-1');
+    expect(router.state.matchedLocation, dmChatPath('match-1'));
   });
 
   testWidgets('an unloaded inbox is fetched rather than assumed to be a DM', (tester) async {
@@ -90,8 +96,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(fetched, 1);
-    // The regression: this used to land on '/messages/conv-group' as a DM.
-    expect(router.state.matchedLocation, '/messages/group/conv-group');
+    // The regression: this used to land on the DM route for a group conversation.
+    expect(router.state.matchedLocation, groupChatPath('conv-group'));
   });
 
   testWidgets('a failed fetch still opens something rather than dropping the tap',
@@ -107,7 +113,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // Better a DM-shaped screen for the right conversation than a tap that does nothing.
-    expect(router.state.matchedLocation, '/messages/conv-unknown');
+    expect(router.state.matchedLocation, dmChatPath('conv-unknown'));
   });
 
   testWidgets('with no resolver available it falls back immediately', (tester) async {
@@ -116,7 +122,7 @@ void main() {
     openMessageConversation(router: router, conversationId: 'conv-x', threads: null);
     await tester.pumpAndSettle();
 
-    expect(router.state.matchedLocation, '/messages/conv-x');
+    expect(router.state.matchedLocation, dmChatPath('conv-x'));
   });
 
   testWidgets('a conversation missing from a loaded inbox does not match another thread',
@@ -130,6 +136,6 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(router.state.matchedLocation, '/messages/conv-absent');
+    expect(router.state.matchedLocation, dmChatPath('conv-absent'));
   });
 }

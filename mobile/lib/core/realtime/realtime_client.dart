@@ -77,6 +77,21 @@ class RealtimeClient {
   /// Server-advertised keepalive interval, from `auth.ok`.
   Duration _heartbeat = const Duration(seconds: 25);
 
+  /// The protocol version the *server* advertised on the last `auth.ok`.
+  ///
+  /// The client's own [kProtocolVersion] says what it can speak; this says what the peer
+  /// understands, and during a staged rollout those differ. A new client reaches TestFlight
+  /// before — or alongside — the API deploy, and sending a frame the server has never heard of
+  /// is not free: it answers `unsupported_frame`, and before the gateway told that apart from a
+  /// malformed frame it spent the abuse budget and closed with 4429, which the client retries,
+  /// which bans it again. Gate new frames on [supportsProtocol] instead of hoping.
+  ///
+  /// Only read through [serverProtocolVersion], which reports zero unless the socket is `ready`
+  /// — there are two ways to lose a socket (`_onClosed` on a drop, `_teardown` on suspend and
+  /// logout) and a negotiated version that outlived either would gate a new frame open against
+  /// a server that never agreed to it. Deriving it from readiness leaves no reset to forget.
+  int _negotiatedProtocolVersion = 0;
+
   /// Heartbeat intervals elapsed with no inbound frame at all. Counting ticks rather than
   /// comparing timestamps keeps this independent of the wall clock.
   int _silentIntervals = 0;
@@ -100,6 +115,20 @@ class RealtimeClient {
 
   /// Queued `message.send` frames waiting for the socket to reach `ready`.
   ValueListenable<int> get outboxCount => _outboxCount;
+
+  /// What the connected server understands — see [_negotiatedProtocolVersion].
+  ///
+  /// Zero unless a socket is up and authenticated: nothing has been negotiated, so nothing is
+  /// supported. Zero rather than [kProtocolVersion], because assuming the peer speaks whatever
+  /// this build speaks is the mistake.
+  int get serverProtocolVersion =>
+      _status.value == RealtimeStatus.ready ? _negotiatedProtocolVersion : 0;
+
+  /// Whether the connected server understands frames introduced in protocol [version].
+  ///
+  /// Every frame added after v1 must be gated on this, so an unsupported feature degrades to
+  /// "not on this connection" rather than being written into a void.
+  bool supportsProtocol(int version) => serverProtocolVersion >= version;
 
   Stream<InboundEvent> get events => _events.stream;
 
@@ -163,6 +192,7 @@ class RealtimeClient {
       final wasReconnect = _hadConnection;
       _hadConnection = true;
       _status.value = RealtimeStatus.ready;
+      _negotiatedProtocolVersion = event.protocolVersion;
       _startHeartbeat(event.heartbeatSeconds);
       for (final conversationId in _subscriptions) {
         _sink(subscribeFrame(uuidV4(_random), conversationId));
@@ -310,6 +340,18 @@ class RealtimeClient {
   void sendTyping(String conversationId, {required bool active}) => _sink(typingFrame(conversationId, active: active));
 
   void markRead(String conversationId, String throughMessageId) => _sink(readFrame(conversationId, throughMessageId));
+
+  /// Acknowledge receipt up to [throughMessageId], so the sender can show a delivered tick.
+  ///
+  /// Returns whether the frame was sent. Gated on the *server's* protocol version: a v1 instance
+  /// would answer `unsupported_frame`, and during a staged rollout this build routinely meets
+  /// one. The caller uses the result to decide whether delivery state is available on this
+  /// connection at all, rather than waiting for a tick that is never coming.
+  bool markDelivered(String conversationId, String throughMessageId) {
+    if (!supportsProtocol(kDeliveryProtocolVersion)) return false;
+    _sink(deliveredFrame(conversationId, throughMessageId));
+    return true;
+  }
 
   void _sink(Map<String, dynamic> frame) {
     if (_status.value == RealtimeStatus.ready || frame['type'] == 'auth') {

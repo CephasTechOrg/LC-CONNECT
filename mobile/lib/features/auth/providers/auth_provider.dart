@@ -6,6 +6,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/api/api_client.dart';
 import '../data/duplicate_signup.dart';
 import 'suspension_provider.dart';
+import '../../messages/data/chat_draft_store.dart';
+import '../../messages/data/chat_message_cache.dart';
 
 class AuthUser {
   final String id;
@@ -364,9 +366,25 @@ class AuthNotifier extends AsyncNotifier<AuthUser?> {
     _pendingEmail = null;
     _pendingContactEmail = null;
     ref.read(suspendedSessionProvider.notifier).set(null);
+    await _clearLocalChatData();
     await _auth.signOut();
     state = const AsyncLoading();
     state = const AsyncData(null);
+  }
+
+  /// Drops locally stored conversation content on the way out.
+  ///
+  /// Both stores are on-device only and neither was being cleared: signing out left cached
+  /// message bodies and unsent drafts on disk for the next person to sign in. That matters on
+  /// shared campus devices, and an unsent draft is the most private thing in the feature — it was
+  /// never shown to anyone.
+  ///
+  /// Awaited before `signOut` so the deletion cannot be cut short by the teardown that follows,
+  /// and each store swallows its own failures so a cleanup problem can never trap a user in a
+  /// session they are trying to leave.
+  Future<void> _clearLocalChatData() async {
+    await ref.read(chatDraftStoreProvider).clearAll();
+    await ref.read(chatMessageCacheProvider).clearAll();
   }
 
   /// Leave the verify-email gate and return to login/register.

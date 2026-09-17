@@ -7,7 +7,7 @@ part of '../screens/chat_screen.dart';
 /// red and then quietly delivered — the "sometimes it fails, sometimes it takes a while" report.
 /// Here a timeout means *escalate*, not *fail*: the REST route is idempotent on
 /// `client_message_id`, so the two paths can race without ever duplicating a message.
-mixin _ChatSendLogic on _ChatScreenStateBase {
+mixin _ChatSendLogic on _ChatScreenStateBase, _ChatDraftLogic {
   // Implemented by _ChatScreenLogic, which is mixed in after this one.
   void scheduleCacheSave();
   void scrollToBottom({bool jump, bool force});
@@ -18,6 +18,11 @@ mixin _ChatSendLogic on _ChatScreenStateBase {
     final text = inputController.text.trim();
     if (text.isEmpty) return;
     inputController.clear();
+    // Cleared here rather than on the server ack: the text is already in the message list as an
+    // optimistic row, so a draft holding it too would restore it into the composer alongside the
+    // message the user can already see. A send that later fails keeps its Retry affordance on
+    // that row, which is where the text lives now.
+    clearDraft();
     typingStopTimer?.cancel();
     rt.sendTyping(widget.matchId, active: false);
     final clientId = uuidV4();

@@ -9,6 +9,7 @@ import '../../../shared/widgets/app_filter_chip.dart';
 import '../../../shared/widgets/app_states.dart';
 import '../../messages/providers/staff_messaging_provider.dart';
 import '../providers/campus_directory_provider.dart';
+import '../../messages/utils/chat_routes.dart';
 
 class CampusDirectoryScreen extends ConsumerStatefulWidget {
   const CampusDirectoryScreen({super.key});
@@ -85,7 +86,7 @@ class _CampusDirectoryScreenState extends ConsumerState<CampusDirectoryScreen> {
                   color: AppColors.primarySoft,
                   borderRadius: BorderRadius.circular(12),
                   child: InkWell(
-                    onTap: () => context.push('/messages/new'),
+                    onTap: () => context.push(newMessagePath),
                     borderRadius: BorderRadius.circular(12),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -176,7 +177,7 @@ class _CampusDirectoryScreenState extends ConsumerState<CampusDirectoryScreen> {
                           ? 'Directory lists other staff. To reach a student, start a new message.'
                           : 'Try another category or search term.',
                       actionLabel: canMessageAnyone ? 'Message a student' : null,
-                      onAction: canMessageAnyone ? () => context.push('/messages/new') : null,
+                      onAction: canMessageAnyone ? () => context.push(newMessagePath) : null,
                     );
                   }
                   return ListView.separated(

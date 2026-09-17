@@ -22,6 +22,7 @@ import '../../safety/providers/safety_provider.dart';
 import '../../safety/widgets/safety_sheet.dart';
 import '../providers/messages_provider.dart';
 import '../providers/unread_provider.dart';
+import '../data/chat_draft_store.dart';
 import '../data/chat_message_cache.dart';
 
 part '../widgets/chat_header.dart';
@@ -30,6 +31,7 @@ part '../widgets/chat_bubble.dart';
 part '../widgets/chat_input.dart';
 part '../widgets/chat_unavailable.dart';
 part '../widgets/chat_screen_body.dart';
+part '../widgets/chat_draft_logic.dart';
 part '../widgets/chat_send_logic.dart';
 part '../widgets/chat_screen_logic.dart';
 
@@ -136,7 +138,8 @@ abstract class _ChatScreenStateBase extends ConsumerState<ChatScreen> {
   }
 }
 
-class _ChatScreenState extends _ChatScreenStateBase with _ChatSendLogic, _ChatScreenLogic {
+class _ChatScreenState extends _ChatScreenStateBase
+    with _ChatDraftLogic, _ChatSendLogic, _ChatScreenLogic, WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
@@ -147,6 +150,12 @@ class _ChatScreenState extends _ChatScreenStateBase with _ChatSendLogic, _ChatSc
       loading = false;
       return;
     }
+    // Backgrounding is the case `dispose` cannot cover: the OS may reclaim the app without ever
+    // unwinding the tree, so an unsaved draft would be lost exactly when the user expects it to
+    // survive. See [_ChatDraftLogic].
+    WidgetsBinding.instance.addObserver(this);
+    initDraftLogic();
+    loadDraft();
     // Must run after the first frame — Riverpod forbids notifier writes during build.
     Future.microtask(() {
       if (!mounted) return;
@@ -161,7 +170,15 @@ class _ChatScreenState extends _ChatScreenStateBase with _ChatSendLogic, _ChatSc
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.detached) flushDraft();
+  }
+
+  @override
   void dispose() {
+    // Before `disposed = true`: the flush reads the controller, which is still alive here.
+    disposeDraftLogic();
+    WidgetsBinding.instance.removeObserver(this);
     disposed = true;
     if (validThread) {
       // Deferred: Riverpod forbids writing to a provider during a widget life-cycle, and

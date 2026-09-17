@@ -15,7 +15,10 @@ from pydantic import BaseModel, Field, TypeAdapter, field_validator
 from app.models import Message
 
 MAX_BODY_CHARS = 2000
-PROTOCOL_VERSION = 1
+# 2 adds `messages.delivered` (inbound) and `messages.delivery` (outbound). A client learns the
+# server's version from `auth.ok` and gates new frames on it, so a v1 server meeting a v2 client
+# answers `unsupported_frame` at worst — and no longer spends the abuse budget doing so.
+PROTOCOL_VERSION = 2
 
 
 # ── Error + close codes ───────────────────────────────────────────────────────
@@ -25,6 +28,11 @@ class ErrorCode:
     AUTH_FAILED = 'auth_failed'
     FORBIDDEN = 'forbidden'
     INVALID_FRAME = 'invalid_frame'
+    # A well-formed frame whose `type` this server does not know — a version mismatch, not abuse.
+    # Kept distinct from INVALID_FRAME because the gateway must NOT charge it to the abuse budget:
+    # doing so banned any client that sent a newer frame type, and the client then reconnected and
+    # sent it again. See `gateway._tolerate_unsupported`.
+    UNSUPPORTED_FRAME = 'unsupported_frame'
     FRAME_TOO_LARGE = 'frame_too_large'
     RATE_LIMITED = 'rate_limited'
     NOT_SUBSCRIBED = 'not_subscribed'
@@ -105,9 +113,27 @@ class ReadFrame(BaseModel):
     through_message_id: UUID
 
 
+class DeliveredFrame(BaseModel):
+    """The recipient's device has the message (protocol 2).
+
+    Deliberately client-driven, and deliberately not inferred from the server's own fan-out:
+    `deliver_to_conversation` enqueues to each live connection, but an enqueue to a half-open
+    socket is not a delivery — writes to one succeed silently while nothing arrives, which is why
+    the client detects half-open sockets at all. Only the client can say it has the message.
+
+    Symmetric with [ReadFrame] in shape and in semantics: a monotonic per-member boundary, so a
+    re-sent or out-of-order acknowledgement is a no-op rather than a regression. That matters
+    because the client re-sends boundaries after a reconnect.
+    """
+
+    type: Literal['messages.delivered']
+    conversation_id: UUID
+    through_message_id: UUID
+
+
 InboundFrame = Annotated[
     AuthFrame | SubscribeFrame | UnsubscribeFrame | SendFrame | TypingStartFrame | TypingStopFrame
-    | ReadFrame | PingFrame,
+    | ReadFrame | DeliveredFrame | PingFrame,
     Field(discriminator='type'),
 ]
 
@@ -117,6 +143,40 @@ _inbound_adapter: TypeAdapter[InboundFrame] = TypeAdapter(InboundFrame)
 def parse_inbound(raw: Any) -> InboundFrame:
     """Validate a decoded JSON object into a typed frame. Raises ValidationError."""
     return _inbound_adapter.validate_python(raw)
+
+
+# Every `type` this server understands, read off the union itself so it can never drift from it.
+KNOWN_INBOUND_TYPES: frozenset[str] = frozenset(
+    member.model_fields['type'].annotation.__args__[0]  # Literal['...'] → '...'
+    for member in (
+        AuthFrame,
+        SubscribeFrame,
+        UnsubscribeFrame,
+        SendFrame,
+        TypingStartFrame,
+        TypingStopFrame,
+        ReadFrame,
+        DeliveredFrame,
+        PingFrame,
+    )
+)
+
+
+def is_unsupported_type(raw: Any) -> bool:
+    """Whether a decoded frame carries a `type` this server does not implement.
+
+    The distinction matters because the two failures deserve opposite treatment. A frame with an
+    unknown `type` is a **newer client talking to an older server** — expected during any staged
+    rollout, and harmless. A frame with a *known* type but invalid fields is a client bug or an
+    attack, and belongs on the abuse budget.
+
+    Both arrive as the same `ValidationError` from a discriminated union, so the gateway asks this
+    to tell them apart.
+    """
+    if not isinstance(raw, dict):
+        return False  # not even an object — malformed, not a version mismatch
+    frame_type = raw.get('type')
+    return isinstance(frame_type, str) and frame_type not in KNOWN_INBOUND_TYPES
 
 
 # ── Outbound builders ─────────────────────────────────────────────────────────
@@ -208,6 +268,20 @@ def read_receipt(
         'user_id': str(user_id),
         'through_message_id': str(through_message_id),
         'read_at': read_at_iso,
+    }
+
+
+def delivery_receipt(
+    conversation_id: UUID | str, user_id: UUID, through_message_id: UUID, delivered_at_iso: str
+) -> dict[str, Any]:
+    """Conversation-channel event: `user_id`'s device now has everything up to
+    `through_message_id`. Mirrors [read_receipt]; the sender renders it as the second tick."""
+    return {
+        'type': 'messages.delivery',
+        'conversation_id': str(conversation_id),
+        'user_id': str(user_id),
+        'through_message_id': str(through_message_id),
+        'delivered_at': delivered_at_iso,
     }
 
 

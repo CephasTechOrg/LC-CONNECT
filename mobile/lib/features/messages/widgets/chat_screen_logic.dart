@@ -1,6 +1,6 @@
 part of '../screens/chat_screen.dart';
 
-mixin _ChatScreenLogic on _ChatScreenStateBase, _ChatSendLogic {
+mixin _ChatScreenLogic on _ChatScreenStateBase, _ChatDraftLogic, _ChatSendLogic {
   Future<void> loadInitial() async {
     if (!validThread) return;
     final cached = await ref.read(chatMessageCacheProvider).load(widget.matchId);
@@ -245,6 +245,10 @@ mixin _ChatScreenLogic on _ChatScreenStateBase, _ChatSendLogic {
   }
 
   void onUserTyping() {
+    // The composer's `onChanged` discards the text, and threading a second callback down through
+    // _ChatScreenBody and _InputBar to recover it would be three signatures wide. The screen owns
+    // the controller, so it reads the text here instead. Debounced inside [onDraftChanged].
+    onDraftChanged(inputController.text);
     final now = DateTime.now();
     if (now.difference(lastTypingSent).inMilliseconds > 1500) {
       lastTypingSent = now;

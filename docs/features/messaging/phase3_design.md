@@ -337,14 +337,119 @@ defaults.
 
 The sequence to implement, each step leaving the suite green:
 
-| # | Change | Surface |
-|---|---|---|
-| 1 | Unsupported-frame handling split from malformed; client retains `protocol_version` | be + fe |
-| 2 | Cache envelope `{v, messages}` with a tolerant reader | fe |
-| 3 | Chat routes to top level; `/messages` → `Chats \| Groups`; legacy redirects | fe |
-| 4 | `ChatDraftStore` | fe |
-| 5 | `last_delivered_message_id` + `messages.delivered` / `messages.delivery` frames; `PROTOCOL_VERSION` → 2 | be |
-| 6 | Delivered tick, stronger contrast, conversation-row state, group "read by" | fe |
+| # | Change | Surface | Status |
+|---|---|---|---|
+| 1 | Unsupported-frame handling split from malformed; client retains `protocol_version` | be + fe | **done** |
+| 2 | Cache envelope `{v, messages}` with a tolerant reader | fe | **done** |
+| 3 | Chat routes to top level; `/messages` → `Chats \| Groups`; legacy redirects | fe | **done** |
+| 4 | `ChatDraftStore` | fe | **done** |
+| 5 | `last_delivered_message_id` + `messages.delivered` / `messages.delivery` frames; `PROTOCOL_VERSION` → 2 | be + fe | **done** (wire only; UI is step 6) |
+| 6 | Delivered tick, stronger contrast, conversation-row state, group "read by" | fe | — |
+
+**Step 1, as landed.** `protocol.py` gained `ErrorCode.UNSUPPORTED_FRAME` plus
+`KNOWN_INBOUND_TYPES`, derived from the inbound union's own members so the set cannot drift from the
+frames the gateway actually accepts, and `is_unsupported_type(raw)`. The gateway checks it *before*
+`_tolerate_malformed`, so an unrecognised `type` gets an error frame and spends nothing from the
+abuse budget — previously the eleventh such frame in 60s closed the socket with 4429, which the
+client retried, earning another ban. `tests/test_realtime_gateway.py` covers the split both ways and
+asserts 20 unknown frames leave the socket usable.
+
+Client-side, `RealtimeClient.serverProtocolVersion` and `supportsProtocol(int)` expose what the peer
+agreed to. The value is **derived from `status == ready`** rather than reset on disconnect: a socket
+is lost through two different paths (`_onClosed` on a drop, `_teardown` on suspend/logout) and a test
+caught the drop path keeping a stale `2`, so readiness governs and there is no reset to forget.
+A server that omits the field reads as v1; a socket that has not authenticated reads as 0, never as
+`kProtocolVersion`.
+
+**Step 2, as landed.** `chat_message_cache.dart` writes `{v, messages}` behind
+`chatCacheFormatVersion`, and the reader distinguishes three cases rather than two: a bare array is
+the legacy format and still loads (an upgrading user keeps their history), a version *newer* than
+this build is discarded unread (a TestFlight rollback is a real occurrence, and a mis-parse is
+strictly worse than a refetch), and a map with no `v` at all is not something any build wrote, so it
+is discarded too.
+
+Two tolerance fixes came with it, both for damage that previously cost the entire 150-message tail:
+an unreadable row is now skipped individually, and an unknown `status` name reads as `sent` instead
+of throwing out of `MessageStatus.values.byName`. The second is not hypothetical — step 6 adds
+`delivered`, and a rollback would meet exactly that name. `sent` understates a message's progress
+without ever claiming it failed, which is the right direction to be wrong in.
+
+**Step 3, as landed.** Conversations are now `/chat/:matchId` and `/chat/group/:conversationId`
+at top level; `/messages` is the hub with a `Chats | Groups` switch and `/messages/groups` as a real
+nested route. Both legacy conversation locations and `/discover?tab=groups` redirect.
+
+Three things came out of doing it that the design had not called:
+
+* **Ten inline path literals across seven features** were what made this a shim rather than a
+  rename. They now live in `features/messages/utils/chat_routes.dart`, so the next move is one edit.
+  The navigation test had its own copy of the old route table, which is the kind of duplicate that
+  keeps passing while asserting a location the app no longer visits — it imports the helpers now.
+* **The route table was untestable.** It lived inline in `routerProvider`, which needs the auth
+  notifier, which needs an initialised Supabase client. Extracting `appRoutes()` into
+  `core/router/app_routes.dart` makes the *shape* assertable without building a screen:
+  `GoRouter(routes: appRoutes()).configuration.findMatch(uri)` resolves a location with no
+  BuildContext, no providers and no pumping. `test/core/router/route_table_test.dart` now states
+  "a conversation is not inside the shell" as a property, which no widget test can express — it can
+  only show that one screen currently happens to have no nav bar. It also halved `app_router.dart`,
+  from 410 lines to 193.
+* **The segment control missed the 44dp tap target by one pixel** at 43, because the height was an
+  artifact of padding plus font metrics. It is a `BoxConstraints(minHeight: 44)` floor now, which
+  also survives a larger text scale. The Discovery segments it was modelled on are 34dp and still
+  are; that is a separate fix for the Phase 4 a11y sweep.
+
+**Step 4, as landed.** `ChatDraftStore` writes one versioned JSON file per conversation under
+`<appDocs>/chat_drafts/`, debounced 500ms on change and flushed on both `dispose` and
+`AppLifecycleState.paused`. `draftPruneProvider` runs the 30-day prune once per launch.
+
+Three deviations and one bug worth recording:
+
+* **Keyed on the addressing id, not the canonical `conversation_id`** — §2.4 asked for the latter,
+  but it is not known on a cold deep link (`thread` is null there), and keying on it only when
+  available would give one conversation two different keys depending on how the user arrived. One
+  stable key beats a sometimes-better one. The cost is deferred, not avoided: if DM addressing ever
+  moves to `conversation_id`, existing drafts need a one-time rename or they orphan and prune out.
+* **Logout cleared nothing at all.** §2.4 says "deleted on logout", and the review said to "extend
+  the existing teardown" — there was no teardown. Signing out left both the drafts *and* the cached
+  message tails on disk for whoever signed in next, which matters on shared campus devices.
+  `_clearLocalChatData()` now clears both before `signOut`, and `ChatMessageCache.clearAll()` exists
+  for the second half of that.
+* **`flushDraft` threw on every `dispose`.** It read the store through `ref.read`, which Riverpod
+  forbids during the tree's finalize pass — so the flush failed in the single commonest case the
+  feature exists for (leaving the conversation mid-sentence), and took the timer cancellation below
+  it down with it. The store is captured in `initState` now, the way the unread notifier already
+  was for exactly this reason. A widget test found it; the unit tests could not have.
+* **The widget test needs an in-memory store double**, not a temp directory: `testWidgets` runs in a
+  fake-async zone where a real `dart:io` future never completes, and the first version of the file
+  hung on its first `await store.load(...)`. The real I/O is covered separately by 19 unit tests.
+
+**Step 5, as landed.** `conversation_members.last_delivered_message_id` (migration
+`f2b3c4d5e6a7`), `mark_delivered`, the `messages.delivered` / `messages.delivery` frame pair, and
+`PROTOCOL_VERSION` → 2 on both sides. `RealtimeClient.markDelivered` is gated on
+`supportsProtocol(2)` and **returns whether it sent**, so step 6 can present delivery as
+unavailable on a v1 connection rather than render a tick that never arrives.
+
+* **The monotonic advance is now shared.** `mark_read` and `mark_delivered` need identical
+  forward-only semantics, and writing the `(created_at, id)` comparison twice is two places for it
+  to be subtly wrong — `_advance_boundary(db, member, field, cursor)` is the one copy, with
+  `_cursor_for` and `_member_for` beside it. `mark_read` was refactored onto it and its DB tests
+  still pass unchanged, which is the useful signal.
+* **The handlers stayed separate.** `_on_delivered` duplicates `_on_read`'s shape rather than
+  sharing a parameterised handler, because the two are only *currently* alike: read has a
+  display-only mirror on `messages` and drives unread counts, delivery has neither, and reactions
+  and edits add further receipt kinds that diverge.
+* **The migration named its foreign key explicitly, and that was wrong.**
+  `Base.metadata.create_all` produces the server-derived name for the model's unnamed FK, so the
+  downgrade could not find the constraint it was written to drop. It is inline and unnamed now, the
+  way `last_read_message_id` was in `e5f6a7b8c9d0`, and `drop_column` takes the constraint with it.
+  `test_head_revision_downgrades_and_reapplies_without_drift` caught this — the test written two
+  sessions ago for exactly this class of error.
+* **No backfill, deliberately.** NULL means "nothing acknowledged", which is the honest state for
+  every existing row: only an explicit client acknowledgement advances the boundary, and no client
+  has ever sent one. Deriving a boundary from message history would claim deliveries that were
+  never confirmed.
+* **A test of mine had to change**, and for the right reason: it used `messages.delivered` as its
+  example of an unknown frame type, which protocol 2 made real. It now uses
+  `messages.reaction.added` — still unimplemented, and the same rollout direction.
 
 Steps 1–2 are prerequisites and touch no feature behaviour. Step 5 is the only migration, and it is
 one nullable column. Deploy order remains server before client throughout.

@@ -254,3 +254,75 @@ async def test_unsubscribe_by_match_id_clears_canonical_subscription(conns, rout
     assert conn.refs == {}
     assert conn.addressing == {}
 
+
+async def test_delivery_receipt_reaches_dm_partner(conns, routing, monkeypatch):
+    """Protocol 2's second tick. Same routing asymmetry as the read receipt above: canonical id
+    to route, addressing id in the payload — the sender's open chat matches on the latter."""
+    match_id = uuid4()
+    conversation = _Conversation(match_id=match_id)
+    routing(conversation)
+
+    delivered_at = datetime.now(UTC)
+
+    async def ok_mark_delivered(db, *, recipient_id, match_id, through_message_id):
+        return delivered_at
+
+    monkeypatch.setattr(service, 'mark_delivered', ok_mark_delivered)
+
+    conn_a, _ = conns()
+    conn_b, sock_b = conns()
+
+    await _subscribe(conn_b, match_id)
+    await gateway._on_delivered(conn_a, protocol.DeliveredFrame(
+        type='messages.delivered', conversation_id=match_id, through_message_id=uuid4(),
+    ))
+    await _tick()
+
+    receipts = _frames(sock_b, 'messages.delivery')
+    assert len(receipts) == 1
+    assert receipts[0]['conversation_id'] == str(match_id)
+    assert receipts[0]['user_id'] == str(conn_a.user_id)
+
+
+async def test_delivery_receipt_is_not_echoed_to_the_acknowledger(conns, routing, monkeypatch):
+    """The recipient does not need its own tick, and echoing it would make the *recipient's* copy
+    of its own earlier messages appear delivered by itself."""
+    match_id = uuid4()
+    routing(_Conversation(match_id=match_id))
+
+    async def ok_mark_delivered(db, *, recipient_id, match_id, through_message_id):
+        return datetime.now(UTC)
+
+    monkeypatch.setattr(service, 'mark_delivered', ok_mark_delivered)
+
+    conn_a, sock_a = conns()
+    await _subscribe(conn_a, match_id)
+    await gateway._on_delivered(conn_a, protocol.DeliveredFrame(
+        type='messages.delivered', conversation_id=match_id, through_message_id=uuid4(),
+    ))
+    await _tick()
+
+    assert _frames(sock_a, 'messages.delivery') == []
+
+
+async def test_delivery_that_does_not_apply_publishes_nothing(conns, routing, monkeypatch):
+    """`mark_delivered` returns None for an unknown conversation, a message from another
+    conversation, or a non-member. Publishing a receipt anyway would show a tick for a delivery
+    that was never recorded — the one thing worse than a missing tick."""
+    match_id = uuid4()
+    routing(_Conversation(match_id=match_id))
+
+    async def no_op(db, *, recipient_id, match_id, through_message_id):
+        return None
+
+    monkeypatch.setattr(service, 'mark_delivered', no_op)
+
+    conn_a, _ = conns()
+    conn_b, sock_b = conns()
+    await _subscribe(conn_b, match_id)
+    await gateway._on_delivered(conn_a, protocol.DeliveredFrame(
+        type='messages.delivered', conversation_id=match_id, through_message_id=uuid4(),
+    ))
+    await _tick()
+
+    assert _frames(sock_b, 'messages.delivery') == []

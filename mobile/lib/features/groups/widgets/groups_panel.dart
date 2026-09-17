@@ -17,6 +17,7 @@ import 'create_group_sheet.dart';
 import 'group_search_field.dart';
 import 'pending_invites.dart';
 import 'your_groups_section.dart';
+import '../../messages/utils/chat_routes.dart';
 
 /// Campus Groups panel — now wired to the live `/groups` API.
 class GroupsPanel extends ConsumerStatefulWidget {
@@ -87,7 +88,7 @@ class _GroupsPanelState extends ConsumerState<GroupsPanel> {
       final full = await ref.read(groupsRepositoryProvider).get(group.id);
       if (!mounted) return;
       context.push(
-        '/messages/group/${full.conversationId}',
+        groupChatPath(full.conversationId),
         extra: GroupChatArgs(name: full.name, groupId: full.id, avatarUrl: full.avatarUrl),
       );
     } catch (_) {

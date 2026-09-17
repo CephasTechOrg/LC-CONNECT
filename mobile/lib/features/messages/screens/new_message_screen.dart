@@ -11,6 +11,7 @@ import '../../../shared/widgets/app_search_field.dart';
 import '../../../shared/widgets/app_states.dart';
 import '../providers/messages_provider.dart';
 import '../providers/staff_messaging_provider.dart';
+import '../utils/chat_routes.dart';
 
 /// Search students + staff and start a brand-new conversation — no connection required.
 /// Only reachable by verified staff (see `canMessageAnyoneProvider`).
@@ -88,7 +89,7 @@ class _NewMessageScreenState extends ConsumerState<NewMessageScreen> {
       final thread = await ref.read(staffMessagingServiceProvider).startThread(recipient.userId);
       ref.read(threadsNotifierProvider.notifier).upsertThread(thread);
       if (!mounted) return;
-      context.pushReplacement('/messages/${thread.addressingId}', extra: thread);
+      context.pushReplacement(dmChatPath(thread.addressingId), extra: thread);
     } catch (_) {
       if (!mounted) return;
       setState(() => _starting = false);

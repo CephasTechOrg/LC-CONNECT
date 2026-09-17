@@ -97,6 +97,88 @@ async def authorize_conversation(
     return conversation, members
 
 
+async def _cursor_for(db: AsyncSession, conversation_id: UUID, message_id: UUID):
+    """`(created_at, id)` for a message, or None if it is not in this conversation.
+
+    The tuple is the ordering key: `created_at` alone is not unique — a group fan-out commits many
+    rows in one transaction — so `id` breaks the tie deterministically.
+    """
+    return (
+        await db.execute(
+            select(Message.created_at, Message.id).where(
+                Message.id == message_id, Message.conversation_id == conversation_id
+            )
+        )
+    ).one_or_none()
+
+
+async def _advance_boundary(
+    db: AsyncSession, member: ConversationMember, field: str, cursor: tuple
+) -> None:
+    """Move a per-member boundary forward to `cursor`, never backwards.
+
+    Shared by the read and delivery boundaries because they need identical semantics, and writing
+    the comparison twice means two places for it to be subtly wrong. Moving backwards would
+    "un-read" or "un-deliver" a message on any out-of-order acknowledgement — which is not an edge
+    case: the client re-sends boundaries after every reconnect, and they can arrive in any order.
+
+    Idempotent: re-applying the same cursor is a no-op.
+    """
+    current_id = getattr(member, field)
+    if current_id is None:
+        setattr(member, field, cursor[1])
+        return
+    current = (
+        await db.execute(select(Message.created_at, Message.id).where(Message.id == current_id))
+    ).one_or_none()
+    # A missing current row means the boundary message was hard-deleted; the new cursor is the
+    # only thing known to exist, so adopt it.
+    if current is None or (current[0], current[1]) < cursor:
+        setattr(member, field, cursor[1])
+
+
+async def _member_for(
+    db: AsyncSession, conversation_id: UUID, user_id: UUID
+) -> ConversationMember | None:
+    return (
+        await db.execute(
+            select(ConversationMember).where(
+                ConversationMember.conversation_id == conversation_id,
+                ConversationMember.user_id == user_id,
+            )
+        )
+    ).scalar_one_or_none()
+
+
+async def mark_delivered(
+    db: AsyncSession, *, recipient_id: UUID, match_id: UUID, through_message_id: UUID
+) -> datetime | None:
+    """Advance the recipient's delivery boundary. Returns the timestamp, or None if it did not apply.
+
+    Strictly simpler than [mark_read]: there is no `messages` column to keep in step, because
+    delivery has no display-only mirror. The whole state is the boundary.
+
+    Returning None covers every "nothing to do" case alike — unknown conversation, a message from
+    another conversation, a non-member — because the caller does the same thing with all of them:
+    stay quiet. A delivery acknowledgement is not a request, so there is nothing to report.
+    """
+    conversation = await resolve_conversation(db, match_id)
+    if conversation is None:
+        return None
+
+    cursor = await _cursor_for(db, conversation.id, through_message_id)
+    if cursor is None:
+        return None
+
+    member = await _member_for(db, conversation.id, recipient_id)
+    if member is None:
+        return None
+
+    await _advance_boundary(db, member, 'last_delivered_message_id', cursor)
+    await db.commit()
+    return datetime.now(UTC)
+
+
 async def mark_read(
     db: AsyncSession, *, reader_id: UUID, match_id: UUID, through_message_id: UUID
 ) -> datetime | None:
@@ -113,40 +195,18 @@ async def mark_read(
     if conversation is None:
         return None
 
-    cursor = (
-        await db.execute(
-            select(Message.created_at, Message.id).where(
-                Message.id == through_message_id, Message.conversation_id == conversation.id
-            )
-        )
-    ).one_or_none()
+    cursor = await _cursor_for(db, conversation.id, through_message_id)
     if cursor is None:
         return None
-    cursor_created, cursor_id = cursor
+    cursor_created, _ = cursor
 
     now = datetime.now(UTC)
 
     # 1. Advance the boundary — never backwards (an out-of-order read must not "unread").
-    member = (
-        await db.execute(
-            select(ConversationMember).where(
-                ConversationMember.conversation_id == conversation.id,
-                ConversationMember.user_id == reader_id,
-            )
-        )
-    ).scalar_one_or_none()
+    member = await _member_for(db, conversation.id, reader_id)
     if member is None:
         return None
-    if member.last_read_message_id is None:
-        member.last_read_message_id = cursor_id
-    else:
-        current = (
-            await db.execute(
-                select(Message.created_at, Message.id).where(Message.id == member.last_read_message_id)
-            )
-        ).one_or_none()
-        if current is None or (current[0], current[1]) < (cursor_created, cursor_id):
-            member.last_read_message_id = cursor_id
+    await _advance_boundary(db, member, 'last_read_message_id', cursor)
 
     # 2. Keep DM receipts working.
     await db.execute(

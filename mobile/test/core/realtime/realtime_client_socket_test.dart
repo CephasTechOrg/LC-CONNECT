@@ -1,109 +1,17 @@
-import 'dart:async';
-import 'dart:convert';
-import 'dart:math';
 
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lc_connect/core/realtime/realtime_client.dart';
 import 'package:lc_connect/core/realtime/ws_protocol.dart';
-import 'package:web_socket_channel/web_socket_channel.dart';
 
-/// A socket we control: nothing reaches the network, and inbound frames are injected by hand.
-class _FakeSink implements WebSocketSink {
-  final List<Object?> added = [];
-  final Completer<void> _done = Completer<void>();
-  bool closed = false;
-
-  @override
-  void add(Object? data) => added.add(data);
-
-  @override
-  Future<void> close([int? closeCode, String? closeReason]) async {
-    if (closed) return;
-    closed = true;
-    if (!_done.isCompleted) _done.complete();
-  }
-
-  @override
-  Future<void> get done => _done.future;
-
-  @override
-  void addError(Object error, [StackTrace? stackTrace]) {}
-
-  @override
-  Future<void> addStream(Stream<Object?> stream) async {}
-}
-
-class _FakeChannel implements WebSocketChannel {
-  final StreamController<dynamic> incoming = StreamController<dynamic>.broadcast();
-  final _FakeSink fake = _FakeSink();
-  final Completer<void> readyCompleter = Completer<void>();
-
-  _FakeChannel({bool readyNow = true}) {
-    if (readyNow) readyCompleter.complete();
-  }
-
-  @override
-  Future<void> get ready => readyCompleter.future;
-
-  @override
-  Stream<dynamic> get stream => incoming.stream;
-
-  @override
-  WebSocketSink get sink => fake;
-
-  @override
-  int? get closeCode => null;
-
-  @override
-  String? get closeReason => null;
-
-  @override
-  String? get protocol => null;
-
-  /// Everything else on StreamChannel is unused by RealtimeClient.
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-
-  /// Frames the client wrote, decoded.
-  List<Map<String, dynamic>> get written =>
-      fake.added.map((e) => jsonDecode(e as String) as Map<String, dynamic>).toList();
-
-  List<Map<String, dynamic>> writtenOfType(String type) =>
-      written.where((f) => f['type'] == type).toList();
-
-  void serverSends(Map<String, dynamic> frame) => incoming.add(jsonEncode(frame));
-
-  void serverAuthOk({int heartbeat = 25}) => serverSends({
-        'type': 'auth.ok',
-        'user_id': 'u1',
-        'heartbeat_interval_seconds': heartbeat,
-        'protocol_version': 1,
-      });
-}
-
-RealtimeClient _client(_FakeChannel channel, {Duration? connectTimeout}) =>
-    _clientOver([channel], connectTimeout: connectTimeout);
-
-/// Hands out `channels` in order, then repeats the last one — so a reconnect gets a fresh
-/// socket the way it would in production.
-RealtimeClient _clientOver(List<_FakeChannel> channels, {Duration? connectTimeout}) {
-  var i = 0;
-  return RealtimeClient(
-    url: Uri.parse('ws://localhost/ws'),
-    tokenProvider: () async => 'token',
-    random: Random(1),
-    connectChannel: (_) => channels[i < channels.length - 1 ? i++ : channels.length - 1],
-    connectTimeout: connectTimeout ?? const Duration(seconds: 30),
-  );
-}
+import 'fake_socket.dart';
 
 void main() {
   group('heartbeat', () {
     test('pings at the server-advertised interval once authenticated', () {
       fakeAsync((async) {
-        final channel = _FakeChannel();
-        final client = _client(channel);
+        final channel = FakeWsChannel();
+        final client = clientOn(channel);
         client.connect();
         async.flushMicrotasks();
         channel.serverAuthOk(heartbeat: 10);
@@ -127,8 +35,8 @@ void main() {
 
     test('does not ping before auth.ok', () {
       fakeAsync((async) {
-        final channel = _FakeChannel();
-        final client = _client(channel);
+        final channel = FakeWsChannel();
+        final client = clientOn(channel);
         client.connect();
         async.elapse(const Duration(seconds: 120));
         expect(channel.writtenOfType('ping'), isEmpty);
@@ -139,8 +47,8 @@ void main() {
 
     test('a pong keeps the socket alive and is not republished as an event', () {
       fakeAsync((async) {
-        final channel = _FakeChannel();
-        final client = _client(channel);
+        final channel = FakeWsChannel();
+        final client = clientOn(channel);
         final events = <InboundEvent>[];
         client.events.listen(events.add);
         client.connect();
@@ -164,8 +72,8 @@ void main() {
 
     test('watchdog reconnects when the server stops answering (half-open socket)', () {
       fakeAsync((async) {
-        final channel = _FakeChannel();
-        final client = _client(channel);
+        final channel = FakeWsChannel();
+        final client = clientOn(channel);
         client.connect();
         async.flushMicrotasks();
         channel.serverAuthOk(heartbeat: 10);
@@ -188,8 +96,8 @@ void main() {
   group('in-flight sends survive a disconnect', () {
     test('a send written to a ready socket is re-queued when the socket closes', () {
       fakeAsync((async) {
-        final channel = _FakeChannel();
-        final client = _client(channel);
+        final channel = FakeWsChannel();
+        final client = clientOn(channel);
         client.connect();
         async.flushMicrotasks();
         channel.serverAuthOk();
@@ -212,8 +120,8 @@ void main() {
 
     test('an acked send is NOT re-queued', () {
       fakeAsync((async) {
-        final channel = _FakeChannel();
-        final client = _client(channel);
+        final channel = FakeWsChannel();
+        final client = clientOn(channel);
         client.connect();
         async.flushMicrotasks();
         channel.serverAuthOk();
@@ -241,9 +149,9 @@ void main() {
 
     test('re-queued sends are flushed over the reconnected socket', () {
       fakeAsync((async) {
-        final first = _FakeChannel();
-        final second = _FakeChannel();
-        final client = _clientOver([first, second]);
+        final first = FakeWsChannel();
+        final second = FakeWsChannel();
+        final client = clientOver([first, second]);
         client.connect();
         async.flushMicrotasks();
         first.serverAuthOk();
@@ -272,8 +180,8 @@ void main() {
   group('error correlation', () {
     test('maps a request id back to its client message id', () {
       fakeAsync((async) {
-        final channel = _FakeChannel();
-        final client = _client(channel);
+        final channel = FakeWsChannel();
+        final client = clientOn(channel);
         client.connect();
         async.flushMicrotasks();
         channel.serverAuthOk();
@@ -292,8 +200,8 @@ void main() {
 
     test('cancelPendingSend stops a message being retried after REST delivery', () {
       fakeAsync((async) {
-        final channel = _FakeChannel();
-        final client = _client(channel);
+        final channel = FakeWsChannel();
+        final client = clientOn(channel);
         client.connect();
         async.flushMicrotasks();
         channel.serverAuthOk();
@@ -315,8 +223,8 @@ void main() {
   group('connect timeout', () {
     test('gives up on a handshake that never completes instead of hanging in connecting', () {
       fakeAsync((async) {
-        final channel = _FakeChannel(readyNow: false); // never becomes ready
-        final client = _client(channel, connectTimeout: const Duration(seconds: 5));
+        final channel = FakeWsChannel(readyNow: false); // never becomes ready
+        final client = clientOn(channel, connectTimeout: const Duration(seconds: 5));
         client.connect();
         async.flushMicrotasks();
         expect(client.status.value, RealtimeStatus.connecting);

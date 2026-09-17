@@ -245,12 +245,65 @@ async def test_typing_routes_to_partner_user_channel(monkeypatch):
 
 
 def test_malformed_frame_gets_error(happy_auth):
+    """A *known* frame type with invalid fields is a client bug — `invalid_frame`, and it counts
+    against the abuse budget."""
     with _client().websocket_connect('/api/v1/ws') as ws:
         ws.send_json({'type': 'auth', 'access_token': 'good'})
         assert ws.receive_json()['type'] == 'auth.ok'
-        ws.send_json({'type': 'totally-unknown'})
+        ws.send_json({'type': 'message.send'})  # known type, every required field missing
         frame = ws.receive_json()
     assert frame['type'] == 'error' and frame['code'] == 'invalid_frame'
+
+
+def test_unknown_frame_type_is_unsupported_not_malformed(happy_auth):
+    """An unrecognised `type` is a version mismatch, not abuse.
+
+    This used to answer `invalid_frame` and charge the abuse budget, which is what made
+    `test_unknown_frames_do_not_get_the_connection_banned` below fail.
+    """
+    with _client().websocket_connect('/api/v1/ws') as ws:
+        ws.send_json({'type': 'auth', 'access_token': 'good'})
+        assert ws.receive_json()['type'] == 'auth.ok'
+        # Deliberately a type this server does not implement — `messages.delivered` used to
+        # stand in here and then became real in protocol 2, which is exactly the rollout
+        # direction this test is about.
+        ws.send_json({'type': 'messages.reaction.added', 'conversation_id': str(uuid4())})
+        frame = ws.receive_json()
+    assert frame['type'] == 'error'
+    assert frame['code'] == 'unsupported_frame'
+
+
+def test_unknown_frames_do_not_get_the_connection_banned(happy_auth):
+    """The regression this split exists for.
+
+    Unknown frames shared the malformed abuse budget (10 per 60s), so the eleventh closed the
+    socket with 4429. `4429` is not in the client's do-not-retry set, so it reconnected, sent the
+    same frame again, and was banned again — a reconnect loop caused by nothing worse than a
+    staged rollout where the client ships ahead of the server.
+    """
+    with _client().websocket_connect('/api/v1/ws') as ws:
+        ws.send_json({'type': 'auth', 'access_token': 'good'})
+        assert ws.receive_json()['type'] == 'auth.ok'
+
+        # Comfortably past the 10-per-60s budget.
+        for _ in range(20):
+            ws.send_json({'type': 'some.future.frame'})
+            frame = ws.receive_json()
+            assert frame['code'] == 'unsupported_frame'
+
+        # Still usable: the supported frames must keep working throughout.
+        ws.send_json({'type': 'ping'})
+        assert ws.receive_json()['type'] == 'pong'
+
+
+def test_a_frame_that_is_not_an_object_is_still_malformed(happy_auth):
+    """`is_unsupported_type` must not treat a non-object as a version mismatch."""
+    with _client().websocket_connect('/api/v1/ws') as ws:
+        ws.send_json({'type': 'auth', 'access_token': 'good'})
+        assert ws.receive_json()['type'] == 'auth.ok'
+        ws.send_json(['not', 'an', 'object'])
+        frame = ws.receive_json()
+    assert frame['code'] == 'invalid_frame'
 
 
 def test_oversized_frame_gets_frame_too_large_error(happy_auth, monkeypatch):

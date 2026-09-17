@@ -11,6 +11,7 @@ import '../../auth/providers/auth_provider.dart';
 import '../../messages/providers/messages_provider.dart';
 import '../../messages/providers/staff_messaging_provider.dart';
 import '../providers/campus_directory_provider.dart';
+import '../../messages/utils/chat_routes.dart';
 
 class CampusPositionDetailScreen extends ConsumerStatefulWidget {
   final String positionId;
@@ -39,7 +40,7 @@ class _CampusPositionDetailScreenState extends ConsumerState<CampusPositionDetai
       if (!mounted) return;
       // This detail route lives outside the shell navigator, so enter the messages branch with
       // `go` to avoid cross-navigator push locking during transition.
-      context.go('/messages/${thread.addressingId}', extra: thread);
+      context.go(dmChatPath(thread.addressingId), extra: thread);
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

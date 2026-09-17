@@ -2,7 +2,14 @@
 /// (see backend `app/features/realtime/protocol.py`). No I/O — unit-testable.
 library;
 
-const int kProtocolVersion = 1;
+/// What this client can speak. What the *server* speaks is a separate question — see
+/// `RealtimeClient.supportsProtocol`, and gate every frame added after v1 on it.
+///
+/// 2 adds `messages.delivered` (outbound) and `messages.delivery` (inbound).
+const int kProtocolVersion = 2;
+
+/// Frames introduced in protocol 2. Pass to `RealtimeClient.supportsProtocol` before sending one.
+const int kDeliveryProtocolVersion = 2;
 
 // ── Outbound frames (client → server) ─────────────────────────────────────────
 
@@ -45,6 +52,19 @@ Map<String, dynamic> typingFrame(String conversationId, {required bool active}) 
 
 Map<String, dynamic> readFrame(String conversationId, String throughMessageId) => {
       'type': 'messages.read',
+      'conversation_id': conversationId,
+      'through_message_id': throughMessageId,
+    };
+
+/// "My device has everything up to `throughMessageId`" (protocol 2).
+///
+/// Symmetric with [readFrame] and, like it, a monotonic boundary rather than a per-message flag:
+/// re-sending one is a no-op server-side, which is what makes it safe to re-send after a
+/// reconnect. Deliberately sent by the client and never inferred by the server — a write to a
+/// half-open socket succeeds while nothing arrives, so only the receiving end can attest to
+/// delivery.
+Map<String, dynamic> deliveredFrame(String conversationId, String throughMessageId) => {
+      'type': 'messages.delivered',
       'conversation_id': conversationId,
       'through_message_id': throughMessageId,
     };
@@ -99,6 +119,20 @@ class ReadReceipt extends InboundEvent {
   final String throughMessageId;
   final String readAt;
   const ReadReceipt(this.conversationId, this.userId, this.throughMessageId, this.readAt);
+}
+
+/// Someone else's device now has everything up to [throughMessageId] (protocol 2).
+///
+/// The sender renders this as the second tick. Honour the boundary rather than flipping every
+/// message — the same mistake `markMineRead` makes with [ReadReceipt] today, which is invisible
+/// with one tick state and visibly wrong with two.
+class DeliveryReceipt extends InboundEvent {
+  final String conversationId;
+  final String userId;
+  final String throughMessageId;
+  final String deliveredAt;
+  const DeliveryReceipt(
+      this.conversationId, this.userId, this.throughMessageId, this.deliveredAt);
 }
 
 class NotificationEvent extends InboundEvent {
@@ -176,6 +210,13 @@ InboundEvent parseInbound(Map<String, dynamic> raw) {
         raw['user_id'] as String,
         raw['through_message_id'] as String,
         raw['read_at'] as String,
+      );
+    case 'messages.delivery':
+      return DeliveryReceipt(
+        raw['conversation_id'] as String,
+        raw['user_id'] as String,
+        raw['through_message_id'] as String,
+        raw['delivered_at'] as String,
       );
     case 'notification':
       return NotificationEvent(Map<String, dynamic>.from(raw['notification'] as Map));
