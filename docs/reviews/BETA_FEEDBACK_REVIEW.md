@@ -1948,9 +1948,10 @@ Notation: **[be]** backend · **[fe]** mobile · **[cfg]** config/ops · **[msr]
       in Ohio, ~50–70 ms on every round trip, paid ~6 times on a single message send. **Done:** the
       API now runs in Render's Ohio region, which also halves the NC client's own hop.
       `render.yaml` updated to `region: ohio` so a service re-create cannot silently revert it —
-      the region only applies at creation, which is also why the move required a new service rather
-      than an edit. The two Next.js portals are declared `ohio` too but are **still running in
-      Oregon** until they are next re-created.
+      the region only applies at creation, which is also why the move required deleting the service
+      and adding it back rather than an edit. The two Next.js portals stay **Oregon**, declared as
+      such: they serve a handful of staff rather than students, and declaring an unmoved service
+      `ohio` would make a future re-create relocate it by accident.
       *Not yet measured:* the before/after latency is 2.1, which still needs production access.
 - [ ] **2.1** [msr] Run Part 5 items 1–4 and 7 *(items 2, 3 and 5 resolved)* — **blocked: needs
       production access** (Render logs, Supabase dashboard, a read-only prod query). Cannot be done

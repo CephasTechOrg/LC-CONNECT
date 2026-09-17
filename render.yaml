@@ -103,11 +103,16 @@ services:
   - type: web
     name: lc-connect-admin
     env: node
-    # Ohio for both reasons that moved the API: these are SSR services that call the API on every
-    # request, and their users are on campus in North Carolina. **Still running in Oregon today** —
-    # the region applies on create, so this one takes effect whenever the service is next
-    # re-created, which is the only way to move it.
-    region: ohio
+    # Deliberately still Oregon, and this file states what is actually running, not an intention.
+    # A Render region applies only when a service is *created*, so declaring `ohio` here would mean
+    # any future re-create silently relocates this service — a change nobody chose at that moment.
+    #
+    # Ohio would be the better home when it is moved deliberately: this is an SSR service that
+    # calls the API on every request, so it now pays a cross-country hop per call, and its users
+    # are on campus in NC. But it serves a handful of staff rather than the student body, and
+    # moving it means delete-and-recreate with its env vars re-entered — worth doing opportunely,
+    # not urgently. See the API service above for the move that mattered.
+    region: oregon
     plan: free
     branch: main
     rootDir: admin
@@ -130,8 +135,8 @@ services:
   - type: web
     name: lc-connect-employer
     env: node
-    # See lc-connect-admin above — same reasoning, also still in Oregon until re-created.
-    region: ohio
+    # See lc-connect-admin above — same reasoning, same decision.
+    region: oregon
     plan: free
     branch: main
     rootDir: employer-portal
