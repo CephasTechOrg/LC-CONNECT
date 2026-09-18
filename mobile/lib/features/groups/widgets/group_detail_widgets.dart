@@ -94,7 +94,7 @@ class _MembersList extends ConsumerWidget {
     final async = ref.watch(groupMembersProvider(groupId));
     return async.when(
       loading: () => const Padding(padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator())),
-      error: (_, _) => _ErrorRetry(onRetry: onRetry),
+      error: (_, _) => AppInlineMessage(message: "Couldn't load this", onRetry: onRetry),
       data: (members) {
         final sorted = [...members]..sort((a, b) => roleRank(b.role).compareTo(roleRank(a.role)));
         return Column(
@@ -248,26 +248,6 @@ class _ActionButton extends StatelessWidget {
   }
 }
 
-class _ErrorRetry extends StatelessWidget {
-  final VoidCallback onRetry;
-  const _ErrorRetry({required this.onRetry});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        children: [
-          Text("Couldn't load this", style: GoogleFonts.dmSans(color: AppColors.textMuted)),
-          TextButton(
-            onPressed: onRetry,
-            child: Text('Retry', style: GoogleFonts.dmSans(color: AppColors.primary, fontWeight: FontWeight.w600)),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 String _categoryLabel(String category) => switch (category) {
       'club' => 'Clubs & Sports',

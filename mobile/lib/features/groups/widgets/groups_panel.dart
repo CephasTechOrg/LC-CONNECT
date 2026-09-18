@@ -18,6 +18,7 @@ import 'group_search_field.dart';
 import 'pending_invites.dart';
 import 'your_groups_section.dart';
 import '../../messages/utils/chat_routes.dart';
+import '../../../shared/widgets/app_states.dart';
 
 /// Campus Groups panel — now wired to the live `/groups` API.
 class GroupsPanel extends ConsumerStatefulWidget {
@@ -185,13 +186,13 @@ class _GroupsPanelState extends ConsumerState<GroupsPanel> {
         // "everything reloads" complaint. Cached results stay put while fresh ones load behind.
         async.cached(
           loading: () => const AppListSkeleton(count: 2, padding: EdgeInsets.fromLTRB(20, 60, 20, 20)),
-          error: (e, _) => _PanelMessage(
-            text: 'Couldn\'t load groups',
+          error: (e, _) => AppInlineMessage(
+            message: 'Couldn\'t load groups',
             onRetry: () => ref.invalidate(discoverGroupsProvider(_discoverArgs)),
           ),
           data: (groups) => groups.isEmpty
-              ? _PanelMessage(
-                  text: _query.isNotEmpty
+              ? AppInlineMessage(
+                  message: _query.isNotEmpty
                       ? 'No groups match "$_query"'
                       : 'No groups yet — create the first one!',
                 )
@@ -219,37 +220,6 @@ class _GroupsPanelState extends ConsumerState<GroupsPanel> {
   }
 }
 
-class _PanelMessage extends StatelessWidget {
-  final String text;
-  final VoidCallback? onRetry;
-  const _PanelMessage({required this.text, this.onRetry});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 60),
-      child: Column(
-        children: [
-          Text(
-            text,
-            style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.textMuted),
-          ),
-          if (onRetry != null)
-            TextButton(
-              onPressed: onRetry,
-              child: Text(
-                'Retry',
-                style: GoogleFonts.dmSans(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
 
 IconData _iconFor(String category) => switch (category) {
   'housing' => Icons.home_outlined,

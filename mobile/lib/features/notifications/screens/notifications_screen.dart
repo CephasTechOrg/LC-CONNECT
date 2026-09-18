@@ -9,6 +9,7 @@ import '../../../core/widgets/avatar_widget.dart';
 import '../../connections/providers/connections_provider.dart';
 import '../data/notification_models.dart';
 import '../providers/notifications_provider.dart';
+import '../../../shared/widgets/app_states.dart';
 
 /// The notification center. Unread rows stay visibly unread for the whole visit; opening one
 /// marks just that one read.
@@ -137,8 +138,8 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                   AppThreadRowSkeleton(),
                 ],
                 error: (_, _) => [
-                  _Message(
-                    text: "Couldn't load notifications",
+                  AppInlineMessage(
+                    message: "Couldn't load notifications",
                     onRetry: () =>
                         ref.read(notificationsListProvider.notifier).refresh(),
                   ),
@@ -146,7 +147,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                 data: (items) {
                   _snapshot(items);
                   if (items.isEmpty) {
-                    return [const _Message(text: "You're all caught up.")];
+                    return [const AppInlineMessage(message: "You're all caught up.")];
                   }
                   return [
                     for (final n in items) ...[
@@ -280,35 +281,6 @@ class _NotificationTile extends StatelessWidget {
             ),
           if (route != null)
             const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
-        ],
-      ),
-    );
-  }
-}
-
-class _Message extends StatelessWidget {
-  final String text;
-  final VoidCallback? onRetry;
-  const _Message({required this.text, this.onRetry});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(text, style: GoogleFonts.dmSans(color: AppColors.textMuted)),
-          if (onRetry != null)
-            TextButton(
-              onPressed: onRetry,
-              child: Text(
-                'Retry',
-                style: GoogleFonts.dmSans(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
         ],
       ),
     );

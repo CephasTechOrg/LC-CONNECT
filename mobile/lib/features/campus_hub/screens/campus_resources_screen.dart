@@ -9,6 +9,7 @@ import '../../../shared/widgets/app_filter_chip.dart';
 import '../../../shared/widgets/app_states.dart';
 import '../models/campus_resource.dart';
 import '../providers/campus_resources_provider.dart';
+import '../../../shared/widgets/app_skeleton.dart';
 
 class _ResourceCategory {
   final String key;
@@ -121,7 +122,10 @@ class _CampusResourcesScreenState extends ConsumerState<CampusResourcesScreen> {
                 color: AppColors.primary,
                 onRefresh: () async => ref.invalidate(campusResourcesProvider(_query)),
                 child: resourcesAsync.when(
-                  loading: () => const Center(child: CircularProgressIndicator()),
+                  // A skeleton in the shape of the content that is coming, not a spinner: the Campus Hub
+                  // sub-pages were the only lists in the app that spun while every other list
+                  // showed placeholders (4.2).
+                  loading: () => const AppHubPanelSkeleton(count: 4),
                   error: (_, _) => AppErrorState(
                     message: 'Could not load resources.',
                     onRetry: () => ref.invalidate(campusResourcesProvider(_query)),

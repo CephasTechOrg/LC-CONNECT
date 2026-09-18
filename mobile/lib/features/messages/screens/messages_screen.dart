@@ -304,18 +304,13 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      children: [
-        SizedBox(height: MediaQuery.of(context).size.height * 0.18),
-        AppEmptyState(
-          icon: Icons.chat_bubble_outline_rounded,
-          title: 'No messages yet',
-          subtitle: canMessageAnyone
-              ? 'Tap the compose button to message any student or staff member.'
-              : 'Accept a connection request to start chatting.',
-        ),
-      ],
+    return AppScrollableEmptyState(
+      icon: Icons.chat_bubble_outline_rounded,
+      title: 'No messages yet',
+      subtitle: canMessageAnyone
+          ? 'Tap the compose button to message any student or staff member.'
+          : 'Accept a connection request to start chatting.',
+      topFraction: 0.18,
     );
   }
 }
@@ -327,17 +322,13 @@ class _NoMatches extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      children: [
-        SizedBox(height: MediaQuery.of(context).size.height * 0.14),
-        Center(
-          child: Text(
-            'No conversations match "$query"',
-            style: GoogleFonts.dmSans(color: AppColors.textMuted),
-          ),
-        ),
-      ],
+    // Was bare centred text with no icon — the only no-results state in the app that looked
+    // nothing like its siblings.
+    return AppScrollableEmptyState(
+      icon: Icons.search_off_rounded,
+      title: 'No conversations found',
+      subtitle: 'Nothing matches "$query".',
+      topFraction: 0.14,
     );
   }
 }

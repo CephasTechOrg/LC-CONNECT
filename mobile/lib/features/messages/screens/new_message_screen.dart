@@ -12,6 +12,7 @@ import '../../../shared/widgets/app_states.dart';
 import '../providers/messages_provider.dart';
 import '../providers/staff_messaging_provider.dart';
 import '../utils/chat_routes.dart';
+import '../../../shared/widgets/app_skeleton.dart';
 
 /// Search students + staff and start a brand-new conversation — no connection required.
 /// Only reachable by verified staff (see `canMessageAnyoneProvider`).
@@ -149,7 +150,7 @@ class _NewMessageScreenState extends ConsumerState<NewMessageScreen> {
       );
     }
     if (_loading) {
-      return const Center(child: CircularProgressIndicator());
+      return const AppThreadListSkeleton(count: 5);
     }
     if (_error != null) {
       return AppErrorState(message: _error!, onRetry: () => _search(_query));

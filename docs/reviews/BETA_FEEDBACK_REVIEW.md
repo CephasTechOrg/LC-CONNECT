@@ -2059,8 +2059,21 @@ Notation: **[be]** backend · **[fe]** mobile · **[cfg]** config/ops · **[msr]
       rather than the tokens being documentation.
       *Call sites are not migrated* — that happens as 4.2/4.3/4.5/4.6/4.7 touch each surface.
 
-- [ ] **4.2** [fe] **#18** standardise loading (skeleton for content, spinner only in-button) and
-      empty/error (delete the local `_Message` / `_PanelMessage` / `_ErrorRetry` duplicates)
+- [x] **4.2** [fe] **#18** standardise loading and empty/error — **done.** The review's framing was
+      only half right: the local `_EmptyState` classes in messages, connections and activities were
+      **already** calling the shared widgets. What was duplicated was the *scroll adapter* around
+      them — `ListView` + `AlwaysScrollableScrollPhysics` + a proportional spacer, copied three
+      times, and load-bearing (a `RefreshIndicator` over a non-scrollable child cannot be pulled,
+      so an empty list could never be refreshed). That is now `AppScrollableEmptyState`.
+      The genuine duplicates were elsewhere: `_Message` (notifications), `_PanelMessage` (groups)
+      and `_ErrorRetry` (group detail) each hand-rolled a *compact* inline failure because
+      `AppErrorState` is a full-screen block — a real need, met once as `AppInlineMessage`.
+      Loading: the Campus Hub sub-pages were the only content lists in the app that spun while
+      every other list showed placeholders; they use `AppHubPanelSkeleton` now (given a `count`),
+      with profile-shaped screens on `AppProfileSkeleton` and the recipient picker on the thread
+      skeleton. Action spinners (scan processing, the export modal) are deliberately untouched —
+      the rule is skeletons for content, spinners for in-progress actions.
+
 - [ ] **4.3** [fe] **#18** dashboard pass: rhythm, alignment, card-colour competition, complete the
       pull-to-refresh set
 - [ ] **4.4** [be][fe][snap] **#15** notification grouping + deep-linkable rows (needs target ids on rows
@@ -2068,8 +2081,28 @@ Notation: **[be]** backend · **[fe]** mobile · **[cfg]** config/ops · **[msr]
 - [ ] **4.5** [fe] **#20** declutter Discovery; one bell location; fix the popping tab bar
 - [ ] **4.6** [fe] **#3** avatar preview viewer (own + permitted public profiles only; never list rows,
       never scholar headshots)
-- [ ] **4.7** [fe] **#18** a11y sweep: tab `selected`, skeleton semantics, tick semantics, unread not
-      colour-only, contrast audit
+- [x] **4.7** [fe] **#18** a11y sweep — **done, and two of the four findings were wrong.**
+      *Real:* the skeletons were **silent** — a screen-reader user heard nothing while a screen
+      loaded, indistinguishable from an empty screen. Now one announcement per *group*
+      (`AppSkeletonSemantics`), not per box, since a list skeleton is twenty boxes. They also
+      **shimmer** now, respecting `MediaQuery.disableAnimations`; a static grey block reads as
+      content that failed rather than content arriving.
+      *Real:* `AppErrorState` and the three hand-rolled inline errors wrapped their Retry button in
+      the message's `Semantics`, which announced the message twice **and hid the button** — the one
+      control a failed state exists to offer. The live region is on the text alone now.
+      *Wrong:* "`NavShell` hardcodes `Semantics(selected: false)`, so a screen-reader user is never
+      told which tab is current." Checked by dumping the semantics tree with the original code:
+      `BottomNavigationBar` sets the flag itself on the outer `Tab N of M` node, which is what
+      assistive technology reads, and it was already correct. The hardcoded value sat on an inner
+      node that gets merged away. Passing the real value only stops the code stating something
+      false; `nav_shell_connect_badge_test.dart` now guards the behaviour at the level that matters.
+      *Wrong:* "contrast-check `textMuted` at 10–12px." Measured, `textMuted` **passes** (4.57:1,
+      narrowly) and the **semantic colours** are the failures — `primary` 4.04, `error` 3.56, and
+      `green` **2.40**, which fails even the large-text floor while marking "checked in" and
+      "Published". `test/core/theme/contrast_test.dart` pins every ratio so none may regress, and
+      records the three candidates that pass AA (`#3B77AA`, `#CD3A3A`, `#0B815A`).
+      **Open decision:** whether to adopt them — it changes brand colour, so it is not mine to make.
+
 
 ### Coverage check
 

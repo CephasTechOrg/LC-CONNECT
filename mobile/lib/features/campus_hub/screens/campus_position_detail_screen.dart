@@ -12,6 +12,7 @@ import '../../messages/providers/messages_provider.dart';
 import '../../messages/providers/staff_messaging_provider.dart';
 import '../providers/campus_directory_provider.dart';
 import '../../messages/utils/chat_routes.dart';
+import '../../../shared/widgets/app_skeleton.dart';
 
 class CampusPositionDetailScreen extends ConsumerStatefulWidget {
   final String positionId;
@@ -65,7 +66,7 @@ class _CampusPositionDetailScreenState extends ConsumerState<CampusPositionDetai
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: entryAsync.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
+          loading: () => const AppProfileSkeleton(),
           error: (_, _) => Column(
             children: [
               _DetailHeader(onBack: () => context.pop()),

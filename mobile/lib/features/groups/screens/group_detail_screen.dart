@@ -13,6 +13,8 @@ import '../../safety/providers/safety_provider.dart';
 import '../../safety/widgets/safety_sheet.dart';
 import '../data/group_models.dart';
 import '../providers/groups_provider.dart';
+import '../../../shared/widgets/app_states.dart';
+import '../../../shared/widgets/app_skeleton.dart';
 
 part '../widgets/group_member_tile.dart';
 part '../widgets/group_requests_section.dart';
@@ -238,8 +240,13 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
         iconTheme: const IconThemeData(color: AppColors.textDark),
       ),
       body: async.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (_, _) => _ErrorRetry(onRetry: () => ref.invalidate(groupDetailProvider(_gid))),
+        // A skeleton, not a spinner: this is content loading, and a spinner tells the user
+        // nothing about what is arriving (4.2).
+        loading: () => const AppProfileSkeleton(),
+        error: (_, _) => AppInlineMessage(
+          message: "Couldn't load this",
+          onRetry: () => ref.invalidate(groupDetailProvider(_gid)),
+        ),
         data: (group) => _body(group),
       ),
     );

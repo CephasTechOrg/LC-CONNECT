@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -106,6 +107,68 @@ void main() {
       expect(find.text('Connect'), findsNothing);
       // Staff browse tab must not surface student matching request counts.
       expect(find.text('3'), findsNothing);
+    });
+  });
+
+  /// Tab selection in assistive technology.
+  ///
+  /// Review finding #19 said `NavShell` hardcoding `Semantics(selected: false)` meant "a
+  /// screen-reader user is never told which tab is current". **That was wrong**, and checking
+  /// beat assuming: `BottomNavigationBar` sets the flag itself on the outer "Tab N of M" node,
+  /// which is the one assistive technology reads, so selection was always announced correctly.
+  /// The hardcoded value sat on an inner node that gets merged away.
+  ///
+  /// These tests therefore guard the behaviour rather than claim a fix — and they guard it at the
+  /// level that matters, which is the only level a test of this could be written at honestly.
+  group('NavShell tab selection', () {
+    /// The tab wrapper nodes, in order, with whether each reports itself selected.
+    List<bool> tabSelection(WidgetTester tester) {
+      final flags = <bool>[];
+      void walk(SemanticsNode node) {
+        if (RegExp(r'^Tab \d+ of \d+$').hasMatch(node.label)) {
+          // The replacement, `flagsCollection.isSelected`, returns a Tristate — worse to read
+          // than the bool this assertion wants.
+          // ignore: deprecated_member_use
+          flags.add(node.hasFlag(SemanticsFlag.isSelected));
+        }
+        node.visitChildren((child) {
+          walk(child);
+          return true;
+        });
+      }
+
+      walk(tester.semantics.find(find.byType(NavShell)));
+      return flags;
+    }
+
+    testWidgets('exactly one tab reports itself selected', (tester) async {
+      final handle = tester.ensureSemantics();
+      await tester.pumpWidget(_app(role: 'student', initialLocation: '/messages'));
+      await tester.pumpAndSettle();
+
+      final flags = tabSelection(tester);
+      expect(flags, hasLength(5));
+      expect(flags.where((f) => f).length, 1, reason: 'one selected tab, never none and never two');
+      handle.dispose();
+    });
+
+    testWidgets('the selected tab is the one matching the route', (tester) async {
+      final handle = tester.ensureSemantics();
+      await tester.pumpWidget(_app(role: 'student', initialLocation: '/messages'));
+      await tester.pumpAndSettle();
+
+      // Tab order is Campus, Connect, Activities, Messages, Profile.
+      expect(tabSelection(tester), [false, false, false, true, false]);
+      handle.dispose();
+    });
+
+    testWidgets('selection follows the route', (tester) async {
+      final handle = tester.ensureSemantics();
+      await tester.pumpWidget(_app(role: 'student', initialLocation: '/profile'));
+      await tester.pumpAndSettle();
+
+      expect(tabSelection(tester), [false, false, false, false, true]);
+      handle.dispose();
     });
   });
 }

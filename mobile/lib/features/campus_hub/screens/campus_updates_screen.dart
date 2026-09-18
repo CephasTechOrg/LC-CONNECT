@@ -10,6 +10,7 @@ import '../models/campus_post.dart';
 import '../providers/campus_hub_provider.dart';
 import '../widgets/campus_post_card.dart';
 import '../widgets/campus_subpage_header.dart';
+import '../../../shared/widgets/app_skeleton.dart';
 
 class CampusUpdatesScreen extends ConsumerStatefulWidget {
   const CampusUpdatesScreen({super.key});
@@ -98,7 +99,10 @@ class _CampusUpdatesScreenState extends ConsumerState<CampusUpdatesScreen> {
                 color: AppColors.primary,
                 onRefresh: () async => ref.invalidate(announcementsProvider),
                 child: async.when(
-                  loading: () => const Center(child: CircularProgressIndicator()),
+                  // A skeleton in the shape of the content that is coming, not a spinner: the Campus Hub
+                  // sub-pages were the only lists in the app that spun while every other list
+                  // showed placeholders (4.2).
+                  loading: () => const AppHubPanelSkeleton(count: 4),
                   error: (_, _) => AppErrorState(
                     message: 'Could not load announcements.',
                     onRetry: () => ref.invalidate(announcementsProvider),

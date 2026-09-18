@@ -7,23 +7,16 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Scrollable so pull-to-refresh works on empty lists.
-    return ListView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      children: [
-        SizedBox(height: MediaQuery.of(context).size.height * 0.12),
-        AppEmptyState(
-          icon: Icons.calendar_today_outlined,
-          title: hasFilter
-              ? 'No activities in this category'
-              : 'No upcoming activities',
-          subtitle: hasFilter
-              ? 'Try a different filter or check back soon'
-              : 'Be the first to create something!',
-          actionLabel: hasFilter ? 'Clear filter' : null,
-          onAction: hasFilter ? onClear : null,
-        ),
-      ],
+    // The scroll wrapper (needed so pull-to-refresh works with nothing to pull on) lives in
+    // [AppScrollableEmptyState] now — three screens had an identical copy of it.
+    return AppScrollableEmptyState(
+      icon: Icons.calendar_today_outlined,
+      title: hasFilter ? 'No activities in this category' : 'No upcoming activities',
+      subtitle: hasFilter
+          ? 'Try a different filter or check back soon'
+          : 'Be the first to create something!',
+      actionLabel: hasFilter ? 'Clear filter' : null,
+      onAction: hasFilter ? onClear : null,
     );
   }
 }

@@ -13,6 +13,7 @@ import '../../messages/providers/messages_provider.dart';
 import '../../messages/providers/staff_messaging_provider.dart';
 import '../providers/profile_provider.dart';
 import '../../messages/utils/chat_routes.dart';
+import '../../../shared/widgets/app_skeleton.dart';
 
 part '../widgets/public_profile_connect_bar.dart';
 part '../widgets/public_profile_staff.dart';
@@ -48,7 +49,7 @@ class PublicProfileScreen extends ConsumerWidget {
         ),
       ),
       body: async.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const AppProfileSkeleton(),
         error: (e, _) => _ErrorBody(
           onRetry: () => ref.invalidate(publicProfileProvider(profileId)),
         ),

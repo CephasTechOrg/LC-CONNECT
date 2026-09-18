@@ -56,6 +56,13 @@ class NavShell extends ConsumerWidget {
                       t,
                       totalUnread: totalUnread,
                       incomingRequests: isStaff ? 0 : incomingRequests,
+                      // This was hardcoded `false`. Review finding #19 read that as "a
+                      // screen-reader user is never told which tab is current" — **it is not**:
+                      // `BottomNavigationBar` sets the flag itself on the outer "Tab N of M"
+                      // node, which is what assistive technology actually reads, and it was
+                      // already correct. Passing the real value only stops the inner node from
+                      // stating something false.
+                      selected: tabs[_currentIndex(context, tabs)].path == t.path,
                     ),
                     label: t.label,
                   ),
@@ -71,6 +78,7 @@ class NavShell extends ConsumerWidget {
     _Tab tab, {
     required int totalUnread,
     required int incomingRequests,
+    required bool selected,
   }) {
     Widget icon = Icon(tab.icon);
     String semanticsLabel = tab.label;
@@ -92,7 +100,7 @@ class NavShell extends ConsumerWidget {
     }
 
     return Semantics(
-      selected: false,
+      selected: selected,
       label: semanticsLabel,
       excludeSemantics: true,
       child: icon,

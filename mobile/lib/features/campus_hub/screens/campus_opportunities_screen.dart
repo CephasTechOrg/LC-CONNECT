@@ -12,6 +12,7 @@ import '../providers/campus_hub_provider.dart';
 import '../providers/opportunity_badge_provider.dart';
 import '../widgets/campus_subpage_header.dart';
 import '../widgets/opportunity_card.dart';
+import '../../../shared/widgets/app_skeleton.dart';
 
 const _categoryFilters = <String, String>{
   'all': 'All types',
@@ -135,7 +136,10 @@ class _OpportunitiesState extends ConsumerState<CampusOpportunitiesScreen> {
                 color: AppColors.primary,
                 onRefresh: () async => ref.invalidate(campusPostsProvider(_query)),
                 child: postsAsync.when(
-                  loading: () => const Center(child: CircularProgressIndicator()),
+                  // A skeleton in the shape of the content that is coming, not a spinner: the Campus Hub
+                  // sub-pages were the only lists in the app that spun while every other list
+                  // showed placeholders (4.2).
+                  loading: () => const AppHubPanelSkeleton(count: 4),
                   error: (_, _) => AppErrorState(
                     message: 'Could not load opportunities.',
                     onRetry: () => ref.invalidate(campusPostsProvider(_query)),
