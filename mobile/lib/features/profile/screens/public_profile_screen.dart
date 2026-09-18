@@ -267,7 +267,15 @@ class _HeroCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              AvatarWidget(imageUrl: profile.avatarUrl, size: 80),
+              AvatarWidget(
+                imageUrl: profile.avatarUrl,
+                size: 80,
+                cacheScope: profile.userId,
+                // Tagged on identity, not URL — the URL carries `?v=<upload-ts>` and changes
+                // whenever the photo does.
+                previewHeroTag: 'avatar:${profile.userId}',
+                previewName: profile.displayName,
+              ),
               const SizedBox(width: 16),
               Expanded(
                 child: Column(

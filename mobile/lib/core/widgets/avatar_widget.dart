@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
+import 'avatar_preview.dart';
 
 /// A circular avatar, backed by a disk cache.
 ///
@@ -22,18 +23,37 @@ class AvatarWidget extends StatelessWidget {
   /// URL, so this cannot cause two users to share a picture.
   final String? cacheScope;
 
+  /// Opens the photo full-screen when tapped (report #3).
+  ///
+  /// Off by default, and that is the design rather than caution: most avatars in this app sit in
+  /// a row whose tap already navigates to the person, and hijacking that would break the primary
+  /// action. Pass a tag only where the avatar is large and its tap is otherwise unused — see
+  /// [showAvatarPreview] for the three places this is deliberately withheld.
+  ///
+  /// The tag must be a stable identity (`avatar:<userId>`), not the URL, which changes when the
+  /// photo does.
+  final String? previewHeroTag;
+
+  /// Name for the preview's semantics label, so a screen reader says whose photo it is.
+  final String? previewName;
+
   const AvatarWidget({
     super.key,
     this.imageUrl,
     this.size = 50.0,
     this.cacheScope,
+    this.previewHeroTag,
+    this.previewName,
   });
 
   @override
   Widget build(BuildContext context) {
     final hasImage = imageUrl != null && imageUrl!.isNotEmpty;
+    // No preview without a photo: a viewer showing the fallback silhouette full-screen offers
+    // nothing, and an avatar that opens *sometimes* is worse than one that never does.
+    final canPreview = hasImage && previewHeroTag != null;
 
-    return Container(
+    final avatar = Container(
       width: size,
       height: size,
       clipBehavior: Clip.antiAlias,
@@ -55,6 +75,27 @@ class AvatarWidget extends StatelessWidget {
               errorWidget: (context, url, error) => _FallbackIcon(size: size),
             )
           : _FallbackIcon(size: size),
+    );
+
+    if (!canPreview) return avatar;
+    return Semantics(
+      button: true,
+      label: previewName == null
+          ? 'Profile photo, double tap to view'
+          : "$previewName's profile photo, double tap to view",
+      excludeSemantics: true,
+      child: GestureDetector(
+        onTap: () => showAvatarPreview(
+          context,
+          imageUrl: imageUrl!,
+          heroTag: previewHeroTag!,
+          name: previewName,
+        ),
+        // The Hero on this side of the flight. Both ends need the same tag, and only one of each
+        // tag may be on screen at a time — which is why this is opt-in per call site rather than
+        // switched on for every avatar.
+        child: Hero(tag: previewHeroTag!, child: avatar),
+      ),
     );
   }
 }

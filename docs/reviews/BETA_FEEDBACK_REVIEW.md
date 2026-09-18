@@ -2079,8 +2079,24 @@ Notation: **[be]** backend · **[fe]** mobile · **[cfg]** config/ops · **[msr]
 - [ ] **4.4** [be][fe][snap] **#15** notification grouping + deep-linkable rows (needs target ids on rows
       *and* payloads) + shared states
 - [ ] **4.5** [fe] **#20** declutter Discovery; one bell location; fix the popping tab bar
-- [ ] **4.6** [fe] **#3** avatar preview viewer (own + permitted public profiles only; never list rows,
-      never scholar headshots)
+- [x] **4.6** [fe] **#3** avatar preview viewer — **done.** `showAvatarPreview` plus an opt-in
+      `previewHeroTag` on `AvatarWidget`: full-screen, Hero-animated from the thumbnail,
+      pinch-zoomable to 4x, dismissed by the close button, a tap anywhere, or the system back
+      gesture. Tagged on identity (`avatar:<userId>`), never the URL, which changes with every
+      upload.
+      **Attached at two sites, not twenty**, and the reasoning is the substance of this item:
+      the public profile (80px) and the group detail header (88px) — the only large avatars whose
+      tap was unused. The review also listed the own profile and the chat header; both were
+      wrong on inspection. The own-profile avatar's tap **already opens the image picker** to
+      change your photo, advertised by a camera badge, and that is the more useful action; the
+      chat header is 38px and sits in a row that navigates. Dense list rows are excluded for the
+      same reason — a row's job is to reach the person.
+      Scholar headshots are out of reach **by construction**: they never use `AvatarWidget`, so an
+      expiring 300-second signed URL cannot be routed into a viewer that outlives it, or into the
+      image cache. Noted in the helper's own doc so it stays true.
+      Also: no preview when there is no photo — a full-screen silhouette offers nothing, and an
+      avatar that opens *sometimes* is worse than one that never does.
+
 - [x] **4.7** [fe] **#18** a11y sweep — **done, and two of the four findings were wrong.**
       *Real:* the skeletons were **silent** — a screen-reader user heard nothing while a screen
       loaded, indistinguishable from an empty screen. Now one announcement per *group*

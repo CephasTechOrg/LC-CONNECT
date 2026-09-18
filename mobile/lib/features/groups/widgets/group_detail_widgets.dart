@@ -18,7 +18,13 @@ class _GroupHeader extends StatelessWidget {
         children: [
           Stack(
             children: [
-              AvatarWidget(imageUrl: group.avatarUrl, size: 88, cacheScope: group.id),
+              AvatarWidget(
+                imageUrl: group.avatarUrl,
+                size: 88,
+                cacheScope: group.id,
+                previewHeroTag: 'group-avatar:${group.id}',
+                previewName: group.name,
+              ),
               if (uploading)
                 const Positioned.fill(
                   child: CircleAvatar(
