@@ -273,7 +273,7 @@ Rule: same id twice = same phone. Different ids = two separate simulators.
 ```env
 API_BASE_URL=http://localhost:8000/api/v1
 ENV=development
-# API_BASE_URL=https://lc-connect-api.onrender.com/api/v1   # keep commented for local
+# API_BASE_URL=https://lc-connect.onrender.com/api/v1   # keep commented for local
 ```
 
 

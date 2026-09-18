@@ -12,7 +12,7 @@ The app talks to a live backend, so a lot is fixable without touching TestFlight
 | What changed | What to do |
 |---|---|
 | Backend / API logic | Push → Render auto-deploys. Reaches **existing installs immediately**. |
-| Policy text (`docs/policies/`) | Push, then **manual deploy** of `lc-connect-api` — see the trap below. |
+| Policy text (`docs/policies/`) | Push, then **manual deploy** of the API service (`lc-connect`) — see the trap below. |
 | Employer or admin portal | Push → Render auto-deploys. |
 | **Flutter code, app icon, `Info.plist`, assets** | **New build.** Follow the checklist. |
 
@@ -20,7 +20,7 @@ The app talks to a live backend, so a lot is fixable without touching TestFlight
 > only auto-deploys a service when files *inside its root* change. The policy markdown lives in
 > `docs/policies/`, outside `backend/`. The API also `@cache`s documents for the process
 > lifetime, so nothing updates until it restarts.
-> **Fix: Render → `lc-connect-api` → Manual Deploy → Deploy latest commit.**
+> **Fix: Render → `lc-connect` (the API service, in its own project) → Manual Deploy → Deploy latest commit.**
 
 ---
 

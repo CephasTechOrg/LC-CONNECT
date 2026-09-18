@@ -7,7 +7,7 @@ This document covers how the LC Connect FastAPI backend is deployed to Render, i
 ## Table of Contents
 
 1. [Overview](#1-overview)
-2. [render.yaml — Full Configuration](#2-renderyaml--full-configuration)
+2. [Service configuration](#2-service-configuration)
 3. [Environment Variables](#3-environment-variables)
 4. [Database URL — asyncpg Format](#4-database-url--asyncpg-format)
 5. [Supabase Transaction Pooler — Why Port 6543](#5-supabase-transaction-pooler--why-port-6543)
@@ -29,106 +29,100 @@ This document covers how the LC Connect FastAPI backend is deployed to Render, i
 | Provider | [Render](https://render.com) |
 | Service type | Web service |
 | Runtime | Python 3.12 |
-| Region | Oregon (US West) |
+| Region | **Ohio (US East)** — co-located with the Supabase database |
 | Plan | Free |
 | Root directory | `backend` |
 | Health check | `GET /health` |
-| Production URL | `https://lc-connect-api.onrender.com` |
+| Production URL | `https://lc-connect.onrender.com` |
+| Managed by | **The Render dashboard, not `render.yaml`** — see below |
 
-The backend is a FastAPI app served by `uvicorn`. On startup, it runs `scripts/init_db.py` to create any missing tables and seed lookup data, then starts the API server.
+The backend is a FastAPI app served by `uvicorn`. On startup it runs `scripts/bootstrap_db.py`,
+which inspects the database and either creates-and-stamps it (empty database) or runs
+`alembic upgrade head` (already managed), then starts the API server.
+
+### Why this service is not in the blueprint
+
+A Render service's region is fixed at creation, so moving the API from Oregon to Ohio meant
+deleting it and creating a new one. It was created **directly in the dashboard, in its own Render
+project**, not from `render.yaml`.
+
+That matters on every push. Render's blueprint sync creates any service `render.yaml` declares
+which the blueprint does not already own — so while the API was still declared there, each push
+spun up a *second*, Oregon backend alongside the real one. The API service block has therefore
+been removed from `render.yaml`, which now manages only the two Next.js portals.
+
+The cost of that is real and worth naming: the API's environment variables are no longer declared
+in version control, which is exactly the gap that lost `HONORS_ATTENDANCE_ENABLED` and
+`ATTENDANCE_QR_SIGNING_SECRET` from review once before. **§3 below is now the authoritative list**
+and must be updated whenever a new setting is added. Treat it as the re-create checklist: if this
+service is ever rebuilt, every Required row has to be re-entered by hand.
 
 ---
 
-## 2. render.yaml — Full Configuration
+## 2. Service configuration
 
-The file lives at the repository root (`render.yaml`):
+`render.yaml` at the repository root manages **only the two Next.js portals**. The API service is
+dashboard-managed in its own Render project — see §1 for why, and treat this section plus §3 as
+the re-create checklist, since neither is in version control.
 
-The live file is the source of truth — read it directly rather than trusting a copy pasted into
-this doc (this exact copy drifted out of sync once already). As of this writing:
+### API service (dashboard)
 
-```yaml
-services:
-  - type: web
-    name: lc-connect-api
-    env: python
-    region: oregon
-    plan: free
-    branch: main
-    rootDir: backend
-    buildCommand: |
-      pip install --upgrade pip
-      pip install -r requirements.txt
-    startCommand: alembic upgrade head && PYTHONPATH=. python scripts/init_db.py && uvicorn app.main:app --host 0.0.0.0 --port $PORT
-    healthCheckPath: /health
-    envVars:
-      - key: PYTHON_VERSION
-        value: "3.12.0"
-      - key: PIP_ROOT_USER_ACTION
-        value: ignore
-      - key: ENVIRONMENT
-        value: production
-      - key: DATABASE_URL
-        sync: false
-      - key: JWT_SECRET_KEY
-        sync: false
-      - key: CORS_ORIGINS
-        sync: false
-      - key: SUPABASE_URL
-        sync: false
-      - key: SUPABASE_SERVICE_ROLE_KEY
-        sync: false
-      - key: SUPABASE_PROFILE_BUCKET
-        value: profile-images
-      - key: MAX_PROFILE_IMAGE_MB
-        value: "5"
-      - key: SUPABASE_JWT_SECRET
-        sync: false
-      - key: ADMIN_PORTAL_URL
-        sync: false
-      - key: EMPLOYER_PORTAL_URL
-        sync: false
-      - key: EMAIL_PROVIDER
-        value: auto
-      - key: RESEND_API_KEY
-        sync: false
-      - key: RESEND_FROM_EMAIL
-        sync: false
-      - key: RESEND_REPLY_TO
-        sync: false
-      - key: SUPABASE_SEND_EMAIL_HOOK_SECRET
-        sync: false
-      - key: FIREBASE_CREDENTIALS_JSON
-        sync: false
-      - key: SUPPORT_EMAIL
-        value: support@livingstone.edu
-      - key: MESSAGE_SOFT_DELETE_RETENTION_DAYS
-        value: "90"
-```
+| Setting | Value |
+|---|---|
+| Name | `lc-connect` (hence `https://lc-connect.onrender.com`) |
+| Region | Ohio — must match the Supabase database's region |
+| Environment | Python 3.12 (`PYTHON_VERSION=3.12.0`) |
+| Branch | `main` |
+| Root directory | `backend` |
+| Health check path | `/health` |
 
-Note the start command now runs `alembic upgrade head` before `init_db.py` — schema migrations are
-authoritative; `init_db.py`'s `Base.metadata.create_all` is just a fallback for local testing
-without Alembic (see `scripts/init_db.py`'s own comment).
-
-### sync: false
-
-Variables marked `sync: false` are declared in the YAML so Render knows they exist, but their values are **not** stored in the YAML file. They must be set manually in the Render dashboard under:
+**Build command** — one line, as the dashboard field expects:
 
 ```
-Service → Environment → Add Environment Variable
+pip install --upgrade pip && pip install -r requirements.txt
 ```
 
-This prevents secrets from being committed to git. The YAML is safe to commit because it contains no actual secret values.
+**Start command:**
+
+```
+PYTHONPATH=. python scripts/bootstrap_db.py && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+```
+
+Two things about that start command are deliberate and easy to get wrong:
+
+* **`bootstrap_db.py`, not `alembic upgrade head`.** It is one step, not two. `alembic upgrade head`
+  cannot build this database from empty (see `docs/reviews/BETA_FEEDBACK_REVIEW.md` finding 18), and
+  it used to run *before* the table creation in `init_db.py` — so a brand-new environment failed to
+  deploy at all. `bootstrap_db.py` inspects the database and takes the right path: create-and-stamp
+  when empty, `upgrade` when already managed. It runs on every boot, so a new migration applies
+  itself on the next deploy with no manual step.
+* **`PYTHONPATH=.`** — the root directory is `backend`, so the working directory at startup is
+  `backend/`, which contains the `app/` package. Without this, `python scripts/...` cannot import it.
+
+No `--workers` flag. A second worker breaks in-process realtime fan-out, the socket-count presence
+check that gates push, and the process-local attendance QR challenge store — a QR issued on one
+instance would be rejected as expired on another. Redis first, *then* workers; see `ADR-003`.
+
+### Portals (`render.yaml`)
+
+The two Next.js services are blueprint-managed and still in Oregon. Their
+`NEXT_PUBLIC_API_BASE_URL` must include the `/api/v1` suffix, and because `NEXT_PUBLIC_*` is
+inlined by Next.js at **build** time, changing it requires a redeploy — setting the variable alone
+changes nothing.
 
 ---
 
 ## 3. Environment Variables
 
-Set these manually in the Render dashboard for the `lc-connect-api` service:
+**This is the authoritative list** — the API service is dashboard-managed, so nothing here is in
+version control (see §1). Every `Required` row must be set, or the feature in its Notes column
+fails, usually silently.
+
+Set these in the Render dashboard for the API service:
 
 | Variable | Source | Notes |
 |---|---|---|
 | `DATABASE_URL` | Supabase → Settings → Database → Transaction pooler URL | Must use port 6543, not 5432 |
-| `JWT_SECRET_KEY` | Generate with `python -c "import secrets; print(secrets.token_hex(32))"` | Keep this secret — never commit it |
 | `CORS_ORIGINS` | Your Flutter app's origin, or `*` for development | Comma-separated list |
 | `SUPABASE_URL` | Supabase → Settings → API → Project URL | e.g., `https://xxxxx.supabase.co` |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Settings → API → service_role key | Backend-only, never in Flutter |
@@ -142,8 +136,12 @@ Set these manually in the Render dashboard for the `lc-connect-api` service:
 | `FIREBASE_CREDENTIALS_JSON` | Firebase service account JSON (whole file contents) | Push notifications cleanly disable if unset — not required |
 | `SUPPORT_EMAIL` | Campus student-support inbox | Shown to **suspended** users on mobile + `GET /account/suspension-status`; default `support@livingstone.edu` — **set explicitly in production** if different |
 | `MESSAGE_SOFT_DELETE_RETENTION_DAYS` | Optional — default `90` | Soft-deleted message purge window; see retention cron runbook |
+| **`HONORS_ATTENDANCE_ENABLED`** | **Required** where attendance is in use — `true` | Defaults to **false** in `app/config.py`. When false, *every* student attendance route returns 404 and every mobile attendance surface hides itself — indistinguishable from beta report #7 |
+| **`ATTENDANCE_QR_SIGNING_SECRET`** | **Required** where attendance is in use | HMAC key for the rotating check-in QR. Unset → `start_session` 503s, and any check-in is rejected (`verify_challenge_token` returns False rather than trusting an unsigned code) |
+| `SLOW_REQUEST_MS` | Optional — default `1000` | Requests slower than this log at WARNING instead of INFO, so they can be found with a level filter |
+| `WS_MAX_UNSUPPORTED_REPLIES` | Optional — default `20` | Per-connection budget for replies to unimplemented WebSocket frames. Over budget the gateway goes quiet rather than closing — closing caused a reconnect-ban loop |
 
-Variables set directly in the YAML (no manual step needed):
+These have safe defaults in `app/config.py`, so they only need setting to override:
 
 | Variable | Value |
 |---|---|
@@ -259,13 +257,13 @@ The URL will contain port `6543`. Copy it and paste it into the `DATABASE_URL` e
 
 ### The problem
 
-The start command runs `python scripts/init_db.py`. Inside `init_db.py`, the script does:
+The start command runs `python scripts/bootstrap_db.py`. Inside it, the script does:
 
 ```python
 from app.database import engine, Base
 ```
 
-When Python runs `scripts/init_db.py` from the `backend/` root directory, it does not automatically add the current directory to `sys.path`. So `from app.database import ...` fails with:
+When Python runs `scripts/bootstrap_db.py` from the `backend/` root directory, it does not automatically add the current directory to `sys.path`. So `from app.database import ...` fails with:
 
 ```
 ModuleNotFoundError: No module named 'app'
@@ -276,7 +274,7 @@ ModuleNotFoundError: No module named 'app'
 Prepend `PYTHONPATH=.` to the command:
 
 ```yaml
-startCommand: PYTHONPATH=. python scripts/init_db.py && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+PYTHONPATH=. python scripts/bootstrap_db.py && uvicorn app.main:app --host 0.0.0.0 --port $PORT
 ```
 
 `PYTHONPATH=.` adds the current working directory to Python's module search path. Since `rootDir` in render.yaml is `backend`, the current directory at startup is `backend/`, which contains the `app/` package.
@@ -302,7 +300,7 @@ CORS_ORIGINS=*
 Or to be more restrictive while still allowing browser access to `/docs`:
 
 ```
-CORS_ORIGINS=https://lc-connect-api.onrender.com,http://localhost:3000
+CORS_ORIGINS=https://lc-connect.onrender.com,http://localhost:3000
 ```
 
 ### For local development
@@ -348,7 +346,6 @@ Use this before every deployment:
 - [ ] `render.yaml` is committed to the `main` branch
 - [ ] `rootDir` is set to `backend`
 - [ ] `DATABASE_URL` in Render dashboard uses Transaction pooler URL (port 6543)
-- [ ] `JWT_SECRET_KEY` is set in Render dashboard
 - [ ] `SUPABASE_URL` is set in Render dashboard
 - [ ] `SUPABASE_SERVICE_ROLE_KEY` is set in Render dashboard
 - [ ] `SUPABASE_JWT_SECRET` is set if the project uses HS256
@@ -371,13 +368,13 @@ Use this before every deployment:
 Render auto-deploys on push to `main`. You can also trigger manually:
 
 ```
-Render Dashboard → lc-connect-api → Manual Deploy → Deploy latest commit
+Render Dashboard → lc-connect (API service) → Manual Deploy → Deploy latest commit
 ```
 
 ### Viewing logs
 
 ```
-Render Dashboard → lc-connect-api → Logs
+Render Dashboard → lc-connect (API service) → Logs
 ```
 
 Logs show build output, startup output, and request logs in real time.
