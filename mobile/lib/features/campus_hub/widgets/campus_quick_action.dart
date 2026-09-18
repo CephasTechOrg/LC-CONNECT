@@ -4,6 +4,7 @@ class CampusQuickAction extends StatelessWidget {
   final IconData icon;
   final String label;
   final VoidCallback onTap;
+
   /// Optional "new" count — used by Opportunities (separate from Latest Updates announcements).
   final int badgeCount;
 

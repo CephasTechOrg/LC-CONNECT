@@ -174,11 +174,7 @@ class LinkPreviewCard extends StatelessWidget {
                     _description!,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.dmSans(
-                      fontSize: 13,
-                      height: 1.35,
-                      color: AppColors.textMid,
-                    ),
+                    style: GoogleFonts.dmSans(fontSize: 13, height: 1.35, color: AppColors.textMid),
                   ),
                 ],
               ],
@@ -226,11 +222,7 @@ class _ImageFallback extends StatelessWidget {
     return ColoredBox(
       color: AppColors.primarySoft,
       child: Center(
-        child: Icon(
-          Icons.link_rounded,
-          size: tall ? 28 : 18,
-          color: AppColors.primary,
-        ),
+        child: Icon(Icons.link_rounded, size: tall ? 28 : 18, color: AppColors.primary),
       ),
     );
   }

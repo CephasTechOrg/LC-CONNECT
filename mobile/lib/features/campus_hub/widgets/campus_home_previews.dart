@@ -1,10 +1,6 @@
 part of '../screens/campus_hub_screen.dart';
 
-const _cardShadow = BoxShadow(
-  color: Color(0x0A111827),
-  blurRadius: 3,
-  offset: Offset(0, 1),
-);
+const _cardShadow = BoxShadow(color: Color(0x0A111827), blurRadius: 3, offset: Offset(0, 1));
 
 /// Up to two upcoming activities, so the section never crowds out announcements.
 class _ActivitiesPreview extends ConsumerWidget {
@@ -214,7 +210,12 @@ class _SuggestedConnectionsPreview extends ConsumerWidget {
         // Do not use CrossAxisAlignment.stretch here — this Row lives inside a
         // ListView, which gives unbounded height and stretch would force infinite height.
         return Padding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.gutter,
+            0,
+            AppSpacing.gutter,
+            AppSpacing.xs,
+          ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -308,11 +309,7 @@ class _ConnectionAvatar extends StatelessWidget {
                 shape: BoxShape.circle,
                 border: Border.all(color: AppColors.surface, width: 2),
               ),
-              child: const Icon(
-                Icons.person_add_alt_1_rounded,
-                size: 13,
-                color: AppColors.primary,
-              ),
+              child: const Icon(Icons.person_add_alt_1_rounded, size: 13, color: AppColors.primary),
             ),
           ),
         ],
@@ -326,11 +323,6 @@ class _PreviewLoading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Column(
-      children: [
-        AppPreviewCardSkeleton(),
-        AppPreviewCardSkeleton(),
-      ],
-    );
+    return const Column(children: [AppPreviewCardSkeleton(), AppPreviewCardSkeleton()]);
   }
 }

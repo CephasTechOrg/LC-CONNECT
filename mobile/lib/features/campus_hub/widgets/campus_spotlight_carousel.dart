@@ -10,6 +10,7 @@ double _spotlightHeightFor(BuildContext context) {
   final scale = MediaQuery.textScalerOf(context).scale(1.0).clamp(1.0, 1.6);
   return _spotlightHeight * scale;
 }
+
 const _spotlightRadius = 20.0;
 
 class _SpotlightCarousel extends StatefulWidget {
@@ -72,7 +73,7 @@ class _SpotlightCarouselState extends State<_SpotlightCarousel> {
       _restartTimer();
     }
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
+      padding: const EdgeInsets.fromLTRB(AppSpacing.gutter, AppSpacing.xs, AppSpacing.gutter, 0),
       child: Column(
         children: [
           SizedBox(
@@ -114,11 +115,7 @@ class _SpotlightDots extends StatelessWidget {
   final int active;
   final ValueChanged<int> onTap;
 
-  const _SpotlightDots({
-    required this.count,
-    required this.active,
-    required this.onTap,
-  });
+  const _SpotlightDots({required this.count, required this.active, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -197,10 +194,7 @@ class _SpotlightCard extends StatelessWidget {
                 child: Container(
                   width: 230,
                   height: 230,
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Color(0x293F7FB5),
-                  ),
+                  decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0x293F7FB5)),
                 ),
               ),
               if (spotlight.studentAsset != null)
@@ -248,12 +242,7 @@ class _FeatheredStudent extends StatelessWidget {
         begin: Alignment.centerLeft,
         end: Alignment.centerRight,
         stops: [0, 0.12, 0.95, 1],
-        colors: [
-          Color(0x00000000),
-          Color(0xFF000000),
-          Color(0xFF000000),
-          Color(0x00000000),
-        ],
+        colors: [Color(0x00000000), Color(0xFF000000), Color(0xFF000000), Color(0x00000000)],
       ).createShader(bounds),
       child: ShaderMask(
         blendMode: BlendMode.dstIn,
@@ -261,11 +250,7 @@ class _FeatheredStudent extends StatelessWidget {
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           stops: [0, 0.06, 1],
-          colors: [
-            Color(0x00000000),
-            Color(0xFF000000),
-            Color(0xFF000000),
-          ],
+          colors: [Color(0x00000000), Color(0xFF000000), Color(0xFF000000)],
         ).createShader(bounds),
         child: Image.asset(
           asset,
@@ -377,11 +362,7 @@ class _SpotlightContent extends StatelessWidget {
             constraints: const BoxConstraints(maxWidth: 175),
             child: Text(
               spotlight.description,
-              style: GoogleFonts.dmSans(
-                fontSize: 11.5,
-                color: AppColors.textMid,
-                height: 1.4,
-              ),
+              style: GoogleFonts.dmSans(fontSize: 11.5, color: AppColors.textMid, height: 1.4),
             ),
           ),
         ],

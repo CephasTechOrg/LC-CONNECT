@@ -15,8 +15,10 @@ class ResourcesQuery {
   int get hashCode => category.hashCode;
 }
 
-final campusResourcesProvider =
-    FutureProvider.family<List<CampusResource>, ResourcesQuery>((ref, query) async {
+final campusResourcesProvider = FutureProvider.family<List<CampusResource>, ResourcesQuery>((
+  ref,
+  query,
+) async {
   ref.watch(authNotifierProvider);
   final client = ref.watch(apiClientProvider);
   final response = await client.dio.get(
@@ -31,8 +33,10 @@ final campusResourcesProvider =
       .toList();
 });
 
-final campusResourceProvider =
-    FutureProvider.family<CampusResource, String>((ref, resourceId) async {
+final campusResourceProvider = FutureProvider.family<CampusResource, String>((
+  ref,
+  resourceId,
+) async {
   ref.watch(authNotifierProvider);
   final client = ref.watch(apiClientProvider);
   final response = await client.dio.get('/campus-hub/resources/$resourceId');

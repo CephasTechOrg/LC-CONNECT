@@ -7,7 +7,12 @@ class _QuickActionsRow extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final opportunityNew = ref.watch(opportunityNewCountProvider);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 10, 20, 2),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.gutter,
+        AppSpacing.sm,
+        AppSpacing.gutter,
+        AppSpacing.xs,
+      ),
       child: Row(
         children: [
           CampusQuickAction(
@@ -44,16 +49,13 @@ class _SectionEmpty extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
+      padding: const EdgeInsets.fromLTRB(AppSpacing.gutter, 0, AppSpacing.gutter, AppSpacing.xs),
       child: Row(
         children: [
           Icon(icon, size: 16, color: AppColors.textMuted),
           const SizedBox(width: 8),
           Expanded(
-            child: Text(
-              text,
-              style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.textMuted),
-            ),
+            child: Text(text, style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.textMuted)),
           ),
         ],
       ),
@@ -71,7 +73,12 @@ class _SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.gutter,
+        AppSpacing.xxl,
+        AppSpacing.gutter,
+        AppSpacing.md,
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.baseline,
         textBaseline: TextBaseline.alphabetic,
@@ -107,7 +114,7 @@ class _PublisherCta extends ConsumerWidget {
     if (caps == null || !caps.canPublish) return const SizedBox.shrink();
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+      padding: const EdgeInsets.fromLTRB(AppSpacing.gutter, AppSpacing.md, AppSpacing.gutter, 0),
       child: Material(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),

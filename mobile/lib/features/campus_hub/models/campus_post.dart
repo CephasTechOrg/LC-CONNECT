@@ -18,14 +18,14 @@ class LinkPreview {
   });
 
   factory LinkPreview.fromJson(Map<String, dynamic> json) => LinkPreview(
-        domain: json['domain'] as String?,
-        siteName: json['site_name'] as String?,
-        title: json['title'] as String?,
-        description: json['description'] as String?,
-        imageUrl: json['image_url'] as String?,
-        fetchedAt: json['fetched_at'] != null ? DateTime.parse(json['fetched_at'] as String) : null,
-        status: json['status'] as String? ?? 'failed',
-      );
+    domain: json['domain'] as String?,
+    siteName: json['site_name'] as String?,
+    title: json['title'] as String?,
+    description: json['description'] as String?,
+    imageUrl: json['image_url'] as String?,
+    fetchedAt: json['fetched_at'] != null ? DateTime.parse(json['fetched_at'] as String) : null,
+    status: json['status'] as String? ?? 'failed',
+  );
 
   bool get isOk => status == 'ok';
 }
@@ -73,42 +73,42 @@ class CampusPostSummary {
   });
 
   factory CampusPostSummary.fromJson(Map<String, dynamic> json) => CampusPostSummary(
-        id: json['id'] as String,
-        kind: json['kind'] as String,
-        title: json['title'] as String,
-        summary: json['summary'] as String?,
-        priority: json['priority'] as String,
-        category: json['category'] as String?,
-        publishAt: DateTime.parse(json['publish_at'] as String),
-        expiresAt: json['expires_at'] != null ? DateTime.parse(json['expires_at'] as String) : null,
-        externalUrl: json['external_url'] as String?,
-        linkPreview: json['link_preview'] is Map<String, dynamic>
-            ? LinkPreview.fromJson(json['link_preview'] as Map<String, dynamic>)
-            : null,
-        read: json['read'] as bool? ?? false,
-        source: json['source'] as String? ?? 'campus',
-        isBlueprintBond: json['is_blueprint_bond'] as bool? ?? false,
-      );
+    id: json['id'] as String,
+    kind: json['kind'] as String,
+    title: json['title'] as String,
+    summary: json['summary'] as String?,
+    priority: json['priority'] as String,
+    category: json['category'] as String?,
+    publishAt: DateTime.parse(json['publish_at'] as String),
+    expiresAt: json['expires_at'] != null ? DateTime.parse(json['expires_at'] as String) : null,
+    externalUrl: json['external_url'] as String?,
+    linkPreview: json['link_preview'] is Map<String, dynamic>
+        ? LinkPreview.fromJson(json['link_preview'] as Map<String, dynamic>)
+        : null,
+    read: json['read'] as bool? ?? false,
+    source: json['source'] as String? ?? 'campus',
+    isBlueprintBond: json['is_blueprint_bond'] as bool? ?? false,
+  );
 
   bool get isUrgent => priority == 'urgent';
   bool get isImportant => priority == 'important';
   bool get isEmployerPartner => source == 'employer';
 
   CampusPostSummary copyWith({bool? read}) => CampusPostSummary(
-        id: id,
-        kind: kind,
-        title: title,
-        summary: summary,
-        priority: priority,
-        category: category,
-        publishAt: publishAt,
-        expiresAt: expiresAt,
-        externalUrl: externalUrl,
-        linkPreview: linkPreview,
-        read: read ?? this.read,
-        source: source,
-        isBlueprintBond: isBlueprintBond,
-      );
+    id: id,
+    kind: kind,
+    title: title,
+    summary: summary,
+    priority: priority,
+    category: category,
+    publishAt: publishAt,
+    expiresAt: expiresAt,
+    externalUrl: externalUrl,
+    linkPreview: linkPreview,
+    read: read ?? this.read,
+    source: source,
+    isBlueprintBond: isBlueprintBond,
+  );
 }
 
 class CampusPost extends CampusPostSummary {
@@ -133,42 +133,39 @@ class CampusPost extends CampusPostSummary {
   });
 
   factory CampusPost.fromJson(Map<String, dynamic> json) => CampusPost(
-        id: json['id'] as String,
-        kind: json['kind'] as String,
-        title: json['title'] as String,
-        summary: json['summary'] as String?,
-        priority: json['priority'] as String,
-        category: json['category'] as String?,
-        publishAt: DateTime.parse(json['publish_at'] as String),
-        expiresAt: json['expires_at'] != null ? DateTime.parse(json['expires_at'] as String) : null,
-        externalUrl: json['external_url'] as String?,
-        linkPreview: json['link_preview'] is Map<String, dynamic>
-            ? LinkPreview.fromJson(json['link_preview'] as Map<String, dynamic>)
-            : null,
-        source: json['source'] as String? ?? 'campus',
-        isBlueprintBond: json['is_blueprint_bond'] as bool? ?? false,
-        body: json['body'] as String,
-        audience: json['audience'] as String,
-      );
+    id: json['id'] as String,
+    kind: json['kind'] as String,
+    title: json['title'] as String,
+    summary: json['summary'] as String?,
+    priority: json['priority'] as String,
+    category: json['category'] as String?,
+    publishAt: DateTime.parse(json['publish_at'] as String),
+    expiresAt: json['expires_at'] != null ? DateTime.parse(json['expires_at'] as String) : null,
+    externalUrl: json['external_url'] as String?,
+    linkPreview: json['link_preview'] is Map<String, dynamic>
+        ? LinkPreview.fromJson(json['link_preview'] as Map<String, dynamic>)
+        : null,
+    source: json['source'] as String? ?? 'campus',
+    isBlueprintBond: json['is_blueprint_bond'] as bool? ?? false,
+    body: json['body'] as String,
+    audience: json['audience'] as String,
+  );
 }
 
 class CampusHubOverview {
   final List<CampusPostSummary> urgentPosts;
   final List<CampusPostSummary> latestUpdates;
 
-  const CampusHubOverview({
-    required this.urgentPosts,
-    required this.latestUpdates,
-  });
+  const CampusHubOverview({required this.urgentPosts, required this.latestUpdates});
 
   factory CampusHubOverview.fromJson(Map<String, dynamic> json) => CampusHubOverview(
-        urgentPosts: (json['urgent_posts'] as List)
-            .map((item) => CampusPostSummary.fromJson(item as Map<String, dynamic>))
-            .toList(),
-        latestUpdates: (json['latest_updates'] as List)
-            .map((item) => CampusPostSummary.fromJson(item as Map<String, dynamic>))
-            .toList(),
-      );
+    urgentPosts: (json['urgent_posts'] as List)
+        .map((item) => CampusPostSummary.fromJson(item as Map<String, dynamic>))
+        .toList(),
+    latestUpdates: (json['latest_updates'] as List)
+        .map((item) => CampusPostSummary.fromJson(item as Map<String, dynamic>))
+        .toList(),
+  );
 }
 
 // Two clear types. Urgency is the post's priority, not a type.

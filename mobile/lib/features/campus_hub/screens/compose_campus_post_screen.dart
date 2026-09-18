@@ -75,9 +75,7 @@ class _ComposeCampusPostScreenState extends ConsumerState<ComposeCampusPostScree
 
   bool _isHttpUrl(String raw) {
     final uri = Uri.tryParse(raw.trim());
-    return uri != null &&
-        (uri.scheme == 'http' || uri.scheme == 'https') &&
-        uri.host.isNotEmpty;
+    return uri != null && (uri.scheme == 'http' || uri.scheme == 'https') && uri.host.isNotEmpty;
   }
 
   Future<void> _pickExpires() async {
@@ -167,21 +165,21 @@ class _ComposeCampusPostScreenState extends ConsumerState<ComposeCampusPostScree
   }
 
   Future<bool?> _confirmPublish() => showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Text('Publish now?', style: GoogleFonts.dmSans(fontWeight: FontWeight.w700)),
-          content: Text(
-            _priority == 'important'
-                ? 'This may notify the campus audience.'
-                : 'This will appear in Campus Hub for the selected audience.',
-            style: GoogleFonts.dmSans(color: AppColors.textMid),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-            FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Publish')),
-          ],
-        ),
-      );
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text('Publish now?', style: GoogleFonts.dmSans(fontWeight: FontWeight.w700)),
+      content: Text(
+        _priority == 'important'
+            ? 'This may notify the campus audience.'
+            : 'This will appear in Campus Hub for the selected audience.',
+        style: GoogleFonts.dmSans(color: AppColors.textMid),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+        FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Publish')),
+      ],
+    ),
+  );
 
   void _invalidateFeeds() {
     ref.invalidate(myCampusPostsProvider);
@@ -190,12 +188,12 @@ class _ComposeCampusPostScreenState extends ConsumerState<ComposeCampusPostScree
   }
 
   void _toast(String message) => ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message, style: GoogleFonts.dmSans()),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
-      );
+    SnackBar(
+      content: Text(message, style: GoogleFonts.dmSans()),
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+    ),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -211,11 +209,7 @@ class _ComposeCampusPostScreenState extends ConsumerState<ComposeCampusPostScree
                 padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
                 children: [
                   const _Label('Type'),
-                  _ChipWrap(
-                    options: postKindLabels,
-                    selected: _kind,
-                    onSelect: _onKindChanged,
-                  ),
+                  _ChipWrap(options: postKindLabels, selected: _kind, onSelect: _onKindChanged),
                   const SizedBox(height: 20),
                   const _Label('Category'),
                   _ChipWrap(
@@ -225,10 +219,18 @@ class _ComposeCampusPostScreenState extends ConsumerState<ComposeCampusPostScree
                   ),
                   const SizedBox(height: 20),
                   const _Label('Audience'),
-                  _ChipWrap(options: _audiences, selected: _audience, onSelect: (v) => setState(() => _audience = v)),
+                  _ChipWrap(
+                    options: _audiences,
+                    selected: _audience,
+                    onSelect: (v) => setState(() => _audience = v),
+                  ),
                   const SizedBox(height: 20),
                   const _Label('Priority'),
-                  _ChipWrap(options: _priorities, selected: _priority, onSelect: (v) => setState(() => _priority = v)),
+                  _ChipWrap(
+                    options: _priorities,
+                    selected: _priority,
+                    onSelect: (v) => setState(() => _priority = v),
+                  ),
                   const SizedBox(height: 24),
                   const _Label('Title'),
                   TextField(
@@ -237,7 +239,10 @@ class _ComposeCampusPostScreenState extends ConsumerState<ComposeCampusPostScree
                     decoration: const InputDecoration(hintText: 'A short, clear headline'),
                   ),
                   const SizedBox(height: 16),
-                  _Label(_kind == 'opportunity' ? 'Brief summary' : 'Summary', optional: _kind != 'opportunity'),
+                  _Label(
+                    _kind == 'opportunity' ? 'Brief summary' : 'Summary',
+                    optional: _kind != 'opportunity',
+                  ),
                   TextField(
                     controller: _summaryCtrl,
                     textCapitalization: TextCapitalization.sentences,
@@ -334,7 +339,11 @@ class _Header extends StatelessWidget {
           Expanded(
             child: Text(
               title,
-              style: GoogleFonts.dmSans(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textDark),
+              style: GoogleFonts.dmSans(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textDark,
+              ),
             ),
           ),
         ],
@@ -354,8 +363,14 @@ class _Label extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 10),
       child: Row(
         children: [
-          Text(text,
-              style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textDark)),
+          Text(
+            text,
+            style: GoogleFonts.dmSans(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textDark,
+            ),
+          ),
           if (optional) ...[
             const SizedBox(width: 6),
             Text('optional', style: GoogleFonts.dmSans(fontSize: 11, color: AppColors.textMuted)),
@@ -407,8 +422,10 @@ class _Actions extends StatelessWidget {
         height: 50,
         child: FilledButton(
           onPressed: loading ? null : onSaveChanges,
-          child: Text(loading ? 'Saving…' : 'Save changes',
-              style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 15)),
+          child: Text(
+            loading ? 'Saving…' : 'Save changes',
+            style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 15),
+          ),
         ),
       );
     }
@@ -419,8 +436,10 @@ class _Actions extends StatelessWidget {
           height: 50,
           child: FilledButton(
             onPressed: loading ? null : onPublish,
-            child: Text(loading ? 'Working…' : 'Publish now',
-                style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 15)),
+            child: Text(
+              loading ? 'Working…' : 'Publish now',
+              style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 15),
+            ),
           ),
         ),
         const SizedBox(height: 10),
@@ -429,8 +448,14 @@ class _Actions extends StatelessWidget {
           height: 50,
           child: OutlinedButton(
             onPressed: loading ? null : onSaveDraft,
-            child: Text('Save as draft',
-                style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 15, color: AppColors.primary)),
+            child: Text(
+              'Save as draft',
+              style: GoogleFonts.dmSans(
+                fontWeight: FontWeight.w700,
+                fontSize: 15,
+                color: AppColors.primary,
+              ),
+            ),
           ),
         ),
       ],

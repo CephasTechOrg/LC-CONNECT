@@ -12,7 +12,7 @@ class _LatestUpdatesPanel extends StatelessWidget {
     final featured = updates.isEmpty ? null : updates.first;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
+      padding: const EdgeInsets.fromLTRB(AppSpacing.gutter, AppSpacing.lg, AppSpacing.gutter, 0),
       child: Container(
         padding: const EdgeInsets.fromLTRB(16, 15, 16, 16),
         decoration: BoxDecoration(
@@ -50,10 +50,7 @@ class _LatestUpdatesPanel extends StatelessWidget {
             if (featured == null)
               Text(
                 'No campus announcements yet.',
-                style: GoogleFonts.dmSans(
-                  fontSize: 13,
-                  color: Colors.white.withValues(alpha: 0.7),
-                ),
+                style: GoogleFonts.dmSans(fontSize: 13, color: Colors.white.withValues(alpha: 0.7)),
               )
             else
               _FeaturedUpdateCard(post: featured),
@@ -180,10 +177,7 @@ class _FeaturedUpdateCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              Icon(
-                Icons.chevron_right_rounded,
-                color: Colors.white.withValues(alpha: 0.7),
-              ),
+              Icon(Icons.chevron_right_rounded, color: Colors.white.withValues(alpha: 0.7)),
             ],
           ),
         ),

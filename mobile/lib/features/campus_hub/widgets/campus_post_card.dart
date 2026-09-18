@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
 import '../models/campus_post.dart';
 import 'campus_post_style.dart';
+import '../../../core/theme/app_spacing.dart';
 
 /// One row on the Announcements list. There are no per-announcement images, so the leading
 /// thumbnail is a tinted icon placeholder — colored by category, same visual language as the
@@ -23,7 +24,7 @@ class CampusPostCard extends StatelessWidget {
     final dateLabel = DateFormat('MMM d').format(post.publishAt.toLocal());
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+      padding: const EdgeInsets.fromLTRB(AppSpacing.gutter, 0, AppSpacing.gutter, AppSpacing.sm),
       child: Material(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(14),
@@ -46,7 +47,10 @@ class CampusPostCard extends StatelessWidget {
                 Container(
                   width: 56,
                   height: 56,
-                  decoration: BoxDecoration(color: badgeBg, borderRadius: BorderRadius.circular(13)),
+                  decoration: BoxDecoration(
+                    color: badgeBg,
+                    borderRadius: BorderRadius.circular(13),
+                  ),
                   child: Icon(icon, color: badgeColor, size: 26),
                 ),
                 const SizedBox(width: 12),
@@ -61,13 +65,19 @@ class CampusPostCard extends StatelessWidget {
                             Container(
                               width: 7,
                               height: 7,
-                              decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
+                              decoration: const BoxDecoration(
+                                color: AppColors.primary,
+                                shape: BoxShape.circle,
+                              ),
                             ),
                             const SizedBox(width: 6),
                           ],
                           CampusBadge(label: categoryLabel, color: badgeColor, background: badgeBg),
                           const Spacer(),
-                          Text(dateLabel, style: GoogleFonts.dmSans(fontSize: 11.5, color: AppColors.textMuted)),
+                          Text(
+                            dateLabel,
+                            style: GoogleFonts.dmSans(fontSize: 11.5, color: AppColors.textMuted),
+                          ),
                         ],
                       ),
                       const SizedBox(height: 8),
@@ -88,7 +98,11 @@ class CampusPostCard extends StatelessWidget {
                           post.summary!,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.textMid, height: 1.35),
+                          style: GoogleFonts.dmSans(
+                            fontSize: 13,
+                            color: AppColors.textMid,
+                            height: 1.35,
+                          ),
                         ),
                       ],
                     ],

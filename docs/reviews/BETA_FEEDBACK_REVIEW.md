@@ -2074,8 +2074,30 @@ Notation: **[be]** backend · **[fe]** mobile · **[cfg]** config/ops · **[msr]
       skeleton. Action spinners (scan processing, the export modal) are deliberately untouched —
       the rule is skeletons for content, spinners for in-progress actions.
 
-- [ ] **4.3** [fe] **#18** dashboard pass: rhythm, alignment, card-colour competition, complete the
-      pull-to-refresh set
+- [x] **4.3** [fe] **#18** dashboard pass — **done.** Three parts, one of them a functional bug
+      rather than polish.
+      *Pull-to-refresh did not refresh the dashboard.* Three sections were missed: "Upcoming
+      activities" and "Suggested connections" read `activitiesNotifierProvider` and
+      `discoveryNotifierProvider`, and the greeting header reads the profile. A pull refreshed the
+      middle of the screen and left the top and bottom stale — worse than not offering the gesture,
+      because it looks like it worked. All nine section providers are refreshed now, and
+      `pull_to_refresh_test.dart` asserts each one by name: the failure mode is "a section was
+      added and the handler was not updated", which happened three times.
+      *Card-colour competition.* The Blueprint prompt was a saturated `#1B3A5C` card with white
+      text sitting directly above the attendance card, itself a saturated `AppColors.primary`
+      surface with white text — two adjacent dark blue cards, each shouting, neither reading as
+      more urgent, which is the same as neither being urgent. It happens precisely for the Honors
+      students this review is about. **Emphasis now follows urgency:** attendance is time-bounded
+      (a session is open, with a countdown, and missing it cannot be undone), so it keeps the
+      saturated treatment; the Blueprint prompt is a standing task with no deadline and becomes a
+      quiet tinted card, still branded by its navy icon and title. Contrast measured rather than
+      assumed: navy on the tint is 10.36:1 and the subtitle 9.19:1.
+      *Vertical rhythm.* Eleven paddings across seven dashboard files used ten different vertical
+      values — 0, 2, 4, 6, 8, 10, 12, 18, 24 — of which 2, 6, 10 and 18 were not on any grid. All
+      snapped to `AppSpacing`, and the gutter is now the named token rather than a repeated `20`.
+      The section header's existing `(24, 12)` turned out to already be the right rhythm, so it
+      became the anchor the others were snapped to.
+
 - [ ] **4.4** [be][fe][snap] **#15** notification grouping + deep-linkable rows (needs target ids on rows
       *and* payloads) + shared states
 - [x] **4.5** [fe] **#20** declutter Discovery; one bell; fix the popping tab bar — **done**, with

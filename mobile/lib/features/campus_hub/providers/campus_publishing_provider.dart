@@ -14,12 +14,11 @@ class PublishingCapabilities {
     this.reason,
   });
 
-  factory PublishingCapabilities.fromJson(Map<String, dynamic> json) =>
-      PublishingCapabilities(
-        canPublish: json['can_publish'] as bool? ?? false,
-        staffPublishingEnabled: json['staff_publishing_enabled'] as bool? ?? false,
-        reason: json['reason'] as String?,
-      );
+  factory PublishingCapabilities.fromJson(Map<String, dynamic> json) => PublishingCapabilities(
+    canPublish: json['can_publish'] as bool? ?? false,
+    staffPublishingEnabled: json['staff_publishing_enabled'] as bool? ?? false,
+    reason: json['reason'] as String?,
+  );
 }
 
 class AuthorCampusPost {
@@ -52,23 +51,19 @@ class AuthorCampusPost {
   });
 
   factory AuthorCampusPost.fromJson(Map<String, dynamic> json) => AuthorCampusPost(
-        id: json['id'] as String,
-        kind: json['kind'] as String,
-        title: json['title'] as String,
-        summary: json['summary'] as String?,
-        body: json['body'] as String,
-        audience: json['audience'] as String,
-        category: json['category'] as String?,
-        priority: json['priority'] as String,
-        status: json['status'] as String,
-        publishAt: json['publish_at'] != null
-            ? DateTime.parse(json['publish_at'] as String)
-            : null,
-        expiresAt: json['expires_at'] != null
-            ? DateTime.parse(json['expires_at'] as String)
-            : null,
-        externalUrl: json['external_url'] as String?,
-      );
+    id: json['id'] as String,
+    kind: json['kind'] as String,
+    title: json['title'] as String,
+    summary: json['summary'] as String?,
+    body: json['body'] as String,
+    audience: json['audience'] as String,
+    category: json['category'] as String?,
+    priority: json['priority'] as String,
+    status: json['status'] as String,
+    publishAt: json['publish_at'] != null ? DateTime.parse(json['publish_at'] as String) : null,
+    expiresAt: json['expires_at'] != null ? DateTime.parse(json['expires_at'] as String) : null,
+    externalUrl: json['external_url'] as String?,
+  );
 
   bool get isDraft => status == 'draft';
   bool get isPublished => status == 'published';
@@ -105,17 +100,20 @@ class CampusPublishingService {
     String? externalUrl,
     DateTime? expiresAt,
   }) async {
-    final response = await _client.dio.post('/campus-hub/my-posts', data: {
-      'kind': kind,
-      'title': title,
-      'body': body,
-      if (summary != null && summary.isNotEmpty) 'summary': summary,
-      'audience': audience,
-      'priority': priority,
-      'category': ?category,
-      if (externalUrl != null && externalUrl.isNotEmpty) 'external_url': externalUrl,
-      if (expiresAt != null) 'expires_at': expiresAt.toUtc().toIso8601String(),
-    });
+    final response = await _client.dio.post(
+      '/campus-hub/my-posts',
+      data: {
+        'kind': kind,
+        'title': title,
+        'body': body,
+        if (summary != null && summary.isNotEmpty) 'summary': summary,
+        'audience': audience,
+        'priority': priority,
+        'category': ?category,
+        if (externalUrl != null && externalUrl.isNotEmpty) 'external_url': externalUrl,
+        if (expiresAt != null) 'expires_at': expiresAt.toUtc().toIso8601String(),
+      },
+    );
     return AuthorCampusPost.fromJson(response.data as Map<String, dynamic>);
   }
 
@@ -131,18 +129,21 @@ class CampusPublishingService {
     String? externalUrl,
     DateTime? expiresAt,
   }) async {
-    final response = await _client.dio.patch('/campus-hub/my-posts/$postId', data: {
-      'kind': kind,
-      'title': title,
-      'body': body,
-      'summary': summary ?? '',
-      'audience': audience,
-      'priority': priority,
-      'category': ?category,
-      // Always send so clearing the field removes the link / deadline on the server.
-      'external_url': (externalUrl == null || externalUrl.isEmpty) ? null : externalUrl,
-      'expires_at': expiresAt?.toUtc().toIso8601String(),
-    });
+    final response = await _client.dio.patch(
+      '/campus-hub/my-posts/$postId',
+      data: {
+        'kind': kind,
+        'title': title,
+        'body': body,
+        'summary': summary ?? '',
+        'audience': audience,
+        'priority': priority,
+        'category': ?category,
+        // Always send so clearing the field removes the link / deadline on the server.
+        'external_url': (externalUrl == null || externalUrl.isEmpty) ? null : externalUrl,
+        'expires_at': expiresAt?.toUtc().toIso8601String(),
+      },
+    );
     return AuthorCampusPost.fromJson(response.data as Map<String, dynamic>);
   }
 

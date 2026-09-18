@@ -46,7 +46,10 @@ class _CampusPositionDetailScreenState extends ConsumerState<CampusPositionDetai
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text("Couldn't start that conversation", style: GoogleFonts.dmSans(color: Colors.white)),
+          content: Text(
+            "Couldn't start that conversation",
+            style: GoogleFonts.dmSans(color: Colors.white),
+          ),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -88,11 +91,7 @@ class _CampusPositionDetailScreenState extends ConsumerState<CampusPositionDetai
                   children: [
                     Row(
                       children: [
-                        AvatarWidget(
-                          imageUrl: entry.avatarUrl,
-                          size: 64,
-                          cacheScope: entry.userId,
-                        ),
+                        AvatarWidget(imageUrl: entry.avatarUrl, size: 64, cacheScope: entry.userId),
                         const SizedBox(width: 14),
                         Expanded(
                           child: Column(
@@ -108,17 +107,11 @@ class _CampusPositionDetailScreenState extends ConsumerState<CampusPositionDetai
                               ),
                               Text(
                                 entry.officialTitle,
-                                style: GoogleFonts.dmSans(
-                                  fontSize: 14,
-                                  color: AppColors.textMid,
-                                ),
+                                style: GoogleFonts.dmSans(fontSize: 14, color: AppColors.textMid),
                               ),
                               Text(
                                 entry.department,
-                                style: GoogleFonts.dmSans(
-                                  fontSize: 13,
-                                  color: AppColors.textMuted,
-                                ),
+                                style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.textMuted),
                               ),
                             ],
                           ),
@@ -140,12 +133,22 @@ class _CampusPositionDetailScreenState extends ConsumerState<CampusPositionDetai
                               ? const SizedBox(
                                   width: 16,
                                   height: 16,
-                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
                                 )
-                              : const Icon(Icons.chat_bubble_outline_rounded, size: 18, color: Colors.white),
+                              : const Icon(
+                                  Icons.chat_bubble_outline_rounded,
+                                  size: 18,
+                                  color: Colors.white,
+                                ),
                           label: Text(
                             'Message',
-                            style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, color: Colors.white),
+                            style: GoogleFonts.dmSans(
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
                           ),
                         ),
                       ),
@@ -221,12 +224,7 @@ class _ContactAction extends StatelessWidget {
   final String value;
   final VoidCallback? onTap;
 
-  const _ContactAction({
-    required this.icon,
-    required this.label,
-    required this.value,
-    this.onTap,
-  });
+  const _ContactAction({required this.icon, required this.label, required this.value, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -246,13 +244,7 @@ class _ContactAction extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  label,
-                  style: GoogleFonts.dmSans(
-                    fontSize: 12,
-                    color: AppColors.textMuted,
-                  ),
-                ),
+                Text(label, style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textMuted)),
                 Text(
                   value,
                   style: GoogleFonts.dmSans(
@@ -273,11 +265,7 @@ class _ContactAction extends StatelessWidget {
     if (onTap == null) return child;
     return Material(
       color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: child,
-      ),
+      child: InkWell(onTap: onTap, borderRadius: BorderRadius.circular(12), child: child),
     );
   }
 }

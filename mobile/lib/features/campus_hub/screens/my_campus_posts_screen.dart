@@ -66,7 +66,8 @@ class MyCampusPostsScreen extends ConsumerWidget {
                     return AppEmptyState(
                       icon: Icons.lock_outline,
                       title: 'Publishing not available',
-                      subtitle: capabilities.reason ??
+                      subtitle:
+                          capabilities.reason ??
                           'A verified campus position is required to publish.',
                     );
                   }
@@ -136,15 +137,13 @@ class MyCampusPostsScreen extends ConsumerWidget {
       await ref.read(campusPublishingServiceProvider).publishPost(post.id);
       _invalidateFeeds(ref);
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Published')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Published')));
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(apiErrorMessage(e, fallback: 'Could not publish'))),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(apiErrorMessage(e, fallback: 'Could not publish'))));
       }
     }
   }
@@ -154,7 +153,9 @@ class MyCampusPostsScreen extends ConsumerWidget {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Remove this post?'),
-        content: Text('“${post.title}” will be taken off Campus Hub. It stays here as archived, so nothing is lost.'),
+        content: Text(
+          '“${post.title}” will be taken off Campus Hub. It stays here as archived, so nothing is lost.',
+        ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
           FilledButton(
@@ -170,15 +171,15 @@ class MyCampusPostsScreen extends ConsumerWidget {
       await ref.read(campusPublishingServiceProvider).archivePost(post.id);
       _invalidateFeeds(ref);
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Removed from Campus Hub')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Removed from Campus Hub')));
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(apiErrorMessage(e, fallback: 'Could not archive'))),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(apiErrorMessage(e, fallback: 'Could not archive'))));
       }
     }
   }
@@ -232,15 +233,23 @@ class _AuthorPostTile extends StatelessWidget {
                   Text(
                     kind,
                     style: GoogleFonts.dmSans(
-                        fontSize: 11.5, fontWeight: FontWeight.w600, color: AppColors.textMuted),
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textMuted,
+                    ),
                   ),
                   const Spacer(),
                   if (post.isDraft)
                     TextButton(
                       onPressed: onPublish,
                       style: TextButton.styleFrom(minimumSize: const Size(0, 32)),
-                      child: Text('Publish',
-                          style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, color: AppColors.primary)),
+                      child: Text(
+                        'Publish',
+                        style: GoogleFonts.dmSans(
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primary,
+                        ),
+                      ),
                     ),
                   if (!_archived) _menu(),
                 ],
@@ -253,7 +262,10 @@ class _AuthorPostTile extends StatelessWidget {
                     Text(
                       post.title,
                       style: GoogleFonts.dmSans(
-                          fontSize: 14.5, fontWeight: FontWeight.w700, color: AppColors.textDark),
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textDark,
+                      ),
                     ),
                     if (post.summary != null && post.summary!.isNotEmpty) ...[
                       const SizedBox(height: 4),

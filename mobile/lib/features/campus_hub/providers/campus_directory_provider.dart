@@ -32,19 +32,19 @@ class DirectoryEntry {
   });
 
   factory DirectoryEntry.fromJson(Map<String, dynamic> json) => DirectoryEntry(
-        positionId: json['position_id'] as String,
-        userId: json['user_id'] as String,
-        displayName: json['display_name'] as String?,
-        avatarUrl: json['avatar_url'] as String?,
-        category: json['category'] as String,
-        officialTitle: json['official_title'] as String,
-        department: json['department'] as String,
-        officeLocation: json['office_location'] as String?,
-        phone: json['phone'] as String?,
-        contactEmail: json['contact_email'] as String,
-        availability: json['availability'] as String?,
-        bio: json['bio'] as String?,
-      );
+    positionId: json['position_id'] as String,
+    userId: json['user_id'] as String,
+    displayName: json['display_name'] as String?,
+    avatarUrl: json['avatar_url'] as String?,
+    category: json['category'] as String,
+    officialTitle: json['official_title'] as String,
+    department: json['department'] as String,
+    officeLocation: json['office_location'] as String?,
+    phone: json['phone'] as String?,
+    contactEmail: json['contact_email'] as String,
+    availability: json['availability'] as String?,
+    bio: json['bio'] as String?,
+  );
 }
 
 const directoryCategories = <String, String>{
@@ -70,8 +70,10 @@ class DirectoryQuery {
   int get hashCode => Object.hash(category, query);
 }
 
-final campusDirectoryProvider =
-    FutureProvider.family<List<DirectoryEntry>, DirectoryQuery>((ref, query) async {
+final campusDirectoryProvider = FutureProvider.family<List<DirectoryEntry>, DirectoryQuery>((
+  ref,
+  query,
+) async {
   ref.watch(authNotifierProvider);
   final client = ref.watch(apiClientProvider);
   final response = await client.dio.get(
@@ -87,8 +89,10 @@ final campusDirectoryProvider =
       .toList();
 });
 
-final campusDirectoryEntryProvider =
-    FutureProvider.family<DirectoryEntry, String>((ref, positionId) async {
+final campusDirectoryEntryProvider = FutureProvider.family<DirectoryEntry, String>((
+  ref,
+  positionId,
+) async {
   ref.watch(authNotifierProvider);
   final client = ref.watch(apiClientProvider);
   final response = await client.dio.get('/campus-hub/directory/$positionId');

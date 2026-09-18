@@ -26,6 +26,7 @@ import '../models/campus_post.dart';
 import '../providers/campus_hub_provider.dart';
 import '../providers/campus_publishing_provider.dart';
 import '../providers/opportunity_badge_provider.dart';
+import '../../../core/theme/app_spacing.dart';
 
 part '../widgets/urgent_update_banner.dart';
 part '../widgets/campus_home_header.dart';
@@ -82,6 +83,14 @@ class CampusHubScreen extends ConsumerWidget {
             ref.invalidate(myProgramMembershipsProvider);
             ref.invalidate(honorsAttendanceEnabledProvider);
             ref.invalidate(scholarProfileNotifierProvider);
+            // The last three sections of this screen were not refreshed by its own
+            // pull-to-refresh: "Upcoming activities" and "Suggested connections" read these two
+            // providers, and the greeting header reads the profile. So a pull refreshed the
+            // middle of the dashboard and left the top and bottom showing whatever they had —
+            // which is worse than not offering the gesture, because it looks like it worked.
+            ref.invalidate(activitiesNotifierProvider);
+            ref.invalidate(discoveryNotifierProvider);
+            ref.invalidate(myProfileNotifierProvider);
             await ref.read(opportunityNewCountProvider.notifier).refresh();
           },
           child: ListView(
@@ -94,9 +103,7 @@ class CampusHubScreen extends ConsumerWidget {
               const _QuickActionsRow(),
               const _PublisherCta(),
               ...overviewAsync.when(
-                loading: () => const [
-                  AppHubPanelSkeleton(),
-                ],
+                loading: () => const [AppHubPanelSkeleton()],
                 error: (_, _) => [
                   AppErrorState(
                     message: 'Could not load campus updates.',

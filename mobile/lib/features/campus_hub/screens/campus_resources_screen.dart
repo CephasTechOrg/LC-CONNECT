@@ -90,9 +90,7 @@ class CampusResourcesScreen extends ConsumerStatefulWidget {
 class _CampusResourcesScreenState extends ConsumerState<CampusResourcesScreen> {
   String _category = 'all';
 
-  ResourcesQuery get _query => ResourcesQuery(
-        category: _category == 'all' ? null : _category,
-      );
+  ResourcesQuery get _query => ResourcesQuery(category: _category == 'all' ? null : _category);
 
   Future<void> _launch(String url) async {
     if (!await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication)) {
@@ -112,10 +110,7 @@ class _CampusResourcesScreenState extends ConsumerState<CampusResourcesScreen> {
           children: [
             _Header(onBack: () => context.pop()),
             const SizedBox(height: 8),
-            _FilterBar(
-              selected: _category,
-              onChanged: (v) => setState(() => _category = v),
-            ),
+            _FilterBar(selected: _category, onChanged: (v) => setState(() => _category = v)),
             const SizedBox(height: 8),
             Expanded(
               child: RefreshIndicator(
@@ -142,10 +137,7 @@ class _CampusResourcesScreenState extends ConsumerState<CampusResourcesScreen> {
                         onBack: () => setState(() => _category = 'all'),
                       );
                     }
-                    return _ResourceList(
-                      resources: resources,
-                      onOpenLink: _launch,
-                    );
+                    return _ResourceList(resources: resources, onOpenLink: _launch);
                   },
                 ),
               ),
@@ -293,11 +285,7 @@ class _StaticCategoryCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   cat.description,
-                  style: GoogleFonts.dmSans(
-                    fontSize: 12,
-                    color: AppColors.textMid,
-                    height: 1.4,
-                  ),
+                  style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textMid, height: 1.4),
                 ),
               ),
               Row(
@@ -347,8 +335,11 @@ class _ComingSoon extends StatelessWidget {
                 color: cat?.iconBg ?? AppColors.primarySoft,
                 borderRadius: BorderRadius.circular(18),
               ),
-              child: Icon(cat?.icon ?? Icons.info_outline_rounded,
-                  color: cat?.iconColor ?? AppColors.primary, size: 30),
+              child: Icon(
+                cat?.icon ?? Icons.info_outline_rounded,
+                color: cat?.iconColor ?? AppColors.primary,
+                size: 30,
+              ),
             ),
             const SizedBox(height: 16),
             Text(

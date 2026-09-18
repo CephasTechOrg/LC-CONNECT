@@ -24,17 +24,17 @@ class CampusResource {
   });
 
   factory CampusResource.fromJson(Map<String, dynamic> json) => CampusResource(
-        id: json['id'] as String,
-        category: json['category'] as String,
-        title: json['title'] as String,
-        description: json['description'] as String,
-        location: json['location'] as String?,
-        hours: json['hours'] as String?,
-        contactEmail: json['contact_email'] as String?,
-        phone: json['phone'] as String?,
-        externalUrl: json['external_url'] as String?,
-        sortOrder: (json['sort_order'] as num?)?.toInt() ?? 0,
-      );
+    id: json['id'] as String,
+    category: json['category'] as String,
+    title: json['title'] as String,
+    description: json['description'] as String,
+    location: json['location'] as String?,
+    hours: json['hours'] as String?,
+    contactEmail: json['contact_email'] as String?,
+    phone: json['phone'] as String?,
+    externalUrl: json['external_url'] as String?,
+    sortOrder: (json['sort_order'] as num?)?.toInt() ?? 0,
+  );
 }
 
 const resourceCategories = <String, String>{

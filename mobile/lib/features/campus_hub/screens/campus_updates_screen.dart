@@ -56,8 +56,8 @@ class _CampusUpdatesScreenState extends ConsumerState<CampusUpdatesScreen> {
     final subtitle = total == null
         ? 'Official campus announcements'
         : unread > 0
-            ? '$total announcement${total == 1 ? '' : 's'} · $unread new'
-            : '$total announcement${total == 1 ? '' : 's'}';
+        ? '$total announcement${total == 1 ? '' : 's'} · $unread new'
+        : '$total announcement${total == 1 ? '' : 's'}';
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -65,7 +65,11 @@ class _CampusUpdatesScreenState extends ConsumerState<CampusUpdatesScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            CampusSubpageHeader(title: 'Announcements', subtitle: subtitle, onBack: () => context.pop()),
+            CampusSubpageHeader(
+              title: 'Announcements',
+              subtitle: subtitle,
+              onBack: () => context.pop(),
+            ),
             const SizedBox(height: 6),
             SizedBox(
               height: 36,
@@ -87,7 +91,8 @@ class _CampusUpdatesScreenState extends ConsumerState<CampusUpdatesScreen> {
                       child: AppFilterChip(
                         label: entry.value,
                         selected: selectedCategory == entry.key,
-                        onTap: () => ref.read(announcementCategoryFilterProvider.notifier).set(entry.key),
+                        onTap: () =>
+                            ref.read(announcementCategoryFilterProvider.notifier).set(entry.key),
                       ),
                     ),
                 ],
@@ -162,7 +167,11 @@ class _AnnouncementsFooter extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 20),
       child: Center(
         child: loadingMore
-            ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2))
+            ? const SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
             : Text(
                 'Showing $shown of $total announcement${total == 1 ? '' : 's'}',
                 style: GoogleFonts.dmSans(fontSize: 12.5, color: AppColors.textMuted),

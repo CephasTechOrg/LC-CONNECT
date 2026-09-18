@@ -22,25 +22,30 @@ class StudentEntry {
   });
 
   factory StudentEntry.fromJson(Map<String, dynamic> j) => StudentEntry(
-        profileId: j['profile_id'] as String,
-        userId: j['user_id'] as String,
-        displayName: j['display_name'] as String?,
-        avatarUrl: j['avatar_url'] as String?,
-        major: j['major'] as String?,
-        classYear: j['class_year'] as int?,
-      );
+    profileId: j['profile_id'] as String,
+    userId: j['user_id'] as String,
+    displayName: j['display_name'] as String?,
+    avatarUrl: j['avatar_url'] as String?,
+    major: j['major'] as String?,
+    classYear: j['class_year'] as int?,
+  );
 
   String get name => displayName ?? 'LC Student';
 }
 
 /// The staff-only student directory. `query` (trimmed) searches name/major; empty lists everyone.
-final studentDirectoryProvider =
-    FutureProvider.autoDispose.family<List<StudentEntry>, String>((ref, query) async {
+final studentDirectoryProvider = FutureProvider.autoDispose.family<List<StudentEntry>, String>((
+  ref,
+  query,
+) async {
   // Cached per search term: backspacing through a query re-renders earlier results instantly
   // instead of firing a request per keystroke's worth of deletion.
   cacheFor(ref);
   final params = <String, dynamic>{'limit': 50};
   if (query.trim().isNotEmpty) params['query'] = query.trim();
-  final resp = await ref.read(apiClientProvider).dio.get('/campus-hub/students', queryParameters: params);
+  final resp = await ref
+      .read(apiClientProvider)
+      .dio
+      .get('/campus-hub/students', queryParameters: params);
   return (resp.data as List).map((j) => StudentEntry.fromJson(j as Map<String, dynamic>)).toList();
 });

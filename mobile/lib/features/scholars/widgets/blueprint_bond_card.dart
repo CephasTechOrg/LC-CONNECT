@@ -3,7 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../core/theme/app_radii.dart';
+import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_typography.dart';
 import '../../programs/providers/programs_provider.dart';
 import '../providers/scholars_provider.dart';
 
@@ -91,26 +94,50 @@ class _PromptCard extends StatelessWidget {
     return 'Still needed: ${named[0]}, ${named[1]} and ${named.length - 2} more';
   }
 
+  /// The Blueprint brand navy. Kept as the icon and text colour rather than the card fill — see
+  /// [build] for why the card itself is no longer filled with it.
+  static const _blueprintNavy = Color(0xFF1B3A5C);
+
   @override
   Widget build(BuildContext context) {
+    // A light card, not the saturated navy this used to be.
+    //
+    // Report #18: on an Honors student's dashboard this sits directly above the attendance
+    // card, and that card is a fully saturated `AppColors.primary` surface with white text. Two
+    // adjacent dark blue cards, each shouting, and neither reading as more urgent than the
+    // other — which is the same as neither being urgent.
+    //
+    // Emphasis follows urgency. Attendance is *time-bounded*: a session is open right now, with
+    // a countdown, and missing it cannot be undone. The Blueprint prompt is a standing task with
+    // no deadline. So the saturated treatment belongs to attendance, and this becomes a quiet
+    // invitation — still branded by its navy icon and title, no longer competing for the same
+    // signal.
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.gutter,
+        AppSpacing.md,
+        AppSpacing.gutter,
+        AppSpacing.xs,
+      ),
       child: Material(
-        color: const Color(0xFF1B3A5C),
-        borderRadius: BorderRadius.circular(14),
+        color: AppColors.primarySoft,
+        borderRadius: BorderRadius.circular(AppRadii.card),
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(AppRadii.card),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.lg,
+              vertical: AppSpacing.md,
+            ),
             child: Row(
               children: [
                 Container(
                   width: 38,
                   height: 38,
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.14),
-                    borderRadius: BorderRadius.circular(11),
+                    color: _blueprintNavy,
+                    borderRadius: BorderRadius.circular(AppRadii.md),
                   ),
                   child: const Icon(Icons.workspace_premium_rounded, color: Colors.white, size: 21),
                 ),
@@ -121,28 +148,29 @@ class _PromptCard extends StatelessWidget {
                     children: [
                       Text(
                         'Finish your Blueprint Bond profile',
-                        style: GoogleFonts.dmSans(
-                          fontSize: 14.5,
+                        // 14.5 and 12.5 were off any scale; `bodyLarge` and `label` are the
+                        // roles. Navy on the tinted surface measures 10.36:1 and the subtitle
+                        // 9.19:1 — both well past AA, unlike white-on-navy which this replaces.
+                        style: AppTypography.bodyLarge.copyWith(
                           fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                          height: 1.25,
+                          color: _blueprintNavy,
                         ),
                       ),
-                      const SizedBox(height: 2),
+                      const SizedBox(height: AppSpacing.xs),
                       Text(
                         _subtitle,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.dmSans(
-                          fontSize: 12.5,
-                          color: Colors.white.withValues(alpha: 0.75),
+                        style: AppTypography.label.copyWith(
+                          fontWeight: FontWeight.w400,
+                          color: AppColors.textMid,
                         ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(width: 8),
-                Icon(Icons.arrow_forward_rounded, color: Colors.white.withValues(alpha: 0.9), size: 18),
+                const SizedBox(width: AppSpacing.sm),
+                const Icon(Icons.arrow_forward_rounded, color: _blueprintNavy, size: 18),
               ],
             ),
           ),

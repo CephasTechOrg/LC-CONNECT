@@ -16,7 +16,9 @@ class OpportunityCard extends StatelessWidget {
 
   static String typeLabel(String category) =>
       opportunityCategoryLabels[category] ??
-      (category.isNotEmpty ? '${category[0].toUpperCase()}${category.substring(1)}' : 'Opportunity');
+      (category.isNotEmpty
+          ? '${category[0].toUpperCase()}${category.substring(1)}'
+          : 'Opportunity');
 
   @override
   Widget build(BuildContext context) {
@@ -53,7 +55,10 @@ class OpportunityCard extends StatelessWidget {
                   Container(
                     width: 40,
                     height: 40,
-                    decoration: BoxDecoration(color: badgeBg, borderRadius: BorderRadius.circular(11)),
+                    decoration: BoxDecoration(
+                      color: badgeBg,
+                      borderRadius: BorderRadius.circular(11),
+                    ),
                     child: Icon(icon, color: badgeColor, size: 20),
                   ),
                   const SizedBox(width: 10),
@@ -98,11 +103,7 @@ class OpportunityCard extends StatelessWidget {
               ],
               if (hasLink) ...[
                 const SizedBox(height: 10),
-                LinkPreviewCard(
-                  url: post.externalUrl!,
-                  preview: post.linkPreview,
-                  compact: true,
-                ),
+                LinkPreviewCard(url: post.externalUrl!, preview: post.linkPreview, compact: true),
               ],
               const SizedBox(height: 10),
               Row(

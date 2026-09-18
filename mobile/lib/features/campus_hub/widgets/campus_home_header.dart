@@ -19,17 +19,16 @@ class _HomeGreetingHeader extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 6, 20, 6),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.gutter,
+        AppSpacing.sm,
+        AppSpacing.gutter,
+        AppSpacing.sm,
+      ),
       child: Row(
         children: [
-          Image.asset(
-            'assets/images/lclogo.webp',
-            width: 46,
-            height: 46,
-            fit: BoxFit.contain,
-          ),
+          Image.asset('assets/images/lclogo.webp', width: 46, height: 46, fit: BoxFit.contain),
           const SizedBox(width: 12),
           Expanded(
             child: Column(

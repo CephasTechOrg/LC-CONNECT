@@ -30,9 +30,9 @@ class _CampusDirectoryScreenState extends ConsumerState<CampusDirectoryScreen> {
   }
 
   DirectoryQuery get _directoryQuery => DirectoryQuery(
-        category: _category == 'all' ? null : _category,
-        query: _query.isEmpty ? null : _query,
-      );
+    category: _category == 'all' ? null : _category,
+    query: _query.isEmpty ? null : _query,
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -51,8 +51,7 @@ class _CampusDirectoryScreenState extends ConsumerState<CampusDirectoryScreen> {
                 children: [
                   IconButton(
                     icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
-                    onPressed: () =>
-                        context.canPop() ? context.pop() : context.go('/home'),
+                    onPressed: () => context.canPop() ? context.pop() : context.go('/home'),
                   ),
                   Expanded(
                     child: Column(
@@ -68,10 +67,7 @@ class _CampusDirectoryScreenState extends ConsumerState<CampusDirectoryScreen> {
                         ),
                         Text(
                           'Verified staff contacts at Livingstone',
-                          style: GoogleFonts.dmSans(
-                            fontSize: 12,
-                            color: AppColors.textMuted,
-                          ),
+                          style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textMuted),
                         ),
                       ],
                     ),
@@ -92,7 +88,11 @@ class _CampusDirectoryScreenState extends ConsumerState<CampusDirectoryScreen> {
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                       child: Row(
                         children: [
-                          const Icon(Icons.person_search_rounded, color: AppColors.primary, size: 22),
+                          const Icon(
+                            Icons.person_search_rounded,
+                            color: AppColors.primary,
+                            size: 22,
+                          ),
                           const SizedBox(width: 10),
                           Expanded(
                             child: Column(
@@ -108,7 +108,10 @@ class _CampusDirectoryScreenState extends ConsumerState<CampusDirectoryScreen> {
                                 ),
                                 Text(
                                   'Search and message students from Messages — Directory is staff only.',
-                                  style: GoogleFonts.dmSans(fontSize: 11.5, color: AppColors.textMuted),
+                                  style: GoogleFonts.dmSans(
+                                    fontSize: 11.5,
+                                    color: AppColors.textMuted,
+                                  ),
                                 ),
                               ],
                             ),
@@ -224,11 +227,7 @@ class _DirectoryTile extends StatelessWidget {
           ),
           child: Row(
             children: [
-              AvatarWidget(
-                imageUrl: entry.avatarUrl,
-                size: 44,
-                cacheScope: entry.userId,
-              ),
+              AvatarWidget(imageUrl: entry.avatarUrl, size: 44, cacheScope: entry.userId),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -245,17 +244,11 @@ class _DirectoryTile extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       entry.officialTitle,
-                      style: GoogleFonts.dmSans(
-                        fontSize: 12.5,
-                        color: AppColors.textMid,
-                      ),
+                      style: GoogleFonts.dmSans(fontSize: 12.5, color: AppColors.textMid),
                     ),
                     Text(
                       entry.department,
-                      style: GoogleFonts.dmSans(
-                        fontSize: 12,
-                        color: AppColors.textMuted,
-                      ),
+                      style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textMuted),
                     ),
                   ],
                 ),

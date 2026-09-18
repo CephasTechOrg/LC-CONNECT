@@ -12,17 +12,13 @@ import '../models/campus_post.dart';
 
 /// Secure-storage key for the opportunities last-seen cursor — scoped per user so account
 /// switch never inherits another student's badge baseline.
-String opportunitiesLastSeenKey(String userId) =>
-    'campus_hub.opportunities_last_seen.$userId';
+String opportunitiesLastSeenKey(String userId) => 'campus_hub.opportunities_last_seen.$userId';
 
 /// Pure count used by the badge notifier and unit tests.
 ///
 /// When [lastSeen] is null the caller should baseline to "now" and return 0 (first visit),
 /// so this function treats null as zero new items.
-int countNewOpportunities({
-  required DateTime? lastSeen,
-  required Iterable<DateTime> publishAts,
-}) {
+int countNewOpportunities({required DateTime? lastSeen, required Iterable<DateTime> publishAts}) {
   if (lastSeen == null) return 0;
   final cursor = lastSeen.toUtc();
   return publishAts.where((at) => at.toUtc().isAfter(cursor)).length;
@@ -46,8 +42,9 @@ bool opportunityAudienceApplies(String audience, String role) {
 /// - Opportunities = this cursor — posts published after the student last opened Opportunities
 ///
 /// No server unread table yet; a local last-seen timestamp is enough for the hub affordance.
-final opportunityNewCountProvider =
-    NotifierProvider<OpportunityNewCountNotifier, int>(OpportunityNewCountNotifier.new);
+final opportunityNewCountProvider = NotifierProvider<OpportunityNewCountNotifier, int>(
+  OpportunityNewCountNotifier.new,
+);
 
 class OpportunityNewCountNotifier extends Notifier<int> {
   static const _storage = FlutterSecureStorage(
@@ -110,10 +107,7 @@ class OpportunityNewCountNotifier extends Notifier<int> {
       final raw = await _storage.read(key: key);
       if (raw == null) {
         // First visit for this user: baseline to now so historical opportunities don't all light up.
-        await _storage.write(
-          key: key,
-          value: DateTime.now().toUtc().toIso8601String(),
-        );
+        await _storage.write(key: key, value: DateTime.now().toUtc().toIso8601String());
         state = 0;
         return;
       }
@@ -126,10 +120,7 @@ class OpportunityNewCountNotifier extends Notifier<int> {
       final posts = (response.data as List)
           .map((j) => CampusPostSummary.fromJson(j as Map<String, dynamic>))
           .toList();
-      state = countNewOpportunities(
-        lastSeen: lastSeen,
-        publishAts: posts.map((p) => p.publishAt),
-      );
+      state = countNewOpportunities(lastSeen: lastSeen, publishAts: posts.map((p) => p.publishAt));
     } catch (_) {
       /* keep current; next resume/refresh retries */
     }

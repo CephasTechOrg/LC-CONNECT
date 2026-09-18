@@ -9,6 +9,7 @@ import '../../../shared/widgets/app_shell_header.dart';
 import '../../../shared/widgets/app_skeleton.dart';
 import '../../../shared/widgets/app_states.dart';
 import '../providers/student_directory_provider.dart';
+import '../../../core/theme/app_spacing.dart';
 
 /// The Connect tab as a staff member sees it: a searchable directory of students they can open
 /// and message. Replaces the old dead-end that pointed staff at the (staff-only) directory.
@@ -42,7 +43,12 @@ class _StaffStudentDirectoryState extends ConsumerState<StaffStudentDirectory> {
           showBottomBorder: false,
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.gutter,
+            AppSpacing.xs,
+            AppSpacing.gutter,
+            AppSpacing.sm,
+          ),
           child: TextField(
             controller: _searchCtrl,
             onChanged: (v) => setState(() => _query = v.trim()),
@@ -73,19 +79,15 @@ class _StaffStudentDirectoryState extends ConsumerState<StaffStudentDirectory> {
             data: (students) {
               return RefreshIndicator(
                 color: AppColors.primary,
-                onRefresh: () =>
-                    ref.refresh(studentDirectoryProvider(_query).future),
+                onRefresh: () => ref.refresh(studentDirectoryProvider(_query).future),
                 child: students.isEmpty
                     ? ListView(
                         physics: const AlwaysScrollableScrollPhysics(),
                         children: [
-                          SizedBox(
-                              height: MediaQuery.of(context).size.height * 0.12),
+                          SizedBox(height: MediaQuery.of(context).size.height * 0.12),
                           AppEmptyState(
                             icon: Icons.school_outlined,
-                            title: _query.isEmpty
-                                ? 'No students yet'
-                                : 'No students found',
+                            title: _query.isEmpty ? 'No students yet' : 'No students found',
                             subtitle: _query.isEmpty
                                 ? 'Students will appear here as they join.'
                                 : 'Try a different name or major.',
@@ -94,7 +96,12 @@ class _StaffStudentDirectoryState extends ConsumerState<StaffStudentDirectory> {
                       )
                     : ListView.separated(
                         physics: const AlwaysScrollableScrollPhysics(),
-                        padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+                        padding: const EdgeInsets.fromLTRB(
+                          AppSpacing.gutter,
+                          AppSpacing.xs,
+                          AppSpacing.gutter,
+                          AppSpacing.xxl,
+                        ),
                         itemCount: students.length,
                         separatorBuilder: (_, _) => const SizedBox(height: 10),
                         itemBuilder: (_, i) => _StudentTile(

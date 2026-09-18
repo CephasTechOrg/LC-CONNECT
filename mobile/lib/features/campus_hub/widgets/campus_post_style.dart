@@ -39,7 +39,13 @@ class CampusBadge extends StatelessWidget {
   final Color background;
   final IconData? icon;
 
-  const CampusBadge({super.key, required this.label, required this.color, required this.background, this.icon});
+  const CampusBadge({
+    super.key,
+    required this.label,
+    required this.color,
+    required this.background,
+    this.icon,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -49,10 +55,7 @@ class CampusBadge extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (icon != null) ...[
-            Icon(icon, size: 12, color: color),
-            const SizedBox(width: 4),
-          ],
+          if (icon != null) ...[Icon(icon, size: 12, color: color), const SizedBox(width: 4)],
           Flexible(
             child: Text(
               label,

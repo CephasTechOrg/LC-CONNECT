@@ -63,8 +63,13 @@ class _CampusPostDetailScreenState extends ConsumerState<CampusPostDetailScreen>
           ),
           data: (post) => Column(
             children: [
-              CampusSubpageHeader(title: postKindLabels[post.kind] ?? 'Post', onBack: () => context.pop()),
-              Expanded(child: _PostBody(post: post, onLaunch: _launchExternal)),
+              CampusSubpageHeader(
+                title: postKindLabels[post.kind] ?? 'Post',
+                onBack: () => context.pop(),
+              ),
+              Expanded(
+                child: _PostBody(post: post, onLaunch: _launchExternal),
+              ),
             ],
           ),
         ),
@@ -82,7 +87,8 @@ class _PostBody extends StatelessWidget {
   Widget build(BuildContext context) {
     final isOpportunity = post.kind == 'opportunity';
     final (accent, accentBg, icon) = campusCategoryStyle(post.kind, post.category);
-    final categoryLabel = categoryLabelsForKind(post.kind)[post.category ?? ''] ??
+    final categoryLabel =
+        categoryLabelsForKind(post.kind)[post.category ?? ''] ??
         (post.category != null && post.category!.isNotEmpty
             ? '${post.category![0].toUpperCase()}${post.category!.substring(1)}'
             : postKindLabels[post.kind] ?? 'Post');
@@ -171,7 +177,11 @@ class _PostBody extends StatelessWidget {
                 const SizedBox(width: 6),
                 Text(
                   closingSoon
-                      ? 'Closes ${DateFormat('MMM d').format(deadline)} · ${daysLeft <= 0 ? 'today' : daysLeft == 1 ? '1 day left' : '$daysLeft days left'}'
+                      ? 'Closes ${DateFormat('MMM d').format(deadline)} · ${daysLeft <= 0
+                            ? 'today'
+                            : daysLeft == 1
+                            ? '1 day left'
+                            : '$daysLeft days left'}'
                       : 'Deadline: ${DateFormat('MMM d, y').format(deadline)}',
                   style: GoogleFonts.dmSans(
                     fontSize: 12.5,
@@ -216,7 +226,10 @@ class _PostBody extends StatelessWidget {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
               onPressed: () => onLaunch(post.externalUrl!),
-              icon: Icon(isOpportunity ? Icons.launch_rounded : Icons.open_in_new_rounded, size: 18),
+              icon: Icon(
+                isOpportunity ? Icons.launch_rounded : Icons.open_in_new_rounded,
+                size: 18,
+              ),
               label: Text(
                 isOpportunity ? 'Apply now' : 'Open link',
                 style: GoogleFonts.dmSans(fontSize: 15, fontWeight: FontWeight.w700),

@@ -45,10 +45,8 @@ class _OpportunitiesState extends ConsumerState<CampusOpportunitiesScreen> {
     });
   }
 
-  CampusPostsQuery get _query => CampusPostsQuery(
-        kind: 'opportunity',
-        category: _category == 'all' ? null : _category,
-      );
+  CampusPostsQuery get _query =>
+      CampusPostsQuery(kind: 'opportunity', category: _category == 'all' ? null : _category);
 
   List<CampusPostSummary> _bySource(List<CampusPostSummary> posts, _SourceTab source) {
     switch (source) {

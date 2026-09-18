@@ -33,8 +33,10 @@ final campusHubOverviewProvider = FutureProvider<CampusHubOverview>((ref) async 
   return CampusHubOverview.fromJson(response.data as Map<String, dynamic>);
 });
 
-final campusPostsProvider =
-    FutureProvider.family<List<CampusPostSummary>, CampusPostsQuery>((ref, query) async {
+final campusPostsProvider = FutureProvider.family<List<CampusPostSummary>, CampusPostsQuery>((
+  ref,
+  query,
+) async {
   ref.watch(authNotifierProvider);
   final client = ref.watch(apiClientProvider);
   final response = await client.dio.get(
@@ -55,8 +57,9 @@ final campusPostsProvider =
 /// `GET /campus-hub/announcements/unread-count`, bump on the live WS `announcement` ping (filtered
 /// to the viewer's audience), and re-seed on reconnect/app-resume. Reading one announcement marks
 /// it read on the server and decrements; opening the list marks them all read.
-final announcementCountProvider =
-    NotifierProvider<AnnouncementCountNotifier, int>(AnnouncementCountNotifier.new);
+final announcementCountProvider = NotifierProvider<AnnouncementCountNotifier, int>(
+  AnnouncementCountNotifier.new,
+);
 
 class AnnouncementCountNotifier extends Notifier<int> {
   StreamSubscription<InboundEvent>? _eventsSub;
@@ -98,9 +101,14 @@ class AnnouncementCountNotifier extends Notifier<int> {
   Future<void> _seed() async {
     if (!_authed) return;
     try {
-      final resp = await ref.read(apiClientProvider).dio.get('/campus-hub/announcements/unread-count');
+      final resp = await ref
+          .read(apiClientProvider)
+          .dio
+          .get('/campus-hub/announcements/unread-count');
       state = ((resp.data as Map<String, dynamic>)['count'] as num).toInt();
-    } catch (_) {/* keep current; next reconnect/resume re-seeds */}
+    } catch (_) {
+      /* keep current; next reconnect/resume re-seeds */
+    }
   }
 
   void _onEvent(InboundEvent event) {
@@ -140,7 +148,9 @@ class AnnouncementCountNotifier extends Notifier<int> {
       final resp = await ref.read(apiClientProvider).dio.post(path);
       final count = (resp.data as Map<String, dynamic>?)?['count'];
       if (count is num) state = count.toInt(); // authoritative — no drift
-    } catch (_) {/* keep the optimistic value; next reconnect/resume re-seeds */}
+    } catch (_) {
+      /* keep the optimistic value; next reconnect/resume re-seeds */
+    }
   }
 }
 
@@ -161,7 +171,9 @@ const _announcementsPageSize = 15;
 /// shape as `activitiesFilterProvider`); `AnnouncementsNotifier.build()` watches it, so changing
 /// the filter automatically reloads a fresh first page for that category.
 final announcementCategoryFilterProvider =
-    NotifierProvider<AnnouncementCategoryFilterNotifier, String?>(AnnouncementCategoryFilterNotifier.new);
+    NotifierProvider<AnnouncementCategoryFilterNotifier, String?>(
+      AnnouncementCategoryFilterNotifier.new,
+    );
 
 class AnnouncementCategoryFilterNotifier extends Notifier<String?> {
   @override
@@ -182,20 +194,25 @@ class AnnouncementsState {
     required this.total,
   });
 
-  AnnouncementsState copyWith({List<CampusPostSummary>? items, bool? hasMore, bool? loadingMore, int? total}) =>
-      AnnouncementsState(
-        items: items ?? this.items,
-        hasMore: hasMore ?? this.hasMore,
-        loadingMore: loadingMore ?? this.loadingMore,
-        total: total ?? this.total,
-      );
+  AnnouncementsState copyWith({
+    List<CampusPostSummary>? items,
+    bool? hasMore,
+    bool? loadingMore,
+    int? total,
+  }) => AnnouncementsState(
+    items: items ?? this.items,
+    hasMore: hasMore ?? this.hasMore,
+    loadingMore: loadingMore ?? this.loadingMore,
+    total: total ?? this.total,
+  );
 }
 
 /// Announcements only (opportunities have their own page), loaded a page at a time — scroll to
 /// pull in older ones. Auto-disposes so re-opening the page shows a fresh first page.
 final announcementsProvider =
     AsyncNotifierProvider.autoDispose<AnnouncementsNotifier, AnnouncementsState>(
-        AnnouncementsNotifier.new);
+      AnnouncementsNotifier.new,
+    );
 
 class AnnouncementsNotifier extends AsyncNotifier<AnnouncementsState> {
   @override
@@ -213,25 +230,28 @@ class AnnouncementsNotifier extends AsyncNotifier<AnnouncementsState> {
   }
 
   Future<List<CampusPostSummary>> _fetch(String? category, int offset) async {
-    final response = await ref.read(apiClientProvider).dio.get(
-      '/campus-hub/posts',
-      queryParameters: {
-        'kind': 'announcement',
-        'category': ?category,
-        'limit': _announcementsPageSize,
-        'offset': offset,
-      },
-    );
+    final response = await ref
+        .read(apiClientProvider)
+        .dio
+        .get(
+          '/campus-hub/posts',
+          queryParameters: {
+            'kind': 'announcement',
+            'category': ?category,
+            'limit': _announcementsPageSize,
+            'offset': offset,
+          },
+        );
     return (response.data as List)
         .map((json) => CampusPostSummary.fromJson(json as Map<String, dynamic>))
         .toList();
   }
 
   Future<int> _fetchTotal(String? category) async {
-    final response = await ref.read(apiClientProvider).dio.get(
-      '/campus-hub/announcements/count',
-      queryParameters: {'category': ?category},
-    );
+    final response = await ref
+        .read(apiClientProvider)
+        .dio
+        .get('/campus-hub/announcements/count', queryParameters: {'category': ?category});
     return ((response.data as Map<String, dynamic>)['count'] as num).toInt();
   }
 
@@ -240,9 +260,7 @@ class AnnouncementsNotifier extends AsyncNotifier<AnnouncementsState> {
   void markRead(String postId) {
     final current = state.asData?.value;
     if (current == null) return;
-    final items = [
-      for (final p in current.items) p.id == postId ? p.copyWith(read: true) : p,
-    ];
+    final items = [for (final p in current.items) p.id == postId ? p.copyWith(read: true) : p];
     state = AsyncData(current.copyWith(items: items));
   }
 
@@ -254,11 +272,13 @@ class AnnouncementsNotifier extends AsyncNotifier<AnnouncementsState> {
     try {
       final category = ref.read(announcementCategoryFilterProvider);
       final next = await _fetch(category, current.items.length);
-      state = AsyncData(current.copyWith(
-        items: [...current.items, ...next],
-        hasMore: next.length >= _announcementsPageSize,
-        loadingMore: false,
-      ));
+      state = AsyncData(
+        current.copyWith(
+          items: [...current.items, ...next],
+          hasMore: next.length >= _announcementsPageSize,
+          loadingMore: false,
+        ),
+      );
     } catch (_) {
       // Keep what we have; a scroll retry or pull-to-refresh recovers.
       state = AsyncData(current.copyWith(loadingMore: false));

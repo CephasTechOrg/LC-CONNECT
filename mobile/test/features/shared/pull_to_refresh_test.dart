@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -212,5 +213,51 @@ void main() {
       await _pull(tester);
       expect(profile.builds, greaterThan(before));
     });
+  });
+
+  /// Report #18 (4.3) — the dashboard's pull-to-refresh did not refresh its own dashboard.
+  ///
+  /// Three sections were missed: "Upcoming activities" and "Suggested connections" read
+  /// `activitiesNotifierProvider` and `discoveryNotifierProvider`, and the greeting header reads
+  /// the profile. A pull refreshed the middle of the screen and left the top and bottom stale —
+  /// worse than not offering the gesture, because it looks like it worked.
+  ///
+  /// A source test rather than a widget test: the failure mode is "a section was added and the
+  /// refresh handler was not updated", which is a property of the file, and pumping the whole hub
+  /// needs a dozen provider overrides to assert one thing.
+  group('the dashboard refreshes every section it renders', () {
+    late String refreshBlock;
+
+    setUpAll(() {
+      final source =
+          File('lib/features/campus_hub/screens/campus_hub_screen.dart').readAsStringSync();
+      final start = source.indexOf('onRefresh:');
+      expect(start, greaterThan(-1), reason: 'the dashboard should still have a RefreshIndicator');
+      refreshBlock = source.substring(start, source.indexOf('child: ListView', start));
+    });
+
+    // Each entry is a section the dashboard draws, and the provider it reads.
+    const sectionProviders = {
+      'campus updates + urgent banner': 'campusHubOverviewProvider',
+      'attendance card': 'activeAttendanceProvider',
+      'attendance eligibility': 'honorsAttendanceEnabledProvider',
+      'Blueprint card eligibility': 'myProgramMembershipsProvider',
+      'Blueprint card completeness': 'scholarProfileNotifierProvider',
+      'Upcoming activities': 'activitiesNotifierProvider',
+      'Suggested connections': 'discoveryNotifierProvider',
+      'greeting header name': 'myProfileNotifierProvider',
+      'opportunity counter': 'opportunityNewCountProvider',
+    };
+
+    for (final entry in sectionProviders.entries) {
+      test('${entry.key} is refreshed', () {
+        expect(
+          refreshBlock,
+          contains(entry.value),
+          reason: 'the dashboard renders ${entry.key} but its pull-to-refresh does not refresh '
+              '${entry.value} — the section would stay stale after a pull',
+        );
+      });
+    }
   });
 }
