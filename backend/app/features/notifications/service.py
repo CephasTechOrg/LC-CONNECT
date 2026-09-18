@@ -60,10 +60,28 @@ async def prune_tokens(db: AsyncSession, tokens: Sequence[str]) -> None:
 # ── in-app notifications ───────────────────────────────────────────────────────────
 
 async def create_notification(
-    db: AsyncSession, *, user_id: UUID, type: str, group_id: UUID | None = None, actor_id: UUID | None = None
+    db: AsyncSession,
+    *,
+    user_id: UUID,
+    type: str,
+    group_id: UUID | None = None,
+    actor_id: UUID | None = None,
+    target_type: str | None = None,
+    target_id: UUID | None = None,
 ) -> Notification:
-    """Insert a notification (caller commits). Never notify someone about their own action."""
-    notification = Notification(user_id=user_id, type=type, group_id=group_id, actor_id=actor_id)
+    """Insert a notification (caller commits). Never notify someone about their own action.
+
+    Pass `target_type`/`target_id` when the row should deep-link somewhere `group_id` and
+    `actor_id` cannot express — see the model for why that pair is generic.
+    """
+    notification = Notification(
+        user_id=user_id,
+        type=type,
+        group_id=group_id,
+        actor_id=actor_id,
+        target_type=target_type,
+        target_id=target_id,
+    )
     db.add(notification)
     await db.flush()
     return notification
@@ -77,6 +95,8 @@ def _to_read(n: Notification, group_name: str | None, actor_name: str | None, ac
         created_at=n.created_at,
         group=NotificationGroupInfo(id=n.group_id, name=group_name) if (n.group_id and group_name) else None,
         actor=NotificationActor(id=n.actor_id, display_name=actor_name, avatar_url=actor_avatar) if n.actor_id else None,
+        target_type=n.target_type,
+        target_id=n.target_id,
     )
 
 

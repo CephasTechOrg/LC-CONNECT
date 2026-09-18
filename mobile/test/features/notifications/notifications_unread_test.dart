@@ -17,13 +17,13 @@ import 'package:lc_connect/features/notifications/screens/notifications_screen.d
 /// These tests pin the replacement: snapshot the unread ids on entry, style from the snapshot, and
 /// mark rows read individually as they are opened.
 void main() {
-  AppNotification note(String id, {bool read = false}) => AppNotification(
-        id: id,
-        type: 'connection_request',
-        read: read,
-        createdAt: DateTime.now().subtract(const Duration(minutes: 5)),
-        actorName: 'Ama',
-      );
+  AppNotification note(String id, {bool read = false, DateTime? createdAt}) => AppNotification(
+    id: id,
+    type: 'connection_request',
+    read: read,
+    createdAt: createdAt ?? DateTime.now().subtract(const Duration(minutes: 5)),
+    actorName: 'Ama',
+  );
 
   /// The screen renders a pinned "Connection requests" row that reads its own provider; stubbing
   /// it keeps these tests about notification state.
@@ -31,21 +31,21 @@ void main() {
   /// Mounted through a real `GoRouter` with a stub destination, because opening a row navigates —
   /// a `MaterialApp(home:)` has no router in scope and the tap throws.
   Widget screen(List<AppNotification> items, {int badge = 1}) => ProviderScope(
-        overrides: [
-          notificationsListProvider.overrideWith(() => _FixedList(items)),
-          connectionsNotifierProvider.overrideWith(_NoConnections.new),
-          notificationCountProvider.overrideWith(() => _FixedCount(badge)),
+    overrides: [
+      notificationsListProvider.overrideWith(() => _FixedList(items)),
+      connectionsNotifierProvider.overrideWith(_NoConnections.new),
+      notificationCountProvider.overrideWith(() => _FixedCount(badge)),
+    ],
+    child: MaterialApp.router(
+      routerConfig: GoRouter(
+        initialLocation: '/notifications',
+        routes: [
+          GoRoute(path: '/notifications', builder: (_, _) => const NotificationsScreen()),
+          GoRoute(path: '/connections', builder: (_, _) => const Text('connections')),
         ],
-        child: MaterialApp.router(
-          routerConfig: GoRouter(
-            initialLocation: '/notifications',
-            routes: [
-              GoRoute(path: '/notifications', builder: (_, _) => const NotificationsScreen()),
-              GoRoute(path: '/connections', builder: (_, _) => const Text('connections')),
-            ],
-          ),
-        ),
-      );
+      ),
+    ),
+  );
 
   testWidgets('unread rows are visibly unread on entry', (tester) async {
     await tester.pumpWidget(screen([note('n1'), note('n2', read: true)]));
@@ -62,10 +62,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // A tint and a dot are both colour — useless to a screen reader.
-    expect(
-      find.bySemanticsLabel(RegExp('^Unread\\. ')),
-      findsOneWidget,
-    );
+    expect(find.bySemanticsLabel(RegExp('^Unread\\. ')), findsOneWidget);
   });
 
   testWidgets('an already-read row is not announced as unread', (tester) async {
@@ -168,12 +165,65 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text("You're all caught up."), findsOneWidget);
   });
+
+  /// Report #15 — the inbox was a flat list, so "three days ago" and "two minutes ago" sat
+  /// together with only a relative stamp to tell them apart.
+  group('notifications are grouped by day', () {
+    testWidgets('a heading appears for each calendar day', (tester) async {
+      final now = DateTime.now();
+      await tester.pumpWidget(
+        screen([
+          note('today-1', createdAt: now.subtract(const Duration(minutes: 5))),
+          note('today-2', createdAt: now.subtract(const Duration(hours: 2))),
+          note('yesterday', createdAt: now.subtract(const Duration(days: 1))),
+        ]),
+      );
+      await tester.pump();
+
+      expect(find.text('Today'), findsOneWidget);
+      expect(find.text('Yesterday'), findsOneWidget);
+    });
+
+    testWidgets('one heading per day, not one per row', (tester) async {
+      // Two notifications on the same day share a heading — otherwise the grouping is just a
+      // label on every row, which is noise rather than structure.
+      final now = DateTime.now();
+      await tester.pumpWidget(
+        screen([
+          note('a', createdAt: now.subtract(const Duration(minutes: 5))),
+          note('b', createdAt: now.subtract(const Duration(minutes: 9))),
+          note('c', createdAt: now.subtract(const Duration(hours: 3))),
+        ]),
+      );
+      await tester.pump();
+
+      expect(find.text('Today'), findsOneWidget);
+    });
+
+    testWidgets('an empty inbox shows no headings', (tester) async {
+      await tester.pumpWidget(screen(const []));
+      await tester.pump();
+
+      expect(find.text('Today'), findsNothing);
+      expect(find.text('Yesterday'), findsNothing);
+    });
+
+    testWidgets('long-pressing a row reveals the exact time', (tester) async {
+      // The row shows "3d", which is right for scanning and useless for "when exactly?".
+      await tester.pumpWidget(screen([note('a')]));
+      await tester.pump();
+
+      await tester.longPress(find.byType(ListTile).last);
+      await tester.pump();
+
+      expect(find.byType(SnackBar), findsOneWidget);
+    });
+  });
 }
 
 class _NoConnections extends ConnectionsNotifier {
   @override
-  Future<ConnectionsState> build() async =>
-      const ConnectionsState(incoming: [], outgoing: []);
+  Future<ConnectionsState> build() async => const ConnectionsState(incoming: [], outgoing: []);
 }
 
 /// Badge stub. Overrides the mutators as well as [build]: the real ones POST to the API, and the

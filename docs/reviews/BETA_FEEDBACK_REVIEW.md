@@ -2098,27 +2098,36 @@ Notation: **[be]** backend · **[fe]** mobile · **[cfg]** config/ops · **[msr]
       The section header's existing `(24, 12)` turned out to already be the right rhythm, so it
       became the anchor the others were snapped to.
 
-- [ ] **4.4** [be][fe][snap] **#15** notification grouping + deep-linkable rows (needs target ids on rows
-      *and* payloads) + shared states
-- [x] **4.5** [fe] **#20** declutter Discovery; one bell; fix the popping tab bar — **done**, with
-      one finding sharper than the review's.
-      *The bell:* the review counted three mountings. The count was the less interesting half — one
-      of them was a **different implementation.** Campus Hub had a private `_HomeBell`: a bare
-      `IconButton` with a hand-rolled badge, no tooltip and no semantics label. So on the app's
-      *landing* screen a screen reader announced nothing about unread notifications, while the
-      identical-looking control on Discovery and Activities announced "Notifications, 3 unread".
-      All three now use `NotificationsBellButton`. Three mountings are kept deliberately — each is
-      a top-level tab, so that is reachability, not clutter; what mattered was that they be the
-      same control. `bell_consistency_test.dart` asserts only one widget owns
-      `push('/notifications')`.
-      *The popping tab bar:* rendered `SizedBox.shrink()` for both loading **and** error, so it
-      appeared once the request finished and shoved the list down — a layout jump on every visit,
-      and on a slow connection one the user was already reading through. It is always present now,
-      with counts filled in when they arrive and no badge until then (a zero would be worse than
-      nothing). Pinned by a test comparing its position before and after load.
-      *Discovery's chrome:* already halved by 3.2, which removed the Groups segment and with it a
-      second search field and a second chip row. What remains is one header, two segments, one
-      search and one chip row.
+- [x] **4.4** [be][fe][snap] **#15** notification grouping + deep-linkable rows — **done.**
+      Two of the four parts were bugs rather than polish.
+      *The inbox fan-out ignored the account.* `_member_device_tokens` (push) filtered on
+      `is_active` / `status` / `deleted_at`; `_active_member_ids` (the in-app inbox) did not. So a
+      suspended, deactivated or soft-deleted student stopped receiving pushes but **kept receiving
+      inbox rows** — invisible to whoever suspended them, about a session they may not attend.
+      *The live frame invented its own timestamp.* `_publish_live` computed `datetime.now(UTC)`,
+      so the same row had one time arriving live and another after a refresh, off by however long
+      the commit took. It uses the row's DB value now; `Notification` gained `eager_defaults` so
+      that costs no extra query, the same fix already applied to `Message`.
+      *Deep-linkable rows.* New `notifications.target_type` / `target_id` (migration
+      `903b938cfb80`) — a **generic pair, not a typed FK per kind**, because the targets live in
+      different tables (sessions, posts, activities) so no single FK can cover them, and one FK
+      per kind means a migration per notification type. The cost is stated in the model: no
+      referential integrity, so a target can dangle — acceptable because the client must handle a
+      vanished target anyway, and "that session has closed" beats a cascade quietly deleting
+      someone's notification history. Attendance rows now carry their session, so the row opens
+      `/attendance/scan?session=<id>` instead of letting the scanner re-guess from "whichever is
+      currently active" — which was wrong the moment one session closed and another opened.
+      An unrecognised `target_type` reads as no target, so a type added server-side cannot break
+      an older client.
+      *Grouping and time.* Day headings reuse `AppDateFormat.daySeparator`, the same helper the
+      chat date separators use — a second Today/Yesterday rule would eventually disagree with the
+      first and label the same day differently on two screens. Long-press reveals the absolute
+      time, since the row's relative stamp is right for scanning and useless for "when exactly?".
+      *Also:* the avatar's `cacheScope` was the actor's **display name**, so two people with the
+      same name shared a cache entry and a rename invalidated an avatar that had not changed. It
+      needed `actorId`, which the client model did not carry at all.
+      The shared empty/error states this item also asked for were already adopted in 4.2.
+
 
 - [x] **4.6** [fe] **#3** avatar preview viewer — **done.** `showAvatarPreview` plus an opt-in
       `previewHeroTag` on `AvatarWidget`: full-screen, Hero-animated from the thumbnail,

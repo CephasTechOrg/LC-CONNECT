@@ -31,6 +31,12 @@ class NotificationRead(BaseModel):
     created_at: datetime
     group: NotificationGroupInfo | None = None
     actor: NotificationActor | None = None
+    # What tapping this row should open, when `group` and `actor` cannot say — e.g.
+    # `('attendance_session', <uuid>)`. Null for rows whose target is already the group or actor.
+    # The client treats an unknown `target_type` as "no target" and opens the inbox, so a new type
+    # added server-side cannot break an older client.
+    target_type: str | None = None
+    target_id: UUID | None = None
 
 
 class UnreadCount(BaseModel):

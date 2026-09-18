@@ -7,8 +7,18 @@ class AppNotification {
   final DateTime createdAt;
   final String? groupId;
   final String? groupName;
+  final String? actorId;
   final String? actorName;
   final String? actorAvatarUrl;
+
+  /// What tapping this row should open, when the group and actor cannot say — e.g.
+  /// `('attendance_session', <uuid>)`. See the `notifications` model server-side for why this is
+  /// a generic pair rather than a column per notification type.
+  ///
+  /// An unrecognised [targetType] is treated as no target at all, so a type added server-side
+  /// cannot break a client that predates it.
+  final String? targetType;
+  final String? targetId;
 
   const AppNotification({
     required this.id,
@@ -17,8 +27,11 @@ class AppNotification {
     required this.createdAt,
     this.groupId,
     this.groupName,
+    this.actorId,
     this.actorName,
     this.actorAvatarUrl,
+    this.targetType,
+    this.targetId,
   });
 
   factory AppNotification.fromJson(Map<String, dynamic> j) {
@@ -31,8 +44,11 @@ class AppNotification {
       createdAt: DateTime.parse(j['created_at'] as String),
       groupId: group?['id'] as String?,
       groupName: group?['name'] as String?,
+      actorId: actor?['id'] as String?,
       actorName: actor?['display_name'] as String?,
       actorAvatarUrl: actor?['avatar_url'] as String?,
+      targetType: j['target_type'] as String?,
+      targetId: j['target_id'] as String?,
     );
   }
 
@@ -64,7 +80,15 @@ class AppNotification {
     // Verification is only useful if it takes them to the thing it unlocked — the professional
     // extension they can now fill in.
     if (type == 'program_membership_verified') return '/profile/blueprint-bond';
-    if (type == 'honors_attendance_open') return '/attendance/scan';
+    if (type == 'honors_attendance_open') {
+      // Carrying the session id is the point (report #15). Without it the scanner had to work
+      // out which session was meant from "whichever is currently active" — wrong the moment one
+      // closes and another opens, and the user got "Attendance is closed" with no clue which
+      // session that referred to. Falls back to the bare route for rows written before the
+      // target existed.
+      final session = targetId;
+      return session == null ? '/attendance/scan' : '/attendance/scan?session=$session';
+    }
     if (groupId != null) return '/groups/$groupId';
     return null;
   }

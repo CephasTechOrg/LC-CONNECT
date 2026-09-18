@@ -10,6 +10,9 @@ import '../../connections/providers/connections_provider.dart';
 import '../data/notification_models.dart';
 import '../providers/notifications_provider.dart';
 import '../../../shared/widgets/app_states.dart';
+import '../../../shared/util/app_date_format.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../core/theme/app_typography.dart';
 
 /// The notification center. Unread rows stay visibly unread for the whole visit; opening one
 /// marks just that one read.
@@ -69,6 +72,35 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     }
     if (!mounted || route == null) return;
     context.push(route);
+  }
+
+  /// The list, with a day header wherever the calendar day changes.
+  ///
+  /// Report #15: the inbox was a flat list, so "three days ago" and "two minutes ago" sat
+  /// together with only a relative timestamp to tell them apart. Grouping is what makes a long
+  /// history skimmable.
+  ///
+  /// Uses `AppDateFormat.daySeparator` — the same helper the chat date separators use — rather
+  /// than a second Today/Yesterday rule. Two rules would eventually disagree, and a reader would
+  /// see the same day labelled differently on two screens.
+  List<Widget> _grouped(List<AppNotification> items) {
+    final rows = <Widget>[];
+    DateTime? currentDay;
+
+    for (final n in items) {
+      final day = AppDateFormat.dayBucket(n.createdAt);
+      if (currentDay == null || day != currentDay) {
+        currentDay = day;
+        rows.add(_DayHeader(label: AppDateFormat.daySeparator(n.createdAt)));
+      }
+      rows.add(_NotificationTile(
+        notification: n,
+        unread: _isUnread(n),
+        onOpen: () => _open(n),
+      ));
+      rows.add(const Divider(height: 1, color: AppColors.border));
+    }
+    return rows;
   }
 
   Future<void> _markAllRead() async {
@@ -149,20 +181,40 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                   if (items.isEmpty) {
                     return [const AppInlineMessage(message: "You're all caught up.")];
                   }
-                  return [
-                    for (final n in items) ...[
-                      _NotificationTile(
-                        notification: n,
-                        unread: _isUnread(n),
-                        onOpen: () => _open(n),
-                      ),
-                      const Divider(height: 1, color: AppColors.border),
-                    ],
-                  ];
+                  return _grouped(items);
                 },
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A calendar-day heading between groups of notifications.
+class _DayHeader extends StatelessWidget {
+  const _DayHeader({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      color: AppColors.background,
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.gutter,
+        AppSpacing.md,
+        AppSpacing.gutter,
+        AppSpacing.sm,
+      ),
+      child: Text(
+        label,
+        style: AppTypography.caption.copyWith(
+          color: AppColors.textMuted,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.4,
         ),
       ),
     );
@@ -235,15 +287,31 @@ class _NotificationTile extends StatelessWidget {
     );
   }
 
+  void _showExactTime(BuildContext context) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(AppDateFormat.dateTime(notification.createdAt)),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
   Widget _tile(BuildContext context, String? route) {
     return ListTile(
       onTap: onOpen ?? (route != null ? () => context.push(route) : null),
+      // The row shows a relative stamp ("3d"), which is right for scanning and useless for
+      // "when exactly?". Long-press answers that without spending a second line on every row.
+      onLongPress: () => _showExactTime(context),
       tileColor: unread ? AppColors.primarySoft.withValues(alpha: 0.35) : null,
       leading: notification.isActorCentric
           ? AvatarWidget(
               imageUrl: notification.actorAvatarUrl,
               size: 40,
-              cacheScope: notification.actorName,
+              // The actor's id, not their display name. Scoping an image cache by name meant
+              // two people called "Alex M." shared one cache entry — and a rename silently
+              // invalidated an avatar that had not changed.
+              cacheScope: notification.actorId,
             )
           : CircleAvatar(
               backgroundColor: AppColors.primarySoft,
