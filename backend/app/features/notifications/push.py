@@ -47,6 +47,34 @@ def _notification_copy(notif_type: str, actor_name: str | None, group_name: str 
 
 
 
+def _is_dead_token(result) -> bool:
+    """Whether this send failed in a way that means the token will **never** work again.
+
+    Two errors qualify:
+
+    * `UnregisteredError` — the app was uninstalled, or the token was replaced.
+    * `SenderIdMismatchError` — the token was issued by a different Firebase project, so this
+      project can never deliver to it.
+
+    **`ThirdPartyAuthError` deliberately does not**, and that is the whole reason this is a named
+    check rather than "prune anything that failed". It means APNs refused *our credential* —
+    typically the .p8 missing for the environment the token belongs to. The token is fine; the
+    server is misconfigured. Pruning on it would delete every iOS token in the table during an
+    outage, and they would only come back as each user next opened the app. Review finding #11
+    suggested pruning both; doing so would turn a fixable config error into permanent data loss.
+
+    Imports `messaging` locally, like every other function here: Firebase is optional, and this
+    module must import cleanly with it unconfigured.
+    """
+    from firebase_admin import messaging
+
+    if result.success:
+        return False
+    return isinstance(
+        result.exception, (messaging.UnregisteredError, messaging.SenderIdMismatchError)
+    )
+
+
 def _failure_reasons(response) -> str:
     """Why FCM rejected each token — the actual diagnosis when a push "just never arrives".
 
@@ -153,7 +181,7 @@ class PushSender:
         invalid = [
             token
             for token, result in zip(tokens, response.responses, strict=False)
-            if not result.success and isinstance(result.exception, messaging.UnregisteredError)
+            if _is_dead_token(result)
         ]
         logger.info(
             'Notification push (%s): sent=%d failed=%d pruned=%d reasons=%s',
@@ -205,7 +233,7 @@ class PushSender:
             invalid.extend(
                 token
                 for token, result in zip(chunk, response.responses, strict=False)
-                if not result.success and isinstance(result.exception, messaging.UnregisteredError)
+                if _is_dead_token(result)
             )
         logger.info('Campus post push: tokens=%d pruned=%d', len(tokens), len(invalid))
         return invalid
@@ -248,7 +276,7 @@ class PushSender:
             invalid.extend(
                 token
                 for token, result in zip(chunk, response.responses, strict=False)
-                if not result.success and isinstance(result.exception, messaging.UnregisteredError)
+                if _is_dead_token(result)
             )
         logger.info('Attendance open push: tokens=%d pruned=%d', len(tokens), len(invalid))
         return invalid
@@ -266,7 +294,7 @@ class PushSender:
         invalid = [
             token
             for token, result in zip(tokens, response.responses, strict=False)
-            if not result.success and isinstance(result.exception, messaging.UnregisteredError)
+            if _is_dead_token(result)
         ]
         if response.failure_count:
             logger.warning(

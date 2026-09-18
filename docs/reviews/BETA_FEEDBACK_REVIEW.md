@@ -1993,7 +1993,42 @@ Notation: **[be]** backend · **[fe]** mobile · **[cfg]** config/ops · **[msr]
       item 2): at 50–70 ms RTT the ~4 authorization round trips it removes are worth ~200–280 ms
       per message. Still do it **after** the region decision — co-locating drops the same 4 trips
       to ~8–20 ms total, which may make the security trade not worth making at all.
-- [ ] **2.9** [be][fe] Part 3 additional findings 1–7, 11, 17
+- [x] **2.9** [be][fe] Part 3 additional findings 1–7, 11, 17 — **done, and only four of the nine
+      were real.** Checking each before fixing it was the point; the rest are recorded in
+      `tests/db/test_part3_findings.py` so "we looked and it is fine" survives as an answer.
+      **Fixed:**
+      *#1* `AttendanceSession.started_by_id` was `NOT NULL` with `ON DELETE SET NULL` — incoherent,
+      so the cascade could never execute and a hard user delete failed with a not-null violation
+      rather than a foreign-key error naming the obstacle. Now `RESTRICT` (migration
+      `5f84eb1b9c13`): an attendance session is an audit record of who opened a class, so `SET
+      NULL` would trade that away *and* need a nullable field in the API, while `CASCADE` would
+      delete attendance history with an instructor's account.
+      *#3* `ScholarProfessionalProfile._get_or_create` was a bare insert. `GET /scholars/me`
+      creates the row lazily and the client fires several scholar reads at once on mount, so two
+      first-reads racing is reachable — it raised an unhandled `IntegrityError` and 500'd whichever
+      lost. Now the same arbiter pattern as `ensure_dm_conversation`, with a concurrency test.
+      *#11* token pruning — **half the finding was wrong, and acting on all of it would have been
+      harmful.** `SenderIdMismatch` is now pruned (the token belongs to another Firebase project
+      and can never work). `ThirdPartyAuthError` is deliberately **not**: it means APNs refused
+      *our credential*, usually a missing .p8, as the module's own docstring already said. The
+      token is fine and the server is misconfigured — pruning would delete every iOS token during
+      an outage and turn a fixable config error into permanent data loss. The four duplicate
+      copies of the pruning condition became one `_is_dead_token`.
+      *#17* two `asyncio.create_task` calls kept no reference, so a task awaiting the push grace
+      period could be garbage-collected mid-flight, and nothing awaited them so exceptions were
+      never observed. Both failure modes are invisible by construction. Now `_spawn` holds a
+      reference and logs failures.
+      **Already fine, verified:** *#2* attendance auto-close (done in 1.3) · *#4* the
+      naive-datetime 500 (done in 1.1) · *#7* `unread_summary` — the concern was that it joined
+      through `matches`, making group unread silently zero; it joins on
+      `ConversationMember.conversation_id`, so groups count.
+      **Not a bug:** *#5* the duplicate-send rollback discarding `ensure_dm_conversation` work — a
+      duplicate `client_message_id` means the original send already committed, so the conversation
+      it needed exists; the rolled-back create was a redundant one that lost a race. Pinned by a
+      test, since the reasoning is not visible in the code.
+      **A recorded trade-off, not an oversight:** *#6* staff-DM pair uniqueness, which
+      `conversations.py` already documents accepting.
+
 - [ ] **2.10** [cfg] **Only if 2.1/2.6 justify it**: Redis first, *then* workers — never the reverse
 - [x] **2.11a** [be] **Fresh-environment bootstrap + migration tests** (Part 3 finding 18) —
       `scripts/bootstrap_db.py` makes a new environment buildable; `tests/db/test_migrations.py`

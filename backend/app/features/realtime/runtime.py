@@ -48,6 +48,35 @@ class _EventBusProxy:
 
 event_bus = _EventBusProxy()
 
+#: Strong references to in-flight background pushes.
+#:
+#: `asyncio.create_task` returns the only reference to its task; drop it and the event loop keeps
+#: no strong reference of its own, so a task awaiting a `sleep` can be garbage-collected
+#: mid-flight. The push then silently never happens — and because nothing ever awaits the task,
+#: any exception inside it is swallowed rather than logged, so there is no trace either way.
+#:
+#: Both failure modes are invisible by construction, which is what makes this worth the four
+#: lines: a push that vanishes looks identical to a push that was never scheduled.
+_background_tasks: set[asyncio.Task] = set()
+
+
+def _spawn(coro, *, what: str) -> None:
+    """Run `coro` in the background, keeping a reference and reporting its failures."""
+    task = asyncio.create_task(coro)
+    _background_tasks.add(task)
+
+    def _done(finished: asyncio.Task) -> None:
+        _background_tasks.discard(finished)
+        if finished.cancelled():
+            return
+        exc = finished.exception()
+        if exc is not None:
+            # Was previously unobservable: nothing awaited these tasks, so a failing push left no
+            # log line at all.
+            logger.warning('background %s failed: %s', what, exc)
+
+    task.add_done_callback(_done)
+
 # Conn-id keys stay process-local (``allow``). User/conversation keys use ``aallow``.
 send_limiter = RateLimiter(settings.ws_send_rate_per_10s, 10, name='ws_send')
 typing_limiter = RateLimiter(settings.ws_typing_rate_per_10s, 10, name='ws_typing')
@@ -119,7 +148,10 @@ async def emit_notification(
         if notif_type in PUSHABLE_NOTIFICATION_TYPES and push_sender.enabled:
             actor_name = dto.actor.display_name if dto.actor else None
             group_name = dto.group.name if dto.group else None
-            asyncio.create_task(_schedule_notification_push(user_id, notif_type, actor_name, group_name))
+            _spawn(
+                _schedule_notification_push(user_id, notif_type, actor_name, group_name),
+                what='notification push',
+            )
     except Exception as exc:  # noqa: BLE001 - a notification must never break the triggering action
         logger.warning('emit_notification failed (type=%s user=%s): %s', notif_type, user_id, exc)
 
@@ -166,8 +198,9 @@ async def emit_message_created(
         await event_bus.publish_to_user(recipient_id, updated)
         if muted or manager.user_socket_count(recipient_id) != 0:
             continue
-        asyncio.create_task(
-            schedule_offline_push(recipient_id, sender_id, message.conversation_id)
+        _spawn(
+            schedule_offline_push(recipient_id, sender_id, message.conversation_id),
+            what='offline push',
         )
 
 

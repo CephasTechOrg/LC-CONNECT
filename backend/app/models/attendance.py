@@ -30,8 +30,20 @@ class AttendanceSession(Base):
         UUID(as_uuid=True), ForeignKey('programs.id', ondelete='CASCADE'), index=True, nullable=False
     )
     title: Mapped[str] = mapped_column(String(160), nullable=False)
+    # `RESTRICT`, not `SET NULL`. The original pairing — `ondelete='SET NULL'` on a `nullable=False`
+    # column — is incoherent: the cascade can never execute, so a hard user deletion failed with a
+    # confusing not-null violation rather than a foreign-key error naming the real obstacle.
+    #
+    # Of the two coherent options, this is the one that suits the data. An attendance session is an
+    # audit record of who opened a class, so `SET NULL` (which would need the column nullable, and
+    # a nullable `started_by_id` in the API) trades that record away, and `CASCADE` would delete
+    # attendance history along with an instructor's account. `RESTRICT` keeps both: the record
+    # stays complete, and a hard delete is refused with a clear reason.
+    #
+    # It should also never fire — accounts are soft-deleted (`User.deleted_at`), which is why this
+    # sat latent rather than breaking anything.
     started_by_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey('users.id', ondelete='SET NULL'), index=True, nullable=False
+        UUID(as_uuid=True), ForeignKey('users.id', ondelete='RESTRICT'), index=True, nullable=False
     )
     opened_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     present_until: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

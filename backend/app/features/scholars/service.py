@@ -13,6 +13,7 @@ from uuid import UUID
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
@@ -107,16 +108,36 @@ async def _get_or_create(db: AsyncSession, user_id: UUID) -> ScholarProfessional
             status_code=status.HTTP_403_FORBIDDEN,
             detail='This feature is only available to verified Presidential Scholars',
         )
-    profile = (
-        await db.execute(select(ScholarProfessionalProfile).where(ScholarProfessionalProfile.user_id == user_id))
-    ).scalar_one_or_none()
+    profile = await _load(db, user_id)
     if profile is not None:
         return profile
+
+    # Race-safe, the same arbiter pattern as `ensure_dm_conversation` and message idempotency:
+    # `user_id` is UNIQUE, so of two concurrent first-reads only one insert can succeed and the
+    # loser reloads the winner's row. This used to be a bare insert, which raised an unhandled
+    # `IntegrityError` — surfacing as a 500 to whichever request lost. Reachable in practice
+    # because `GET /scholars/me` creates the row lazily, and the mobile client fires several
+    # scholar reads concurrently when the dashboard mounts.
     profile = ScholarProfessionalProfile(user_id=user_id)
     db.add(profile)
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        winner = await _load(db, user_id)
+        if winner is None:  # pragma: no cover — the unique violation guarantees a row exists
+            raise
+        return winner
     await db.refresh(profile)
     return profile
+
+
+async def _load(db: AsyncSession, user_id: UUID) -> ScholarProfessionalProfile | None:
+    return (
+        await db.execute(
+            select(ScholarProfessionalProfile).where(ScholarProfessionalProfile.user_id == user_id)
+        )
+    ).scalar_one_or_none()
 
 
 async def get_my_profile(db: AsyncSession, user_id: UUID) -> ScholarProfessionalProfileRead:
