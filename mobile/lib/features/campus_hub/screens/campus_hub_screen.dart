@@ -14,7 +14,7 @@ import '../../../shared/widgets/a11y.dart';
 import '../../activities/providers/activities_provider.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../discovery/providers/discovery_provider.dart';
-import '../../notifications/providers/notifications_provider.dart';
+import '../../notifications/widgets/notifications_bell_button.dart';
 import '../../profile/providers/profile_provider.dart';
 import '../../programs/providers/programs_provider.dart';
 import '../../scholars/providers/scholars_provider.dart';

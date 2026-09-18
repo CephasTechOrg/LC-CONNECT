@@ -19,7 +19,6 @@ class _HomeGreetingHeader extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final unread = ref.watch(notificationCountProvider);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 6, 20, 6),
@@ -72,60 +71,12 @@ class _HomeGreetingHeader extends ConsumerWidget {
               ],
             ),
           ),
-          _HomeBell(unread: unread),
-        ],
-      ),
-    );
-  }
-}
-
-class _HomeBell extends StatelessWidget {
-  final int unread;
-  const _HomeBell({required this.unread});
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 44,
-      height: 44,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Center(
-            child: IconButton(
-              onPressed: () => context.push('/notifications'),
-              padding: EdgeInsets.zero,
-              icon: const Icon(
-                Icons.notifications_none_rounded,
-                size: 24,
-                color: AppColors.textMid,
-              ),
-            ),
-          ),
-          if (unread > 0)
-            Positioned(
-              top: 4,
-              right: 4,
-              child: Container(
-                constraints: const BoxConstraints(minWidth: 17, minHeight: 17),
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: AppColors.error,
-                  borderRadius: BorderRadius.circular(9),
-                  border: Border.all(color: AppColors.background, width: 1.5),
-                ),
-                child: Text(
-                  unread > 99 ? '99+' : '$unread',
-                  style: GoogleFonts.dmSans(
-                    color: Colors.white,
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w700,
-                    height: 1,
-                  ),
-                ),
-              ),
-            ),
+          // The shared bell, not a second hand-rolled one. The private `_HomeBell` this
+          // replaces was a bare `IconButton`: no tooltip, no semantics label, and its own badge
+          // implementation — so on the app's landing screen a screen reader announced nothing
+          // about unread notifications, while the same control on Discovery and Activities
+          // announced "Notifications, 3 unread".
+          const NotificationsBellButton(),
         ],
       ),
     );

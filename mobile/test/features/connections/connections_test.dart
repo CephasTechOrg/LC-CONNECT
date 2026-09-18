@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -14,18 +15,27 @@ class _MockConnectionsNotifier extends ConnectionsNotifier {
   Future<ConnectionsState> build() async => _fixed;
 }
 
+/// Never completes, so a test can inspect the screen mid-load.
+class _PendingConnectionsNotifier extends ConnectionsNotifier {
+  @override
+  Future<ConnectionsState> build() => Completer<ConnectionsState>().future;
+}
+
 // Build a ProviderScope with ConnectionsState overridden
 ProviderScope _scope({
   List<ConnectionRequest> incoming = const [],
   List<ConnectionRequest> outgoing = const [],
   Widget? child,
+  bool pending = false,
 }) {
   return ProviderScope(
     overrides: [
       connectionsNotifierProvider.overrideWith(
-        () => _MockConnectionsNotifier(
-          ConnectionsState(incoming: incoming, outgoing: outgoing),
-        ),
+        () => pending
+            ? _PendingConnectionsNotifier()
+            : _MockConnectionsNotifier(
+                ConnectionsState(incoming: incoming, outgoing: outgoing),
+              ),
       ),
     ],
     child: MaterialApp(
@@ -273,6 +283,45 @@ void main() {
       addTearDown(container.dispose);
       await container.read(connectionsNotifierProvider.future);
       expect(container.read(incomingConnectionCountProvider), 2);
+    });
+  });
+
+  /// Report #20 (4.5) — the tab bar used to render `SizedBox.shrink()` for both loading *and*
+  /// error, so it appeared only once the request finished and shoved the list down. A layout
+  /// jump on every visit, and on a slow connection one the user was already reading through.
+  group('the tab bar does not pop in', () {
+    testWidgets('it is present while loading', (tester) async {
+      await tester.pumpWidget(_scope(pending: true));
+      await tester.pump();
+
+      expect(find.byType(TabBar), findsOneWidget);
+      expect(find.text('Incoming'), findsOneWidget);
+      expect(find.text('Outgoing'), findsOneWidget);
+    });
+
+    testWidgets('it does not move once the counts arrive', (tester) async {
+      // The actual regression: same position before and after. The counts are what load; the
+      // tabs themselves are known from the start.
+      await tester.pumpWidget(_scope(pending: true));
+      await tester.pump();
+      final whileLoading = tester.getTopLeft(find.byType(TabBar));
+
+      // Explicit pumps, not `pumpAndSettle`: a skeleton is on screen during the loading frame
+      // and it shimmers, so there is no idle state to settle to.
+      await tester.pumpWidget(_scope(incoming: [_sampleIncoming]));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      final afterLoad = tester.getTopLeft(find.byType(TabBar));
+
+      expect(afterLoad, whileLoading);
+    });
+
+    testWidgets('it shows no count badges while loading', (tester) async {
+      // Present but honest: a zero or a stale number would be worse than no badge.
+      await tester.pumpWidget(_scope(pending: true));
+      await tester.pump();
+
+      expect(find.text('0'), findsNothing);
     });
   });
 }

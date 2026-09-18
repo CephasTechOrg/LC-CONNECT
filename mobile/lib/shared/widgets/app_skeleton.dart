@@ -29,6 +29,9 @@ class AppSkeletonSemantics extends StatelessWidget {
 ///
 /// Shimmers, because a static grey block reads as content that failed to load rather than content
 /// on its way. The animation is the only thing that says "still working".
+///
+/// **In tests:** the shimmer repeats, so there is no idle state — `pumpAndSettle` will time out
+/// while any skeleton is on screen. Use explicit `pump(Duration)` calls instead.
 class AppSkeletonBox extends StatefulWidget {
   const AppSkeletonBox({
     super.key,

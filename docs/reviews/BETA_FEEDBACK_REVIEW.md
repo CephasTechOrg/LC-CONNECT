@@ -2078,7 +2078,26 @@ Notation: **[be]** backend · **[fe]** mobile · **[cfg]** config/ops · **[msr]
       pull-to-refresh set
 - [ ] **4.4** [be][fe][snap] **#15** notification grouping + deep-linkable rows (needs target ids on rows
       *and* payloads) + shared states
-- [ ] **4.5** [fe] **#20** declutter Discovery; one bell location; fix the popping tab bar
+- [x] **4.5** [fe] **#20** declutter Discovery; one bell; fix the popping tab bar — **done**, with
+      one finding sharper than the review's.
+      *The bell:* the review counted three mountings. The count was the less interesting half — one
+      of them was a **different implementation.** Campus Hub had a private `_HomeBell`: a bare
+      `IconButton` with a hand-rolled badge, no tooltip and no semantics label. So on the app's
+      *landing* screen a screen reader announced nothing about unread notifications, while the
+      identical-looking control on Discovery and Activities announced "Notifications, 3 unread".
+      All three now use `NotificationsBellButton`. Three mountings are kept deliberately — each is
+      a top-level tab, so that is reachability, not clutter; what mattered was that they be the
+      same control. `bell_consistency_test.dart` asserts only one widget owns
+      `push('/notifications')`.
+      *The popping tab bar:* rendered `SizedBox.shrink()` for both loading **and** error, so it
+      appeared once the request finished and shoved the list down — a layout jump on every visit,
+      and on a slow connection one the user was already reading through. It is always present now,
+      with counts filled in when they arrive and no badge until then (a zero would be worse than
+      nothing). Pinned by a test comparing its position before and after load.
+      *Discovery's chrome:* already halved by 3.2, which removed the Groups segment and with it a
+      second search field and a second chip row. What remains is one header, two segments, one
+      search and one chip row.
+
 - [x] **4.6** [fe] **#3** avatar preview viewer — **done.** `showAvatarPreview` plus an opt-in
       `previewHeroTag` on `AvatarWidget`: full-screen, Hero-animated from the thumbnail,
       pinch-zoomable to 4x, dismissed by the close button, a tap anywhere, or the system back

@@ -51,14 +51,15 @@ class _ConnectionsScreenState extends ConsumerState<ConnectionsScreen>
         child: Column(
           children: [
             _Header(onBack: () => Navigator.of(context).pop()),
-            async.when(
-              loading: () => const SizedBox.shrink(),
-              error: (e, _) => const SizedBox.shrink(),
-              data: (s) => _TabBar(
-                controller: _tabs,
-                incomingCount: s.incoming.length,
-                outgoingCount: s.outgoing.length,
-              ),
+            // Always present, never `SizedBox.shrink()`. Rendering nothing while loading meant
+            // the tab bar *appeared* once the request finished and pushed the whole list down —
+            // a layout jump on every visit, and on a slow connection a jump the user was
+            // already reading through. The counts are what load; the tabs themselves are known
+            // from the start.
+            _TabBar(
+              controller: _tabs,
+              incomingCount: async.value?.incoming.length ?? 0,
+              outgoingCount: async.value?.outgoing.length ?? 0,
             ),
             Expanded(
               child: async.when(
