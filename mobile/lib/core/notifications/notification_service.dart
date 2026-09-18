@@ -28,6 +28,15 @@ class NotificationService {
 
   bool _available = false;
   String? _token;
+
+  /// The token already registered with the backend in this app session.
+  ///
+  /// On a first launch `onTokenRefresh` and the explicit `getToken()` below both fire with the
+  /// *same* token, so the device registered twice — two identical `POST /devices` per launch,
+  /// visible in the production logs. The once-per-launch registration is worth keeping (the
+  /// backend upserts `updated_at`, which is what makes a stale token identifiable); the immediate
+  /// repeat of it is not. Null on a cold start, so every launch still registers exactly once.
+  String? _registeredToken;
   StreamSubscription<String>? _tokenRefreshSub;
   StreamSubscription<RemoteMessage>? _messageOpenedSub;
   StreamSubscription<RemoteMessage>? _foregroundSub;
@@ -155,12 +164,15 @@ class NotificationService {
   }
 
   Future<void> _register(Dio dio, String token) async {
+    if (token == _registeredToken) return; // see [_registeredToken]
     try {
       await dio.post('/devices', data: {'token': token, 'platform': _platform});
+      _registeredToken = token;
       _log('push: device registered with backend ($_platform)');
     } catch (e) {
-      // Best-effort; retried on next token refresh / app launch. Logged because a silent
-      // failure here looks identical to "push is broken" from the user's side.
+      // Best-effort; retried on next token refresh / app launch. `_registeredToken` is left
+      // unset above so a failure stays retryable rather than being remembered as done. Logged
+      // because a silent failure here looks identical to "push is broken" from the user's side.
       _log('push: POST /devices failed: $e');
     }
   }
@@ -185,6 +197,7 @@ class NotificationService {
       await FirebaseMessaging.instance.deleteToken();
     } catch (_) {}
     _token = null;
+    _registeredToken = null;
   }
 
   String get _platform => Platform.isIOS

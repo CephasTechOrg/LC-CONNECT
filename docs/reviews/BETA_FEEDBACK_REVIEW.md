@@ -1953,9 +1953,13 @@ Notation: **[be]** backend · **[fe]** mobile · **[cfg]** config/ops · **[msr]
       such: they serve a handful of staff rather than students, and declaring an unmoved service
       `ohio` would make a future re-create relocate it by accident.
       *Not yet measured:* the before/after latency is 2.1, which still needs production access.
-- [ ] **2.1** [msr] Run Part 5 items 1–4 and 7 *(items 2, 3 and 5 resolved)* — **blocked: needs
-      production access** (Render logs, Supabase dashboard, a read-only prod query). Cannot be done
-      from the repo.
+- [ ] **2.1** [msr] Run Part 5 items 1–4 and 7 *(items 2, 3 and 5 resolved)* — **unblocked by 2.6
+      from the next deploy.** A first capture (`docs/renderlogs.md`, pre-instrumentation) settled
+      the *correctness* questions — zero 5xx across 236 requests, admin-portal CORS passing against
+      Ohio, `HONORS_ATTENDANCE_ENABLED` set, WebSocket + offline push + stale-token pruning all
+      working — but carried no timings, so it answered nothing about latency. Capture again once
+      the duration logging is deployed.
+
 - [x] **2.2** [fe] **#17 images** — `cached_network_image` across all 11 sites; skeleton (not silhouette)
       placeholder; raise object `Cache-Control` to immutable
 - [x] **2.3** [fe] **#17 data** — `cacheFor` (TTL-bounded `keepAlive`) on the group, directory and
@@ -1971,9 +1975,15 @@ Notation: **[be]** backend · **[fe]** mobile · **[cfg]** config/ops · **[msr]
       index; keyset pagination + `(created_at, id)` ordering; insert-from-WS instead of refetch
 - [x] **2.5** [fe] **#12 P1** — race WS+REST instead of a fixed 6 s wait; adaptive ack timeout;
       "connecting…" state; overlap socket connect with bootstrap · *deliberately **not** gated on 2.1*
-- [ ] **2.6** [msr] **#12 instrumentation** — time-to-ack by transport; server send-time split; DB RTT probe
-      — **blocked on 2.1**; the client-side half (2.5) shipped without it by design, see Adopted
-      decision 3.
+- [~] **2.6** [msr] **#12 instrumentation** — **HTTP half done.** `RequestIdMiddleware` now logs
+      `METHOD /path -> status in N.Nms` to `lc_connect.access`, at WARNING past `SLOW_REQUEST_MS`
+      (default 1000) so slow requests are findable by level filter rather than by reading
+      everything. The query string is deliberately excluded: a path id makes a request
+      diagnosable, a query string can carry a token or a search term someone typed, and these
+      lines end up pasted into bug reports. Production logs previously carried method, path and
+      status and **no duration**, which is exactly what made 2.1 unanswerable.
+      *Still to do:* time-to-ack by transport (WebSocket vs REST) and a DB RTT probe.
+
 - [x] **2.7** [be] **#12 P2** — `eager_defaults` removes the post-commit `refresh`; authorization now
       returns the member list it already read (was queried twice); `resolve_conversation` matches
       both id shapes in one query instead of a guaranteed miss for every DM; the block check is a
@@ -2027,7 +2037,10 @@ Notation: **[be]** backend · **[fe]** mobile · **[cfg]** config/ops · **[msr]
       gate the new frames on `RealtimeClient.supportsProtocol`)* — **Batch 2, after TestFlight**
 - [ ] **3.7** [be][fe][snap] **#5** editing — `edited_at` + `message_edits`, `PATCH /messages/{id}`,
       `message.edited` frame, 15-min window, retention-runbook step — **Batch 2, after TestFlight**
-- [ ] **3.8** [doc] **#22** record the no-presence decision; revisit only after 2.10
+- [x] **3.8** [doc] **#22** record the no-presence decision — `ADR-009` (presence is not a product
+      feature, with the derivation to use if it is ever revisited) and `ADR-010` (read receipts
+      unconditional in v1, with the reciprocity rule that matters if a toggle is added).
+      Revisit only after 2.10.
 
 ### Phase 4 — UI/UX polish
 

@@ -5,7 +5,6 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import ORJSONResponse
 
 from app.config import settings
 from app.features.account import router as account_router
@@ -132,7 +131,6 @@ _docs_enabled = not settings.is_production
 app = FastAPI(
     title=settings.app_name,
     version='0.1.0',
-    default_response_class=ORJSONResponse,
     lifespan=lifespan,
     docs_url='/docs' if _docs_enabled else None,
     redoc_url='/redoc' if _docs_enabled else None,

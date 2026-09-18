@@ -115,6 +115,9 @@ class Settings(BaseSettings):
     ws_subscribe_rate_per_10s: int = Field(default=15, alias='WS_SUBSCRIBE_RATE_PER_10S')
     ws_ping_rate_per_10s: int = Field(default=6, alias='WS_PING_RATE_PER_10S')
     ws_max_malformed_frames: int = Field(default=10, alias='WS_MAX_MALFORMED_FRAMES')
+    # Requests slower than this are logged at WARNING rather than INFO, so they can be found with
+    # a level filter in Render's log search instead of by reading everything.
+    slow_request_ms: int = Field(default=1000, alias='SLOW_REQUEST_MS')
     # Replies to frames this server does not implement, per connection per minute. Unlike the
     # malformed budget this never closes the socket — going over just stops the replies. Generous
     # because the legitimate cause is a newer client probing a feature, which happens in bursts on
