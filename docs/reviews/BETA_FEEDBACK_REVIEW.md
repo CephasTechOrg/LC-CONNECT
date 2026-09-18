@@ -2044,8 +2044,21 @@ Notation: **[be]** backend · **[fe]** mobile · **[cfg]** config/ops · **[msr]
 
 ### Phase 4 — UI/UX polish
 
-- [ ] **4.1** [fe] **#18** extract `AppTypography` / `AppSpacing` / `AppRadii` / `AppShadows`; populate
-      `textTheme`
+- [x] **4.1** [fe] **#18** extract `AppTypography` / `AppSpacing` / `AppRadii` / `AppShadows`;
+      populate `textTheme` — **done.** Four token files in `core/theme/`, and `app_theme.dart` now
+      builds every component theme from them (it previously hardcoded seven font sizes and five
+      radii). The survey that shaped the scale: 24 font sizes in use including six half-steps,
+      15 radii, 12 `BoxShadow` literals with no two agreeing, and
+      `Theme.of(context).textTheme` used in **zero** feature files.
+      Ten type roles rather than a fashionable five, because the integer sizes cluster into ten
+      groups with real jobs (~90 uses each at 13 and 14, 86 at 12, 47 at 11) — collapsing those
+      would be redesigning dense surfaces, not tokenising them.
+      `test/core/theme/design_tokens_test.dart` is the tripwire: roles stay on the scale, no
+      fractional sizes, no two roles share a size, nothing below 10, every role sets a line
+      height and carries no colour, and the component themes are actually wired to the tokens
+      rather than the tokens being documentation.
+      *Call sites are not migrated* — that happens as 4.2/4.3/4.5/4.6/4.7 touch each surface.
+
 - [ ] **4.2** [fe] **#18** standardise loading (skeleton for content, spinner only in-button) and
       empty/error (delete the local `_Message` / `_PanelMessage` / `_ErrorRetry` duplicates)
 - [ ] **4.3** [fe] **#18** dashboard pass: rhythm, alignment, card-colour competition, complete the

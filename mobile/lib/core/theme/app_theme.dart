@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+
+import 'app_radii.dart';
+import 'app_spacing.dart';
+import 'app_typography.dart';
 
 class AppColors {
   static const primary    = Color(0xFF3F7FB5);
@@ -30,7 +33,10 @@ class AppTheme {
     );
 
     return base.copyWith(
-      textTheme: GoogleFonts.dmSansTextTheme(base.textTheme).apply(
+      // Built from [AppTypography] rather than from Material's defaults, so a plain `Text` and a
+      // `Theme.of(context).textTheme` lookup both land on the app's own scale. Colour is applied
+      // here and not in the token: a role says how big and how heavy, never what colour.
+      textTheme: AppTypography.textTheme.apply(
         bodyColor: AppColors.textDark,
         displayColor: AppColors.textDark,
       ),
@@ -39,17 +45,14 @@ class AppTheme {
         foregroundColor: AppColors.textDark,
         elevation: 0,
         centerTitle: false,
-        titleTextStyle: GoogleFonts.dmSans(
-          color: AppColors.textDark,
-          fontSize: 17,
-          fontWeight: FontWeight.w700,
-        ),
+        // Was a one-off 17 — the only use of that size in the app. `title` (18) is the role.
+        titleTextStyle: AppTypography.title.copyWith(color: AppColors.textDark),
       ),
       cardTheme: CardThemeData(
         color: AppColors.surface,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: AppRadii.all(AppRadii.card),
           side: const BorderSide(color: AppColors.border),
         ),
       ),
@@ -59,12 +62,9 @@ class AppTheme {
           foregroundColor: Colors.white,
           minimumSize: const Size(double.infinity, 52),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(13),
+            borderRadius: AppRadii.all(AppRadii.lg),
           ),
-          textStyle: GoogleFonts.dmSans(
-            fontSize: 15,
-            fontWeight: FontWeight.w700,
-          ),
+          textStyle: AppTypography.bodyLarge.copyWith(fontWeight: FontWeight.w700),
           elevation: 0,
         ),
       ),
@@ -74,36 +74,38 @@ class AppTheme {
           side: const BorderSide(color: AppColors.border, width: 1.5),
           minimumSize: const Size(double.infinity, 52),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(13),
+            borderRadius: AppRadii.all(AppRadii.lg),
           ),
-          textStyle: GoogleFonts.dmSans(
-            fontSize: 15,
-            fontWeight: FontWeight.w500,
-          ),
+          textStyle: AppTypography.bodyLarge.copyWith(fontWeight: FontWeight.w500),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: AppColors.background,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+        // Was 14/13 — neither on any grid. On the scale this is 16/12, which is a pixel-level
+        // change to the field's height and the closest honest equivalent.
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg,
+          vertical: AppSpacing.md,
+        ),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: AppRadii.all(AppRadii.lg),
           borderSide: const BorderSide(color: AppColors.border, width: 1.5),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: AppRadii.all(AppRadii.lg),
           borderSide: const BorderSide(color: AppColors.border, width: 1.5),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: AppRadii.all(AppRadii.lg),
           borderSide: const BorderSide(color: AppColors.primary, width: 2),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: AppRadii.all(AppRadii.lg),
           borderSide: const BorderSide(color: AppColors.error),
         ),
-        labelStyle: GoogleFonts.dmSans(color: AppColors.textMuted, fontSize: 14),
-        hintStyle: GoogleFonts.dmSans(color: AppColors.textMuted, fontSize: 14),
+        labelStyle: AppTypography.body.copyWith(color: AppColors.textMuted),
+        hintStyle: AppTypography.body.copyWith(color: AppColors.textMuted),
       ),
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
         backgroundColor: AppColors.surface,
@@ -111,8 +113,8 @@ class AppTheme {
         unselectedItemColor: const Color(0xFF9CA3AF),
         type: BottomNavigationBarType.fixed,
         elevation: 0,
-        selectedLabelStyle: GoogleFonts.dmSans(fontSize: 10, fontWeight: FontWeight.w600),
-        unselectedLabelStyle: GoogleFonts.dmSans(fontSize: 10, fontWeight: FontWeight.w400),
+        selectedLabelStyle: AppTypography.micro,
+        unselectedLabelStyle: AppTypography.micro.copyWith(fontWeight: FontWeight.w400),
       ),
     );
   }
