@@ -10,6 +10,14 @@ class _BubbleTile extends StatelessWidget {
   final void Function(ChatMessage)? onReport;
   final void Function(ChatMessage)? onDelete; // delete-for-everyone (own message, or I moderate)
   final void Function(ChatMessage)? onRetry;
+
+  /// Null when the connected server predates reactions — see `kReactionProtocolVersion`. Offering
+  /// a control whose endpoint 404s is worse than not offering it.
+  final void Function(ChatMessage message, String emoji)? onReact;
+
+  /// Null when the server predates editing. Shown only for the sender's own, undeleted messages
+  /// that are still inside the window.
+  final void Function(ChatMessage)? onEdit;
   const _BubbleTile({
     required this.message,
     required this.isMine,
@@ -19,10 +27,28 @@ class _BubbleTile extends StatelessWidget {
     this.showSenderIdentity = false,
     this.onReport,
     this.onDelete,
+    this.onReact,
+    this.onEdit,
     this.onRetry,
   });
 
   bool get _canReport => !isMine && onReport != null;
+
+  /// A deleted message keeps no body, so a reaction on it would hang off a tombstone. An
+  /// unsent (`local:`) one has no server id to react to yet.
+  bool get _canReact =>
+      onReact != null && !message.deleted && !message.id.startsWith('local:');
+
+  /// Sender only, still in the window, not deleted, and actually sent.
+  ///
+  /// The window check is **advisory** — the server enforces it from its own clock. This just
+  /// stops the app offering an action that would come back 409.
+  bool get _canEdit =>
+      onEdit != null &&
+      isMine &&
+      !message.deleted &&
+      !message.id.startsWith('local:') &&
+      DateTime.now().difference(message.createdAt) < kEditWindow;
   bool get _canDelete => onDelete != null;
 
   /// Only for my own group messages. In a DM the tick already answers this precisely, and for
@@ -143,9 +169,32 @@ class _BubbleTile extends StatelessWidget {
                       DateFormat('h:mm a').format(message.createdAt.toLocal()),
                       style: GoogleFonts.dmSans(fontSize: 10, color: AppColors.textMuted),
                     ),
+                    if (message.editedAt != null && !message.deleted) ...[
+                      const SizedBox(width: 4),
+                      // Quiet, and never omitted: a conversation where text can change silently
+                      // is one nobody can rely on.
+                      Text(
+                        'edited',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 10,
+                          fontStyle: FontStyle.italic,
+                          color: isMine
+                              ? Colors.white.withValues(alpha: 0.7)
+                              : AppColors.textMuted,
+                        ),
+                      ),
+                    ],
                     if (isMine && !message.deleted) ...[const SizedBox(width: 5), _status(context)],
                   ],
                 ),
+                // Below the bubble rather than inside it: chips belong to the message but are not
+                // part of what was said, and inside they would push the text around as people
+                // react.
+                if (!message.deleted)
+                  _ReactionStrip(
+                    reactions: message.reactions,
+                    onToggle: _canReact ? (emoji) => onReact!(message, emoji) : (_) {},
+                  ),
               ],
             ),
           ),
@@ -172,6 +221,19 @@ class _BubbleTile extends StatelessWidget {
               decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2)),
             ),
             const SizedBox(height: 8),
+            if (_canReact) ...[
+              _ReactionPicker(
+                chosen: {
+                  for (final r in message.reactions)
+                    if (r.reactedByMe) r.emoji,
+                },
+                onPick: (emoji) {
+                  Navigator.of(sheetCtx).pop();
+                  onReact!(message, emoji);
+                },
+              ),
+              const Divider(height: 1, color: AppColors.border),
+            ],
             if (_canSeeReadBy)
               ListTile(
                 leading: const Icon(Icons.done_all_rounded, color: AppColors.primary),
@@ -188,6 +250,18 @@ class _BubbleTile extends StatelessWidget {
                     ),
                     builder: (_) => _ReadBySheet(messageId: message.id),
                   );
+                },
+              ),
+            if (_canEdit)
+              ListTile(
+                leading: const Icon(Icons.edit_outlined, color: AppColors.textMid),
+                title: Text('Edit message',
+                    style: GoogleFonts.dmSans(fontWeight: FontWeight.w500, color: AppColors.textDark)),
+                subtitle: Text('Everyone sees it change, marked as edited',
+                    style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textMuted)),
+                onTap: () {
+                  Navigator.of(sheetCtx).pop();
+                  onEdit!(message);
                 },
               ),
             if (_canDelete)

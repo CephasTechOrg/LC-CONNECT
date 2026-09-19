@@ -96,6 +96,7 @@ PATCH /api/v1/campus-positions/me
 PATCH /api/v1/groups/{group_id}
 PATCH /api/v1/groups/{group_id}/members/me
 PATCH /api/v1/groups/{group_id}/members/{user_id}
+PATCH /api/v1/messages/{message_id}
 PATCH /api/v1/profiles/me
 PATCH /api/v1/scholars/me
 POST /api/v1/account/suspension-appeal

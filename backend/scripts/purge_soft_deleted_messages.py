@@ -63,6 +63,9 @@ async def _run(*, apply: bool, retention_days: int, batch_size: int) -> int:
     print(f'Cutoff (UTC):      {report.cutoff.isoformat()}')
     print(f'Eligible:          {report.eligible}')
     print(f'Purged:            {report.purged}')
+    # Reported separately: a run can purge zero messages and still purge history, because edit
+    # history on a message that was never deleted is removed on its own clock.
+    print(f'Edits purged:      {report.edits_purged}')
     if report.sample_ids:
         print('Sample message ids (oldest eligible):')
         for mid in report.sample_ids:

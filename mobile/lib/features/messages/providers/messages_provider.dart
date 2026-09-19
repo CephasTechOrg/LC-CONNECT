@@ -61,6 +61,43 @@ class MessageSender {
 // ── Chat message ──────────────────────────────────────────────────
 enum MessageStatus { sending, sent, failed }
 
+/// One emoji's tally on a message, from this viewer's point of view.
+///
+/// Aggregated server-side: a popular message would otherwise ship one row per reactor to render a
+/// chip that says "12". [reactedByMe] arrives in the same payload, so the client never needs a
+/// second request to know whether to fill the chip.
+class ReactionSummary {
+  const ReactionSummary({
+    required this.emoji,
+    required this.count,
+    required this.reactedByMe,
+  });
+
+  final String emoji;
+  final int count;
+  final bool reactedByMe;
+
+  factory ReactionSummary.fromJson(Map<String, dynamic> j) => ReactionSummary(
+        emoji: j['emoji'] as String,
+        count: (j['count'] as num?)?.toInt() ?? 0,
+        reactedByMe: j['reacted_by_me'] as bool? ?? false,
+      );
+
+  Map<String, dynamic> toJson() =>
+      {'emoji': emoji, 'count': count, 'reacted_by_me': reactedByMe};
+
+  /// The chip after this viewer toggles [emoji]. Returns null when the chip should disappear —
+  /// the last reactor removing theirs.
+  ReactionSummary? toggled() {
+    if (reactedByMe) {
+      return count <= 1
+          ? null
+          : ReactionSummary(emoji: emoji, count: count - 1, reactedByMe: false);
+    }
+    return ReactionSummary(emoji: emoji, count: count + 1, reactedByMe: true);
+  }
+}
+
 class ChatMessage {
   final String id;
   final String matchId;
@@ -83,6 +120,14 @@ class ChatMessage {
   final MessageStatus status;
   final bool deleted;
 
+  /// Aggregated reactions, in the server's order (the picker's order), so the chip strip does not
+  /// reshuffle between requests. Empty for the overwhelming majority of messages.
+  final List<ReactionSummary> reactions;
+
+  /// When the sender last edited this, or null. Drives the small "edited" label; the record of
+  /// *what* changed lives server-side and is never sent to clients.
+  final DateTime? editedAt;
+
   const ChatMessage({
     required this.id,
     required this.matchId,
@@ -94,6 +139,8 @@ class ChatMessage {
     this.delivered = false,
     this.status = MessageStatus.sent,
     this.deleted = false,
+    this.reactions = const [],
+    this.editedAt,
   });
 
   factory ChatMessage.fromJson(Map<String, dynamic> j) => ChatMessage(
@@ -111,6 +158,11 @@ class ChatMessage {
         delivered: (j['delivered'] as bool? ?? false) || j['read_at'] != null,
         status: MessageStatus.sent,
         deleted: j['deleted'] as bool? ?? false,
+        reactions: [
+          for (final r in (j['reactions'] as List? ?? const []))
+            ReactionSummary.fromJson(Map<String, dynamic>.from(r as Map)),
+        ],
+        editedAt: j['edited_at'] != null ? DateTime.parse(j['edited_at'] as String) : null,
       );
 
   ChatMessage copyWith({
@@ -119,18 +171,23 @@ class ChatMessage {
     bool? delivered,
     MessageStatus? status,
     bool? deleted,
+    List<ReactionSummary>? reactions,
+    String? body,
+    DateTime? editedAt,
   }) =>
       ChatMessage(
         id: id ?? this.id,
         matchId: matchId,
         senderId: senderId,
         clientMessageId: clientMessageId,
-        body: body,
+        body: body ?? this.body,
         createdAt: createdAt,
         readAt: readAt ?? this.readAt,
         delivered: delivered ?? this.delivered,
         status: status ?? this.status,
         deleted: deleted ?? this.deleted,
+        reactions: reactions ?? this.reactions,
+        editedAt: editedAt ?? this.editedAt,
       );
 }
 

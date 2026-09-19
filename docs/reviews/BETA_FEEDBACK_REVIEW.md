@@ -2067,11 +2067,68 @@ Notation: **[be]** backend · **[fe]** mobile · **[cfg]** config/ops · **[msr]
 - [x] **3.5** [fe] **#23** one shared `OutgoingState` + `MessageStatusIcon` at 14px with real
       contrast steps, used by both the bubble and the conversation row so they cannot disagree;
       group messages get a `GET /messages/{id}/read-by` list on long-press instead of a tick
-- [ ] **3.6** [be][fe][snap] **#4** reactions — `message_reactions` table, two endpoints, two frames,
-      aggregate in the page query, chip UI *(`PROTOCOL_VERSION` is already at 2 — bump to 3 here, and
-      gate the new frames on `RealtimeClient.supportsProtocol`)* — **Batch 2, after TestFlight**
-- [ ] **3.7** [be][fe][snap] **#5** editing — `edited_at` + `message_edits`, `PATCH /messages/{id}`,
-      `message.edited` frame, 15-min window, retention-runbook step — **Batch 2, after TestFlight**
+- [x] **3.6** [be][fe][snap] **#4** reactions — **done.** Emoji set 👍 ❤️ 😂 😮 😢 🙏 behind
+      `REACTION_ALLOWLIST`, so widening it is a one-line change. `message_reactions` table
+      (migration `db4dc9136619`), `PUT`/`DELETE /messages/{id}/reactions/{emoji}`, a
+      `messages.reaction` frame, `PROTOCOL_VERSION` → 3, and the chip strip + picker in a new
+      `chat_reactions.dart` part file as the design asked.
+      *A table, not a JSON column:* a blob cannot carry a unique constraint, so two people
+      reacting in the same instant would read-modify-write one row and one would lose.
+      `UNIQUE (message_id, user_id, emoji)` makes the toggle idempotent, and the concurrency test
+      confirms two simultaneous reactions leave exactly one row.
+      *`PUT`, not `POST`* — because it is idempotent. A double-tap and a retry after a dropped
+      response are indistinguishable client-side, and answering a conflict would make the client
+      undo an optimistic chip that is in fact correct.
+      *One aggregate query per page*, with `bool_or(user_id = viewer)` answering "did I react" in
+      the same pass. Per-message would be fifty round trips on a 50-row page.
+      *Conversation channel only,* unlike a new message: a reaction does not change the thread
+      list — preview, timestamp and unread are all unaffected — so a user-channel frame would make
+      every client re-render an inbox row for nothing.
+      *`CASCADE` on `user_id`,* deliberately unlike `messages.sender_id`: a reaction is not a
+      record of anything, so deleting an account should take its reactions, where deleting an
+      account must not take its messages (half of someone else's conversation).
+      *Reactions apply over REST, not a frame:* the request needs a response an optimistic chip can
+      be rolled back from, and the socket has no request/response shape. The affordance is gated on
+      `supportsProtocol(3)` — below it there is no endpoint, and a control that 404s is worse than
+      no control. The rollback restores the previous chip rather than removing it, so another
+      person's tally in the same chip survives this viewer's failed toggle.
+
+- [x] **3.7** [be][fe][snap] **#5** editing — **done.** `messages.edited_at` + a `message_edits`
+      audit table (migration `dd7dc4d01780`), `PATCH /messages/{id}`, a `message.edited` frame, a
+      15-minute window, and the retention step.
+      *The authorization ladder is the feature.* Editing is the one operation that can make a
+      message say something it never said, so what it refuses matters more than what it does:
+      accessible conversation → **sender only** → not deleted → inside the window → body bounds.
+      A group admin may *delete* a member's message but must never *edit* it — that would be a
+      forgery primitive, putting words in someone's mouth under their name in a conversation
+      others are reading. Removing the message already does the moderation job. A non-sender gets
+      404 rather than 403, so nobody learns a message exists and is merely un-editable.
+      *`message_edits` is required, not optional.* Without it an edit destroys evidence, which
+      this codebase already refuses elsewhere — a delete is soft so the body survives, and a
+      safety report snapshots the text.
+      *Delete wins,* checked **inside** the transaction: editing a tombstone would resurrect a body
+      the delete exists to withhold. A soft delete keeps its edit history, which is what moderation
+      needs.
+      *Window: 15 minutes,* chosen against two constraints rather than taste — it must exceed the
+      client's 60s `sendDeadline` so an edit can never race a send retry, and stay short enough
+      that an edit cannot quietly sanitise a message before someone reports it. Enforced
+      server-side only; the client countdown is advisory, so a wrong clock can hide the option but
+      never grant an expired edit. A distinct `edit_window_expired` detail lets the client say
+      which rule was hit rather than failing generically — the mistake report #8 made.
+      *Retention needed its own pass.* The foreign key cascades history away when a message row is
+      purged, but that only covers *deleted* messages; one edited and never deleted would keep its
+      history forever. `purge_soft_deleted_messages` now clears `message_edits` past the same
+      window and reports the count separately, with the runbook updated.
+      *Edits fan out to the conversation **and** each member's user channel,* unlike reactions: an
+      edit to the latest message changes every member's inbox preview. No push — only new messages
+      notify.
+      *Also:* `MAX_BODY_CHARS` moved to `app/shared/message_limits.py`. `messages.service`
+      importing it from `realtime.protocol` closed an import cycle, and the REST and WebSocket
+      paths must agree on the limit or one accepts what the other rejects.
+      *And:* `service.py` crossed the 600-line hard cap, so reactions and editing moved to
+      `reactions.py` and `editing.py` — a real seam, not a trim: neither is on the send or read
+      path the rest of the service exists to serve.
+
 - [x] **3.8** [doc] **#22** record the no-presence decision — `ADR-009` (presence is not a product
       feature, with the derivation to use if it is ever revisited) and `ADR-010` (read receipts
       unconditional in v1, with the reciprocity rule that matters if a toggle is added).

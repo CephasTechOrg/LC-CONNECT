@@ -3,6 +3,12 @@ part of '../screens/chat_screen.dart';
 class _MessageList extends StatelessWidget {
   final List<ChatMessage> messages;
   final String currentUserId;
+
+  /// Null when the server predates reactions — see `kReactionProtocolVersion`.
+  final void Function(ChatMessage message, String emoji)? onReact;
+
+  /// Null when the server predates editing.
+  final void Function(ChatMessage)? onEdit;
   final String? partnerAvatarUrl;
   final bool isGroup;
   final Map<String, MessageSender> senders;
@@ -19,6 +25,8 @@ class _MessageList extends StatelessWidget {
     this.senders = const {},
     this.onReport,
     this.onDelete,
+    this.onReact,
+    this.onEdit,
     this.iAmGroupAdmin = false,
     required this.scrollController,
     required this.onRetry,
@@ -69,6 +77,8 @@ class _MessageList extends StatelessWidget {
           onReport: onReport,
           // Delete for everyone: my own messages anywhere, or anyone's when I moderate the group.
           onDelete: (isMine || iAmGroupAdmin) ? onDelete : null,
+          onReact: onReact,
+          onEdit: onEdit,
           onRetry: onRetry,
         );
       },

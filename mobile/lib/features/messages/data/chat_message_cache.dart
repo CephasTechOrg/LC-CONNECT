@@ -143,6 +143,8 @@ Map<String, dynamic> _toCacheJson(ChatMessage m) => {
       'created_at': m.createdAt.toUtc().toIso8601String(),
       'read_at': m.readAt?.toUtc().toIso8601String(),
       'delivered': m.delivered,
+      'reactions': [for (final r in m.reactions) r.toJson()],
+      'edited_at': m.editedAt?.toUtc().toIso8601String(),
       'status': m.status.name,
       'deleted': m.deleted,
     };
@@ -159,6 +161,15 @@ ChatMessage _fromCacheJson(Map<String, dynamic> j) {
     // Absent in files written before protocol 2 — an additive field, which is exactly the kind
     // the envelope's version does not need to change for.
     delivered: j['delivered'] as bool? ?? false,
+    // Additive, so a file written before reactions existed reads as none — which is also the
+    // honest answer, since the cache cannot know what it never stored.
+    reactions: [
+      for (final r in (j['reactions'] as List? ?? const []))
+        ReactionSummary.fromJson(Map<String, dynamic>.from(r as Map)),
+    ],
+    // Absent in files written before editing existed — reads as unedited, which is correct for
+    // them: they were.
+    editedAt: j['edited_at'] != null ? DateTime.parse(j['edited_at'] as String) : null,
     status: _statusOf(j['status']),
     deleted: j['deleted'] as bool? ?? false,
   );

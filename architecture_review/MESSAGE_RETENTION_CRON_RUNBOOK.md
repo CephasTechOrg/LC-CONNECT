@@ -1,7 +1,24 @@
 # Message retention cron runbook (#21)
 
-Daily job that **hard-deletes** soft-deleted messages older than the retention window.
+Daily job that **hard-deletes** soft-deleted messages older than the retention window, and the
+**edit history** (`message_edits`) that has passed the same window.
 Report evidence (`reports.message_body`) is **not** purged.
+
+### What the job removes
+
+| Table | Removed when | Why |
+|---|---|---|
+| `messages` | `deleted_at` older than the window | The tombstone keeps the body for moderation; past the window it is no longer needed |
+| `message_edits` | `edited_at` older than the window | See below — this needs its own pass |
+
+The edit history needs a **separate pass**, and the reason is easy to miss. The foreign key
+cascades history away when a message row is purged, but that only covers messages that were
+*deleted*. A message that was edited and never deleted has no purge trigger of its own, so without
+this its history would live forever — turning an audit trail with a purpose (explaining a message
+while someone might still report it) into a permanent record of everything anyone ever rephrased.
+
+The run reports both counts: `Purged: N` for messages, `Edits purged: N` for history. A run with
+`Purged: 0` may still report edits purged, which is expected rather than a sign of trouble.
 
 **Policy reference:** [`docs/security/audit_and_data_retention.md`](../docs/security/audit_and_data_retention.md)
 

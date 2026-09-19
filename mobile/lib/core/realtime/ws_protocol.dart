@@ -6,10 +6,17 @@ library;
 /// `RealtimeClient.supportsProtocol`, and gate every frame added after v1 on it.
 ///
 /// 2 adds `messages.delivered` (outbound) and `messages.delivery` (inbound).
-const int kProtocolVersion = 2;
+/// 3 adds `messages.reaction` (inbound). Reactions are *applied* over REST, not as a frame: the
+/// request needs a response an optimistic chip can be rolled back from.
+const int kProtocolVersion = 3;
 
 /// Frames introduced in protocol 2. Pass to `RealtimeClient.supportsProtocol` before sending one.
 const int kDeliveryProtocolVersion = 2;
+
+/// Reactions arrived in protocol 3. Nothing is *sent* over the socket for them, so this gates the
+/// affordance rather than a frame: a server below this has no `/reactions` endpoint either, and
+/// offering a control that 404s is worse than not offering it.
+const int kReactionProtocolVersion = 3;
 
 // ── Outbound frames (client → server) ─────────────────────────────────────────
 
@@ -135,6 +142,31 @@ class DeliveryReceipt extends InboundEvent {
       this.conversationId, this.userId, this.throughMessageId, this.deliveredAt);
 }
 
+/// Someone's reaction on a message changed (protocol 3).
+///
+/// Carries the resulting state ([added]) rather than a delta, so an add racing a remove resolves
+/// to last-write-wins — the same answer the database gives, which keeps a client from disagreeing
+/// with the server about whether a chip is filled.
+class ReactionEvent extends InboundEvent {
+  final String messageId;
+  final String userId;
+  final String emoji;
+  final bool added;
+  const ReactionEvent(this.messageId, this.userId, this.emoji, this.added);
+}
+
+/// A message's body changed (protocol 3).
+///
+/// Carries the new body rather than a diff: a client may not hold the original — paged out, or
+/// the edit arrived on another device — and a diff it cannot apply is useless.
+class MessageEdited extends InboundEvent {
+  final String conversationId;
+  final String messageId;
+  final String body;
+  final String editedAt;
+  const MessageEdited(this.conversationId, this.messageId, this.body, this.editedAt);
+}
+
 class NotificationEvent extends InboundEvent {
   /// The serialized notification (id, type, group, actor, ...) — same shape as `GET /notifications`.
   final Map<String, dynamic> notification;
@@ -217,6 +249,20 @@ InboundEvent parseInbound(Map<String, dynamic> raw) {
         raw['user_id'] as String,
         raw['through_message_id'] as String,
         raw['delivered_at'] as String,
+      );
+    case 'message.edited':
+      return MessageEdited(
+        raw['conversation_id'] as String,
+        raw['message_id'] as String,
+        raw['body'] as String,
+        raw['edited_at'] as String? ?? '',
+      );
+    case 'messages.reaction':
+      return ReactionEvent(
+        raw['message_id'] as String,
+        raw['user_id'] as String,
+        raw['emoji'] as String,
+        raw['added'] as bool? ?? true,
       );
     case 'notification':
       return NotificationEvent(Map<String, dynamic>.from(raw['notification'] as Map));

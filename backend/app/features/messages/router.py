@@ -7,8 +7,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.database import get_db
 from app.dependencies import require_verified_user
+from app.features.messages.editing import edit_message
+from app.features.messages.reactions import reactions_for, toggle_reaction
 from app.features.messages.schema import (
     MessageCreate,
+    MessageEditRequest,
     MessageRead,
     MessageReadBy,
     MessageThreadRead,
@@ -25,10 +28,8 @@ from app.features.messages.service import (
     message_read,
     page_thread,
     persist_message_idempotent,
-    reactions_for,
     read_by,
     sync_thread,
-    toggle_reaction,
     unread_summary,
 )
 from app.features.messages.staff_messaging import create_staff_thread, search_recipients
@@ -198,6 +199,26 @@ async def send_message(
             sender_id=current_user.id,
             recipients=recipients,
         )
+    return message_read(message)
+
+
+@router.patch('/{message_id}', response_model=MessageRead)
+async def edit_message_endpoint(
+    message_id: UUID,
+    payload: MessageEditRequest,
+    current_user: User = Depends(require_verified_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Edit your own message, within the edit window (report #5).
+
+    Sender only — deliberately asymmetric with delete, where a group admin may remove someone
+    else's message. An admin able to *edit* one would hold a forgery primitive.
+    """
+    message = await edit_message(db, message_id, current_user.id, payload.body)
+    from app.features.realtime.runtime import broadcast_message_edited
+
+    members = await active_member_ids(db, message.conversation_id)
+    await broadcast_message_edited(message, members)
     return message_read(message)
 
 

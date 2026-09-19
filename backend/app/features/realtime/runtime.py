@@ -204,6 +204,28 @@ async def emit_message_created(
         )
 
 
+async def broadcast_message_edited(message: Message, member_ids: list[UUID]) -> None:
+    """Fan out an edit to the conversation **and** to each member's user channel.
+
+    Unlike a reaction, which goes to the conversation channel only. An edit *can* change the
+    thread list: if this was the conversation's latest message, every member's inbox row is now
+    showing text that is no longer what the message says. Reactions never affect that row, so they
+    do not need the second publish; edits do.
+
+    No push notification. Only new messages notify — a push saying someone rephrased something is
+    noise, and would also re-alert a conversation the recipient had already read.
+    """
+    frame = protocol.message_edited(
+        protocol.addressing_id(message),
+        message.id,
+        message.body,
+        message.edited_at.isoformat() if message.edited_at else '',
+    )
+    await event_bus.publish_to_conversation(message.conversation_id, frame)
+    for member_id in member_ids:
+        await event_bus.publish_to_user(member_id, frame)
+
+
 async def broadcast_reaction(
     db, *, message_id: UUID, user_id: UUID, emoji: str, added: bool
 ) -> None:

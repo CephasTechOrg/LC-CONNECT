@@ -24,6 +24,12 @@ class _ChatScreenBody extends StatelessWidget {
   final VoidCallback onRetryLoad;
   final void Function(ChatMessage) onReport;
   final void Function(ChatMessage) onDelete;
+
+  /// Null when the connected server predates reactions — see `kReactionProtocolVersion`.
+  final void Function(ChatMessage message, String emoji)? onReact;
+
+  /// Null when the server predates editing.
+  final void Function(ChatMessage)? onEdit;
   final void Function(ChatMessage) onRetry;
   final VoidCallback onScrollToBottomTap;
   final VoidCallback onSend;
@@ -55,6 +61,8 @@ class _ChatScreenBody extends StatelessWidget {
     required this.onRetryLoad,
     required this.onReport,
     required this.onDelete,
+    this.onReact,
+    this.onEdit,
     required this.onRetry,
     required this.onScrollToBottomTap,
     required this.onSend,
@@ -100,6 +108,8 @@ class _ChatScreenBody extends StatelessWidget {
                                     senders: senders,
                                     onReport: isGroup ? onReport : null,
                                     onDelete: onDelete,
+                                    onReact: onReact,
+                                    onEdit: onEdit,
                                     iAmGroupAdmin: iAmGroupAdmin,
                                     scrollController: scrollController,
                                     onRetry: onRetry,

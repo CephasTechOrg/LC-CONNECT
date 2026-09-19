@@ -13,8 +13,10 @@ from uuid import UUID
 from pydantic import BaseModel, Field, TypeAdapter, field_validator
 
 from app.models import Message
+from app.shared.message_limits import MAX_BODY_CHARS as _MAX_BODY_CHARS
 
-MAX_BODY_CHARS = 2000
+#: Re-exported from `shared` so the REST and WebSocket paths cannot drift apart.
+MAX_BODY_CHARS = _MAX_BODY_CHARS
 # 2 adds `messages.delivered` (inbound) and `messages.delivery` (outbound). A client learns the
 # server's version from `auth.ok` and gates new frames on it, so a v1 server meeting a v2 client
 # answers `unsupported_frame` at worst — and no longer spends the abuse budget doing so.
@@ -285,6 +287,23 @@ def delivery_receipt(
         'user_id': str(user_id),
         'through_message_id': str(through_message_id),
         'delivered_at': delivered_at_iso,
+    }
+
+
+def message_edited(
+    conversation_id: UUID | str, message_id: UUID, body: str, edited_at_iso: str
+) -> dict[str, Any]:
+    """A message's body changed (protocol 3).
+
+    Carries the new body rather than a diff: a client may not hold the original — it could have
+    been paged out, or arrived on another device — and a diff it cannot apply is useless.
+    """
+    return {
+        'type': 'message.edited',
+        'conversation_id': str(conversation_id),
+        'message_id': str(message_id),
+        'body': body,
+        'edited_at': edited_at_iso,
     }
 
 

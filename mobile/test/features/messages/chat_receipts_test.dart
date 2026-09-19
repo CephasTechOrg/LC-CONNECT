@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -32,8 +33,18 @@ const _me = 'current-user-id';
 const _messageIds = ['srv-1', 'srv-2', 'srv-3'];
 
 class _PageAdapter implements HttpClientAdapter {
+  _PageAdapter({this.failMutations = false});
+
+  /// When true, PUT/DELETE fail — the case an optimistic chip has to roll back from.
+  final bool failMutations;
+  final List<String> calls = [];
+
   @override
   Future<ResponseBody> fetch(RequestOptions o, Stream<Uint8List>? _, Future<void>? _) async {
+    calls.add('${o.method} ${o.path}');
+    if (failMutations && o.method != 'GET') {
+      throw DioException.connectionError(requestOptions: o, reason: 'offline');
+    }
     if (o.method != 'GET') {
       return ResponseBody.fromString('{}', 200,
           headers: {Headers.contentTypeHeader: [Headers.jsonContentType]});
@@ -102,6 +113,7 @@ void main() {
 
   late FakeWsChannel socket;
   late RealtimeClient client;
+  late _PageAdapter adapter;
 
   /// A chat over a socket the test drives, authenticated at protocol 2.
   ///
@@ -109,7 +121,8 @@ void main() {
   /// `ChatScreen` captures `currentUserId` once in `initState`, so a chat that mounts while auth
   /// is still loading treats every message as someone else's and renders no tick at all. The app
   /// cannot reach a conversation unauthenticated, so this reproduces the real ordering.
-  Future<void> openChat(WidgetTester tester) async {
+  Future<void> openChat(WidgetTester tester, {bool failMutations = false}) async {
+    adapter = _PageAdapter(failMutations: failMutations);
     socket = FakeWsChannel();
     client = clientOn(socket);
     // Inline rather than hoisted: the list closes over `client`, which is created just above,
@@ -126,7 +139,7 @@ void main() {
         }),
         apiClientProvider.overrideWith((ref) => ApiClient(
             dio: Dio(BaseOptions(baseUrl: 'http://test.local/'))
-              ..httpClientAdapter = _PageAdapter())),
+              ..httpClientAdapter = adapter)),
         chatMessageCacheProvider.overrideWith((ref) => _NoopChatCache()),
         chatDraftStoreProvider.overrideWith((ref) => _NoopDraftStore()),
           ],
@@ -144,7 +157,7 @@ void main() {
 
     await tester.pumpWidget(scope(const ChatScreen(matchId: 'match-001')));
     await client.connect();
-    socket.serverAuthOk(protocolVersion: 2);
+    socket.serverAuthOk(protocolVersion: 3);
     await tester.pumpAndSettle();
   }
 
@@ -249,5 +262,134 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(ticks(tester), [OutgoingState.sent, OutgoingState.sent, OutgoingState.sent]);
+  });
+
+  /// Report #4 — reactions, end to end through the real socket and a real Dio.
+  ///
+  /// The optimistic path is the part worth driving: a reaction is a *gesture*, so the chip must
+  /// fill under the thumb, which means the UI leads the server and has to be able to unwind.
+  group('reactions', () {
+    /// The chips currently rendered, read from their semantics labels.
+    ///
+    /// The bubble is a private part-file class, so its state is not reachable from a test — and
+    /// the label is the better assertion anyway: it is what a screen-reader user is told, and it
+    /// carries both the count and whether this viewer is in the tally.
+    List<String> chipLabels(WidgetTester tester) {
+      final labels = <String>[];
+      void walk(SemanticsNode node) {
+        if (node.label.contains('Double tap to re')) labels.add(node.label);
+        node.visitChildren((child) {
+          walk(child);
+          return true;
+        });
+      }
+
+      walk(tester.semantics.find(find.byType(MaterialApp)));
+      // The chip's node merges into the bubble's, so each label arrives with the message text and
+      // timestamp attached. Keep only the chip's own sentence.
+      return [
+        for (final label in labels)
+          label.split('\n').firstWhere((line) => line.contains('Double tap to re')),
+      ];
+    }
+
+    testWidgets('a remote reaction from someone else appears', (tester) async {
+      final handle = tester.ensureSemantics();
+      await openChat(tester);
+
+      socket.serverSends({
+        'type': 'messages.reaction',
+        'message_id': 'srv-1',
+        'user_id': 'them',
+        'emoji': '👍',
+        'added': true,
+      });
+      await tester.pumpAndSettle();
+
+      expect(chipLabels(tester), ['👍 1. Double tap to react.']);
+      handle.dispose();
+    });
+
+    testWidgets("someone else's reaction does not claim I reacted", (tester) async {
+      // `reactedByMe` is this viewer's state; a remote frame must never set it.
+      final handle = tester.ensureSemantics();
+      await openChat(tester);
+
+      socket.serverSends({
+        'type': 'messages.reaction',
+        'message_id': 'srv-1',
+        'user_id': 'them',
+        'emoji': '👍',
+        'added': true,
+      });
+      await tester.pumpAndSettle();
+
+      expect(chipLabels(tester).any((l) => l.contains('you reacted')), isFalse);
+      handle.dispose();
+    });
+
+    testWidgets('two people on the same emoji share one chip', (tester) async {
+      final handle = tester.ensureSemantics();
+      await openChat(tester);
+
+      for (final who in ['them', 'other']) {
+        socket.serverSends({
+          'type': 'messages.reaction',
+          'message_id': 'srv-1',
+          'user_id': who,
+          'emoji': '👍',
+          'added': true,
+        });
+      }
+      await tester.pumpAndSettle();
+
+      expect(chipLabels(tester), ['👍 2. Double tap to react.']);
+      handle.dispose();
+    });
+
+    testWidgets('a removal decrements rather than clearing the chip', (tester) async {
+      final handle = tester.ensureSemantics();
+      await openChat(tester);
+      for (final who in ['them', 'other']) {
+        socket.serverSends({
+          'type': 'messages.reaction',
+          'message_id': 'srv-1',
+          'user_id': who,
+          'emoji': '👍',
+          'added': true,
+        });
+      }
+      await tester.pumpAndSettle();
+
+      socket.serverSends({
+        'type': 'messages.reaction',
+        'message_id': 'srv-1',
+        'user_id': 'them',
+        'emoji': '👍',
+        'added': false,
+      });
+      await tester.pumpAndSettle();
+
+      expect(chipLabels(tester), ['👍 1. Double tap to react.']);
+      handle.dispose();
+    });
+
+    testWidgets('a reaction for a message not loaded is ignored', (tester) async {
+      // Paged out, or newer than this client's tail. The next page load carries the truth.
+      final handle = tester.ensureSemantics();
+      await openChat(tester);
+
+      socket.serverSends({
+        'type': 'messages.reaction',
+        'message_id': 'not-in-this-list',
+        'user_id': 'them',
+        'emoji': '👍',
+        'added': true,
+      });
+      await tester.pumpAndSettle();
+
+      expect(chipLabels(tester), isEmpty);
+      handle.dispose();
+    });
   });
 }

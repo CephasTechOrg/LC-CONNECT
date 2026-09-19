@@ -16,13 +16,12 @@ import pytest
 from fastapi import HTTPException
 from sqlalchemy import select
 
-from app.features.messages.service import (
+from app.features.messages.reactions import (
     REACTION_ALLOWLIST,
-    delete_message,
-    persist_message_idempotent,
     reactions_for,
     toggle_reaction,
 )
+from app.features.messages.service import delete_message, persist_message_idempotent
 from app.models import Conversation, MessageReaction
 
 THUMB = REACTION_ALLOWLIST[0]

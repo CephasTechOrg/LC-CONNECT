@@ -4516,6 +4516,22 @@
         "title": "MessageCreate",
         "type": "object"
       },
+      "MessageEditRequest": {
+        "description": "The new body. Same bounds as sending \u2014 an edit cannot smuggle in a longer message.",
+        "properties": {
+          "body": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Body",
+            "type": "string"
+          }
+        },
+        "required": [
+          "body"
+        ],
+        "title": "MessageEditRequest",
+        "type": "object"
+      },
       "MessageRead": {
         "properties": {
           "body": {
@@ -4560,6 +4576,18 @@
             "default": false,
             "title": "Delivered",
             "type": "boolean"
+          },
+          "edited_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Edited At"
           },
           "id": {
             "format": "uuid",
@@ -14215,6 +14243,63 @@
           }
         ],
         "summary": "Delete Message Endpoint",
+        "tags": [
+          "messages"
+        ]
+      },
+      "patch": {
+        "description": "Edit your own message, within the edit window (report #5).\n\nSender only \u2014 deliberately asymmetric with delete, where a group admin may remove someone\nelse's message. An admin able to *edit* one would hold a forgery primitive.",
+        "operationId": "edit_message_endpoint_api_v1_messages__message_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "message_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Message Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MessageEditRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Edit Message Endpoint",
         "tags": [
           "messages"
         ]

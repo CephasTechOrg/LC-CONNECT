@@ -118,6 +118,16 @@ class Settings(BaseSettings):
     # Requests slower than this are logged at WARNING rather than INFO, so they can be found with
     # a level filter in Render's log search instead of by reading everything.
     slow_request_ms: int = Field(default=1000, alias='SLOW_REQUEST_MS')
+    # How long after sending a message may be edited, measured from `created_at` and enforced
+    # server-side only (a client clock cannot be trusted with it).
+    #
+    # 15 minutes is chosen against two hard constraints rather than taste. It must exceed the
+    # client's 60s `sendDeadline`, so an edit can never race a retry of the original send. And it
+    # must be short enough that an edit cannot quietly sanitise a message after someone has
+    # reported it — `message_edits` closes that gap completely, but a short window means the
+    # question rarely arises. It also matches what mainstream messengers have taught people to
+    # expect, so the countdown needs no explanation.
+    message_edit_window_seconds: int = Field(default=900, alias='MESSAGE_EDIT_WINDOW_SECONDS')
     # Replies to frames this server does not implement, per connection per minute. Unlike the
     # malformed budget this never closes the socket — going over just stops the replies. Generous
     # because the legitimate cause is a newer client probing a feature, which happens in bursts on

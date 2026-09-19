@@ -3,6 +3,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
+from app.shared.message_limits import MAX_BODY_CHARS
 from app.shared.schemas import ProfilePublic
 
 
@@ -42,9 +43,15 @@ class MessageReadBy(BaseModel):
 
 
 class MessageCreate(BaseModel):
-    body: str = Field(min_length=1, max_length=2000)
+    body: str = Field(min_length=1, max_length=MAX_BODY_CHARS)
     # Optional idempotency key; a retry with the same value returns the original message.
     client_message_id: UUID | None = None
+
+
+class MessageEditRequest(BaseModel):
+    """The new body. Same bounds as sending — an edit cannot smuggle in a longer message."""
+
+    body: str = Field(min_length=1, max_length=MAX_BODY_CHARS)
 
 
 class StaffThreadCreate(BaseModel):
@@ -72,6 +79,9 @@ class MessageRead(BaseModel):
     # `read_at` can be a timestamp because `messages.read_at` is a real per-row column.
     delivered: bool = False
     deleted: bool = False
+    # When the sender last edited it, or null. Drives the small "edited" label; the authority on
+    # *what* changed is `message_edits`, which clients never see.
+    edited_at: datetime | None = None
     # Empty for the overwhelming majority of messages, which is why it is a list on the message
     # rather than a separate endpoint: one grouped query per page costs one round trip, and a
     # message with no reactions costs nothing to report.

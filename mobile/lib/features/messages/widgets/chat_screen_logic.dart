@@ -1,6 +1,6 @@
 part of '../screens/chat_screen.dart';
 
-mixin _ChatScreenLogic on _ChatScreenStateBase, _ChatDraftLogic, _ChatSendLogic {
+mixin _ChatScreenLogic on _ChatScreenStateBase, _ChatDraftLogic, _ChatReactionLogic, _ChatSendLogic {
   Future<void> loadInitial() async {
     if (!validThread) return;
     final cached = await ref.read(chatMessageCacheProvider).load(widget.matchId);
@@ -185,6 +185,14 @@ mixin _ChatScreenLogic on _ChatScreenStateBase, _ChatDraftLogic, _ChatSendLogic 
       case DeliveryReceipt(:final conversationId, :final throughMessageId)
           when conversationId == widget.matchId:
         markMineDeliveredThrough(throughMessageId);
+      case MessageEdited(:final conversationId, :final messageId, :final body, :final editedAt)
+          when conversationId == widget.matchId:
+        applyRemoteEdit(messageId, body, editedAt);
+      case ReactionEvent(:final messageId, :final userId, :final emoji, :final added):
+        // No conversation filter on the frame — it is published to the conversation channel, so
+        // only subscribers of *this* conversation receive it, and `applyRemoteReaction` ignores a
+        // message id it does not hold.
+        applyRemoteReaction(messageId, userId, emoji, added);
       case MessageDeleted(:final conversationId, :final messageId) when conversationId == widget.matchId:
         markDeleted(messageId);
       case WsError(:final code, :final message, :final requestId):

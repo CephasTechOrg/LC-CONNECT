@@ -108,6 +108,9 @@ class Message(Base):
     body: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True, nullable=False)
     read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Null until the sender edits it. Display-only — the *authority* on what changed is the
+    # `message_edits` row written in the same transaction.
+    edited_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # Soft-delete ("delete for everyone"): set when unsent. The original body is retained for
     # moderation until the retention window elapses, then purged by cron (see
     # `MESSAGE_SOFT_DELETE_RETENTION_DAYS`). Report snapshots survive row purge.
@@ -149,5 +152,29 @@ class MessageReaction(Base):
     )
     emoji: Mapped[str] = mapped_column(String(8), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class MessageEdit(Base):
+    """The body a message had before an edit — an immutable audit trail (report #5).
+
+    Required, not optional. Without it an edit *destroys evidence*, and this codebase already
+    treats that as unacceptable: a delete is soft precisely so the body survives for moderation,
+    and a safety report snapshots the reported text. An edit with no history would be the one
+    way to make a message say something it never said, with nothing left to check against.
+
+    Purged on the same schedule as soft-deleted bodies (`MESSAGE_SOFT_DELETE_RETENTION_DAYS`), so
+    it does not become a permanent record of everything anyone ever rephrased.
+    """
+
+    __tablename__ = 'message_edits'
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    message_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey('messages.id', ondelete='CASCADE'), index=True, nullable=False
+    )
+    previous_body: Mapped[str] = mapped_column(Text, nullable=False)
+    edited_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

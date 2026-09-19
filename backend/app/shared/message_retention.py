@@ -13,7 +13,7 @@ from uuid import UUID
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Message
+from app.models import Message, MessageEdit
 
 
 @dataclass
@@ -22,6 +22,10 @@ class MessagePurgeReport:
     cutoff: datetime
     eligible: int
     purged: int
+    #: Edit-history rows removed. Counted separately because they are purged on their own clock:
+    #: a message that was edited and never deleted still accumulates history that should not
+    #: outlive the retention window.
+    edits_purged: int = 0
     sample_ids: list[UUID] = field(default_factory=list)
 
     @property
@@ -66,9 +70,15 @@ async def purge_soft_deleted_messages(
     batch_size: int = 500,
     sample_limit: int = 10,
 ) -> MessagePurgeReport:
-    """Hard-delete message rows soft-deleted before the retention cutoff.
+    """Hard-delete message rows soft-deleted before the retention cutoff, and old edit history.
 
     Report snapshots (`reports.message_body`) are unaffected — evidence survives row purge.
+
+    Edit history (`message_edits`) is purged on the **same window**, and needs its own pass. The
+    foreign key cascades history away when a message row is purged, but that only covers messages
+    that were *deleted*. A message that was edited and never deleted would otherwise keep its
+    history forever — turning an audit trail with a purpose (explaining a message while someone
+    might still report it) into a permanent record of everything anyone ever rephrased.
     """
     if retention_days < 1:
         raise ValueError('retention_days must be >= 1')
@@ -79,7 +89,7 @@ async def purge_soft_deleted_messages(
     eligible = await count_eligible_messages(db, cutoff=cutoff)
     sample_ids = await sample_eligible_message_ids(db, cutoff=cutoff, limit=sample_limit)
 
-    if not apply or eligible == 0:
+    if not apply:
         return MessagePurgeReport(
             retention_days=retention_days,
             cutoff=cutoff,
@@ -103,10 +113,19 @@ async def purge_soft_deleted_messages(
         await db.commit()
         purged += len(ids)
 
+    # Independent of the loop above: history on a message that was never deleted has no purge
+    # trigger of its own, and `eligible == 0` does not mean there is none to remove.
+    edits = await db.execute(
+        delete(MessageEdit).where(MessageEdit.edited_at < cutoff).returning(MessageEdit.id)
+    )
+    edits_purged = len(list(edits.scalars().all()))
+    await db.commit()
+
     return MessagePurgeReport(
         retention_days=retention_days,
         cutoff=cutoff,
         eligible=eligible,
         purged=purged,
+        edits_purged=edits_purged,
         sample_ids=sample_ids,
     )

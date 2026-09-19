@@ -174,10 +174,60 @@ void main() {
       expect(read, isNot(isA<DeliveryReceipt>()));
     });
 
-    test('the client advertises protocol 2', () {
-      expect(kProtocolVersion, 2);
+    test('the client advertises its current protocol version', () {
+      // Bumped to 3 by reactions. `kDeliveryProtocolVersion` stays at 2 on purpose: it is the
+      // version delivery *arrived* in, and gating on the current version would stop a v2 server
+      // from getting delivery acknowledgements it understands perfectly well.
+      expect(kProtocolVersion, 3);
       expect(kDeliveryProtocolVersion, 2);
-      expect(authFrame('tok')['protocol_version'], 2);
+      expect(kReactionProtocolVersion, 3);
+      expect(authFrame('tok')['protocol_version'], kProtocolVersion);
+    });
+  });
+
+  /// Protocol 3 — reactions (report #4).
+  group('reaction frames', () {
+    test('parseInbound understands messages.reaction', () {
+      final event = parseInbound({
+        'type': 'messages.reaction',
+        'message_id': 'msg-1',
+        'user_id': 'them',
+        'emoji': '👍',
+        'added': true,
+      });
+
+      expect(event, isA<ReactionEvent>());
+      final reaction = event as ReactionEvent;
+      expect(reaction.messageId, 'msg-1');
+      expect(reaction.userId, 'them');
+      expect(reaction.emoji, '👍');
+      expect(reaction.added, isTrue);
+    });
+
+    test('a removal is the same frame with added false', () {
+      // State, not a delta — so an add racing a remove is last-write-wins, matching the database.
+      final event = parseInbound({
+        'type': 'messages.reaction',
+        'message_id': 'msg-1',
+        'user_id': 'them',
+        'emoji': '👍',
+        'added': false,
+      }) as ReactionEvent;
+
+      expect(event.added, isFalse);
+    });
+
+    test('a frame missing `added` is treated as an add', () {
+      // Defensive: the field is always sent, and defaulting to "removed" would silently drop a
+      // chip that exists.
+      final event = parseInbound({
+        'type': 'messages.reaction',
+        'message_id': 'msg-1',
+        'user_id': 'them',
+        'emoji': '👍',
+      }) as ReactionEvent;
+
+      expect(event.added, isTrue);
     });
   });
 }

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -11,7 +12,10 @@ import '../../../core/api/api_client.dart';
 import '../../../core/api/api_error.dart';
 import '../../../core/realtime/realtime_client.dart';
 import '../../../core/realtime/ws_protocol.dart';
+import '../../../core/theme/app_radii.dart';
+import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/avatar_widget.dart';
 import '../../../shared/util/caching.dart';
 import '../../../shared/widgets/app_states.dart';
@@ -36,6 +40,7 @@ part '../widgets/chat_unavailable.dart';
 part '../widgets/read_by_sheet.dart';
 part '../widgets/chat_screen_body.dart';
 part '../widgets/chat_draft_logic.dart';
+part '../widgets/chat_reactions.dart';
 part '../widgets/chat_send_logic.dart';
 part '../widgets/chat_screen_logic.dart';
 
@@ -143,7 +148,7 @@ abstract class _ChatScreenStateBase extends ConsumerState<ChatScreen> {
 }
 
 class _ChatScreenState extends _ChatScreenStateBase
-    with _ChatDraftLogic, _ChatSendLogic, _ChatScreenLogic, WidgetsBindingObserver {
+    with _ChatDraftLogic, _ChatReactionLogic, _ChatSendLogic, _ChatScreenLogic, WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
@@ -268,6 +273,11 @@ class _ChatScreenState extends _ChatScreenStateBase
       onRetryLoad: retryLoadInitial,
       onReport: reportMessage,
       onDelete: deleteMessage,
+      // Gated on the *server's* protocol version: below 3 there is no `/reactions` endpoint, so
+      // offering the control would give a 404 on tap. Same reasoning as the delivered tick.
+      onReact: rt.supportsProtocol(kReactionProtocolVersion) ? toggleReaction : null,
+      // Same gate: a server below protocol 3 has no `PATCH /messages/{id}` either.
+      onEdit: rt.supportsProtocol(kReactionProtocolVersion) ? promptEdit : null,
       onRetry: retry,
       onScrollToBottomTap: scrollToBottomTap,
       onSend: send,
