@@ -20,6 +20,19 @@ from app.shared.schemas import ProfilePublic
 # fields is both the smaller payload and the smaller disclosure.
 #
 # The docstring below is the public OpenAPI description, so it stays about the contract.
+class ReactionSummary(BaseModel):
+    """One emoji's tally on a message, from the viewer's point of view.
+
+    Aggregated server-side rather than sent as individual rows: a popular message would otherwise
+    ship one row per reactor to render a chip that says "12". `reacted_by_me` comes from the same
+    grouped query, so the client never needs a second request to know whether to fill the chip.
+    """
+
+    emoji: str
+    count: int
+    reacted_by_me: bool
+
+
 class MessageReadBy(BaseModel):
     """A member who has read a given message."""
 
@@ -59,6 +72,10 @@ class MessageRead(BaseModel):
     # `read_at` can be a timestamp because `messages.read_at` is a real per-row column.
     delivered: bool = False
     deleted: bool = False
+    # Empty for the overwhelming majority of messages, which is why it is a list on the message
+    # rather than a separate endpoint: one grouped query per page costs one round trip, and a
+    # message with no reactions costs nothing to report.
+    reactions: list[ReactionSummary] = []
 
 
 class GroupThreadInfo(BaseModel):

@@ -8,6 +8,7 @@ DELETE /api/v1/groups/{group_id}
 DELETE /api/v1/groups/{group_id}/members/me
 DELETE /api/v1/groups/{group_id}/members/{user_id}
 DELETE /api/v1/messages/{message_id}
+DELETE /api/v1/messages/{message_id}/reactions/{emoji}
 GET /
 GET /api/v1/account/export
 GET /api/v1/account/suspension-status
@@ -169,3 +170,4 @@ POST /api/v1/reports
 POST /api/v1/scholars/me/consent
 POST /api/v1/scholars/me/headshot
 POST /api/v1/scholars/me/resume
+PUT /api/v1/messages/{message_id}/reactions/{emoji}

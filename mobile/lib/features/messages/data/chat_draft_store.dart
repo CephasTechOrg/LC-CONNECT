@@ -33,13 +33,63 @@ const int maxDraftChars = 4000;
 /// Cross-device sync. Keeping a draft in step across devices means a server round trip per
 /// keystroke, for a feature whose whole value is being instant and local.
 class ChatDraftStore {
-  ChatDraftStore({Future<Directory> Function()? rootDir}) : _rootDir = rootDir ?? _defaultRootDir;
+  ChatDraftStore({
+    Future<Directory> Function()? rootDir,
+    Future<Directory> Function()? legacyRootDir,
+  })  : _rootDir = rootDir ?? _defaultRootDir,
+        _legacyRoot = legacyRootDir ?? _legacyRootDir;
 
   final Future<Directory> Function() _rootDir;
 
+  /// Injectable so the migration can be tested without touching the real documents directory.
+  final Future<Directory> Function() _legacyRoot;
+
+  /// The cache directory, **not** documents — a deliberate privacy trade (design §9.8).
+  ///
+  /// Drafts lived under `getApplicationDocumentsDirectory()`, which iOS includes in iCloud
+  /// backups and Android in auto-backup. Unsent draft text is the most private content in this
+  /// feature — it was never shown to anyone — and it was leaving the device.
+  ///
+  /// The cost of moving: the OS may purge this directory under storage pressure, so a draft can
+  /// vanish without the user deleting it. Acceptable, and arguably already implied — the 30-day
+  /// [pruneStale] window says these are transient by design. The message cache stays in documents:
+  /// it is disposable by definition and predates this decision.
   static Future<Directory> _defaultRootDir() async {
+    final dir = await getApplicationCacheDirectory();
+    return Directory('${dir.path}/chat_drafts');
+  }
+
+  /// The old, backed-up location, kept only so [migrateOffBackupPath] can empty it.
+  static Future<Directory> _legacyRootDir() async {
     final dir = await getApplicationDocumentsDirectory();
     return Directory('${dir.path}/chat_drafts');
+  }
+
+  /// Moves any drafts left in the old backed-up location, then removes it.
+  ///
+  /// Without this, a user mid-way through a message loses it on the update that moves the
+  /// directory — and worse, the old files would stay in Documents and keep being backed up,
+  /// which is the thing the move exists to stop. Runs once per launch and is a no-op afterwards.
+  Future<void> migrateOffBackupPath() async {
+    try {
+      final legacy = await _legacyRoot();
+      if (!await legacy.exists()) return;
+      final destination = await _rootDir();
+      await destination.create(recursive: true);
+      for (final entity in await legacy.list().toList()) {
+        if (entity is! File) continue;
+        final moved = File('${destination.path}/${entity.uri.pathSegments.last}');
+        // Only if the new location does not already have it: a draft written since the update is
+        // newer than anything left behind.
+        if (!await moved.exists()) {
+          await entity.copy(moved.path);
+        }
+      }
+      await legacy.delete(recursive: true);
+    } catch (_) {
+      // Best effort, like everything else here. A failed migration costs at most some old drafts
+      // and must never stop the app starting.
+    }
   }
 
   /// The saved draft for [conversationId], or null when there is none.
@@ -155,5 +205,7 @@ final chatDraftStoreProvider = Provider<ChatDraftStore>((ref) => ChatDraftStore(
 /// the app root watches, and so a test can simply not watch it. Fire-and-forget on purpose:
 /// nothing waits on housekeeping, and the store swallows its own failures.
 final draftPruneProvider = Provider<void>((ref) {
-  ref.read(chatDraftStoreProvider).pruneStale();
+  final store = ref.read(chatDraftStoreProvider);
+  // Migration first: it moves files the prune would otherwise judge by the wrong directory.
+  store.migrateOffBackupPath().then((_) => store.pruneStale());
 });

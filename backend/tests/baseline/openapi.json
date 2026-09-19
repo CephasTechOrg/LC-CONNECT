@@ -4578,6 +4578,14 @@
             ],
             "title": "Match Id"
           },
+          "reactions": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ReactionSummary"
+            },
+            "title": "Reactions",
+            "type": "array"
+          },
           "read_at": {
             "anyOf": [
               {
@@ -6251,6 +6259,30 @@
           "staff_publishing_enabled"
         ],
         "title": "PublishingCapabilitiesRead",
+        "type": "object"
+      },
+      "ReactionSummary": {
+        "description": "One emoji's tally on a message, from the viewer's point of view.\n\nAggregated server-side rather than sent as individual rows: a popular message would otherwise\nship one row per reactor to render a chip that says \"12\". `reacted_by_me` comes from the same\ngrouped query, so the client never needs a second request to know whether to fill the chip.",
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "emoji": {
+            "title": "Emoji",
+            "type": "string"
+          },
+          "reacted_by_me": {
+            "title": "Reacted By Me",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "emoji",
+          "count",
+          "reacted_by_me"
+        ],
+        "title": "ReactionSummary",
         "type": "object"
       },
       "ReadinessResponse": {
@@ -14183,6 +14215,106 @@
           }
         ],
         "summary": "Delete Message Endpoint",
+        "tags": [
+          "messages"
+        ]
+      }
+    },
+    "/api/v1/messages/{message_id}/reactions/{emoji}": {
+      "delete": {
+        "description": "Remove your reaction. Idempotent \u2014 removing one that is not there is success.",
+        "operationId": "remove_reaction_api_v1_messages__message_id__reactions__emoji__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "message_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Message Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "emoji",
+            "required": true,
+            "schema": {
+              "title": "Emoji",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Remove Reaction",
+        "tags": [
+          "messages"
+        ]
+      },
+      "put": {
+        "description": "React to a message. Idempotent \u2014 reacting twice is success, not a conflict.\n\n`PUT` rather than `POST` precisely because it is idempotent: a double-tap, or a retry after a\ndropped response, must not need the client to reason about whether the first one landed.",
+        "operationId": "add_reaction_api_v1_messages__message_id__reactions__emoji__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "message_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Message Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "emoji",
+            "required": true,
+            "schema": {
+              "title": "Emoji",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Add Reaction",
         "tags": [
           "messages"
         ]

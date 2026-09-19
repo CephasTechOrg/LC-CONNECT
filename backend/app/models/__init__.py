@@ -27,7 +27,7 @@ from app.models.employers import (
     EmployerProfileView,
 )
 from app.models.groups import Group
-from app.models.messaging import Conversation, ConversationMember, Message
+from app.models.messaging import Conversation, ConversationMember, Message, MessageReaction
 from app.models.notifications import DeviceToken, Notification
 from app.models.programs import Program, ProgramMembership, ScholarProfessionalProfile
 from app.models.social import Block, ConnectionRequest, Match, Report
@@ -59,6 +59,7 @@ __all__ = [
     'LookingForOption',
     'Match',
     'Message',
+    'MessageReaction',
     'Notification',
     'Profile',
     'Program',

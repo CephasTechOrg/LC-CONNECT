@@ -112,3 +112,42 @@ class Message(Base):
     # moderation until the retention window elapses, then purged by cron (see
     # `MESSAGE_SOFT_DELETE_RETENTION_DAYS`). Report snapshots survive row purge.
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class MessageReaction(Base):
+    """One person's one emoji on one message (report #4).
+
+    A table rather than a JSON column on `messages`, and the reason is concurrency: a blob cannot
+    carry a unique constraint, so two people reacting at the same instant would read-modify-write
+    the same row and one would lose. Toggling would also mean rewriting a hot row on every tap.
+
+    `emoji` is a short string checked against a server-side allowlist rather than an enum table.
+    An enum table means a join on the hottest read in the app; free text is an abuse surface and
+    makes the per-message aggregate unbounded. A bounded allowlist gives neither problem and keeps
+    the column readable in a database console.
+    """
+
+    __tablename__ = 'message_reactions'
+    __table_args__ = (
+        # Makes a toggle idempotent: a double-tap cannot produce two rows, and the loser of a race
+        # catches IntegrityError and treats it as success — the same arbiter pattern as message
+        # idempotency.
+        UniqueConstraint('message_id', 'user_id', 'emoji', name='uq_message_reaction'),
+        # Serves the per-page aggregate: GROUP BY message_id, emoji over a page of message ids.
+        Index('ix_message_reactions_message_emoji', 'message_id', 'emoji'),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    message_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey('messages.id', ondelete='CASCADE'), index=True, nullable=False
+    )
+    # CASCADE on the *user*, unlike `Message.sender_id`: a reaction is not a record of anything.
+    # Deleting an account should take its reactions with it, where deleting an account must not
+    # take its messages (they are half of someone else's conversation).
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey('users.id', ondelete='CASCADE'), index=True, nullable=False
+    )
+    emoji: Mapped[str] = mapped_column(String(8), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )

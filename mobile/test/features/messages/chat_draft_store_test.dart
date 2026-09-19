@@ -174,4 +174,74 @@ void main() {
       expect((await store.load('conv-1'))!.length, maxDraftChars);
     });
   });
+
+  /// Design §9.8 — drafts moved off the backed-up path.
+  ///
+  /// They lived under `getApplicationDocumentsDirectory()`, which iOS includes in iCloud backups
+  /// and Android in auto-backup. Unsent draft text is the most private content in the feature and
+  /// it was leaving the device. The migration matters as much as the move: without it a user
+  /// mid-message loses it on update, *and* the old files stay behind still being backed up.
+  group('migration off the backup path', () {
+    late Directory legacyDir;
+    late ChatDraftStore migrating;
+
+    setUp(() async {
+      legacyDir = await Directory.systemTemp.createTemp('chat_drafts_legacy_');
+      migrating = ChatDraftStore(
+        rootDir: () async => tempDir,
+        legacyRootDir: () async => legacyDir,
+      );
+    });
+
+    tearDown(() async {
+      if (await legacyDir.exists()) await legacyDir.delete(recursive: true);
+    });
+
+    Future<void> writeLegacy(String id, String text) async {
+      await File('${legacyDir.path}/$id.json').writeAsString(jsonEncode({
+        'v': chatDraftFormatVersion,
+        'text': text,
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
+      }));
+    }
+
+    test('an old draft is carried over', () async {
+      await writeLegacy('conv-1', 'written before the update');
+
+      await migrating.migrateOffBackupPath();
+
+      expect(await migrating.load('conv-1'), 'written before the update');
+    });
+
+    test('the old directory is removed, so nothing keeps being backed up', () async {
+      await writeLegacy('conv-1', 'old');
+
+      await migrating.migrateOffBackupPath();
+
+      expect(await legacyDir.exists(), isFalse);
+    });
+
+    test('a draft written since the update wins', () async {
+      // The new location is newer by definition — the user has typed since upgrading.
+      await writeLegacy('conv-1', 'stale');
+      await migrating.save('conv-1', 'current');
+
+      await migrating.migrateOffBackupPath();
+
+      expect(await migrating.load('conv-1'), 'current');
+    });
+
+    test('running it twice is harmless', () async {
+      await writeLegacy('conv-1', 'old');
+      await migrating.migrateOffBackupPath();
+      await migrating.migrateOffBackupPath();
+
+      expect(await migrating.load('conv-1'), 'old');
+    });
+
+    test('nothing to migrate is not an error', () async {
+      await legacyDir.delete(recursive: true);
+      await expectLater(migrating.migrateOffBackupPath(), completes);
+    });
+  });
 }

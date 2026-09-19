@@ -18,7 +18,10 @@ MAX_BODY_CHARS = 2000
 # 2 adds `messages.delivered` (inbound) and `messages.delivery` (outbound). A client learns the
 # server's version from `auth.ok` and gates new frames on it, so a v1 server meeting a v2 client
 # answers `unsupported_frame` at worst — and no longer spends the abuse budget doing so.
-PROTOCOL_VERSION = 2
+# 3 adds `messages.reaction` (outbound). Reactions are applied over REST rather than a new
+# inbound frame: the request needs a response the client can roll an optimistic chip back from,
+# and the WebSocket path has no request/response shape.
+PROTOCOL_VERSION = 3
 
 
 # ── Error + close codes ───────────────────────────────────────────────────────
@@ -282,6 +285,23 @@ def delivery_receipt(
         'user_id': str(user_id),
         'through_message_id': str(through_message_id),
         'delivered_at': delivered_at_iso,
+    }
+
+
+def reaction_event(
+    message_id: UUID, user_id: UUID, emoji: str, *, added: bool
+) -> dict[str, Any]:
+    """Conversation-channel event: someone's reaction on a message changed (protocol 3).
+
+    Carries the resulting state (`added`) rather than a delta, so an add racing a remove resolves
+    to last-write-wins at the frame level — the same answer the database gives.
+    """
+    return {
+        'type': 'messages.reaction',
+        'message_id': str(message_id),
+        'user_id': str(user_id),
+        'emoji': emoji,
+        'added': added,
     }
 
 

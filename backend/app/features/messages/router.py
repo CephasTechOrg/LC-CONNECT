@@ -13,6 +13,7 @@ from app.features.messages.schema import (
     MessageReadBy,
     MessageThreadRead,
     MessagingCapabilities,
+    ReactionSummary,
     RecipientSearchResult,
     StaffThreadCreate,
     UnreadSummary,
@@ -24,8 +25,10 @@ from app.features.messages.service import (
     message_read,
     page_thread,
     persist_message_idempotent,
+    reactions_for,
     read_by,
     sync_thread,
+    toggle_reaction,
     unread_summary,
 )
 from app.features.messages.staff_messaging import create_staff_thread, search_recipients
@@ -98,8 +101,12 @@ async def get_unread_summary(current_user: User = Depends(require_verified_user)
     return UnreadSummary(total=sum(external.values()), per_conversation=external)
 
 
-def _with_delivery(
-    messages: list, cursor: tuple | None, *, sender_id: UUID
+def _serialize_page(
+    messages: list,
+    cursor: tuple | None,
+    reactions: dict[UUID, list[ReactionSummary]],
+    *,
+    sender_id: UUID,
 ) -> list[MessageRead]:
     """Serialize a page, marking the requester's own messages delivered up to `cursor`.
 
@@ -115,6 +122,7 @@ def _with_delivery(
                 and message.sender_id == sender_id
                 and (message.created_at, message.id) <= cursor
             ),
+            reactions=reactions.get(message.id),
         )
         for message in messages
     ]
@@ -135,9 +143,13 @@ async def get_thread(
     messages = await page_thread(
         db, conversation.id, before_created_at=before_created_at, before_id=before_id, limit=limit
     )
-    # One query for the whole page — see `delivery_cursor`.
+    # Two queries for the whole page, never per message — see `delivery_cursor` and
+    # `reactions_for`.
     cursor = await delivery_cursor(db, conversation.id, exclude=current_user.id)
-    return _with_delivery(messages, cursor, sender_id=current_user.id)
+    reactions = await reactions_for(
+        db, [m.id for m in messages], viewer_id=current_user.id
+    )
+    return _serialize_page(messages, cursor, reactions, sender_id=current_user.id)
 
 
 @router.get('/threads/{match_id}/sync', response_model=list[MessageRead])
@@ -155,7 +167,10 @@ async def sync_thread_endpoint(
         db, conversation.id, after_created_at=after_created_at, after_id=after_id, limit=limit
     )
     cursor = await delivery_cursor(db, conversation.id, exclude=current_user.id)
-    return _with_delivery(messages, cursor, sender_id=current_user.id)
+    reactions = await reactions_for(
+        db, [m.id for m in messages], viewer_id=current_user.id
+    )
+    return _serialize_page(messages, cursor, reactions, sender_id=current_user.id)
 
 
 @router.post('/threads/{match_id}', response_model=MessageRead, status_code=status.HTTP_201_CREATED)
@@ -184,6 +199,38 @@ async def send_message(
             recipients=recipients,
         )
     return message_read(message)
+
+
+@router.put('/{message_id}/reactions/{emoji}', status_code=status.HTTP_204_NO_CONTENT)
+async def add_reaction(
+    message_id: UUID,
+    emoji: str,
+    current_user: User = Depends(require_verified_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """React to a message. Idempotent — reacting twice is success, not a conflict.
+
+    `PUT` rather than `POST` precisely because it is idempotent: a double-tap, or a retry after a
+    dropped response, must not need the client to reason about whether the first one landed.
+    """
+    await toggle_reaction(db, message_id=message_id, user_id=current_user.id, emoji=emoji, add=True)
+    from app.features.realtime.runtime import broadcast_reaction
+
+    await broadcast_reaction(db, message_id=message_id, user_id=current_user.id, emoji=emoji, added=True)
+
+
+@router.delete('/{message_id}/reactions/{emoji}', status_code=status.HTTP_204_NO_CONTENT)
+async def remove_reaction(
+    message_id: UUID,
+    emoji: str,
+    current_user: User = Depends(require_verified_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Remove your reaction. Idempotent — removing one that is not there is success."""
+    await toggle_reaction(db, message_id=message_id, user_id=current_user.id, emoji=emoji, add=False)
+    from app.features.realtime.runtime import broadcast_reaction
+
+    await broadcast_reaction(db, message_id=message_id, user_id=current_user.id, emoji=emoji, added=False)
 
 
 @router.get('/{message_id}/read-by', response_model=list[MessageReadBy])

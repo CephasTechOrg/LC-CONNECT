@@ -204,6 +204,36 @@ async def emit_message_created(
         )
 
 
+async def broadcast_reaction(
+    db, *, message_id: UUID, user_id: UUID, emoji: str, added: bool
+) -> None:
+    """Tell the conversation that a reaction changed (protocol 3).
+
+    Published to the **conversation** channel only, not to each member's user channel — unlike a
+    new message. A reaction does not change the thread list: the conversation's preview, its
+    timestamp and its unread count are all unaffected, so a user channel frame would make every
+    client re-render an inbox row for nothing.
+
+    Carries the resulting state rather than a delta. Add-and-remove racing is then last-write-wins
+    at the *frame* level, which is the same answer the database gives, so a client cannot end up
+    disagreeing with the server about whether a chip is filled.
+
+    Best-effort, like every other broadcast here: a reaction that fails to fan out is still
+    recorded, and the next page load carries it.
+    """
+    from sqlalchemy import select
+
+    conversation_id = (
+        await db.execute(select(Message.conversation_id).where(Message.id == message_id))
+    ).scalar_one_or_none()
+    if conversation_id is None:
+        return
+    await event_bus.publish_to_conversation(
+        conversation_id,
+        protocol.reaction_event(message_id, user_id, emoji, added=added),
+    )
+
+
 async def broadcast_message_deleted(message: Message, member_ids: list[UUID]) -> None:
     """Takes the `Message` rather than a bare id because the two ids differ: the frame is routed
     on the canonical conversation id, but addressed with the id clients match on."""
