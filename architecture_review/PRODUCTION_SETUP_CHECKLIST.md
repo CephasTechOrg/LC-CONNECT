@@ -71,7 +71,7 @@ Each Next.js service needs these **before build** (Render supplies at build + ru
 |----------|---------|
 | `NEXT_PUBLIC_SUPABASE_URL` | `https://xxxxx.supabase.co` |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key (never service role) |
-| `NEXT_PUBLIC_API_BASE_URL` | `https://lc-connect-api.onrender.com/api/v1` |
+| `NEXT_PUBLIC_API_BASE_URL` | `https://lc-connect.onrender.com/api/v1` |
 
 After deploy, set on the **API** service:
 

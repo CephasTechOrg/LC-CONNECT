@@ -313,7 +313,7 @@ Fill:
 For local work, **comment out** the Render production URL:
 
 ```env
-# API_BASE_URL=https://lc-connect-api.onrender.com/api/v1
+# API_BASE_URL=https://lc-connect.onrender.com/api/v1
 API_BASE_URL=http://localhost:8000/api/v1
 ENV=development
 ```

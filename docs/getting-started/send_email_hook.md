@@ -34,7 +34,7 @@ POST https://<your-backend-host>/api/v1/auth/webhooks/send-email
 ```
 
 - **Production (Render)**: this is already reachable once the backend is deployed —
-  `https://lc-connect-api.onrender.com/api/v1/auth/webhooks/send-email` (see
+  `https://lc-connect.onrender.com/api/v1/auth/webhooks/send-email` (see
   `docs/getting-started/deployment.md`).
 - **Local development**: Supabase Cloud cannot reach `localhost` directly. Use a tunnel
   (e.g. `ngrok http 8000`) and use the tunnel's HTTPS URL instead, or skip local testing of this
