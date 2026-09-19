@@ -55,6 +55,11 @@ class Notification(Base):
     type: Mapped[str] = mapped_column(String(40), nullable=False)
     group_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey('groups.id', ondelete='CASCADE'), index=True, nullable=True)
     actor_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
+    # A short display token for this one event, when the structured columns above cannot carry it.
+    # Currently only the reaction emoji: `type` says "someone reacted", `actor_id` who, `target_id`
+    # where — but which emoji belongs to this row alone. Deliberately not a payload: nothing
+    # branches on it, and anything needing structure gets its own column.
+    detail: Mapped[str | None] = mapped_column(String(16), nullable=True)
     # ── deep-link target ──────────────────────────────────────────────────────
     #
     # What tapping this row should open, when `group_id`/`actor_id` above cannot say. Attendance

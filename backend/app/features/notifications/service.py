@@ -68,6 +68,7 @@ async def create_notification(
     actor_id: UUID | None = None,
     target_type: str | None = None,
     target_id: UUID | None = None,
+    detail: str | None = None,
 ) -> Notification:
     """Insert a notification (caller commits). Never notify someone about their own action.
 
@@ -81,6 +82,7 @@ async def create_notification(
         actor_id=actor_id,
         target_type=target_type,
         target_id=target_id,
+        detail=detail,
     )
     db.add(notification)
     await db.flush()
@@ -97,6 +99,7 @@ def _to_read(n: Notification, group_name: str | None, actor_name: str | None, ac
         actor=NotificationActor(id=n.actor_id, display_name=actor_name, avatar_url=actor_avatar) if n.actor_id else None,
         target_type=n.target_type,
         target_id=n.target_id,
+        detail=n.detail,
     )
 
 
@@ -154,6 +157,37 @@ async def read_one(db: AsyncSession, notification: Notification) -> Notification
         if row is not None:
             actor_name, actor_avatar = row
     return _to_read(notification, group_name, actor_name, actor_avatar)
+
+
+async def unread_duplicate_exists(
+    db: AsyncSession,
+    *,
+    user_id: UUID,
+    type: str,
+    actor_id: UUID | None,
+    target_id: UUID | None,
+) -> bool:
+    """Whether an **unread** notification already exists for this exact (recipient, type, actor,
+    target).
+
+    Used to collapse repeats of a cheap, repeatable action — a reaction toggle is one tap, so
+    react/un-react/react would otherwise be three rows and three pushes in a few seconds. Keyed on
+    unread rather than on a time window so the recipient is still told again once they have
+    actually seen the first one.
+    """
+    return (
+        await db.execute(
+            select(Notification.id)
+            .where(
+                Notification.user_id == user_id,
+                Notification.type == type,
+                Notification.actor_id == actor_id,
+                Notification.target_id == target_id,
+                Notification.read_at.is_(None),
+            )
+            .limit(1)
+        )
+    ).scalar_one_or_none() is not None
 
 
 async def unread_count(db: AsyncSession, user_id: UUID) -> int:

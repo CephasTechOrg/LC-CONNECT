@@ -192,9 +192,15 @@ async def test_the_toggle_hands_back_the_conversation_it_resolved(db, factory):
         await db.execute(select(Message.conversation_id).where(Message.id == message.id))
     ).scalar_one()
 
-    assert await toggle_reaction(
+    reacted = await toggle_reaction(
         db, message_id=message.id, user_id=b.id, emoji=THUMB, add=True
-    ) == expected
+    )
+    assert reacted.conversation_id == expected
+    assert reacted.sender_id == a.id
+    # A DM addresses on its match id, not the conversation id — a notification routed on the
+    # latter would open nothing.
+    assert reacted.addressing_id == message.match_id
+    assert reacted.is_group is False
 
 
 # ── the aggregate ─────────────────────────────────────────────────────────────

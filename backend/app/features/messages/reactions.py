@@ -7,6 +7,7 @@ read path that the rest of the service exists to serve.
 
 from __future__ import annotations
 
+from typing import NamedTuple
 from uuid import UUID
 
 from fastapi import HTTPException, status
@@ -30,9 +31,21 @@ from app.models import Message, MessageReaction
 REACTION_ALLOWLIST: tuple[str, ...] = ('👍', '❤️', '😂', '😮', '😢', '🙏')
 
 
+class ReactedMessage(NamedTuple):
+    """Who and where the caller just reacted to — everything the fan-out needs, resolved once."""
+
+    conversation_id: UUID
+    sender_id: UUID | None
+    #: The id *clients* address this conversation by — a DM's match id, or the conversation id for
+    #: a group, which has none. Mirrors `protocol.addressing_id`. A notification routed on the
+    #: canonical id would open nothing for a DM, which is the bug `openMessageConversation` had.
+    addressing_id: UUID
+    is_group: bool
+
+
 async def toggle_reaction(
     db: AsyncSession, *, message_id: UUID, user_id: UUID, emoji: str, add: bool
-) -> UUID:
+) -> ReactedMessage:
     """Add or remove one person's one emoji on one message. Idempotent in both directions.
 
     Authorization is the same gate every other REST message endpoint uses, so a message id alone
@@ -41,8 +54,8 @@ async def toggle_reaction(
     Reacting to a soft-deleted message is refused. The body of a deleted message is never sent to
     clients, so a reaction on one would be attached to a tombstone nobody can read.
 
-    Returns the conversation the message belongs to, so the caller can fan the change out
-    without asking the database the question this function has already answered.
+    Returns the conversation and the message's sender, so the caller can fan the change out and
+    notify the right person without asking the database questions this function has answered.
     """
     if emoji not in REACTION_ALLOWLIST:
         raise HTTPException(
@@ -52,12 +65,20 @@ async def toggle_reaction(
 
     message = (
         await db.execute(
-            select(Message.conversation_id, Message.deleted_at).where(Message.id == message_id)
+            select(
+                Message.conversation_id,
+                Message.deleted_at,
+                Message.sender_id,
+                Message.match_id,
+            ).where(Message.id == message_id)
         )
     ).one_or_none()
     if message is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Message not found')
-    conversation_id, deleted_at = message
+    conversation_id, deleted_at, sender_id, match_id = message
+    resolved = ReactedMessage(
+        conversation_id, sender_id, match_id or conversation_id, match_id is None
+    )
 
     from app.shared.conversations import accessible_conversation
 
@@ -81,7 +102,7 @@ async def toggle_reaction(
             )
         )
         await db.commit()
-        return conversation_id
+        return resolved
 
     db.add(MessageReaction(message_id=message_id, user_id=user_id, emoji=emoji))
     try:
@@ -91,7 +112,7 @@ async def toggle_reaction(
         # double-tap, or two devices reacting at once, is success rather than an error. Reporting
         # a conflict here would make the client undo an optimistic chip that is in fact correct.
         await db.rollback()
-    return conversation_id
+    return resolved
 
 
 async def reactions_for(

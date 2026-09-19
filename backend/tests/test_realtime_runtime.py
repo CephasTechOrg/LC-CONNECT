@@ -11,8 +11,15 @@ from app.features.realtime import runtime
 
 def test_pushable_notification_types_is_the_agreed_small_set():
     """Locks the deliberately narrow set — connections, group invites/requests, program
-    membership verification, and admin membership invites. Adding a type here is a product
-    decision, not something that should drift silently."""
+    membership verification, admin membership invites, and a reaction to your own message.
+    Adding a type here is a product decision, not something that should drift silently.
+
+    `message_reaction` was added deliberately. Reactions fan out only on the conversation
+    channel, which reaches nobody who does not have that chat open — so without a push the
+    feature was invisible to anyone whose app was closed, which is most people most of the time.
+    It fires only for the message's sender, only on add, and collapses while unread, so one
+    person changing their mind is still one interruption.
+    """
     assert runtime.PUSHABLE_NOTIFICATION_TYPES == {
         'connection_request',
         'connection_accepted',
@@ -21,6 +28,7 @@ def test_pushable_notification_types_is_the_agreed_small_set():
         'group_request_approved',
         'program_membership_verified',
         'admin_membership_invited',
+        'message_reaction',
     }
 
 

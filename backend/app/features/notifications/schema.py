@@ -37,6 +37,8 @@ class NotificationRead(BaseModel):
     # added server-side cannot break an older client.
     target_type: str | None = None
     target_id: UUID | None = None
+    #: Short display token for this event — currently the reaction emoji. See the model.
+    detail: str | None = None
 
 
 class UnreadCount(BaseModel):

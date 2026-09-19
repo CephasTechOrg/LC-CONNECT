@@ -25,7 +25,12 @@ from app.features.notifications.service import prune_tokens, tokens_for_user
 logger = logging.getLogger('lc_connect.push')
 
 
-def _notification_copy(notif_type: str, actor_name: str | None, group_name: str | None) -> tuple[str, str]:
+def _notification_copy(
+    notif_type: str,
+    actor_name: str | None,
+    group_name: str | None,
+    detail: str | None = None,
+) -> tuple[str, str]:
     """Title/body per notification type. Title is who did it (falls back to 'Someone'); body
     is a short, non-sensitive description — never anything the actor wrote."""
     who = actor_name or 'Someone'
@@ -43,6 +48,10 @@ def _notification_copy(notif_type: str, actor_name: str | None, group_name: str 
         return 'LC Connect', "You've been verified for a new program — check your profile"
     if notif_type == 'admin_membership_invited':
         return 'LC Connect', "You've been granted admin access — sign in to the Admin Portal"
+    if notif_type == 'message_reaction':
+        # The emoji, never the message it is attached to. Every other line here follows the same
+        # rule — a push shows on a locked screen, so it says what happened and not what was said.
+        return who, f'Reacted {detail} to your message' if detail else 'Reacted to your message'
     return who, 'You have a new notification'
 
 
@@ -149,6 +158,7 @@ class PushSender:
         notif_type: str,
         actor_name: str | None,
         group_name: str | None,
+        detail: str | None = None,
     ) -> None:
         """Push for the small set of in-app notifications worth interrupting someone for —
         a connection request/acceptance or a group invite/join-request/approval. Everything
@@ -159,7 +169,7 @@ class PushSender:
         tokens = await tokens_for_user(db, recipient_id)
         if not tokens:
             return
-        title, body = _notification_copy(notif_type, actor_name, group_name)
+        title, body = _notification_copy(notif_type, actor_name, group_name, detail)
         try:
             invalid = await asyncio.to_thread(self._send_notification, tokens, notif_type, title, body)
         except Exception as exc:  # noqa: BLE001 - a push failure must never surface to the actor

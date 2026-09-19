@@ -127,19 +127,47 @@ PUSHABLE_NOTIFICATION_TYPES = frozenset({
     'group_request_approved',
     'program_membership_verified',
     'admin_membership_invited',
+    # A reaction to your own message, and only that — see `notify_reaction`.
+    'message_reaction',
 })
 
 
 async def emit_notification(
-    *, user_id: UUID, notif_type: str, group_id: UUID | None = None, actor_id: UUID | None = None
+    *,
+    user_id: UUID,
+    notif_type: str,
+    group_id: UUID | None = None,
+    actor_id: UUID | None = None,
+    target_type: str | None = None,
+    target_id: UUID | None = None,
+    detail: str | None = None,
+    collapse_unread: bool = False,
 ) -> None:
-    """Persist an in-app notification and deliver it live to the recipient's user channel."""
+    """Persist an in-app notification and deliver it live to the recipient's user channel.
+
+    `collapse_unread` suppresses the row when an **unread** one already exists with the same
+    (recipient, type, actor, target). Reactions need it: the toggle is one tap, so react →
+    un-react → react is a two-second gesture that would otherwise queue three notifications and a
+    push for each. Collapsing on *unread* rather than on a time window means the recipient still
+    hears about it again once they have actually seen the first one.
+    """
     from app.features.notifications import service as notifications_service
 
     try:
         async with AsyncSessionLocal() as db:
+            if collapse_unread and await notifications_service.unread_duplicate_exists(
+                db, user_id=user_id, type=notif_type, actor_id=actor_id, target_id=target_id
+            ):
+                return
             notification = await notifications_service.create_notification(
-                db, user_id=user_id, type=notif_type, group_id=group_id, actor_id=actor_id
+                db,
+                user_id=user_id,
+                type=notif_type,
+                group_id=group_id,
+                actor_id=actor_id,
+                target_type=target_type,
+                target_id=target_id,
+                detail=detail,
             )
             await db.commit()
             await db.refresh(notification)
@@ -149,7 +177,9 @@ async def emit_notification(
             actor_name = dto.actor.display_name if dto.actor else None
             group_name = dto.group.name if dto.group else None
             _spawn(
-                _schedule_notification_push(user_id, notif_type, actor_name, group_name),
+                _schedule_notification_push(
+                    user_id, notif_type, actor_name, group_name, detail=detail
+                ),
                 what='notification push',
             )
     except Exception as exc:  # noqa: BLE001 - a notification must never break the triggering action
@@ -157,14 +187,23 @@ async def emit_notification(
 
 
 async def _schedule_notification_push(
-    user_id: UUID, notif_type: str, actor_name: str | None, group_name: str | None
+    user_id: UUID,
+    notif_type: str,
+    actor_name: str | None,
+    group_name: str | None,
+    detail: str | None = None,
 ) -> None:
     await asyncio.sleep(settings.push_reconnect_grace_seconds)
     if manager.user_socket_count(user_id) != 0:
         return
     async with AsyncSessionLocal() as db:
         await push_sender.notify_in_app_event(
-            db, recipient_id=user_id, notif_type=notif_type, actor_name=actor_name, group_name=group_name,
+            db,
+            recipient_id=user_id,
+            notif_type=notif_type,
+            actor_name=actor_name,
+            group_name=group_name,
+            detail=detail,
         )
 
 

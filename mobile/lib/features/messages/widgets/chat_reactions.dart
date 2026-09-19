@@ -410,6 +410,16 @@ class _EditMessageSheetState extends State<_EditMessageSheet> {
                   ),
                   const SizedBox(width: AppSpacing.sm),
                   FilledButton(
+                    // The app-wide `filledButtonTheme` sets `minimumSize: Size(double.infinity,
+                    // 52)` because every other FilledButton here is a full-width form submit.
+                    // Inside this Row that demands an infinite width, which is not a cosmetic
+                    // overflow: layout throws "BoxConstraints forces an infinite width", and in a
+                    // release build the button paints *nothing* — so the sheet offered no way to
+                    // save at all. Overridden at the call site rather than in the theme, which
+                    // nineteen full-width buttons depend on.
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size(96, kMinTouchTarget),
+                    ),
                     onPressed: expired
                         ? null
                         : () => Navigator.of(context).pop(_controller.text.trim()),

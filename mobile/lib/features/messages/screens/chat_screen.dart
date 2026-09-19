@@ -19,6 +19,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/avatar_widget.dart';
 import '../../../shared/util/caching.dart';
+import '../../../shared/widgets/a11y.dart';
 import '../../../shared/widgets/app_states.dart';
 import '../../../shared/widgets/dismiss_keyboard.dart';
 import '../../../shared/widgets/verified_badge.dart';

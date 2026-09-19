@@ -20,6 +20,11 @@ class AppNotification {
   final String? targetType;
   final String? targetId;
 
+  /// A short display token belonging to this one event — currently the reaction emoji. The
+  /// structured fields cannot carry it: [type] says what happened and [actorName] who, but which
+  /// emoji is true of this row alone.
+  final String? detail;
+
   const AppNotification({
     required this.id,
     required this.type,
@@ -32,6 +37,7 @@ class AppNotification {
     this.actorAvatarUrl,
     this.targetType,
     this.targetId,
+    this.detail,
   });
 
   factory AppNotification.fromJson(Map<String, dynamic> j) {
@@ -49,6 +55,7 @@ class AppNotification {
       actorAvatarUrl: actor?['avatar_url'] as String?,
       targetType: j['target_type'] as String?,
       targetId: j['target_id'] as String?,
+      detail: j['detail'] as String?,
     );
   }
 
@@ -70,6 +77,11 @@ class AppNotification {
         'program_membership_verified' =>
           "You're a verified Presidential Scholar — complete your professional profile",
         'honors_attendance_open' => 'Honors attendance is open — tap to scan the classroom QR',
+        // The emoji when the server sent one, so the row says which reaction. Rows written before
+        // `detail` existed fall back to the plain sentence rather than rendering "null".
+        'message_reaction' => detail == null
+            ? '$_actor reacted to your message'
+            : '$_actor reacted $detail to your message',
         _ => 'You have a new notification',
       };
 
@@ -89,6 +101,12 @@ class AppNotification {
       final session = targetId;
       return session == null ? '/attendance/scan' : '/attendance/scan?session=$session';
     }
+    // The server says which chat route this is, so the client never has to infer
+    // DM-vs-group from a thread list that may not be loaded yet — the bug
+    // `openMessageConversation` had on a cold start.
+    if (type == 'message_reaction' && targetId != null) {
+      return targetType == 'group_chat' ? '/chat/group/$targetId' : '/chat/$targetId';
+    }
     if (groupId != null) return '/groups/$groupId';
     return null;
   }
@@ -97,5 +115,9 @@ class AppNotification {
   /// face. False for outcome-style events about you ("You're now a member…") — show a type icon.
   bool get isActorCentric =>
       actorName != null &&
-      (type == 'group_invite' || type == 'group_join_request' || type.startsWith('connection_'));
+      (type == 'group_invite' ||
+          type == 'group_join_request' ||
+          // A reaction is entirely about what a person did, so show their face.
+          type == 'message_reaction' ||
+          type.startsWith('connection_'));
 }

@@ -240,18 +240,34 @@ async def add_reaction(
     `PUT` rather than `POST` precisely because it is idempotent: a double-tap, or a retry after a
     dropped response, must not need the client to reason about whether the first one landed.
     """
-    conversation_id = await toggle_reaction(
+    reacted = await toggle_reaction(
         db, message_id=message_id, user_id=current_user.id, emoji=emoji, add=True
     )
-    from app.features.realtime.runtime import broadcast_reaction
+    from app.features.realtime.runtime import broadcast_reaction, emit_notification
 
     await broadcast_reaction(
-        conversation_id=conversation_id,
+        conversation_id=reacted.conversation_id,
         message_id=message_id,
         user_id=current_user.id,
         emoji=emoji,
         added=True,
     )
+    # Only the sender, and only on add. Without this a reaction was invisible unless the recipient
+    # happened to have the conversation open at that moment — the conversation channel reaches
+    # nobody who is not looking at it, so there was no inbox change, no badge and no push.
+    # Removing a reaction is deliberately silent: "someone un-reacted" is not news.
+    if reacted.sender_id is not None and reacted.sender_id != current_user.id:
+        await emit_notification(
+            user_id=reacted.sender_id,
+            notif_type='message_reaction',
+            actor_id=current_user.id,
+            # The *type* says which chat route to open, so the client never has to infer it
+            # from a thread list it may not have loaded yet.
+            target_type='group_chat' if reacted.is_group else 'dm',
+            target_id=reacted.addressing_id,
+            detail=emoji,
+            collapse_unread=True,
+        )
 
 
 @router.delete('/{message_id}/reactions/{emoji}', status_code=status.HTTP_204_NO_CONTENT)
@@ -262,13 +278,13 @@ async def remove_reaction(
     db: AsyncSession = Depends(get_db),
 ):
     """Remove your reaction. Idempotent — removing one that is not there is success."""
-    conversation_id = await toggle_reaction(
+    reacted = await toggle_reaction(
         db, message_id=message_id, user_id=current_user.id, emoji=emoji, add=False
     )
     from app.features.realtime.runtime import broadcast_reaction
 
     await broadcast_reaction(
-        conversation_id=conversation_id,
+        conversation_id=reacted.conversation_id,
         message_id=message_id,
         user_id=current_user.id,
         emoji=emoji,

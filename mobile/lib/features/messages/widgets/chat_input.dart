@@ -57,24 +57,51 @@ class _InputBar extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 10),
-          GestureDetector(
-            onTap: sending ? null : onSend,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: sending ? AppColors.primarySoft : AppColors.primary,
-                shape: BoxShape.circle,
+          // Two bugs lived here, and together they produced "sometimes tapping send just closes
+          // the keyboard instead of sending".
+          //
+          // 1. `onTap` was `sending ? null : onSend`, and `sending` is true while *any* message
+          //    in the thread is still unacknowledged. On a cold backend the first message stays
+          //    unacknowledged for up to 60s, so the button was dead for a full minute while the
+          //    user tried to send the next one. Disabling it also threw away the point of the
+          //    optimistic send path: the outbox queues, the server is idempotent on
+          //    `client_message_id`, and `dispatchSend` already reports the one real failure (a
+          //    full outbox). There is nothing to protect against by blocking a second send.
+          // 2. The target was 40x40, under both Apple's 44pt minimum and this app's own
+          //    `kMinTouchTarget`. A near-miss fell through to the app-level
+          //    `DismissKeyboardOnTap`, which is why the *keyboard* reacted when the button did
+          //    not. The circle still draws at 40; only the hit area grew.
+          //
+          // `sending` now drives the spinner only, which is what it was always meant to say.
+          Semantics(
+            button: true,
+            label: 'Send message',
+            child: GestureDetector(
+              onTap: onSend,
+              behavior: HitTestBehavior.opaque,
+              child: SizedBox(
+                width: kMinTouchTarget,
+                height: kMinTouchTarget,
+                child: Center(
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: sending ? AppColors.primarySoft : AppColors.primary,
+                      shape: BoxShape.circle,
+                    ),
+                    child: sending
+                        ? const Padding(
+                            padding: EdgeInsets.all(10),
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: AppColors.primary),
+                          )
+                        : const Icon(Icons.arrow_upward_rounded,
+                            color: Colors.white, size: 20),
+                  ),
+                ),
               ),
-              child: sending
-                  ? const Padding(
-                      padding: EdgeInsets.all(10),
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2, color: AppColors.primary),
-                    )
-                  : const Icon(Icons.arrow_upward_rounded,
-                      color: Colors.white, size: 20),
             ),
           ),
         ],

@@ -5231,6 +5231,17 @@
             "title": "Created At",
             "type": "string"
           },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
           "group": {
             "anyOf": [
               {
