@@ -85,11 +85,11 @@ class ScholarProfileNotifier extends AsyncNotifier<ScholarProfile> {
   }) async {
     final client = ref.read(apiClientProvider);
     final body = <String, dynamic>{
-      if (linkedinUrl != null) 'linkedin_url': linkedinUrl,
-      if (handshakeUrl != null) 'handshake_url': handshakeUrl,
-      if (summary != null) 'summary': summary,
-      if (skills != null) 'skills': skills,
-      if (careerInterests != null) 'career_interests': careerInterests,
+      'linkedin_url': ?linkedinUrl,
+      'handshake_url': ?handshakeUrl,
+      'summary': ?summary,
+      'skills': ?skills,
+      'career_interests': ?careerInterests,
     };
     final response = await client.dio.patch('/scholars/me', data: body);
     state = AsyncData(ScholarProfile.fromJson(response.data as Map<String, dynamic>));

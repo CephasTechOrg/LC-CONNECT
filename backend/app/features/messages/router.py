@@ -41,7 +41,13 @@ from app.shared.conversations import (
     addressing_ids_for_conversations,
 )
 from app.shared.policies import can_message_as_staff
-from app.shared.rate_limit import message_send_limit, recipient_search_limit, staff_thread_limit
+from app.shared.rate_limit import (
+    message_edit_limit,
+    message_send_limit,
+    reaction_limit,
+    recipient_search_limit,
+    staff_thread_limit,
+)
 
 router = APIRouter(prefix='/messages', tags=['messages'])
 
@@ -206,7 +212,7 @@ async def send_message(
 async def edit_message_endpoint(
     message_id: UUID,
     payload: MessageEditRequest,
-    current_user: User = Depends(require_verified_user),
+    current_user: User = Depends(message_edit_limit),
     db: AsyncSession = Depends(get_db),
 ):
     """Edit your own message, within the edit window (report #5).
@@ -226,7 +232,7 @@ async def edit_message_endpoint(
 async def add_reaction(
     message_id: UUID,
     emoji: str,
-    current_user: User = Depends(require_verified_user),
+    current_user: User = Depends(reaction_limit),
     db: AsyncSession = Depends(get_db),
 ):
     """React to a message. Idempotent — reacting twice is success, not a conflict.
@@ -234,24 +240,40 @@ async def add_reaction(
     `PUT` rather than `POST` precisely because it is idempotent: a double-tap, or a retry after a
     dropped response, must not need the client to reason about whether the first one landed.
     """
-    await toggle_reaction(db, message_id=message_id, user_id=current_user.id, emoji=emoji, add=True)
+    conversation_id = await toggle_reaction(
+        db, message_id=message_id, user_id=current_user.id, emoji=emoji, add=True
+    )
     from app.features.realtime.runtime import broadcast_reaction
 
-    await broadcast_reaction(db, message_id=message_id, user_id=current_user.id, emoji=emoji, added=True)
+    await broadcast_reaction(
+        conversation_id=conversation_id,
+        message_id=message_id,
+        user_id=current_user.id,
+        emoji=emoji,
+        added=True,
+    )
 
 
 @router.delete('/{message_id}/reactions/{emoji}', status_code=status.HTTP_204_NO_CONTENT)
 async def remove_reaction(
     message_id: UUID,
     emoji: str,
-    current_user: User = Depends(require_verified_user),
+    current_user: User = Depends(reaction_limit),
     db: AsyncSession = Depends(get_db),
 ):
     """Remove your reaction. Idempotent — removing one that is not there is success."""
-    await toggle_reaction(db, message_id=message_id, user_id=current_user.id, emoji=emoji, add=False)
+    conversation_id = await toggle_reaction(
+        db, message_id=message_id, user_id=current_user.id, emoji=emoji, add=False
+    )
     from app.features.realtime.runtime import broadcast_reaction
 
-    await broadcast_reaction(db, message_id=message_id, user_id=current_user.id, emoji=emoji, added=False)
+    await broadcast_reaction(
+        conversation_id=conversation_id,
+        message_id=message_id,
+        user_id=current_user.id,
+        emoji=emoji,
+        added=False,
+    )
 
 
 @router.get('/{message_id}/read-by', response_model=list[MessageReadBy])

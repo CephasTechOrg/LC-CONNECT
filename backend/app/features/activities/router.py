@@ -18,13 +18,14 @@ from app.features.activities.schema import (
 from app.features.activities.service import activity_read
 from app.models import Activity, ActivityParticipant, User
 from app.shared.image_processing import sanitize_avatar
-from app.shared.rate_limit import avatar_upload_limit
+from app.shared.rate_limit import activity_create_limit, avatar_upload_limit
 from app.shared.storage import storage_service
 
 router = APIRouter(prefix='/activities', tags=['activities'])
 
 
-@router.post('', response_model=ActivityRead, status_code=status.HTTP_201_CREATED)
+@router.post('', response_model=ActivityRead, status_code=status.HTTP_201_CREATED,
+             dependencies=[Depends(activity_create_limit)])
 async def create_activity(payload: ActivityCreate, current_user: User = Depends(require_email_confirmed_user), db: AsyncSession = Depends(get_db)):
     activity = Activity(
         creator_id=current_user.id,

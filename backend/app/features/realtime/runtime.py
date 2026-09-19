@@ -227,7 +227,7 @@ async def broadcast_message_edited(message: Message, member_ids: list[UUID]) -> 
 
 
 async def broadcast_reaction(
-    db, *, message_id: UUID, user_id: UUID, emoji: str, added: bool
+    *, conversation_id: UUID, message_id: UUID, user_id: UUID, emoji: str, added: bool
 ) -> None:
     """Tell the conversation that a reaction changed (protocol 3).
 
@@ -240,16 +240,13 @@ async def broadcast_reaction(
     at the *frame* level, which is the same answer the database gives, so a client cannot end up
     disagreeing with the server about whether a chip is filled.
 
+    Takes the conversation rather than looking it up: `toggle_reaction` has already resolved it
+    to authorize the call, so re-querying here would be a second round trip for an answer we hold
+    — and one that could disagree with the first if the row changed in between.
+
     Best-effort, like every other broadcast here: a reaction that fails to fan out is still
     recorded, and the next page load carries it.
     """
-    from sqlalchemy import select
-
-    conversation_id = (
-        await db.execute(select(Message.conversation_id).where(Message.id == message_id))
-    ).scalar_one_or_none()
-    if conversation_id is None:
-        return
     await event_bus.publish_to_conversation(
         conversation_id,
         protocol.reaction_event(message_id, user_id, emoji, added=added),

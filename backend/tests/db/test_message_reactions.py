@@ -22,7 +22,7 @@ from app.features.messages.reactions import (
     toggle_reaction,
 )
 from app.features.messages.service import delete_message, persist_message_idempotent
-from app.models import Conversation, MessageReaction
+from app.models import Conversation, Message, MessageReaction
 
 THUMB = REACTION_ALLOWLIST[0]
 HEART = REACTION_ALLOWLIST[1]
@@ -159,6 +159,42 @@ async def test_reacting_to_a_deleted_message_is_refused(db, factory):
     with pytest.raises(HTTPException) as exc:
         await toggle_reaction(db, message_id=message.id, user_id=b.id, emoji=THUMB, add=True)
     assert exc.value.status_code == 409
+
+
+async def test_a_non_member_cannot_tell_a_deleted_message_from_a_missing_one(db, factory):
+    """Deletion state must sit *behind* the membership gate, not in front of it.
+
+    Checking `deleted_at` first answers "this id exists, and it was deleted" with a 409 to anyone
+    holding the id — including someone with no access to the conversation, who should see the same
+    404 an invented id gives.
+    """
+    from uuid import uuid4
+
+    a, b, message = await _dm(db, factory)
+    await delete_message(db, message.id, a.id)
+    outsider = await factory.user(display_name='Outsider')
+
+    codes = set()
+    for target in (message.id, uuid4()):
+        with pytest.raises(HTTPException) as exc:
+            await toggle_reaction(db, message_id=target, user_id=outsider.id, emoji=THUMB, add=True)
+        codes.add(exc.value.status_code)
+    assert codes == {404}, f'a non-member can distinguish the two: {codes}'
+
+
+async def test_the_toggle_hands_back_the_conversation_it_resolved(db, factory):
+    """The fan-out needs the conversation, and this function has already looked it up to
+    authorize the call. Returning it keeps a reaction at one lookup instead of two, and removes
+    the chance of the broadcast routing on a different answer than the write authorized against.
+    """
+    a, b, message = await _dm(db, factory)
+    expected = (
+        await db.execute(select(Message.conversation_id).where(Message.id == message.id))
+    ).scalar_one()
+
+    assert await toggle_reaction(
+        db, message_id=message.id, user_id=b.id, emoji=THUMB, add=True
+    ) == expected
 
 
 # ── the aggregate ─────────────────────────────────────────────────────────────

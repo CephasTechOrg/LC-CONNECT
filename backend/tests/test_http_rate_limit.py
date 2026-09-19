@@ -109,3 +109,105 @@ def test_both_resend_endpoints_carry_the_limit():
     assert len(seen) == 2, f'expected two resend endpoints, found {sorted(seen)}'
     for path, actions in seen.items():
         assert 'invite_resend' in actions, f'{path} is missing the resend rate limit'
+
+
+# ── message fan-out endpoints ─────────────────────────────────────────────────────
+
+
+def _message_route_actions() -> dict[tuple[str, str], set[str]]:
+    """(method, path) -> the set of dependency action names on that route."""
+    from fastapi.routing import APIRoute
+
+    from app.main import app
+
+    def _routes(routes):
+        for route in routes:
+            if isinstance(route, APIRoute):
+                yield route
+            elif type(route).__name__ == '_IncludedRouter':
+                yield from _routes(route.original_router.routes)
+            elif hasattr(route, 'routes'):
+                yield from _routes(route.routes)
+
+    found: dict[tuple[str, str], set[str]] = {}
+    for route in _routes(app.routes):
+        if not route.path.startswith('/messages'):
+            continue
+        actions = {
+            getattr(d.call, 'action', getattr(d.call, '__name__', ''))
+            for d in route.dependant.dependencies
+        }
+        for method in route.methods - {'HEAD', 'OPTIONS'}:
+            found[(method, route.path)] = actions
+    return found
+
+
+def test_every_fanning_out_message_write_is_rate_limited():
+    """Sending was capped while reacting and editing were not — the wrong way round.
+
+    A send reaches the conversation; a reaction *also* reaches every member, and an edit reaches
+    the conversation **and** every member's user channel. Each is cheaper per call than a send and
+    trivially repeatable, so an uncapped one is the better amplifier of the three.
+    """
+    actions = _message_route_actions()
+    expected = {
+        ('POST', '/messages/threads/{match_id}'): 'message_send',
+        ('PATCH', '/messages/{message_id}'): 'message_edit',
+        ('PUT', '/messages/{message_id}/reactions/{emoji}'): 'reaction',
+        ('DELETE', '/messages/{message_id}/reactions/{emoji}'): 'reaction',
+        ('POST', '/messages/staff-threads'): 'staff_thread',
+        ('GET', '/messages/search-recipients'): 'recipient_search',
+    }
+    for key, action in expected.items():
+        assert key in actions, f'{key} is not a route any more — update this test'
+        assert action in actions[key], f'{key[0]} {key[1]} is missing the {action!r} limit'
+
+
+async def test_reaction_and_edit_limits_block_at_their_configured_caps():
+    from app.config import settings
+    from app.shared.rate_limit import message_edit_limit, reaction_limit
+
+    for limit, cap, uid in (
+        (reaction_limit, settings.rate_limit_reactions_per_minute, 'reactor'),
+        (message_edit_limit, settings.rate_limit_message_edits_per_minute, 'editor'),
+    ):
+        limit._limiter._clock = lambda: 0.0  # freeze: a 60s window would otherwise refill mid-loop
+        user = _User(uid)
+        for _ in range(cap):
+            assert await limit(user) is user
+        with pytest.raises(HTTPException) as exc:
+            await limit(user)
+        assert exc.value.status_code == 429
+
+
+def test_creating_a_campus_visible_object_is_always_capped():
+    """Groups, campus posts and activities are the three things a student can create that land on
+    other people's dashboards. Two were capped and one — activities — was not, even though the
+    banner upload hanging off it was. The asymmetry was an oversight, so it is pinned here rather
+    than left to be noticed again."""
+    from fastapi.routing import APIRoute
+
+    from app.main import app
+
+    def _routes(routes):
+        for route in routes:
+            if isinstance(route, APIRoute):
+                yield route
+            elif type(route).__name__ == '_IncludedRouter':
+                yield from _routes(route.original_router.routes)
+            elif hasattr(route, 'routes'):
+                yield from _routes(route.routes)
+
+    expected = {
+        '/activities': 'activity_create',
+        '/groups': 'group_create',
+        '/my-posts': 'campus_post_create',
+    }
+    seen = {
+        route.path: {getattr(d.call, 'action', '') for d in route.dependant.dependencies}
+        for route in _routes(app.routes)
+        if route.path in expected and 'POST' in route.methods
+    }
+    for path, action in expected.items():
+        assert path in seen, f'{path} is no longer a POST route — update this test'
+        assert action in seen[path], f'POST {path} is missing the {action!r} limit'

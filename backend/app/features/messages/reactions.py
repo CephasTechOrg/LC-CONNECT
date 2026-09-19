@@ -32,7 +32,7 @@ REACTION_ALLOWLIST: tuple[str, ...] = ('👍', '❤️', '😂', '😮', '😢',
 
 async def toggle_reaction(
     db: AsyncSession, *, message_id: UUID, user_id: UUID, emoji: str, add: bool
-) -> None:
+) -> UUID:
     """Add or remove one person's one emoji on one message. Idempotent in both directions.
 
     Authorization is the same gate every other REST message endpoint uses, so a message id alone
@@ -40,6 +40,9 @@ async def toggle_reaction(
 
     Reacting to a soft-deleted message is refused. The body of a deleted message is never sent to
     clients, so a reaction on one would be attached to a tombstone nobody can read.
+
+    Returns the conversation the message belongs to, so the caller can fan the change out
+    without asking the database the question this function has already answered.
     """
     if emoji not in REACTION_ALLOWLIST:
         raise HTTPException(
@@ -55,14 +58,19 @@ async def toggle_reaction(
     if message is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Message not found')
     conversation_id, deleted_at = message
+
+    from app.shared.conversations import accessible_conversation
+
+    # Membership is checked *before* the deleted check, not after. The other order answers
+    # "does this message exist and was it deleted?" to anyone holding the id, including someone
+    # with no access to the conversation — a 409 where a stranger should see the same 404 a
+    # non-existent id gives. Authorizing first collapses both back into one answer.
+    await accessible_conversation(db, conversation_id, user_id)
+
     if deleted_at is not None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail='That message was deleted'
         )
-
-    from app.shared.conversations import accessible_conversation
-
-    await accessible_conversation(db, conversation_id, user_id)
 
     if not add:
         await db.execute(
@@ -73,7 +81,7 @@ async def toggle_reaction(
             )
         )
         await db.commit()
-        return
+        return conversation_id
 
     db.add(MessageReaction(message_id=message_id, user_id=user_id, emoji=emoji))
     try:
@@ -83,6 +91,7 @@ async def toggle_reaction(
         # double-tap, or two devices reacting at once, is success rather than an error. Reporting
         # a conflict here would make the client undo an optimistic chip that is in fact correct.
         await db.rollback()
+    return conversation_id
 
 
 async def reactions_for(

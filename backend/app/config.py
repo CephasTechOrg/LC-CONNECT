@@ -51,6 +51,9 @@ class Settings(BaseSettings):
     # Tune via env without a code change.
     rate_limit_connection_requests_per_day: int = Field(default=50, alias='RATE_LIMIT_CONNECTION_REQUESTS_PER_DAY')
     rate_limit_group_creates_per_day: int = Field(default=5, alias='RATE_LIMIT_GROUP_CREATES_PER_DAY')
+    rate_limit_activity_creates_per_day: int = Field(
+        default=5, alias='RATE_LIMIT_ACTIVITY_CREATES_PER_DAY'
+    )
     rate_limit_avatar_uploads_per_day: int = Field(default=10, alias='RATE_LIMIT_AVATAR_UPLOADS_PER_DAY')
     rate_limit_reports_per_day: int = Field(default=20, alias='RATE_LIMIT_REPORTS_PER_DAY')
     rate_limit_group_invites_per_day: int = Field(default=200, alias='RATE_LIMIT_GROUP_INVITES_PER_DAY')
@@ -128,6 +131,18 @@ class Settings(BaseSettings):
     # question rarely arises. It also matches what mainstream messengers have taught people to
     # expect, so the countdown needs no explanation.
     message_edit_window_seconds: int = Field(default=900, alias='MESSAGE_EDIT_WINDOW_SECONDS')
+    # A reaction is one small write, but it fans out to *every* member of the conversation — so in
+    # a 30-person group one tap is 30 socket writes. Generous enough that nobody reacting normally
+    # will ever see it; low enough that a held finger cannot amplify into the hundreds.
+    rate_limit_reactions_per_minute: int = Field(
+        default=60, alias='RATE_LIMIT_REACTIONS_PER_MINUTE'
+    )
+    # An edit writes an audit row *and* fans out to the conversation and every member's user
+    # channel. Unlimited, a single message could be edited hundreds of times inside its window,
+    # each one a permanent history row.
+    rate_limit_message_edits_per_minute: int = Field(
+        default=20, alias='RATE_LIMIT_MESSAGE_EDITS_PER_MINUTE'
+    )
     # Replies to frames this server does not implement, per connection per minute. Unlike the
     # malformed budget this never closes the socket — going over just stops the replies. Generous
     # because the legitimate cause is a newer client probing a feature, which happens in bursts on

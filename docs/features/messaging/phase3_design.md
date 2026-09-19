@@ -604,9 +604,9 @@ only those two fields, so nothing was lost.
   pace, and `_stampIfNeeded` already suppresses the rebuild when a re-sent receipt changes nothing —
   which is the case that actually recurs, after every reconnect.
 
-### 9.8 Open decision for the product owner
+### 9.8 Drafts in a backed-up directory — *resolved: moved to the cache directory*
 
-**Drafts and cached message bodies sit in a backed-up directory.** Both live under
+**Drafts and cached message bodies sat in a backed-up directory.** Both lived under
 `getApplicationDocumentsDirectory()`, which iOS includes in iCloud backups and Android in auto-backup.
 The message cache predates this work, but **unsent draft text is new**, and it is the most private
 content in the feature — it was never shown to anyone.
@@ -620,7 +620,122 @@ The options are a genuine tradeoff, not an oversight to fix silently:
 | Exclude from backup via platform code | Never backed up, never purged | Per-platform native code in both targets |
 
 Logout and account deletion already clear both (deletion routes through `logout()`, verified), so
-this is only about the backup surface of an *active* session. Recommendation: move drafts to the
-cache directory — the 30-day prune already treats them as transient — and leave the message cache
-where it is, since it is disposable by definition and predates this batch. Not done, because it
-changes behaviour users can notice.
+this was only about the backup surface of an *active* session.
+
+**Decided and done:** drafts moved to `getApplicationCacheDirectory()` — the 30-day prune already
+treated them as transient — with `migrateOffBackupPath()` carrying existing drafts across on first
+run and removing the old directory. The message cache stays in Documents: it is disposable by
+definition, it predates this batch, and moving it would invite the OS to purge conversation history
+a user can see.
+
+## 10. Final pre-ship hardening pass
+
+A last sweep over the whole batch before deploying, looking for gaps, security holes, edge cases,
+broken paths and anything left unclean. Six real findings; the rest of the review confirmed
+existing behaviour and is recorded in §10.7 so it is not re-investigated.
+
+### 10.1 Reactions and edits had no rate limit — *security*
+
+`POST /messages/threads/{id}` was capped at `RATE_LIMIT_MESSAGE_SENDS_PER_MINUTE`, while
+`PATCH /messages/{id}` and `PUT`/`DELETE /messages/{id}/reactions/{emoji}` — both added in this
+batch — had none. That is the wrong way round for amplification: a send reaches the conversation,
+a reaction *also* reaches every member, and an edit reaches the conversation **and** every member's
+user channel. Each is cheaper per call than a send and far easier to repeat.
+
+Added `reaction_limit` (60/min) and `message_edit_limit` (20/min), both env-tunable like every other
+limit. `test_every_fanning_out_message_write_is_rate_limited` now walks the route table so a future
+message endpoint cannot ship uncapped unnoticed.
+
+### 10.2 `POST /activities` was uncapped — *security*
+
+The same sweep over every write endpoint in the app found one more: creating an activity — a durable
+object that lands on every student's dashboard — had no limit, while creating a **group** (its exact
+analogue) was capped at 5/day and the activity's own *banner upload* was capped. An oversight rather
+than a decision, so it is now `activity_create_limit`, 5/day, matching groups.
+
+Admin write routes are deliberately left uncapped: an admin who wants to flood the dashboard can do
+it through the console, so a cap there buys nothing and obstructs real bulk work.
+
+### 10.3 Reactions leaked deleted-message existence — *security*
+
+`toggle_reaction` checked `deleted_at` **before** `accessible_conversation`, so a message id alone
+answered "this exists, and it was deleted" with a 409 — to anyone, including a user with no access
+to the conversation, who should get the same 404 an invented id gives. The docstring already claimed
+"a message id alone reveals nothing"; it was true of `edit_message` and `delete_message`, which both
+authorize first, and false only here.
+
+Authorization moved ahead of the deletion check. Guessing a v4 UUID is infeasible, so the practical
+exposure was nil — but the asymmetry with the two neighbouring functions is exactly the kind that
+gets copied.
+
+### 10.4 A long message became a permanently-failing bubble — *broken path*
+
+The server rejects a body over `MAX_BODY_CHARS` on **every** path — REST send, WebSocket send, and
+edit. The composer had no cap at all, so a 2001-character message went out optimistically, was
+rejected, and settled as a red bubble whose **Retry could never succeed**, however many times it was
+pressed. The same dead-end shape as report #8's "Scan again" button on a closed session.
+
+The edit sheet did cap at a hardcoded `2000`. Both now use `kMaxMessageChars` from
+`lib/features/messages/data/message_limits.dart`, the client mirror of `app/shared/message_limits.py`
+— the composer through a `LengthLimitingTextInputFormatter` (a formatter rather than `maxLength`, so
+no character counter appears in the chat bar), the edit sheet through `maxLength`. `maxDraftChars` is
+now derived from it rather than restating 4000.
+
+The two constants cannot be shared across the language boundary, so
+`tests/test_message_limits_parity.py` asserts them against each other. Drift here is otherwise
+invisible until a user pastes something long.
+
+### 10.5 Four sign-out paths skipped the privacy teardown — *privacy*
+
+`_clearLocalChatData()` — which drops cached message bodies and unsent drafts — ran only inside
+`logout()`. But most sign-outs are not the user pressing Log out:
+
+| Path | Cause |
+|---|---|
+| `api_client.dart` Dio interceptor | refresh token finally rejected — **the common one** |
+| `auth_provider` bootstrap | a genuine auth failure (not unreachable, which no longer signs out) |
+| `auth_provider` sign-in | signed in but never bootstrapped |
+| `auth_provider` password reset | session dropped after the update |
+
+All four left cached conversations and unsent drafts on disk for whoever signed in next, which on a
+shared campus device is the whole risk the store carries. The teardown moved to the
+`AuthChangeEvent.signedOut` listener — the one point every sign-out passes through, whoever started
+it — unawaited, because a best-effort disk wipe must not hold up the state change that returns the
+user to the login screen. `logout()` keeps its own awaited call so the deterministic path finishes
+clearing before the session goes; `clearAll` is idempotent, so running twice costs an empty directory
+walk.
+
+### 10.6 A reaction cost two lookups for one answer — *latency*
+
+`toggle_reaction` resolved the message's conversation to authorize the call and then discarded it;
+`broadcast_reaction` immediately re-queried the same value to route the fan-out. The toggle now
+returns it and the broadcast takes it as a parameter — one round trip instead of two, and the
+broadcast can no longer route on a different answer than the write authorized against.
+
+### 10.7 Checked and found correct — do not re-investigate
+
+* **Neither an edit nor a reaction fires a push.** Only new messages do, as specified.
+* **Authorization ordering in `edit_message` and `delete_message`** — both authorize before
+  revealing existence or state; the sender check returns 404 rather than 403 precisely so a
+  non-sender cannot learn a message exists and is merely un-editable.
+* **The emoji reaches the server encoded** (`Uri.encodeComponent`) and is allowlist-checked before
+  any database work.
+* **The reaction picker and edit sheet are reachable end to end** — chat screen → body → list →
+  bubble → picker/sheet, both gated on the server's advertised protocol version so a control that
+  would 404 is never offered.
+* **No dead code from the `service.py` split.** Every apparently-unreferenced name in the messages
+  feature is a FastAPI route handler, referenced by decorator.
+* **The migration chain is linear with a single head** (`dd7dc4d01780`), so the five queued
+  migrations apply cleanly on boot.
+* **Client-side URL construction** — every interpolated path segment is a server-issued UUID or a
+  compile-time constant; the one query parameter (`?session=`) carries a UUID from our own payload.
+* **`kMessageEditProtocolVersion`** was added rather than reusing `kReactionProtocolVersion` for the
+  edit gate. Same value today (3), but they are independent capabilities: a later version moving one
+  would otherwise silently take the other with it.
+
+### 10.8 Gate
+
+`ruff` clean; **414** backend unit tests, **500** backend integration tests, **674** mobile tests,
+`flutter analyze` with no issues, and `check_line_limits.py` passing. The OpenAPI snapshot is
+unchanged — every change in this pass is a dependency, an ordering, or a client constant, none of
+which alters the contract.

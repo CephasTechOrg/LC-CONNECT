@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -113,6 +115,15 @@ class AuthNotifier extends AsyncNotifier<AuthUser?> {
     final sub = _auth.onAuthStateChange.listen((data) {
       if (data.event == AuthChangeEvent.signedOut) {
         ref.read(suspendedSessionProvider.notifier).set(null);
+        // The teardown lives here, not only in [logout], because most sign-outs are not the user
+        // pressing Log out: the Dio interceptor signs out when a refresh token is finally
+        // rejected, and bootstrap signs out when the account is genuinely gone. Those paths left
+        // cached message bodies and unsent drafts on disk for whoever signed in next. This event
+        // is the one point every sign-out passes through, whoever started it.
+        //
+        // Unawaited deliberately — the listener is synchronous, and a best-effort disk wipe must
+        // not be able to hold up the state change that returns the user to the login screen.
+        unawaited(_clearLocalChatData());
         state = const AsyncData(null);
       }
     });
@@ -366,6 +377,9 @@ class AuthNotifier extends AsyncNotifier<AuthUser?> {
     _pendingEmail = null;
     _pendingContactEmail = null;
     ref.read(suspendedSessionProvider.notifier).set(null);
+    // Awaited here as well as in the `signedOut` listener: on the path the user chose, the wipe
+    // should be finished before the session is, and this is the call a test can hold onto.
+    // `clearAll` is idempotent, so running twice costs an empty directory walk.
     await _clearLocalChatData();
     await _auth.signOut();
     state = const AsyncLoading();

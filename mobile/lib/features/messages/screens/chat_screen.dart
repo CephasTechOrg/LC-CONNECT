@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -30,6 +31,7 @@ import '../providers/read_by_provider.dart';
 import '../providers/unread_provider.dart';
 import '../widgets/message_status_icon.dart';
 import '../data/chat_draft_store.dart';
+import '../data/message_limits.dart';
 import '../data/chat_message_cache.dart';
 
 part '../widgets/chat_header.dart';
@@ -277,7 +279,7 @@ class _ChatScreenState extends _ChatScreenStateBase
       // offering the control would give a 404 on tap. Same reasoning as the delivered tick.
       onReact: rt.supportsProtocol(kReactionProtocolVersion) ? toggleReaction : null,
       // Same gate: a server below protocol 3 has no `PATCH /messages/{id}` either.
-      onEdit: rt.supportsProtocol(kReactionProtocolVersion) ? promptEdit : null,
+      onEdit: rt.supportsProtocol(kMessageEditProtocolVersion) ? promptEdit : null,
       onRetry: retry,
       onScrollToBottomTap: scrollToBottomTap,
       onSend: send,

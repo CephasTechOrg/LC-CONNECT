@@ -34,6 +34,12 @@ class _InputBar extends StatelessWidget {
                 textCapitalization: TextCapitalization.sentences,
                 maxLines: 4,
                 minLines: 1,
+                // Truncate at the server's own cap rather than letting the message be typed,
+                // sent, and rejected — see [kMaxMessageChars]. A formatter rather than
+                // `maxLength` so no character counter appears in the bar.
+                inputFormatters: [
+                  LengthLimitingTextInputFormatter(kMaxMessageChars),
+                ],
                 style: GoogleFonts.dmSans(
                     fontSize: 14, color: AppColors.textDark),
                 decoration: InputDecoration(

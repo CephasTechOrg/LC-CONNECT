@@ -395,7 +395,7 @@ class _EditMessageSheetState extends State<_EditMessageSheet> {
                 autofocus: true,
                 maxLines: 5,
                 minLines: 1,
-                maxLength: 2000,
+                maxLength: kMaxMessageChars,
                 enabled: !expired,
                 decoration: const InputDecoration(hintText: 'Your message'),
               ),

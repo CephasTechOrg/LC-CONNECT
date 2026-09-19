@@ -4,16 +4,17 @@ import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 
+import 'message_limits.dart';
+
 /// The on-disk format version for a draft, for the reasons given in [ChatMessageCache].
 const int chatDraftFormatVersion = 1;
 
 /// The longest draft kept.
 ///
-/// The server caps a message body at 2000 characters (`MAX_BODY_CHARS`), so a draft beyond that
-/// can never be sent as one message. A little headroom above the cap is deliberate: a user who
-/// has overrun the limit and needs to trim their text must not have the overflow silently eaten
-/// when they switch away and come back.
-const int maxDraftChars = 4000;
+/// Headroom above [kMaxMessageChars] is deliberate: a user who has pasted more than one message's
+/// worth and needs to split or trim it must not have the overflow silently eaten when they switch
+/// away and come back. The composer itself truncates at the sendable limit.
+const int maxDraftChars = kMaxMessageChars * 2;
 
 /// Unsent composer text, kept per conversation across leaving the screen, backgrounding, and
 /// app restart (report #1).

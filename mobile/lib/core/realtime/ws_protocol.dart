@@ -6,8 +6,9 @@ library;
 /// `RealtimeClient.supportsProtocol`, and gate every frame added after v1 on it.
 ///
 /// 2 adds `messages.delivered` (outbound) and `messages.delivery` (inbound).
-/// 3 adds `messages.reaction` (inbound). Reactions are *applied* over REST, not as a frame: the
-/// request needs a response an optimistic chip can be rolled back from.
+/// 3 adds `messages.reaction` and `message.edited` (both inbound). Reactions and edits are
+/// *applied* over REST, not as frames: each needs a response an optimistic change can be rolled
+/// back from, and an edit additionally needs the 409 that says the window has passed.
 const int kProtocolVersion = 3;
 
 /// Frames introduced in protocol 2. Pass to `RealtimeClient.supportsProtocol` before sending one.
@@ -17,6 +18,11 @@ const int kDeliveryProtocolVersion = 2;
 /// affordance rather than a frame: a server below this has no `/reactions` endpoint either, and
 /// offering a control that 404s is worse than not offering it.
 const int kReactionProtocolVersion = 3;
+
+/// Editing arrived alongside reactions, in the same protocol 3. Gated separately from
+/// [kReactionProtocolVersion] despite the equal value: they are independent capabilities, and a
+/// later version that moves one without the other would otherwise silently take the other with it.
+const int kMessageEditProtocolVersion = 3;
 
 // ── Outbound frames (client → server) ─────────────────────────────────────────
 

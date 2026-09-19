@@ -244,4 +244,34 @@ void main() {
       await expectLater(migrating.migrateOffBackupPath(), completes);
     });
   });
+
+  group('the teardown is wired to every sign-out, not just the button', () {
+    // `clearAll` above proves the wipe works; this proves it is reached. Most sign-outs are not
+    // the user pressing Log out — the Dio interceptor signs out when a refresh token is finally
+    // rejected, and bootstrap signs out when the account is gone. Those paths bypassed `logout`
+    // entirely and left cached bodies and unsent drafts on disk for the next person to sign in,
+    // which on a shared campus device is the whole risk this store carries.
+    //
+    // Asserted against the source because the real listener needs a live GoTrue client that no
+    // widget test has. It is a coarse check, but it fails if the call is removed, which is the
+    // regression worth catching.
+    final source =
+        File('lib/features/auth/providers/auth_provider.dart').readAsStringSync();
+
+    test('the signedOut event clears local chat data', () {
+      final signedOut = source.indexOf('AuthChangeEvent.signedOut');
+      expect(signedOut, greaterThan(-1), reason: 'the signedOut branch is gone');
+      final branch = source.substring(signedOut, signedOut + 900);
+      expect(branch, contains('_clearLocalChatData()'));
+    });
+
+    test('logout still clears it on the deterministic path', () {
+      expect(source, contains('await _clearLocalChatData();'));
+    });
+
+    test('the teardown covers both stores', () {
+      expect(source, contains('chatDraftStoreProvider).clearAll()'));
+      expect(source, contains('chatMessageCacheProvider).clearAll()'));
+    });
+  });
 }

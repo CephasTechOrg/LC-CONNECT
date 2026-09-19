@@ -157,6 +157,13 @@ group_create_limit = UserRateLimit(
     'group_create', settings.rate_limit_group_creates_per_day, _DAY,
     "You've created too many groups today — try again tomorrow.",
 )
+# Same shape and the same cap as a group: both create a durable object that lands on every
+# student's dashboard. Creating one was the only such endpoint left uncapped — its own banner
+# upload was limited while the activity it hangs off was not.
+activity_create_limit = UserRateLimit(
+    'activity_create', settings.rate_limit_activity_creates_per_day, _DAY,
+    "You've created too many activities today — try again tomorrow.",
+)
 avatar_upload_limit = UserRateLimit(
     'avatar_upload', settings.rate_limit_avatar_uploads_per_day, _DAY,
     'Too many photo updates today — try again later.',
@@ -201,6 +208,18 @@ attendance_check_in_limiter = RateLimiter(
 message_send_limit = UserRateLimit(
     'message_send', settings.rate_limit_message_sends_per_minute, 60,
     'Slow down — too many messages sent.',
+)
+# Reactions and edits were unlimited while sending was capped, which is the wrong way round for
+# amplification: a send reaches the conversation, but a reaction *also* reaches every member, and
+# an edit reaches the conversation **and** every member's user channel. Both are cheaper per call
+# than a send and far easier to repeat.
+reaction_limit = UserRateLimit(
+    'reaction', settings.rate_limit_reactions_per_minute, 60,
+    'Slow down — too many reactions.',
+)
+message_edit_limit = UserRateLimit(
+    'message_edit', settings.rate_limit_message_edits_per_minute, 60,
+    'Slow down — too many edits.',
 )
 
 
