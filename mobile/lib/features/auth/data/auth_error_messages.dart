@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Turns a Supabase auth failure into something a student can act on.
@@ -35,9 +36,24 @@ String authErrorMessage(Object error) {
     'weak_password' => 'Please choose a stronger password.',
     'validation_failed' => 'Please check the details you entered and try again.',
     'user_banned' => 'This account has been suspended. Contact an administrator.',
+    'signup_disabled' => "New accounts can't be created right now. Please try again later.",
+    'email_address_invalid' => "That email address isn't valid. Please check it and try again.",
+    // A Supabase auth hook failed. The only hook this project runs is the Send Email hook, so in
+    // practice this is "the verification code could not be sent" — and it is never the user's
+    // fault. The hook is fail-closed, so when it breaks, signup breaks for everyone; a hook that
+    // fails with an HTTP error rather than one of these codes lands in the 5xx branch of
+    // [_fallback] instead, which says the same thing in more general terms.
+    'hook_timeout' ||
+    'hook_timeout_after_retry' ||
+    'hook_payload_over_size_limit' ||
+    'hook_payload_invalid_content_type' =>
+      _emailSendFailed,
     _ => _fallback(error, retry),
   };
 }
+
+const _emailSendFailed =
+    "We couldn't send your verification email just now. Please try again in a few minutes.";
 
 /// Supabase encodes the wait in the message ("...after 41 seconds"), not in a field, so the one
 /// genuinely useful number in a rate-limit error has to be read back out of the text. Failing to
@@ -81,5 +97,28 @@ String _fallback(AuthException error, String? retry) {
   if (error.statusCode == '429') {
     return 'Too many attempts. Please wait ${retry ?? 'a few minutes'} before trying again.';
   }
-  return 'Something went wrong. Please try again.';
+  // A 5xx is Supabase (or a hook it called) failing, never bad input. Saying "please try again"
+  // without saying whose side failed sends people round the form re-checking details that were
+  // fine all along.
+  final status = int.tryParse(error.statusCode ?? '');
+  if (status != null && status >= 500) {
+    return "LC Connect couldn't finish that on our side. Please try again in a few minutes."
+        '${_reference(error)}';
+  }
+  return 'Something went wrong. Please try again.${_reference(error)}';
+}
+
+/// A short, non-sensitive reference appended to messages this mapper could not explain.
+///
+/// Without it, an unrecognised failure left no trace anywhere: Supabase's reply never reaches our
+/// server logs, and the app replaced it with a generic sentence. Signup was broken for every new
+/// user and the only evidence was a screenshot saying "Something went wrong". The code is a
+/// documented Supabase identifier (e.g. `unexpected_failure`), not the message, so it carries
+/// nothing about the user — but it turns a tester's screenshot into a diagnosis.
+String _reference(AuthException error) {
+  if (kDebugMode) {
+    debugPrint('AuthException code=${error.code} status=${error.statusCode}: ${error.message}');
+  }
+  final ref = error.code ?? (error.statusCode == null ? null : 'http_${error.statusCode}');
+  return ref == null ? '' : ' (Ref: $ref)';
 }

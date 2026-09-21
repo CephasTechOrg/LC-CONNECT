@@ -70,4 +70,63 @@ void main() {
       expect(authErrorMessage(Exception('boom')), contains('connection'));
     });
   });
+
+  // Signup broke for every new user and the only evidence was a screenshot of "Something went
+  // wrong. Please try again." Supabase's reply never reaches our server logs, and this mapper
+  // replaced it with a generic sentence — so the failure was invisible from both ends.
+  group('a failure the mapper cannot explain still leaves a trace', () {
+    test('an unknown code is carried as a reference', () {
+      final msg = authErrorMessage(
+        const AuthException('Error sending confirmation email',
+            statusCode: '400', code: 'some_new_code'),
+      );
+      expect(msg, contains('Something went wrong'));
+      expect(msg, contains('(Ref: some_new_code)'));
+    });
+
+    test('with no code, the HTTP status is the reference', () {
+      final msg = authErrorMessage(const AuthException('x', statusCode: '418'));
+      expect(msg, contains('(Ref: http_418)'));
+    });
+
+    test('the raw Supabase message is never shown', () {
+      // The code is a documented identifier; the message is developer text that may echo input.
+      final msg = authErrorMessage(
+        const AuthException('Error sending confirmation email',
+            statusCode: '400', code: 'some_new_code'),
+      );
+      expect(msg, isNot(contains('Error sending confirmation email')));
+    });
+  });
+
+  group('a server-side failure says whose side failed', () {
+    test('a 5xx is not presented as something the user did', () {
+      // "Please try again" alone sends people back round the form re-checking details that were
+      // fine all along. A 5xx is Supabase, or a hook it called, failing — never bad input.
+      final msg = authErrorMessage(
+        const AuthException('Error sending confirmation email',
+            statusCode: '500', code: 'unexpected_failure'),
+      );
+      expect(msg, contains('on our side'));
+      expect(msg, contains('(Ref: unexpected_failure)'));
+    });
+
+    test('a failing email hook says the email could not be sent', () {
+      for (final code in [
+        'hook_timeout',
+        'hook_timeout_after_retry',
+        'hook_payload_over_size_limit',
+        'hook_payload_invalid_content_type',
+      ]) {
+        final msg = authErrorMessage(AuthException('x', statusCode: '500', code: code));
+        expect(msg, contains('verification email'), reason: 'for $code');
+      }
+    });
+
+    test('a 429 is still a rate limit, not a server failure', () {
+      final msg = authErrorMessage(const AuthException('x', statusCode: '429'));
+      expect(msg, contains('Too many attempts'));
+      expect(msg, isNot(contains('on our side')));
+    });
+  });
 }
