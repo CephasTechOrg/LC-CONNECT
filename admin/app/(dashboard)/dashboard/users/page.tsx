@@ -192,17 +192,15 @@ export default function UsersPage() {
                 : 'Try clearing filters or searching a different name or email.'}
             </OpsEmpty>
           ) : (
-            <table className="ops-table ops-cards-sm">
+            <table className="ops-table ops-cards-sm users-table">
               <thead>
                 <tr>
                   <th>User</th>
-                  <th>Campus email</th>
                   <th className="ops-col-hide-md">Personal email</th>
                   <th>Role</th>
-                  <th>Email</th>
-                  <th>Campus badge</th>
+                  <th>Verification</th>
                   <th>Account</th>
-                  <th>Actions</th>
+                  <th className="ops-col-actions">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -215,25 +213,31 @@ export default function UsersPage() {
                       <td>
                         <div className="ops-user-cell">
                           <div className="ops-avatar">{initials(u.display_name, u.email)}</div>
-                          <div className="ops-cell-title">{u.display_name || '—'}</div>
+                          <div className="ops-user-cell-text">
+                            <div className="ops-cell-title" title={u.display_name || undefined}>
+                              {u.display_name || '—'}
+                            </div>
+                            <div className="ops-cell-sub" title={u.email}>{u.email}</div>
+                          </div>
                         </div>
                       </td>
-                      <td data-label="Campus email">{u.email}</td>
                       <td className="ops-col-hide-md" data-label="Personal email">
-                        {u.contact_email || '—'}
+                        <span className="ops-cell-link" title={u.contact_email || undefined}>
+                          {u.contact_email || '—'}
+                        </span>
                       </td>
                       <td data-label="Role" style={{ textTransform: 'capitalize' }}>
                         {u.role}
                       </td>
-                      <td data-label="Email">
-                        <span className={u.is_verified ? 'ops-chip success' : 'ops-chip muted'}>
-                          {u.is_verified ? 'Confirmed' : 'Pending OTP'}
-                        </span>
-                      </td>
-                      <td data-label="Campus badge">
-                        <span className={u.campus_verified ? 'ops-chip success' : 'ops-chip muted'}>
-                          {u.campus_verified ? 'Verified' : 'Not verified'}
-                        </span>
+                      <td data-label="Verification">
+                        <div className="ops-chip-stack">
+                          <span className={u.is_verified ? 'ops-chip success' : 'ops-chip muted'}>
+                            {u.is_verified ? 'Email confirmed' : 'Email pending'}
+                          </span>
+                          <span className={u.campus_verified ? 'ops-chip success' : 'ops-chip muted'}>
+                            {u.campus_verified ? 'Campus verified' : 'No campus badge'}
+                          </span>
+                        </div>
                       </td>
                       <td data-label="Account">
                         <span
@@ -248,10 +252,10 @@ export default function UsersPage() {
                           {u.status}
                         </span>
                       </td>
-                      <td className="ops-cell-actions">
+                      <td className="ops-col-actions ops-cell-actions">
                         <div className="ops-row-actions">
                           {u.role === 'admin' ? (
-                            <span className="ops-cell-sub" style={{ fontStyle: 'italic' }}>
+                            <span className="ops-cell-sub" style={{ fontStyle: 'italic', marginTop: 0 }}>
                               Managed in Admins &amp; Roles
                             </span>
                           ) : (

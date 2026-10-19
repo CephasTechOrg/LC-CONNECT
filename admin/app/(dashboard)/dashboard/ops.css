@@ -82,6 +82,15 @@
   min-width: 680px;
 }
 
+/* Users page drops the duplicate campus-email column into the identity cell. */
+.ops-table.users-table {
+  min-width: 720px;
+}
+
+.ops-table.users-table .ops-user-cell {
+  max-width: 320px;
+}
+
 .ops-table th,
 .ops-table td {
   text-align: left;
@@ -159,6 +168,30 @@
   align-items: center;
   gap: 10px;
   min-width: 0;
+  /* Give the identity column room so "First Last" doesn't wrap into a stack. */
+  max-width: 280px;
+}
+
+.ops-user-cell-text {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.ops-user-cell .ops-cell-title {
+  /* Prefer a single-line name with ellipsis over stacking "Cephas" / "Bonsu". */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: normal;
+  overflow-wrap: normal;
+}
+
+.ops-user-cell .ops-cell-sub {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: normal;
+  overflow-wrap: anywhere; /* long emails may still need to break */
 }
 
 .ops-avatar {
@@ -198,6 +231,13 @@
   flex-wrap: wrap;
   gap: 6px;
   margin-top: 8px;
+}
+
+.ops-chip-stack {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
 }
 
 .ops-row-actions {
@@ -480,6 +520,10 @@
   .ops-table {
     min-width: 560px;
   }
+
+  .ops-table.users-table {
+    min-width: 600px;
+  }
 }
 
 @media (max-width: 900px) {
@@ -675,6 +719,31 @@
 
   .ops-table.ops-cards-sm td:first-child > * {
     text-align: left;
+    overflow-wrap: normal;
+  }
+
+  .ops-table.ops-cards-sm td:first-child .ops-user-cell {
+    max-width: none;
+    width: 100%;
+  }
+
+  .ops-table.ops-cards-sm td:first-child .ops-cell-title {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 15.5px;
+  }
+
+  .ops-table.ops-cards-sm td:first-child .ops-cell-sub {
+    margin-top: 3px;
+  }
+
+  /* Chip pairs (e.g. email + campus) stay readable on the right of the card row. */
+  .ops-table.ops-cards-sm td .ops-chip-stack {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: flex-end;
   }
 
   /* Actions sit as a full-width row of buttons at the foot of the card. */
