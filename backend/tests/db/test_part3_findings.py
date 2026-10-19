@@ -168,12 +168,16 @@ async def test_duplicate_send_keeps_the_conversation(db, factory):
     assert still_there is not None
 
 
-async def test_attendance_sweep_closes_a_lapsed_session(db, factory):
+async def test_attendance_sweep_closes_a_lapsed_session(db, factory, monkeypatch):
     """Finding #2 asked for a scheduler, because `maybe_auto_close_session` is read-triggered: a
     lapsed session stayed `open` and held the partial unique index, blocking the next session with
     a 409 until something happened to read it. 1.3 added the sweep; this asserts it still works.
     """
+    from app.config import settings
     from app.features.attendance.service import start_session, sweep_expired_sessions
+
+    monkeypatch.setattr(settings, 'honors_attendance_enabled', True)
+    monkeypatch.setattr(settings, 'attendance_qr_signing_secret', 'test-signing-secret')
 
     await _honors_program(db)
     instructor = await factory.user(display_name='Instructor')

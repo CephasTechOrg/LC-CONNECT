@@ -1,6 +1,6 @@
 """backfill scholar consent_version for discovery gate
 
-Revision ID: a1b2c3d4e5f6
+Revision ID: g1a2b3c4d5e6
 Revises: f9a0b1c2d3e4
 Create Date: 2026-10-19
 
@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from alembic import op
 
-revision = 'a1b2c3d4e5f6'
+revision = 'g1a2b3c4d5e6'
 down_revision = 'f9a0b1c2d3e4'
 branch_labels = None
 depends_on = None
