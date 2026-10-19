@@ -69,6 +69,22 @@ class MyEmployerRead(BaseModel):
     agreement_accepted: bool
 
 
+class EmployerScholarInternship(BaseModel):
+    title: str
+    organization: str
+    start_date: str | None = None
+    end_date: str | None = None
+    is_current: bool = False
+    description: str | None = None
+
+
+class EmployerScholarProject(BaseModel):
+    name: str
+    role: str | None = None
+    url: str | None = None
+    description: str | None = None
+
+
 class EmployerScholarView(BaseModel):
     """The **entire** employer-facing view of a scholar — deliberately hand-built (never
     `ProfilePublic.model_validate(...)`, never `**profile.__dict__`) so a future field added to
@@ -83,6 +99,8 @@ class EmployerScholarView(BaseModel):
     summary: str | None
     skills: list[str]
     career_interests: list[str]
+    internships: list[EmployerScholarInternship] = Field(default_factory=list)
+    projects: list[EmployerScholarProject] = Field(default_factory=list)
     has_headshot: bool
     has_resume: bool
     # A short-lived signed URL for the headshot, so the portal can render the face inline instead

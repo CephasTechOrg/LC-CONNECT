@@ -22,20 +22,19 @@ import '../../safety/widgets/safety_sheet.dart';
 part '../widgets/discovery_student_card.dart';
 part '../widgets/discovery_card_parts.dart';
 
+// Labels mirror backend DEFAULT_LOOKING_FOR (seed.py). Retired codes (e.g. open_connection)
+// stay out of the chip row — filters already express intent, so no Students/Study Partners
+// segment chrome above search.
 const _filters = [
   ('all', 'All'),
   ('friendship', 'Friendship'),
-  ('study_partner', 'Study Partner'),
-  ('language_exchange', 'Language Exchange'),
-  ('events', 'Events'),
-  ('open_connection', 'Open Connection'),
+  ('study_partner', 'Study partner'),
+  ('language_exchange', 'Language exchange'),
+  ('events', 'Campus events'),
 ];
 
-// Groups moved to the Messages hub (report #19): here they sat behind a header reading
-// "Connect" — which is why testers described them as being in Connections — four levels of
-// chrome deep, and unreachable entirely for staff, since this screen returns the staff
-// directory outright for any non-student role. '/discover?tab=groups' now redirects.
-const _tabs = ['Students', 'Study Partners'];
+// Groups moved to the Messages hub (report #19). '/discover?tab=groups' redirects there;
+// '?tab=study' still selects the Study partner filter chip.
 
 class DiscoveryScreen extends ConsumerStatefulWidget {
   const DiscoveryScreen({super.key});
@@ -48,7 +47,6 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
   final _searchCtrl = TextEditingController();
   String _query = '';
   String _activeFilter = 'all';
-  String _tab = 'Students';
   String? _lastQueryTab;
 
   @override
@@ -57,37 +55,26 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
     super.dispose();
   }
 
-  void _syncTabFromRoute(BuildContext context) {
+  void _syncFilterFromRoute(BuildContext context) {
     final tabParam =
         GoRouterState.of(context).uri.queryParameters['tab']?.toLowerCase();
     if (tabParam == _lastQueryTab) return;
     _lastQueryTab = tabParam;
-    final next = switch (tabParam) {
-      // 'groups' is absent deliberately: the route redirects it to the Messages hub.
-      'study' || 'study_partners' || 'studypartners' => 'Study Partners',
-      'students' => 'Students',
+    final nextFilter = switch (tabParam) {
+      'study' || 'study_partners' || 'studypartners' => 'study_partner',
+      'students' || null || '' => null,
       _ => null,
     };
-    if (next != null && next != _tab) {
+    if (nextFilter != null && nextFilter != _activeFilter) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        setState(() {
-          _tab = next;
-          if (next == 'Study Partners') {
-            _activeFilter = 'study_partner';
-          }
-        });
+        setState(() => _activeFilter = nextFilter);
       });
     }
   }
 
   List<DiscoveryCard> _applyFilters(List<DiscoveryCard> cards) {
     var list = cards;
-    if (_tab == 'Study Partners') {
-      list = list
-          .where((c) => c.lookingForCodes.contains('study_partner'))
-          .toList();
-    }
     if (_activeFilter != 'all') {
       list = list
           .where((c) => c.lookingForCodes.contains(_activeFilter))
@@ -107,7 +94,7 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    _syncTabFromRoute(context);
+    _syncFilterFromRoute(context);
     final role = ref.watch(authNotifierProvider).asData?.value?.role ?? 'student';
     if (role != 'student') {
       // Staff don't match with students — they browse and message them.
@@ -126,7 +113,6 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildHeader(),
-            _buildSegmentTabs(),
             const SizedBox(height: 12),
             _buildSearchBar(),
             const SizedBox(height: 12),
@@ -156,58 +142,15 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
   }
 
   Widget _buildHeader() {
+    // Nav already says Connect — no subtitle repeating “study partners”.
     return AppShellHeader(
       title: 'Connect',
-      subtitle: 'Students & study partners at Livingstone',
       trailing: const Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           ConnectionRequestsButton(),
           NotificationsBellButton(),
         ],
-      ),
-    );
-  }
-
-  Widget _buildSegmentTabs() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-      child: Row(
-        children: _tabs.map((t) {
-          final on = _tab == t;
-          return Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 3),
-              child: Material(
-                color: on ? AppColors.primary : AppColors.surface,
-                borderRadius: BorderRadius.circular(10),
-                child: InkWell(
-                  onTap: () => setState(() {
-                    _tab = t;
-                    if (t == 'Study Partners') {
-                      _activeFilter = 'study_partner';
-                    } else if (t == 'Students') {
-                      _activeFilter = 'all';
-                    }
-                  }),
-                  borderRadius: BorderRadius.circular(10),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 9),
-                    child: Text(
-                      t,
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.dmSans(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: on ? Colors.white : AppColors.textMid,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          );
-        }).toList(),
       ),
     );
   }

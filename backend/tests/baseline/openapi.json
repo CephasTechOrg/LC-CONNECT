@@ -3674,6 +3674,108 @@
         "title": "EmployerRejectRequest",
         "type": "object"
       },
+      "EmployerScholarInternship": {
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "end_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Date"
+          },
+          "is_current": {
+            "default": false,
+            "title": "Is Current",
+            "type": "boolean"
+          },
+          "organization": {
+            "title": "Organization",
+            "type": "string"
+          },
+          "start_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Date"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "organization"
+        ],
+        "title": "EmployerScholarInternship",
+        "type": "object"
+      },
+      "EmployerScholarProject": {
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "EmployerScholarProject",
+        "type": "object"
+      },
       "EmployerScholarView": {
         "description": "The **entire** employer-facing view of a scholar \u2014 deliberately hand-built (never\n`ProfilePublic.model_validate(...)`, never `**profile.__dict__`) so a future field added to\nthe social `Profile` or `User` can never leak through here by accident. `display_name` is the\none non-\"professional\" field allowed \u2014 baseline identification, not social/behavioral data\n(no bio, major, class year, interests, avatar, activities, groups, or messages).",
         "properties": {
@@ -3725,6 +3827,13 @@
             ],
             "title": "Headshot Url"
           },
+          "internships": {
+            "items": {
+              "$ref": "#/components/schemas/EmployerScholarInternship"
+            },
+            "title": "Internships",
+            "type": "array"
+          },
           "linkedin_url": {
             "anyOf": [
               {
@@ -3735,6 +3844,13 @@
               }
             ],
             "title": "Linkedin Url"
+          },
+          "projects": {
+            "items": {
+              "$ref": "#/components/schemas/EmployerScholarProject"
+            },
+            "title": "Projects",
+            "type": "array"
           },
           "skills": {
             "items": {
@@ -6636,6 +6752,70 @@
         "title": "RevokeCampusVerificationRequest",
         "type": "object"
       },
+      "ScholarInternshipEntry": {
+        "description": "One past or current internship / work experience line.",
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "end_date": {
+            "anyOf": [
+              {
+                "maxLength": 40,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Date"
+          },
+          "is_current": {
+            "default": false,
+            "title": "Is Current",
+            "type": "boolean"
+          },
+          "organization": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Organization",
+            "type": "string"
+          },
+          "start_date": {
+            "anyOf": [
+              {
+                "maxLength": 40,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Date"
+          },
+          "title": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "organization"
+        ],
+        "title": "ScholarInternshipEntry",
+        "type": "object"
+      },
       "ScholarProfessionalProfileRead": {
         "properties": {
           "career_interests": {
@@ -6690,6 +6870,13 @@
             "title": "Id",
             "type": "string"
           },
+          "internships": {
+            "items": {
+              "$ref": "#/components/schemas/ScholarInternshipEntry"
+            },
+            "title": "Internships",
+            "type": "array"
+          },
           "is_complete": {
             "title": "Is Complete",
             "type": "boolean"
@@ -6710,6 +6897,13 @@
               "type": "string"
             },
             "title": "Missing Fields",
+            "type": "array"
+          },
+          "projects": {
+            "items": {
+              "$ref": "#/components/schemas/ScholarProjectEntry"
+            },
+            "title": "Projects",
             "type": "array"
           },
           "skills": {
@@ -6749,6 +6943,8 @@
           "summary",
           "skills",
           "career_interests",
+          "internships",
+          "projects",
           "employer_visibility_consent",
           "consent_given_at",
           "has_headshot",
@@ -6790,6 +6986,21 @@
             ],
             "title": "Handshake Url"
           },
+          "internships": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ScholarInternshipEntry"
+                },
+                "maxItems": 5,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Internships"
+          },
           "linkedin_url": {
             "anyOf": [
               {
@@ -6801,6 +7012,21 @@
               }
             ],
             "title": "Linkedin Url"
+          },
+          "projects": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ScholarProjectEntry"
+                },
+                "maxItems": 5,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Projects"
           },
           "skills": {
             "anyOf": [
@@ -6831,6 +7057,58 @@
           }
         },
         "title": "ScholarProfessionalProfileUpdate",
+        "type": "object"
+      },
+      "ScholarProjectEntry": {
+        "description": "One project the scholar wants employers to see.",
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "name": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "ScholarProjectEntry",
         "type": "object"
       },
       "SignedUrlRead": {

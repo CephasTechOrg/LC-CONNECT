@@ -117,6 +117,54 @@ async def test_update_profile_rejects_overlong_skill(db, factory):
     assert exc.value.status_code == 400
 
 
+async def test_update_profile_sets_internships_and_projects(db, factory):
+    from app.features.scholars.schema import ScholarInternshipEntry, ScholarProjectEntry
+
+    scholar = await _verified_scholar(db, factory)
+    updated = await service.update_profile(
+        db,
+        scholar.id,
+        ScholarProfessionalProfileUpdate(
+            internships=[
+                ScholarInternshipEntry(
+                    title='Software Intern',
+                    organization='Acme Corp',
+                    start_date='Jun 2024',
+                    is_current=True,
+                    description='Built campus tooling.',
+                )
+            ],
+            projects=[
+                ScholarProjectEntry(
+                    name='LC Study Buddy',
+                    role='Lead',
+                    url='https://example.com',
+                    description='Matching study partners.',
+                )
+            ],
+        ),
+    )
+    assert len(updated.internships) == 1
+    assert updated.internships[0].title == 'Software Intern'
+    assert updated.internships[0].end_date is None  # current role clears end
+    assert len(updated.projects) == 1
+    assert updated.projects[0].name == 'LC Study Buddy'
+
+
+async def test_update_profile_rejects_too_many_internships(db, factory):
+    from app.features.scholars.schema import ScholarInternshipEntry
+
+    scholar = await _verified_scholar(db, factory)
+    too_many = [
+        ScholarInternshipEntry(title=f'Role {i}', organization='Org') for i in range(6)
+    ]
+    # Bypass request-model max_length so we exercise the service-layer cap.
+    payload = ScholarProfessionalProfileUpdate.model_construct(internships=too_many)
+    with pytest.raises(HTTPException) as exc:
+        await service.update_profile(db, scholar.id, payload)
+    assert exc.value.status_code == 400
+
+
 # ── consent ──────────────────────────────────────────────────────────────────────
 
 

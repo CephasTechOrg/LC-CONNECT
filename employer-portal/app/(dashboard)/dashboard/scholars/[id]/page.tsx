@@ -7,6 +7,22 @@ import { OpsEmpty, OpsLoading } from '@/components/ops-states';
 import { apiFetch, toUserMessage } from '@/lib/api/client';
 import { getAccessToken } from '@/lib/auth/session';
 
+type ScholarInternship = {
+  title: string;
+  organization: string;
+  start_date: string | null;
+  end_date: string | null;
+  is_current: boolean;
+  description: string | null;
+};
+
+type ScholarProject = {
+  name: string;
+  role: string | null;
+  url: string | null;
+  description: string | null;
+};
+
 type ScholarView = {
   user_id: string;
   display_name: string | null;
@@ -15,10 +31,21 @@ type ScholarView = {
   summary: string | null;
   skills: string[];
   career_interests: string[];
+  internships: ScholarInternship[];
+  projects: ScholarProject[];
   has_headshot: boolean;
   has_resume: boolean;
   headshot_url: string | null;
 };
+
+function experienceRange(item: ScholarInternship): string | null {
+  const start = item.start_date?.trim();
+  const end = item.is_current ? 'Present' : item.end_date?.trim();
+  if (!start && !end) return null;
+  if (!start) return end || null;
+  if (!end) return start;
+  return `${start} – ${end}`;
+}
 
 type SignedUrl = { url: string; expires_in: number };
 
@@ -141,6 +168,54 @@ export default function ScholarDetailPage() {
                 Summary
               </h3>
               <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: 'var(--text)' }}>{scholar.summary}</p>
+            </>
+          ) : null}
+
+          {(scholar.internships?.length ?? 0) > 0 ? (
+            <>
+              <h3 style={{ fontSize: 13.5, marginTop: 20, marginBottom: 10, color: 'var(--text-mid)' }}>
+                Experience
+              </h3>
+              <div style={{ display: 'grid', gap: 12 }}>
+                {scholar.internships.map((item, idx) => (
+                  <div key={`${item.title}-${item.organization}-${idx}`}>
+                    <div style={{ fontWeight: 700, fontSize: 14 }}>{item.title}</div>
+                    <div style={{ fontSize: 13.5, color: 'var(--text-mid)' }}>{item.organization}</div>
+                    {experienceRange(item) ? (
+                      <div className="meta" style={{ marginTop: 2 }}>{experienceRange(item)}</div>
+                    ) : null}
+                    {item.description ? (
+                      <p style={{ margin: '6px 0 0', fontSize: 13.5, lineHeight: 1.5 }}>{item.description}</p>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : null}
+
+          {(scholar.projects?.length ?? 0) > 0 ? (
+            <>
+              <h3 style={{ fontSize: 13.5, marginTop: 20, marginBottom: 10, color: 'var(--text-mid)' }}>
+                Projects
+              </h3>
+              <div style={{ display: 'grid', gap: 12 }}>
+                {scholar.projects.map((item, idx) => (
+                  <div key={`${item.name}-${idx}`}>
+                    <div style={{ fontWeight: 700, fontSize: 14 }}>{item.name}</div>
+                    {item.role ? (
+                      <div style={{ fontSize: 13.5, color: 'var(--text-mid)' }}>{item.role}</div>
+                    ) : null}
+                    {item.url ? (
+                      <a href={item.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13 }}>
+                        View project
+                      </a>
+                    ) : null}
+                    {item.description ? (
+                      <p style={{ margin: '6px 0 0', fontSize: 13.5, lineHeight: 1.5 }}>{item.description}</p>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
             </>
           ) : null}
 

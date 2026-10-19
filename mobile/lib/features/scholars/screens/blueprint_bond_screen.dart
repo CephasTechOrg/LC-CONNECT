@@ -9,6 +9,9 @@ import '../../../core/api/api_error.dart';
 import '../../../core/theme/app_theme.dart';
 import '../providers/scholars_provider.dart';
 
+part '../widgets/blueprint_bond_form_parts.dart';
+part '../widgets/blueprint_bond_experience.dart';
+
 /// The Presidential Scholar's professional-extension editor — kept fully separate from the
 /// social profile (own screen, own provider). Verified-scholar-only; the backend 403s anyone
 /// else even if they somehow reach this route.
@@ -27,6 +30,8 @@ class _BlueprintBondScreenState extends ConsumerState<BlueprintBondScreen> {
   final _careerCtrl = TextEditingController();
   final Set<String> _skills = {};
   final Set<String> _careerInterests = {};
+  final List<ScholarInternship> _internships = [];
+  final List<ScholarProject> _projects = [];
   bool _initialized = false;
   bool _saving = false;
   bool _uploadingHeadshot = false;
@@ -48,8 +53,18 @@ class _BlueprintBondScreenState extends ConsumerState<BlueprintBondScreen> {
     _linkedinCtrl.text = p.linkedinUrl ?? '';
     _handshakeCtrl.text = p.handshakeUrl ?? '';
     _summaryCtrl.text = p.summary ?? '';
-    _skills..clear()..addAll(p.skills);
-    _careerInterests..clear()..addAll(p.careerInterests);
+    _skills
+      ..clear()
+      ..addAll(p.skills);
+    _careerInterests
+      ..clear()
+      ..addAll(p.careerInterests);
+    _internships
+      ..clear()
+      ..addAll(p.internships);
+    _projects
+      ..clear()
+      ..addAll(p.projects);
   }
 
   void _showError(Object e, {String fallback = 'Something went wrong. Try again.'}) {
@@ -73,6 +88,8 @@ class _BlueprintBondScreenState extends ConsumerState<BlueprintBondScreen> {
             summary: _summaryCtrl.text.trim(),
             skills: _skills.toList(),
             careerInterests: _careerInterests.toList(),
+            internships: List.of(_internships),
+            projects: List.of(_projects),
           );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -157,6 +174,30 @@ class _BlueprintBondScreenState extends ConsumerState<BlueprintBondScreen> {
     });
   }
 
+  Future<void> _addInternship() async {
+    final entry = await showInternshipEditor(context);
+    if (entry == null || !mounted) return;
+    setState(() => _internships.add(entry));
+  }
+
+  Future<void> _editInternship(int index, ScholarInternship current) async {
+    final entry = await showInternshipEditor(context, initial: current);
+    if (entry == null || !mounted) return;
+    setState(() => _internships[index] = entry);
+  }
+
+  Future<void> _addProject() async {
+    final entry = await showProjectEditor(context);
+    if (entry == null || !mounted) return;
+    setState(() => _projects.add(entry));
+  }
+
+  Future<void> _editProject(int index, ScholarProject current) async {
+    final entry = await showProjectEditor(context, initial: current);
+    if (entry == null || !mounted) return;
+    setState(() => _projects[index] = entry);
+  }
+
   @override
   Widget build(BuildContext context) {
     final async = ref.watch(scholarProfileNotifierProvider);
@@ -207,7 +248,21 @@ class _BlueprintBondScreenState extends ConsumerState<BlueprintBondScreen> {
               const _SectionLabel('About you'),
               const SizedBox(height: 12),
               _Field(label: 'Professional summary', controller: _summaryCtrl, maxLines: 4),
-              const SizedBox(height: 18),
+              const SizedBox(height: 24),
+              _InternshipSection(
+                items: _internships,
+                onAdd: _addInternship,
+                onRemove: (i) => setState(() => _internships.removeAt(i)),
+                onEdit: _editInternship,
+              ),
+              const SizedBox(height: 24),
+              _ProjectSection(
+                items: _projects,
+                onAdd: _addProject,
+                onRemove: (i) => setState(() => _projects.removeAt(i)),
+                onEdit: _editProject,
+              ),
+              const SizedBox(height: 24),
               _TagInput(
                 label: 'Skills',
                 controller: _skillCtrl,
@@ -264,184 +319,6 @@ class _BlueprintBondScreenState extends ConsumerState<BlueprintBondScreen> {
           );
         },
       ),
-    );
-  }
-}
-
-/// One scannable line instead of a two-sentence paragraph. The privacy rule is the single most
-/// important thing on this screen, so it reads faster as an icon + short statement than as prose
-/// a student skims past.
-class _PrivacyNote extends StatelessWidget {
-  const _PrivacyNote();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: AppColors.primaryPale,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(Icons.lock_outline_rounded, size: 16, color: AppColors.primary),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              'Only approved employers can see this — never your social profile.',
-              style: GoogleFonts.dmSans(fontSize: 12.5, color: AppColors.textMid, height: 1.35),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Groups the form into scannable sections so it reads as three short tasks rather than one
-/// long undifferentiated list of inputs.
-class _SectionLabel extends StatelessWidget {
-  final String text;
-  const _SectionLabel(this.text);
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      text.toUpperCase(),
-      style: GoogleFonts.dmSans(
-        fontSize: 11,
-        fontWeight: FontWeight.w700,
-        color: AppColors.textMuted,
-        letterSpacing: 0.7,
-      ),
-    );
-  }
-}
-
-class _Field extends StatelessWidget {
-  final String label;
-  final TextEditingController controller;
-  final int maxLines;
-  const _Field({required this.label, required this.controller, this.maxLines = 1});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: GoogleFonts.dmSans(fontSize: 12.5, fontWeight: FontWeight.w600, color: AppColors.textMid)),
-        const SizedBox(height: 6),
-        TextField(
-          controller: controller,
-          maxLines: maxLines,
-          style: GoogleFonts.dmSans(fontSize: 14),
-          decoration: InputDecoration(
-            filled: true,
-            fillColor: AppColors.surface,
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: AppColors.border)),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: AppColors.border)),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _FileRow extends StatelessWidget {
-  final String label;
-  final bool hasFile;
-  final bool uploading;
-  final VoidCallback onUpload;
-  final VoidCallback? onView;
-  const _FileRow({required this.label, required this.hasFile, required this.uploading, required this.onUpload, this.onView});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Row(
-        children: [
-          Icon(hasFile ? Icons.check_circle_rounded : Icons.upload_file_rounded, size: 18, color: hasFile ? AppColors.green : AppColors.textMuted),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(label, style: GoogleFonts.dmSans(fontSize: 13.5, color: AppColors.textDark)),
-          ),
-          if (onView != null)
-            TextButton(onPressed: onView, child: Text('View', style: GoogleFonts.dmSans(fontWeight: FontWeight.w600))),
-          TextButton(
-            onPressed: uploading ? null : onUpload,
-            child: uploading
-                ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
-                : Text(hasFile ? 'Replace' : 'Upload', style: GoogleFonts.dmSans(fontWeight: FontWeight.w600, color: AppColors.primary)),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TagInput extends StatelessWidget {
-  final String label;
-  final TextEditingController controller;
-  final Set<String> tags;
-  final VoidCallback onAdd;
-  final ValueChanged<String> onRemove;
-  const _TagInput({required this.label, required this.controller, required this.tags, required this.onAdd, required this.onRemove});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: GoogleFonts.dmSans(fontSize: 12.5, fontWeight: FontWeight.w600, color: AppColors.textMid)),
-        const SizedBox(height: 6),
-        Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: controller,
-                onSubmitted: (_) => onAdd(),
-                style: GoogleFonts.dmSans(fontSize: 14),
-                decoration: InputDecoration(
-                  hintText: 'Add and press enter',
-                  filled: true,
-                  fillColor: AppColors.surface,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: AppColors.border)),
-                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: AppColors.border)),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            IconButton(
-              onPressed: onAdd,
-              icon: const Icon(Icons.add_circle_rounded, color: AppColors.primary),
-            ),
-          ],
-        ),
-        if (tags.isNotEmpty) ...[
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: tags
-                .map((t) => Chip(
-                      label: Text(t, style: GoogleFonts.dmSans(fontSize: 12.5)),
-                      onDeleted: () => onRemove(t),
-                      backgroundColor: AppColors.primarySoft,
-                      side: BorderSide.none,
-                    ))
-                .toList(),
-          ),
-        ],
-      ],
     );
   }
 }

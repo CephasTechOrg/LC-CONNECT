@@ -16,6 +16,8 @@ from app.features.employers.rate_limit import opportunity_submit_limit
 from app.features.employers.schema import (
     EmployerOrganizationRead,
     EmployerRegisterRequest,
+    EmployerScholarInternship,
+    EmployerScholarProject,
     EmployerScholarView,
     MyEmployerRead,
     OpportunitySubmissionCreate,
@@ -31,14 +33,18 @@ router = APIRouter(prefix='/employers', tags=['employers'])
 
 
 def _scholar_view(profile, social_profile, *, headshot_url: str | None = None) -> EmployerScholarView:
+    raw_internships = profile.internships or []
+    raw_projects = profile.projects or []
     return EmployerScholarView(
         user_id=profile.user_id,
         display_name=social_profile.display_name,
         linkedin_url=profile.linkedin_url,
         handshake_url=profile.handshake_url,
         summary=profile.summary,
-        skills=profile.skills,
-        career_interests=profile.career_interests,
+        skills=profile.skills or [],
+        career_interests=profile.career_interests or [],
+        internships=[EmployerScholarInternship.model_validate(item) for item in raw_internships],
+        projects=[EmployerScholarProject.model_validate(item) for item in raw_projects],
         has_headshot=profile.headshot_path is not None,
         has_resume=profile.resume_path is not None,
         headshot_url=headshot_url,

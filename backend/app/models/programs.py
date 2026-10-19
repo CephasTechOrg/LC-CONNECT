@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, func
-from sqlalchemy.dialects.postgresql import ARRAY, UUID
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -73,6 +73,10 @@ class ScholarProfessionalProfile(Base):
     summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     skills: Mapped[list[str]] = mapped_column(ARRAY(String(60)), default=list, nullable=False)
     career_interests: Mapped[list[str]] = mapped_column(ARRAY(String(60)), default=list, nullable=False)
+    # Optional professional experience — list of dicts validated in scholars/schema.py.
+    # Not required for `is_complete`; enriches employer-facing profiles.
+    internships: Mapped[list] = mapped_column(JSONB, default=list, nullable=False)
+    projects: Mapped[list] = mapped_column(JSONB, default=list, nullable=False)
     # Employer-visibility consent, captured as fields rather than a separate table (a single
     # boolean + timestamp + version doesn't earn its own model yet) — `consent_version` lets a
     # later policy change force re-consent by bumping `CURRENT_CONSENT_VERSION` in service.py.

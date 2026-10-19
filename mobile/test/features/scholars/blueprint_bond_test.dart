@@ -84,6 +84,10 @@ void main() {
     expect(find.text('Skills'), findsOneWidget);
     expect(find.text('Python'), findsOneWidget);
     expect(find.text('Public Speaking'), findsOneWidget);
+    expect(find.text('EXPERIENCE'), findsOneWidget);
+    expect(find.text('PROJECTS'), findsOneWidget);
+    expect(find.text('Add internship'), findsOneWidget);
+    expect(find.text('Add project'), findsOneWidget);
   });
 
   testWidgets('shows Upload prompts when no headshot/resume on file', (tester) async {
@@ -161,28 +165,17 @@ void _cardTests() {
       expect(find.byType(SizedBox), findsWidgets);
     });
 
-    testWidgets('the prompt names what is still outstanding', (tester) async {
+    testWidgets('the prompt is a single clean line with no field laundry list', (tester) async {
       await tester.pumpWidget(_card(
         BlueprintBondStyle.prompt,
         scholar: true,
-        profile: _profile(missingFields: const ['resume']),
+        profile: _profile(missingFields: const ['resume', 'summary', 'skills']),
       ));
       await tester.pumpAndSettle();
-      // A generic nudge makes the student open the screen to find out what is left.
-      expect(find.textContaining('Still needed'), findsOneWidget);
-      expect(find.textContaining('résumé'), findsOneWidget);
-    });
-
-    testWidgets('the prompt summarises when several fields are outstanding', (tester) async {
-      await tester.pumpWidget(_card(
-        BlueprintBondStyle.prompt,
-        scholar: true,
-        profile: _profile(
-          missingFields: const ['summary', 'headshot', 'resume', 'skills'],
-        ),
-      ));
-      await tester.pumpAndSettle();
-      expect(find.textContaining('and 2 more'), findsOneWidget);
+      expect(find.text('Finish your Blueprint Bond profile'), findsOneWidget);
+      // Field-level “still needed” detail belongs in the editor, not the hub card.
+      expect(find.textContaining('Still needed'), findsNothing);
+      expect(find.textContaining('and 2 more'), findsNothing);
     });
 
     testWidgets('the client does not second-guess the server on completeness', (tester) async {

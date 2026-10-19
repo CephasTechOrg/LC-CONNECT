@@ -5,6 +5,70 @@ import '../../../core/constants/app_constants.dart';
 import '../../../shared/util/keep_fresh.dart';
 import '../../auth/providers/auth_provider.dart';
 
+class ScholarInternship {
+  final String title;
+  final String organization;
+  final String? startDate;
+  final String? endDate;
+  final bool isCurrent;
+  final String? description;
+
+  const ScholarInternship({
+    required this.title,
+    required this.organization,
+    this.startDate,
+    this.endDate,
+    this.isCurrent = false,
+    this.description,
+  });
+
+  factory ScholarInternship.fromJson(Map<String, dynamic> j) => ScholarInternship(
+        title: j['title'] as String? ?? '',
+        organization: j['organization'] as String? ?? '',
+        startDate: j['start_date'] as String?,
+        endDate: j['end_date'] as String?,
+        isCurrent: j['is_current'] as bool? ?? false,
+        description: j['description'] as String?,
+      );
+
+  Map<String, dynamic> toJson() => {
+        'title': title,
+        'organization': organization,
+        'start_date': startDate,
+        'end_date': isCurrent ? null : endDate,
+        'is_current': isCurrent,
+        'description': description,
+      };
+}
+
+class ScholarProject {
+  final String name;
+  final String? role;
+  final String? url;
+  final String? description;
+
+  const ScholarProject({
+    required this.name,
+    this.role,
+    this.url,
+    this.description,
+  });
+
+  factory ScholarProject.fromJson(Map<String, dynamic> j) => ScholarProject(
+        name: j['name'] as String? ?? '',
+        role: j['role'] as String?,
+        url: j['url'] as String?,
+        description: j['description'] as String?,
+      );
+
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'role': role,
+        'url': url,
+        'description': description,
+      };
+}
+
 class ScholarProfile {
   final String id;
   final String userId;
@@ -13,6 +77,8 @@ class ScholarProfile {
   final String? summary;
   final List<String> skills;
   final List<String> careerInterests;
+  final List<ScholarInternship> internships;
+  final List<ScholarProject> projects;
   final bool employerVisibilityConsent;
   final bool hasHeadshot;
   final bool hasResume;
@@ -34,6 +100,8 @@ class ScholarProfile {
     this.summary,
     required this.skills,
     required this.careerInterests,
+    this.internships = const [],
+    this.projects = const [],
     required this.employerVisibilityConsent,
     required this.hasHeadshot,
     required this.hasResume,
@@ -49,6 +117,14 @@ class ScholarProfile {
         summary: j['summary'] as String?,
         skills: List<String>.from(j['skills'] ?? []),
         careerInterests: List<String>.from(j['career_interests'] ?? []),
+        internships: [
+          for (final item in (j['internships'] as List? ?? const []))
+            ScholarInternship.fromJson(Map<String, dynamic>.from(item as Map)),
+        ],
+        projects: [
+          for (final item in (j['projects'] as List? ?? const []))
+            ScholarProject.fromJson(Map<String, dynamic>.from(item as Map)),
+        ],
         employerVisibilityConsent: j['employer_visibility_consent'] as bool? ?? false,
         hasHeadshot: j['has_headshot'] as bool? ?? false,
         hasResume: j['has_resume'] as bool? ?? false,
@@ -82,6 +158,8 @@ class ScholarProfileNotifier extends AsyncNotifier<ScholarProfile> {
     String? summary,
     List<String>? skills,
     List<String>? careerInterests,
+    List<ScholarInternship>? internships,
+    List<ScholarProject>? projects,
   }) async {
     final client = ref.read(apiClientProvider);
     final body = <String, dynamic>{
@@ -90,6 +168,8 @@ class ScholarProfileNotifier extends AsyncNotifier<ScholarProfile> {
       'summary': ?summary,
       'skills': ?skills,
       'career_interests': ?careerInterests,
+      if (internships != null) 'internships': internships.map((e) => e.toJson()).toList(),
+      if (projects != null) 'projects': projects.map((e) => e.toJson()).toList(),
     };
     final response = await client.dio.patch('/scholars/me', data: body);
     state = AsyncData(ScholarProfile.fromJson(response.data as Map<String, dynamic>));

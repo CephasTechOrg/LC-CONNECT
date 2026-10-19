@@ -53,7 +53,6 @@ class BlueprintBondCard extends ConsumerWidget {
       // Done — the prompt retires. The permanent row on Profile is where status lives.
       if (profile.isComplete) return const SizedBox.shrink();
       return _PromptCard(
-        missingFields: profile.missingFields,
         onTap: () => context.push('/profile/blueprint-bond'),
       );
     }
@@ -68,31 +67,10 @@ class BlueprintBondCard extends ConsumerWidget {
   }
 }
 
-/// Campus Hub: a single, focused nudge with one job — get the profile finished.
+/// Campus Hub: one short line — open the editor for what’s still needed.
 class _PromptCard extends StatelessWidget {
   final VoidCallback onTap;
-  final List<String> missingFields;
-  const _PromptCard({required this.onTap, this.missingFields = const []});
-
-  /// Human wording for the API's field names. A generic "finish your profile" makes the student
-  /// open the screen to discover what is left; naming the next step is the difference between a
-  /// nudge and a chore.
-  static const _labels = <String, String>{
-    'summary': 'a short summary',
-    'headshot': 'a headshot',
-    'resume': 'your résumé',
-    'skills': 'a few skills',
-    'career_interests': 'career interests',
-    'employer_visibility_consent': 'employer visibility',
-  };
-
-  String get _subtitle {
-    final named = missingFields.map((f) => _labels[f]).whereType<String>().toList();
-    if (named.isEmpty) return 'Get seen by employer partners';
-    if (named.length == 1) return 'Still needed: ${named.first}';
-    if (named.length == 2) return 'Still needed: ${named[0]} and ${named[1]}';
-    return 'Still needed: ${named[0]}, ${named[1]} and ${named.length - 2} more';
-  }
+  const _PromptCard({required this.onTap});
 
   /// The Blueprint brand navy. Kept as the icon and text colour rather than the card fill — see
   /// [build] for why the card itself is no longer filled with it.
@@ -111,7 +89,7 @@ class _PromptCard extends StatelessWidget {
     // a countdown, and missing it cannot be undone. The Blueprint prompt is a standing task with
     // no deadline. So the saturated treatment belongs to attendance, and this becomes a quiet
     // invitation — still branded by its navy icon and title, no longer competing for the same
-    // signal.
+    // signal. Copy stays a single line; field-level “still needed” detail lives in the editor.
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.gutter,
@@ -127,50 +105,35 @@ class _PromptCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(AppRadii.card),
           child: Padding(
             padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.lg,
-              vertical: AppSpacing.md,
+              horizontal: AppSpacing.md,
+              vertical: AppSpacing.sm + 2,
             ),
             child: Row(
               children: [
                 Container(
-                  width: 38,
-                  height: 38,
+                  width: 32,
+                  height: 32,
                   decoration: BoxDecoration(
                     color: _blueprintNavy,
                     borderRadius: BorderRadius.circular(AppRadii.md),
                   ),
-                  child: const Icon(Icons.workspace_premium_rounded, color: Colors.white, size: 21),
+                  child: const Icon(Icons.workspace_premium_rounded, color: Colors.white, size: 18),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 10),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Finish your Blueprint Bond profile',
-                        // 14.5 and 12.5 were off any scale; `bodyLarge` and `label` are the
-                        // roles. Navy on the tinted surface measures 10.36:1 and the subtitle
-                        // 9.19:1 — both well past AA, unlike white-on-navy which this replaces.
-                        style: AppTypography.bodyLarge.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: _blueprintNavy,
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.xs),
-                      Text(
-                        _subtitle,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTypography.label.copyWith(
-                          fontWeight: FontWeight.w400,
-                          color: AppColors.textMid,
-                        ),
-                      ),
-                    ],
+                  child: Text(
+                    'Finish your Blueprint Bond profile',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.label.copyWith(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13.5,
+                      color: _blueprintNavy,
+                    ),
                   ),
                 ),
                 const SizedBox(width: AppSpacing.sm),
-                const Icon(Icons.arrow_forward_rounded, color: _blueprintNavy, size: 18),
+                const Icon(Icons.arrow_forward_rounded, color: _blueprintNavy, size: 16),
               ],
             ),
           ),

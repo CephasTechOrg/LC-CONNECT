@@ -54,7 +54,10 @@ class _BubbleTile extends StatelessWidget {
   /// Only for my own group messages. In a DM the tick already answers this precisely, and for
   /// someone else's message "who has read it" is not mine to ask.
   bool get _canSeeReadBy => isGroup && isMine && !message.deleted && !message.id.startsWith('local:');
-  bool get _hasMenu => !message.deleted && (_canReport || _canDelete);
+  // Include react/edit: otherwise long-press never opens on a partner message when report
+  // isn’t wired the same way, and the picker only appears on your own bubbles (delete).
+  bool get _hasMenu =>
+      !message.deleted && (_canReport || _canDelete || _canReact || _canEdit);
 
   @override
   Widget build(BuildContext context) {

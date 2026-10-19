@@ -6,11 +6,11 @@ class _Avatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AvatarWidget(imageUrl: avatarUrl, size: 70);
+    return AvatarWidget(imageUrl: avatarUrl, size: 52);
   }
 }
 
-// ── Looking-for badge (top of card) ───────────────────────────────
+/// Looking-for chip — same label language as profile (“Study partner”), not “Wants …”.
 class _LookingForBadge extends StatelessWidget {
   final String code;
   final String label;
@@ -27,20 +27,20 @@ class _LookingForBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: AppColors.primarySoft,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(_icon, size: 13, color: AppColors.primary),
-          const SizedBox(width: 5),
+          Icon(_icon, size: 12, color: AppColors.primary),
+          const SizedBox(width: 4),
           Text(
-            'Wants ${label.toLowerCase()}',
+            label,
             style: GoogleFonts.dmSans(
-              fontSize: 12,
+              fontSize: 11.5,
               fontWeight: FontWeight.w600,
               color: AppColors.primary,
             ),
@@ -51,14 +51,14 @@ class _LookingForBadge extends StatelessWidget {
   }
 }
 
-// ── Interest chips (max 3 + overflow) ─────────────────────────────
+/// Interest chips — max 2 + overflow; full list on the public profile.
 class _InterestChips extends StatelessWidget {
   final List<String> interests;
   const _InterestChips({required this.interests});
 
   @override
   Widget build(BuildContext context) {
-    final visible = interests.take(3).toList();
+    final visible = interests.take(2).toList();
     final overflow = interests.length - visible.length;
     return Wrap(
       spacing: 6,
@@ -66,33 +66,64 @@ class _InterestChips extends StatelessWidget {
       children: [
         ...visible.map((name) => Container(
               padding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
                 color: AppColors.background,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: AppColors.border),
               ),
               child: Text(
                 name,
                 style: GoogleFonts.dmSans(
-                    fontSize: 12, color: AppColors.textMid),
+                    fontSize: 11.5, color: AppColors.textMid),
               ),
             )),
         if (overflow > 0)
           Container(
             padding:
-                const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
               color: AppColors.background,
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(16),
               border: Border.all(color: AppColors.border),
             ),
             child: Text(
               '+$overflow',
               style: GoogleFonts.dmSans(
-                  fontSize: 12, color: AppColors.textMuted),
+                  fontSize: 11.5, color: AppColors.textMuted),
             ),
           ),
+      ],
+    );
+  }
+}
+
+/// Cap spoken languages at two on the list card.
+class _LanguageLine extends StatelessWidget {
+  final List<String> languages;
+  const _LanguageLine({required this.languages});
+
+  @override
+  Widget build(BuildContext context) {
+    final visible = languages.take(2).toList();
+    final overflow = languages.length - visible.length;
+    final text = overflow > 0
+        ? 'Speaks ${visible.join(', ')} +$overflow'
+        : 'Speaks ${visible.join(', ')}';
+    return Row(
+      children: [
+        const Icon(Icons.language_outlined,
+            size: 12, color: AppColors.textMuted),
+        const SizedBox(width: 4),
+        Expanded(
+          child: Text(
+            text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.dmSans(
+                fontSize: 11.5, color: AppColors.textMuted),
+          ),
+        ),
       ],
     );
   }
@@ -125,7 +156,7 @@ class _ActionButton extends StatelessWidget {
           onTap: isLoading ? null : onTap,
           borderRadius: BorderRadius.circular(10),
           child: Container(
-            height: kMinTouchTarget,
+            height: 40,
             alignment: Alignment.center,
             child: isLoading
                 ? const SizedBox(
@@ -137,13 +168,13 @@ class _ActionButton extends StatelessWidget {
                 : Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(icon, size: 15, color: Colors.white),
-                      const SizedBox(width: 6),
+                      Icon(icon, size: 14, color: Colors.white),
+                      const SizedBox(width: 5),
                       Text(
                         label,
                         style: GoogleFonts.dmSans(
                           color: Colors.white,
-                          fontSize: 13,
+                          fontSize: 12.5,
                           fontWeight: FontWeight.w600,
                         ),
                       ),

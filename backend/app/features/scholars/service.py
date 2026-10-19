@@ -17,7 +17,12 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.features.scholars.schema import ScholarProfessionalProfileRead, ScholarProfessionalProfileUpdate
+from app.features.scholars.schema import (
+    ScholarInternshipEntry,
+    ScholarProfessionalProfileRead,
+    ScholarProfessionalProfileUpdate,
+    ScholarProjectEntry,
+)
 from app.models import ScholarProfessionalProfile
 from app.shared.image_processing import sanitize_avatar
 from app.shared.programs import PRESIDENTIAL_SCHOLARS_SLUG, is_active_program_member
@@ -25,6 +30,7 @@ from app.shared.storage import storage_service
 
 CURRENT_CONSENT_VERSION = 1
 MAX_SKILL_LENGTH = 60
+MAX_EXPERIENCE_ENTRIES = 5
 
 # ── Profile completeness ──────────────────────────────────────────────────────────────
 # What "complete" means, in exactly one place.
@@ -78,6 +84,18 @@ def missing_profile_fields(profile: ScholarProfessionalProfile) -> list[str]:
     return missing
 
 
+def _parse_internships(raw: object) -> list[ScholarInternshipEntry]:
+    if not raw:
+        return []
+    return [ScholarInternshipEntry.model_validate(item) for item in raw]  # type: ignore[arg-type]
+
+
+def _parse_projects(raw: object) -> list[ScholarProjectEntry]:
+    if not raw:
+        return []
+    return [ScholarProjectEntry.model_validate(item) for item in raw]  # type: ignore[arg-type]
+
+
 def _to_read(profile: ScholarProfessionalProfile) -> ScholarProfessionalProfileRead:
     missing = missing_profile_fields(profile)
     return ScholarProfessionalProfileRead(
@@ -86,8 +104,10 @@ def _to_read(profile: ScholarProfessionalProfile) -> ScholarProfessionalProfileR
         linkedin_url=profile.linkedin_url,
         handshake_url=profile.handshake_url,
         summary=profile.summary,
-        skills=profile.skills,
-        career_interests=profile.career_interests,
+        skills=profile.skills or [],
+        career_interests=profile.career_interests or [],
+        internships=_parse_internships(profile.internships),
+        projects=_parse_projects(profile.projects),
         employer_visibility_consent=profile.employer_visibility_consent,
         consent_given_at=profile.consent_given_at,
         has_headshot=profile.headshot_path is not None,
@@ -173,6 +193,20 @@ async def update_profile(
     career_interests = _validate_skills(payload.career_interests)
     if career_interests is not None:
         profile.career_interests = career_interests
+    if payload.internships is not None:
+        if len(payload.internships) > MAX_EXPERIENCE_ENTRIES:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f'At most {MAX_EXPERIENCE_ENTRIES} internships allowed',
+            )
+        profile.internships = [entry.model_dump() for entry in payload.internships]
+    if payload.projects is not None:
+        if len(payload.projects) > MAX_EXPERIENCE_ENTRIES:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f'At most {MAX_EXPERIENCE_ENTRIES} projects allowed',
+            )
+        profile.projects = [entry.model_dump() for entry in payload.projects]
     await db.commit()
     await db.refresh(profile)
     return _to_read(profile)

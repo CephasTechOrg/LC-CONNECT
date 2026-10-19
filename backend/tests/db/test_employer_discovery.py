@@ -229,6 +229,9 @@ def test_employer_scholar_view_field_allowlist():
         'summary',
         'skills',
         'career_interests',
+        # Reviewed addition (Wave B): optional structured experience for employer partners.
+        'internships',
+        'projects',
         'has_headshot',
         'has_resume',
         # Reviewed addition: a short-lived signed headshot URL so the portal renders the face

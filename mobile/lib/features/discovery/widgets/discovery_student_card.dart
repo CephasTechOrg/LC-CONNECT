@@ -1,7 +1,7 @@
 part of '../screens/discovery_screen.dart';
 
 // ══════════════════════════════════════════════════════════════════
-// Student card
+// Student card — compact list preview; full detail on profile tap
 // ══════════════════════════════════════════════════════════════════
 
 class _StudentCard extends StatefulWidget {
@@ -53,254 +53,187 @@ class _StudentCardState extends State<_StudentCard> {
   @override
   Widget build(BuildContext context) {
     final c = widget.card;
-    final primaryCode =
-        c.lookingForCodes.isNotEmpty ? c.lookingForCodes[0] : null;
-    final primaryLabel =
-        c.lookingFor.isNotEmpty ? c.lookingFor[0] : null;
+    final showStudyTogether = c.lookingForCodes.contains('study_partner');
+    final lookingCodes = c.lookingForCodes;
+    final lookingLabels = c.lookingFor;
+    // Cap at two on the list card; the rest live on the public profile.
+    final lookingPairs = <(String, String)>[
+      for (var i = 0; i < lookingCodes.length && i < lookingLabels.length && i < 2; i++)
+        (lookingCodes[i], lookingLabels[i]),
+    ];
     final matchReason =
         c.matchReasons.isNotEmpty ? c.matchReasons[0] : null;
 
     return Semantics(
       label: c.displayName ?? 'Student profile',
       child: Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(10),
-            blurRadius: 12,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── Top row: looking-for badge + menu ───────────────────
-            Row(
-              children: [
-                if (primaryCode != null && primaryLabel != null)
-                  _LookingForBadge(code: primaryCode, label: primaryLabel),
-                const Spacer(),
-                IconButton(
-                  onPressed: widget.onMore,
-                  tooltip: 'More options',
-                  icon: const Icon(Icons.more_horiz,
-                      color: AppColors.textMuted, size: 20),
-                  constraints: const BoxConstraints(
-                    minWidth: kMinTouchTarget,
-                    minHeight: kMinTouchTarget,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-
-            // ── Profile row: avatar + info ──────────────────────────
-            GestureDetector(
-              onTap: () => context.push(
-                '/users/${c.profileId}',
-                extra: c.displayName,
-              ),
-              child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _Avatar(avatarUrl: c.avatarUrl),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
+        margin: const EdgeInsets.only(bottom: 10),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 12, 10, 10),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => context.push(
+                        '/users/${c.profileId}',
+                        extra: c.displayName,
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Flexible(
-                            child: Text(
-                              c.displayName ?? 'Student',
-                              overflow: TextOverflow.ellipsis,
-                              style: GoogleFonts.dmSans(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.textDark,
-                                letterSpacing: -0.3,
-                              ),
+                          _Avatar(avatarUrl: c.avatarUrl),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Flexible(
+                                      child: Text(
+                                        c.displayName ?? 'Student',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: GoogleFonts.dmSans(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w700,
+                                          color: AppColors.textDark,
+                                          letterSpacing: -0.2,
+                                        ),
+                                      ),
+                                    ),
+                                    if (c.campusVerified) ...[
+                                      const SizedBox(width: 4),
+                                      const VerifiedBadge(size: 14),
+                                    ],
+                                  ],
+                                ),
+                                if (c.classYear != null || c.major != null) ...[
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    [
+                                      if (c.classYear != null) 'Class of ${c.classYear}',
+                                      if (c.major != null) c.major!,
+                                    ].join(' · '),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: GoogleFonts.dmSans(
+                                        fontSize: 12, color: AppColors.textMuted),
+                                  ),
+                                ],
+                              ],
                             ),
                           ),
-                          if (c.campusVerified) ...[
-                            const SizedBox(width: 5),
-                            const VerifiedBadge(size: 16),
-                          ],
                         ],
                       ),
-                      if (c.classYear != null) ...[
-                        const SizedBox(height: 1),
-                        Text(
-                          'Class of ${c.classYear}',
-                          style: GoogleFonts.dmSans(
-                              fontSize: 12, color: AppColors.textMuted),
-                        ),
-                      ],
-                      if (c.major != null) ...[
-                        const SizedBox(height: 1),
-                        Text(
-                          c.major!,
-                          style: GoogleFonts.dmSans(
-                              fontSize: 13, color: AppColors.textMuted),
-                        ),
-                      ],
-                      const SizedBox(height: 5),
-                      Row(
-                        children: [
-                          const Icon(Icons.location_city_outlined,
-                              size: 12, color: AppColors.textMuted),
-                          const SizedBox(width: 3),
-                          Text(
-                            'Livingstone College',
-                            style: GoogleFonts.dmSans(
-                                fontSize: 11, color: AppColors.textMuted),
-                          ),
-                        ],
-                      ),
-                    ],
+                    ),
                   ),
-                ),
-              ],
-              ),
-            ),
-
-            // ── Interests ──────────────────────────────────────────
-            if (c.interests.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              _InterestChips(interests: c.interests),
-            ],
-
-            // ── Languages ─────────────────────────────────────────
-            if (c.languagesSpoken.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  const Icon(Icons.language_outlined,
-                      size: 13, color: AppColors.textMuted),
-                  const SizedBox(width: 4),
-                  Text(
-                    'Speaks ${c.languagesSpoken.join(', ')}',
-                    style: GoogleFonts.dmSans(
-                        fontSize: 12, color: AppColors.textMuted),
+                  IconButton(
+                    onPressed: widget.onMore,
+                    tooltip: 'More options',
+                    icon: const Icon(Icons.more_horiz,
+                        color: AppColors.textMuted, size: 20),
+                    constraints: const BoxConstraints(
+                      minWidth: kMinTouchTarget,
+                      minHeight: kMinTouchTarget,
+                    ),
+                    padding: EdgeInsets.zero,
+                    visualDensity: VisualDensity.compact,
                   ),
                 ],
               ),
-            ],
 
-            // ── Additional looking-for chips ───────────────────────
-            if (c.lookingFor.length > 1) ...[
-              const SizedBox(height: 10),
-              Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: c.lookingFor.skip(1).map((label) {
-                  return Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: AppColors.primaryPale,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                          color: AppColors.primaryLight.withAlpha(80)),
-                    ),
-                    child: Text(
-                      label,
-                      style: GoogleFonts.dmSans(
-                          fontSize: 11.5,
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.w500),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ],
-
-            // ── Match reason ───────────────────────────────────────
-            if (matchReason != null) ...[
-              const SizedBox(height: 10),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 10, vertical: 7),
-                decoration: BoxDecoration(
-                  color: AppColors.primarySoft,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
+              if (lookingPairs.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
                   children: [
-                    const Icon(Icons.people_outline,
-                        size: 14, color: AppColors.primary),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        matchReason,
-                        style: GoogleFonts.dmSans(
-                          fontSize: 12,
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
+                    for (final pair in lookingPairs)
+                      _LookingForBadge(code: pair.$1, label: pair.$2),
                   ],
                 ),
-              ),
-            ],
+              ],
 
-            // ── Action buttons ────────────────────────────────────
-            const SizedBox(height: 14),
-            Row(
-              children: [
-                Expanded(
-                  child: _ActionButton(
-                    label: 'Connect',
-                    icon: Icons.person_add_outlined,
-                    isLoading: _isActing,
-                    onTap: () => _act(widget.onConnect),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _ActionButton(
-                    label: 'Study Together',
-                    icon: Icons.menu_book_outlined,
-                    isLoading: _isActing,
-                    onTap: () => _act(widget.onStudyTogether),
+              if (c.interests.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                _InterestChips(interests: c.interests),
+              ],
+
+              if (c.languagesSpoken.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                _LanguageLine(languages: c.languagesSpoken),
+              ],
+
+              if (matchReason != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  matchReason,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.dmSans(
+                    fontSize: 11.5,
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ],
-            ),
-            const SizedBox(height: 6),
 
-            // ── Maybe Later ───────────────────────────────────────
-            Center(
-              child: TextButton(
-                onPressed: _isActing ? null : widget.onSkip,
-                style: TextButton.styleFrom(
-                  minimumSize: const Size(kMinTouchTarget, kMinTouchTarget),
-                ),
-                child: Text(
-                  'Maybe Later',
-                  style: GoogleFonts.dmSans(
-                    fontSize: 13,
-                    color: AppColors.textMuted,
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: _ActionButton(
+                      label: 'Connect',
+                      icon: Icons.person_add_outlined,
+                      isLoading: _isActing,
+                      onTap: () => _act(widget.onConnect),
+                    ),
+                  ),
+                  if (showStudyTogether) ...[
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _ActionButton(
+                        label: 'Study Together',
+                        icon: Icons.menu_book_outlined,
+                        isLoading: _isActing,
+                        onTap: () => _act(widget.onStudyTogether),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              Center(
+                child: TextButton(
+                  onPressed: _isActing ? null : widget.onSkip,
+                  style: TextButton.styleFrom(
+                    minimumSize: const Size(kMinTouchTarget, 36),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                  ),
+                  child: Text(
+                    'Maybe Later',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 12,
+                      color: AppColors.textMuted,
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
-    ),
     );
   }
 }
-
-// ── Avatar ─────────────────────────────────────────────────────────

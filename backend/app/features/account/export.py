@@ -370,6 +370,8 @@ async def _scholar_profile(db: AsyncSession, user_id: UUID) -> dict[str, Any] | 
         'summary': row.summary,
         'skills': list(row.skills or []),
         'career_interests': list(row.career_interests or []),
+        'internships': list(row.internships or []),
+        'projects': list(row.projects or []),
         'employer_visibility_consent': row.employer_visibility_consent,
         'consent_given_at': _iso(row.consent_given_at),
         'consent_version': row.consent_version,
