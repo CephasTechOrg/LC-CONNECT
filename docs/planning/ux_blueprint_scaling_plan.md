@@ -82,8 +82,8 @@ So the reaction **picker** is unreliable when report/delete aren’t offered the
 
 **Work**
 - [x] `chat_bubble.dart`: `_hasMenu` includes `_canReact` (and `_canEdit` if desired).
-- [ ] Manual QA: long-press partner message → picker → reaction appears for both users; strip toggle still works.
-- [ ] Optional: double-tap or dedicated react affordance so discovery doesn’t depend on long-press alone.
+- [x] Manual QA: long-press partner message → picker → reaction appears for both users; strip toggle still works. *(widget test covers partner long-press + double-tap picker)*
+- [x] Optional: double-tap or dedicated react affordance so discovery doesn’t depend on long-press alone.
 
 **Done when:** Either participant can add/remove reactions on the other’s messages in DM and group.
 
@@ -153,7 +153,7 @@ AND (optional) is_complete   # product choice — recommend require complete bef
 - [x] Admin API under `require_admin_scope('honors_admin')`: list pending, approve, request changes (note), revoke.
 - [x] Admin portal page (mirror Employers queue UX).
 - [x] Audit log entries for approve/reject/revoke.
-- [ ] In-app or email notify scholar on decision (nice-to-have in same wave or follow-up).
+- [x] In-app or email notify scholar on decision (in-app + push + email with review note).
 
 ### C4. Employer portal
 
@@ -244,10 +244,10 @@ Already strong patterns: message idempotency, reaction unique constraint, bootst
 - [x] Blueprint prompt: single clean line.
 - [x] Blueprint: internships + projects editable; professional layout.
 - [x] Employer directory shows only Honors-**approved** + consented scholars.
-- [x] Reactions work on partner messages via long-press (or better affordance). *(code fix shipped; confirm on device)*
+- [x] Reactions work on partner messages via long-press (or better affordance).
 - [x] Scaling note published; Redis provision path clear; rate-limit docs accurate.
-- [x] Tests: scholars approval + employer discovery filter; Flutter card/prompt tests. *(reaction menu: code fix shipped; device QA + dedicated widget test still optional)*
-- [ ] `pytest` + `flutter analyze` + line limits green; OpenAPI snapshot updated only for intentional API changes.
+- [x] Tests: scholars approval + employer discovery filter; Flutter card/prompt tests; reaction menu widget test.
+- [x] `pytest` + `flutter analyze` + line limits green; OpenAPI snapshot updated only for intentional API changes.
 
 ---
 

@@ -12,6 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.email_notices import send_quietly, send_scholar_profile_decision_email
 from app.features.admin import admins as admins_admin
 from app.features.admin import scholar_profiles as scholar_profiles_admin
 from app.features.admin.schema import (
@@ -19,9 +20,33 @@ from app.features.admin.schema import (
     ScholarProfileReviewNoteRequest,
     ScholarProfileRevokeRequest,
 )
+from app.features.realtime.runtime import emit_notification
 from app.models import Profile, ScholarProfessionalProfile, User
 
 router = APIRouter()
+
+
+async def _notify_scholar_decision(
+    *,
+    user_id: UUID,
+    email: str,
+    profile_id: UUID,
+    outcome: str,
+    review_note: str | None,
+) -> None:
+    """In-app + push, then email (notes travel in mail; notification.detail is emoji-sized)."""
+    await emit_notification(
+        user_id=user_id,
+        notif_type=f'scholar_profile_{outcome}',
+        target_type='scholar_profile',
+        target_id=profile_id,
+    )
+    send_quietly(
+        send_scholar_profile_decision_email,
+        email,
+        outcome=outcome,
+        review_note=review_note,
+    )
 
 
 def _admin_read(profile: ScholarProfessionalProfile, user: User, social: Profile) -> ScholarProfileAdminRead:
@@ -76,6 +101,13 @@ async def approve_scholar_profile(
 ) -> ScholarProfileAdminRead:
     profile = await scholar_profiles_admin.approve_profile(db, actor=actor, profile_id=profile_id)
     user, social = await _user_and_profile(db, profile.user_id)
+    await _notify_scholar_decision(
+        user_id=profile.user_id,
+        email=user.email,
+        profile_id=profile.id,
+        outcome='approved',
+        review_note=None,
+    )
     return _admin_read(profile, user, social)
 
 
@@ -90,6 +122,13 @@ async def request_scholar_profile_changes(
         db, actor=actor, profile_id=profile_id, note=payload.reason
     )
     user, social = await _user_and_profile(db, profile.user_id)
+    await _notify_scholar_decision(
+        user_id=profile.user_id,
+        email=user.email,
+        profile_id=profile.id,
+        outcome='changes_requested',
+        review_note=profile.review_note,
+    )
     return _admin_read(profile, user, social)
 
 
@@ -103,4 +142,11 @@ async def revoke_scholar_profile(
     note = payload.reason if payload is not None else None
     profile = await scholar_profiles_admin.revoke_profile(db, actor=actor, profile_id=profile_id, note=note)
     user, social = await _user_and_profile(db, profile.user_id)
+    await _notify_scholar_decision(
+        user_id=profile.user_id,
+        email=user.email,
+        profile_id=profile.id,
+        outcome='revoked',
+        review_note=profile.review_note,
+    )
     return _admin_read(profile, user, social)

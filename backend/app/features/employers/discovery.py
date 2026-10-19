@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.models import EmployerProfileView, Profile, Program, ProgramMembership, ScholarProfessionalProfile
 from app.shared.programs import PRESIDENTIAL_SCHOLARS_SLUG
+from app.shared.scholar_profile import CURRENT_CONSENT_VERSION
 from app.shared.storage import storage_service
 
 
@@ -28,6 +29,7 @@ def _eligible_scholars_stmt():
         .join(Program, Program.id == ProgramMembership.program_id)
         .where(
             ScholarProfessionalProfile.employer_visibility_consent.is_(True),
+            ScholarProfessionalProfile.consent_version >= CURRENT_CONSENT_VERSION,
             ScholarProfessionalProfile.review_status == 'approved',
             ProgramMembership.status == 'active',
             Program.slug == PRESIDENTIAL_SCHOLARS_SLUG,

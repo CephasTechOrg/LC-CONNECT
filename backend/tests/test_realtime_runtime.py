@@ -29,6 +29,9 @@ def test_pushable_notification_types_is_the_agreed_small_set():
         'program_membership_verified',
         'admin_membership_invited',
         'message_reaction',
+        'scholar_profile_approved',
+        'scholar_profile_changes_requested',
+        'scholar_profile_revoked',
     }
 
 

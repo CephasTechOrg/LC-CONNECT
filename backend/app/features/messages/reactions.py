@@ -28,7 +28,7 @@ from app.models import Message, MessageReaction
 #:
 #: Adding one is a one-line change here; removing one leaves existing rows readable but
 #: un-addable, which is the right way round.
-REACTION_ALLOWLIST: tuple[str, ...] = ('👍', '❤️', '😂', '😮', '😢', '🙏')
+REACTION_ALLOWLIST: tuple[str, ...] = ('👍', '❤️', '😂', '😮', '😢', '🙏', '👏', '🔥')
 
 
 class ReactedMessage(NamedTuple):

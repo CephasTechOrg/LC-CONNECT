@@ -94,12 +94,20 @@ def _to_read(profile: ScholarProfessionalProfile) -> ScholarProfessionalProfileR
     )
 
 
-def _bump_to_pending_if_approved(profile: ScholarProfessionalProfile) -> None:
-    """Material change on a live (approved) profile — leave the directory until re-reviewed."""
-    if profile.review_status in _STATUSES_REQUIRING_REREVIEW_ON_EDIT:
-        profile.review_status = 'pending_review'
-        profile.submitted_at = datetime.now(UTC)
-        profile.review_note = None
+def _requeue_after_material_edit(profile: ScholarProfessionalProfile) -> None:
+    """Material change on a live (approved) profile — leave the directory until re-reviewed.
+
+    Incomplete after the edit → `draft` (not the Honors pending queue). Complete → `pending_review`.
+    """
+    if profile.review_status not in _STATUSES_REQUIRING_REREVIEW_ON_EDIT:
+        return
+    profile.review_note = None
+    if missing_profile_fields(profile):
+        profile.review_status = 'draft'
+        profile.submitted_at = None
+        return
+    profile.review_status = 'pending_review'
+    profile.submitted_at = datetime.now(UTC)
 
 
 async def _get_or_create(db: AsyncSession, user_id: UUID) -> ScholarProfessionalProfile:
@@ -143,6 +151,19 @@ async def _load(db: AsyncSession, user_id: UUID) -> ScholarProfessionalProfile |
     ).scalar_one_or_none()
 
 
+async def _locked_profile(db: AsyncSession, user_id: UUID) -> ScholarProfessionalProfile:
+    """Load (or create) then row-lock so admin approve/revoke cannot race the requeue decision."""
+    profile = await _get_or_create(db, user_id)
+    locked = (
+        await db.execute(
+            select(ScholarProfessionalProfile)
+            .where(ScholarProfessionalProfile.id == profile.id)
+            .with_for_update()
+        )
+    ).scalar_one()
+    return locked
+
+
 async def get_my_profile(db: AsyncSession, user_id: UUID) -> ScholarProfessionalProfileRead:
     return _to_read(await _get_or_create(db, user_id))
 
@@ -163,7 +184,7 @@ def _validate_skills(values: list[str] | None) -> list[str] | None:
 async def update_profile(
     db: AsyncSession, user_id: UUID, payload: ScholarProfessionalProfileUpdate
 ) -> ScholarProfessionalProfileRead:
-    profile = await _get_or_create(db, user_id)
+    profile = await _locked_profile(db, user_id)
     material = False
     if payload.linkedin_url is not None:
         new = payload.linkedin_url.strip() or None
@@ -209,7 +230,7 @@ async def update_profile(
             profile.projects = dumped
             material = True
     if material:
-        _bump_to_pending_if_approved(profile)
+        _requeue_after_material_edit(profile)
     await db.commit()
     await db.refresh(profile)
     return _to_read(profile)
@@ -221,7 +242,7 @@ async def submit_for_review(db: AsyncSession, user_id: UUID) -> ScholarProfessio
     Consent + completeness are required; approval is what makes the row employer-visible.
     Idempotent when already `pending_review` (e.g. Save bumped an approved profile, then Submit).
     """
-    profile = await _get_or_create(db, user_id)
+    profile = await _locked_profile(db, user_id)
     missing = missing_profile_fields(profile)
     if missing:
         raise HTTPException(
@@ -246,7 +267,7 @@ async def set_consent(db: AsyncSession, user_id: UUID, consent: bool) -> Scholar
     """Toggle employer-visibility consent. Revoking it only gates future signed-URL access
     (enforced wherever employer discovery reads it later) — it never deletes the underlying
     résumé/headshot; that's the student's own file, theirs to keep regardless of who can see it."""
-    profile = await _get_or_create(db, user_id)
+    profile = await _locked_profile(db, user_id)
     profile.employer_visibility_consent = consent
     if consent:
         profile.consent_given_at = datetime.now(UTC)
@@ -284,26 +305,26 @@ def _validate_resume(data: bytes) -> tuple[str, str]:
 async def upload_headshot(db: AsyncSession, user_id: UUID, data: bytes) -> ScholarProfessionalProfileRead:
     # Authorize before doing any work on the file — a non-scholar gets 403 without us ever
     # decoding their upload.
-    profile = await _get_or_create(db, user_id)
+    profile = await _locked_profile(db, user_id)
     if len(data) > settings.max_profile_image_mb * 1024 * 1024:
         raise HTTPException(
             status_code=status.HTTP_413_CONTENT_TOO_LARGE, detail='Headshot image is too large'
         )
     clean_data, content_type, ext = _validate_headshot(data)
     profile.headshot_path = storage_service.upload_scholar_file(user_id, 'headshot', ext, content_type, clean_data)
-    _bump_to_pending_if_approved(profile)
+    _requeue_after_material_edit(profile)
     await db.commit()
     await db.refresh(profile)
     return _to_read(profile)
 
 
 async def upload_resume(db: AsyncSession, user_id: UUID, data: bytes) -> ScholarProfessionalProfileRead:
-    profile = await _get_or_create(db, user_id)
+    profile = await _locked_profile(db, user_id)
     if len(data) > settings.max_resume_mb * 1024 * 1024:
         raise HTTPException(status_code=status.HTTP_413_CONTENT_TOO_LARGE, detail='Résumé file is too large')
     content_type, ext = _validate_resume(data)
     profile.resume_path = storage_service.upload_scholar_file(user_id, 'resume', ext, content_type, data)
-    _bump_to_pending_if_approved(profile)
+    _requeue_after_material_edit(profile)
     await db.commit()
     await db.refresh(profile)
     return _to_read(profile)

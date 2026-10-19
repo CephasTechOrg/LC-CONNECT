@@ -48,6 +48,12 @@ def _notification_copy(
         return 'LC Connect', "You've been verified for a new program — check your profile"
     if notif_type == 'admin_membership_invited':
         return 'LC Connect', "You've been granted admin access — sign in to the Admin Portal"
+    if notif_type == 'scholar_profile_approved':
+        return 'LC Connect', 'Your Blueprint Bond profile is approved for employer partners'
+    if notif_type == 'scholar_profile_changes_requested':
+        return 'LC Connect', 'Honors asked for updates on your Blueprint Bond profile'
+    if notif_type == 'scholar_profile_revoked':
+        return 'LC Connect', 'Blueprint Bond partner visibility was revoked'
     if notif_type == 'message_reaction':
         # The emoji, never the message it is attached to. Every other line here follows the same
         # rule — a push shows on a locked screen, so it says what happened and not what was said.

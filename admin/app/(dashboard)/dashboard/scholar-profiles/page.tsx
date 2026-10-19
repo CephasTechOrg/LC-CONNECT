@@ -61,6 +61,18 @@ function initials(name: string | null, email: string): string {
   return (parts[0][0] + parts[1][0]).toUpperCase();
 }
 
+/** Defense in depth — only render http(s) links even if a stale row slipped past validation. */
+function safeExternalHref(url: string | null | undefined): string | null {
+  if (!url) return null;
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') return parsed.href;
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
 export default function ScholarProfilesPage() {
   const [tab, setTab] = useState<StatusTab>('pending_review');
   const [items, setItems] = useState<ScholarProfile[]>([]);
@@ -349,10 +361,10 @@ export default function ScholarProfilesPage() {
                     <li key={idx}>
                       <strong>{p.name}</strong>
                       {p.role ? ` · ${p.role}` : ''}
-                      {p.url ? (
+                      {safeExternalHref(p.url) ? (
                         <>
                           {' · '}
-                          <a href={p.url} target="_blank" rel="noopener noreferrer">Link</a>
+                          <a href={safeExternalHref(p.url)!} target="_blank" rel="noopener noreferrer">Link</a>
                         </>
                       ) : null}
                       {p.description ? <div className="meta">{p.description}</div> : null}
@@ -362,18 +374,22 @@ export default function ScholarProfilesPage() {
               </div>
             ) : null}
 
-            {(drawer.linkedin_url || drawer.handshake_url) ? (
+            {(safeExternalHref(drawer.linkedin_url) || safeExternalHref(drawer.handshake_url)) ? (
               <div className="field">
                 <label>Links</label>
                 <div style={{ fontSize: 13.5 }}>
-                  {drawer.linkedin_url ? (
+                  {safeExternalHref(drawer.linkedin_url) ? (
                     <div>
-                      <a href={drawer.linkedin_url} target="_blank" rel="noopener noreferrer">LinkedIn</a>
+                      <a href={safeExternalHref(drawer.linkedin_url)!} target="_blank" rel="noopener noreferrer">
+                        LinkedIn
+                      </a>
                     </div>
                   ) : null}
-                  {drawer.handshake_url ? (
+                  {safeExternalHref(drawer.handshake_url) ? (
                     <div>
-                      <a href={drawer.handshake_url} target="_blank" rel="noopener noreferrer">Handshake</a>
+                      <a href={safeExternalHref(drawer.handshake_url)!} target="_blank" rel="noopener noreferrer">
+                        Handshake
+                      </a>
                     </div>
                   ) : null}
                 </div>

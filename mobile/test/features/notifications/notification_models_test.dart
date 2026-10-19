@@ -70,6 +70,23 @@ void main() {
     test('program membership verified routes to the professional profile', () {
       expect(make('program_membership_verified').route, '/profile/blueprint-bond');
     });
+    test('scholar profile review outcomes', () {
+      expect(
+        make('scholar_profile_approved').message,
+        contains('approved'),
+      );
+      expect(
+        make('scholar_profile_changes_requested').message,
+        contains('updates'),
+      );
+      expect(
+        make('scholar_profile_revoked').message,
+        contains('revoked'),
+      );
+      expect(make('scholar_profile_approved').route, '/profile/blueprint-bond');
+      expect(make('scholar_profile_changes_requested').route, '/profile/blueprint-bond');
+      expect(make('scholar_profile_revoked').route, '/profile/blueprint-bond');
+    });
 
     /// The backend can push a type the app has never heard of, and the fallback silently renders
     /// "You have a new notification" — which reads as an empty, useless alert. This locks every
@@ -87,6 +104,9 @@ void main() {
         'group_removed',
         'program_membership_verified',
         'admin_membership_invited',
+        'scholar_profile_approved',
+        'scholar_profile_changes_requested',
+        'scholar_profile_revoked',
       ];
       for (final type in emittedByBackend) {
         expect(

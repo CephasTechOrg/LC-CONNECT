@@ -76,6 +76,12 @@ class AppNotification {
         'admin_membership_invited' => "You've been granted admin access — sign in to the Admin Portal",
         'program_membership_verified' =>
           "You're a verified Presidential Scholar — complete your professional profile",
+        'scholar_profile_approved' =>
+          'Your Blueprint Bond profile is approved for employer partners',
+        'scholar_profile_changes_requested' =>
+          'Honors asked for updates on your Blueprint Bond profile',
+        'scholar_profile_revoked' =>
+          'Blueprint Bond partner visibility was revoked — update and resubmit',
         'honors_attendance_open' => 'Honors attendance is open — tap to scan the classroom QR',
         // The emoji when the server sent one, so the row says which reaction. Rows written before
         // `detail` existed fall back to the plain sentence rather than rendering "null".
@@ -91,7 +97,12 @@ class AppNotification {
     if (type.startsWith('connection_')) return '/connections';
     // Verification is only useful if it takes them to the thing it unlocked — the professional
     // extension they can now fill in.
-    if (type == 'program_membership_verified') return '/profile/blueprint-bond';
+    if (type == 'program_membership_verified' ||
+        type == 'scholar_profile_approved' ||
+        type == 'scholar_profile_changes_requested' ||
+        type == 'scholar_profile_revoked') {
+      return '/profile/blueprint-bond';
+    }
     if (type == 'honors_attendance_open') {
       // Carrying the session id is the point (report #15). Without it the scanner had to work
       // out which session was meant from "whichever is currently active" — wrong the moment one

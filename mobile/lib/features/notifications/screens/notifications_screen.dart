@@ -367,6 +367,9 @@ IconData _iconFor(String type) => switch (type) {
   'connection_accepted' => Icons.how_to_reg_outlined,
   'admin_membership_invited' => Icons.admin_panel_settings_outlined,
   'program_membership_verified' => Icons.workspace_premium_outlined,
+  'scholar_profile_approved' => Icons.workspace_premium_outlined,
+  'scholar_profile_changes_requested' => Icons.edit_note_outlined,
+  'scholar_profile_revoked' => Icons.visibility_off_outlined,
   // Only reached when the actor has no avatar — a reaction row is actor-centric and
   // normally shows their face.
   'message_reaction' => Icons.emoji_emotions_outlined,

@@ -38,6 +38,18 @@ type ScholarView = {
   headshot_url: string | null;
 };
 
+/** Defense in depth — only render http(s) links even if a stale row slipped past validation. */
+function safeExternalHref(url: string | null | undefined): string | null {
+  if (!url) return null;
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') return parsed.href;
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
 function experienceRange(item: ScholarInternship): string | null {
   const start = item.start_date?.trim();
   const end = item.is_current ? 'Present' : item.end_date?.trim();
@@ -205,8 +217,13 @@ export default function ScholarDetailPage() {
                     {item.role ? (
                       <div style={{ fontSize: 13.5, color: 'var(--text-mid)' }}>{item.role}</div>
                     ) : null}
-                    {item.url ? (
-                      <a href={item.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13 }}>
+                    {safeExternalHref(item.url) ? (
+                      <a
+                        href={safeExternalHref(item.url)!}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ fontSize: 13 }}
+                      >
                         View project
                       </a>
                     ) : null}
@@ -248,16 +265,16 @@ export default function ScholarDetailPage() {
           <div className="panel-head">
             <h2>Contact &amp; documents</h2>
           </div>
-          {scholar.linkedin_url ? (
+          {safeExternalHref(scholar.linkedin_url) ? (
             <p style={{ fontSize: 13.5, marginBottom: 8 }}>
-              <a href={scholar.linkedin_url} target="_blank" rel="noopener noreferrer">
+              <a href={safeExternalHref(scholar.linkedin_url)!} target="_blank" rel="noopener noreferrer">
                 LinkedIn profile
               </a>
             </p>
           ) : null}
-          {scholar.handshake_url ? (
+          {safeExternalHref(scholar.handshake_url) ? (
             <p style={{ fontSize: 13.5, marginBottom: 8 }}>
-              <a href={scholar.handshake_url} target="_blank" rel="noopener noreferrer">
+              <a href={safeExternalHref(scholar.handshake_url)!} target="_blank" rel="noopener noreferrer">
                 Handshake profile
               </a>
             </p>

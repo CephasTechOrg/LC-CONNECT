@@ -132,6 +132,9 @@ async def test_notify_noop_when_no_tokens(monkeypatch):
         ('group_request_approved', 'Alex', None, 'Group request', 'approved'),
         ('program_membership_verified', 'Alex', None, 'LC Connect', 'verified'),
         ('admin_membership_invited', 'Alex', None, 'LC Connect', 'Admin Portal'),
+        ('scholar_profile_approved', 'Alex', None, 'LC Connect', 'approved'),
+        ('scholar_profile_changes_requested', 'Alex', None, 'LC Connect', 'updates'),
+        ('scholar_profile_revoked', 'Alex', None, 'LC Connect', 'revoked'),
     ],
 )
 def test_notification_copy_per_type(notif_type, actor_name, group_name, expected_title, expected_body_contains):

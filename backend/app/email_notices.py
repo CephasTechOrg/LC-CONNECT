@@ -155,3 +155,37 @@ def send_employer_rejected_email(to_email: str, *, review_note: str | None) -> N
         review_note=review_note,
         closing='If you believe this was a mistake, reply to this email and we will take another look.',
     )
+
+
+# ── Blueprint Bond / Honors professional-profile review ───────────────────────────
+
+_SCHOLAR_PROFILE_COPY: dict[str, tuple[str, str, str]] = {
+    'approved': (
+        'Your Blueprint Bond profile is approved',
+        'Your Blueprint Bond profile is approved',
+        'Honors has approved your professional profile. Employer partners can see it while your '
+        'visibility consent stays on.',
+    ),
+    'changes_requested': (
+        'Updates needed on your Blueprint Bond profile',
+        'Updates needed on your Blueprint Bond profile',
+        'Honors reviewed your professional profile and asked for updates before it can appear to '
+        'employer partners. Open LC Connect, edit your Blueprint Bond profile, and submit again.',
+    ),
+    'revoked': (
+        'Blueprint Bond partner visibility revoked',
+        'Blueprint Bond partner visibility revoked',
+        'Honors removed your professional profile from employer partner visibility. You can update '
+        'your Blueprint Bond profile in LC Connect and submit again for review.',
+    ),
+}
+
+
+def send_scholar_profile_decision_email(to_email: str, *, outcome: str, review_note: str | None) -> None:
+    """`outcome` is approved | changes_requested | revoked — Honors admin review decisions."""
+    copy = _SCHOLAR_PROFILE_COPY.get(outcome)
+    if copy is None:
+        logger.error('email_notices: unknown scholar profile outcome %r; no email sent', outcome)
+        return
+    subject, heading, intro = copy
+    _decision_email(to_email, subject=subject, heading=heading, intro=intro, review_note=review_note)

@@ -109,6 +109,9 @@ class _BubbleTile extends StatelessWidget {
                   ),
                 GestureDetector(
                   onLongPress: _hasMenu ? () => _showOptions(context) : null,
+                  // Double-tap opens the same sheet so reacting does not depend on discovering
+                  // long-press alone (Wave A optional affordance).
+                  onDoubleTap: _canReact ? () => _showOptions(context) : null,
                   child: Container(
                     padding: const EdgeInsets.symmetric(
                         horizontal: 14, vertical: 10),

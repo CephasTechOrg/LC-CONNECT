@@ -42,6 +42,7 @@ async def _eligible_scholar(db, factory, *, display_name: str = 'Scholar', conse
     profile = ScholarProfessionalProfile(
         user_id=scholar.id,
         employer_visibility_consent=consent,
+        consent_version=1 if consent else 0,
         review_status='approved' if consent else 'draft',
         linkedin_url='https://linkedin.com/in/scholar',
         summary='A dedicated student leader.',
@@ -63,6 +64,30 @@ async def test_list_excludes_non_consenting_scholar(db, factory):
     rows = await discovery.list_eligible_scholars(db)
     names = {social.display_name for _, social in rows}
     assert names == {'Consents'}
+
+
+async def test_list_excludes_non_approved_review_status(db, factory):
+    await _eligible_scholar(db, factory, display_name='Approved', consent=True)
+    pending, pending_profile = await _eligible_scholar(db, factory, display_name='Pending', consent=True)
+    pending_profile.review_status = 'pending_review'
+    revoked, revoked_profile = await _eligible_scholar(db, factory, display_name='Revoked', consent=True)
+    revoked_profile.review_status = 'revoked'
+    await db.commit()
+
+    rows = await discovery.list_eligible_scholars(db)
+    names = {social.display_name for _, social in rows}
+    assert names == {'Approved'}
+    assert pending.id not in {p.user_id for p, _ in rows}
+    assert revoked.id not in {p.user_id for p, _ in rows}
+
+
+async def test_list_excludes_stale_consent_version(db, factory):
+    _, profile = await _eligible_scholar(db, factory, display_name='Stale Consent', consent=True)
+    profile.consent_version = 0
+    await db.commit()
+
+    rows = await discovery.list_eligible_scholars(db)
+    assert all(social.display_name != 'Stale Consent' for _, social in rows)
 
 
 async def test_list_excludes_plain_student(db, factory):

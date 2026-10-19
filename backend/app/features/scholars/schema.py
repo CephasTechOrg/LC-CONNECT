@@ -22,6 +22,19 @@ def _strip_or_none(value: object) -> object:
     return value
 
 
+def _http_url_or_none(value: object) -> object:
+    """Allow clearing via empty/whitespace; otherwise require http(s) — never javascript:/data:."""
+    cleaned = _strip_or_none(value)
+    if cleaned is None:
+        return None
+    if not isinstance(cleaned, str):
+        return cleaned
+    lower = cleaned.lower()
+    if not (lower.startswith('https://') or lower.startswith('http://')):
+        raise ValueError('URL must start with http:// or https://')
+    return cleaned
+
+
 class ScholarInternshipEntry(BaseModel):
     """One past or current internship / work experience line."""
 
@@ -66,10 +79,15 @@ class ScholarProjectEntry(BaseModel):
             return value.strip()
         return value
 
-    @field_validator('role', 'url', 'description', mode='before')
+    @field_validator('role', 'description', mode='before')
     @classmethod
     def _strip_optional(cls, value: object) -> object:
         return _strip_or_none(value)
+
+    @field_validator('url', mode='before')
+    @classmethod
+    def _http_url(cls, value: object) -> object:
+        return _http_url_or_none(value)
 
 
 class ScholarProfessionalProfileRead(BaseModel):
@@ -109,6 +127,11 @@ class ScholarProfessionalProfileUpdate(BaseModel):
     career_interests: list[str] | None = Field(default=None, max_length=30)
     internships: list[ScholarInternshipEntry] | None = Field(default=None, max_length=5)
     projects: list[ScholarProjectEntry] | None = Field(default=None, max_length=5)
+
+    @field_validator('linkedin_url', 'handshake_url', mode='before')
+    @classmethod
+    def _http_urls(cls, value: object) -> object:
+        return _http_url_or_none(value)
 
 
 class ConsentUpdateRequest(BaseModel):

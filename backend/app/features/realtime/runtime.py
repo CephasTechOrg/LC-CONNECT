@@ -129,6 +129,10 @@ PUSHABLE_NOTIFICATION_TYPES = frozenset({
     'admin_membership_invited',
     # A reaction to your own message, and only that — see `notify_reaction`.
     'message_reaction',
+    # Blueprint Bond Honors review — scholars may not have the app open when admin decides.
+    'scholar_profile_approved',
+    'scholar_profile_changes_requested',
+    'scholar_profile_revoked',
 })
 
 

@@ -10,8 +10,8 @@ from app.features.admin import scholar_profiles as admin_service
 from app.features.employers import discovery
 from app.features.scholars import service
 from app.features.scholars.schema import ScholarProfessionalProfileUpdate
-from app.models import Program, ProgramMembership, ScholarProfessionalProfile
 from app.features.scholars.service import MIN_SUMMARY_LENGTH
+from app.models import Program, ProgramMembership, ScholarProfessionalProfile
 
 
 async def _verified_scholar(db, factory):
@@ -205,3 +205,27 @@ async def test_identical_save_does_not_bump_approved(db, factory):
         ),
     )
     assert again.review_status == 'approved'
+
+
+@pytest.mark.asyncio
+async def test_incomplete_material_edit_after_approve_goes_to_draft(db, factory):
+    """Approved + strip required fields must not park an incomplete row in the pending queue."""
+    scholar = await _verified_scholar(db, factory)
+    admin = await factory.user(display_name='Honors Admin')
+    await _complete_profile(db, scholar.id)
+    await service.submit_for_review(db, scholar.id)
+    profile = (
+        await db.execute(
+            select(ScholarProfessionalProfile).where(ScholarProfessionalProfile.user_id == scholar.id)
+        )
+    ).scalar_one()
+    await admin_service.approve_profile(db, actor=admin, profile_id=profile.id)
+
+    updated = await service.update_profile(
+        db,
+        scholar.id,
+        ScholarProfessionalProfileUpdate(skills=['OnlyOne']),
+    )
+    assert updated.review_status == 'draft'
+    rows = await discovery.list_eligible_scholars(db)
+    assert all(p.user_id != scholar.id for p, _ in rows)

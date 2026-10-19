@@ -62,9 +62,29 @@ async def send_connection_request(payload: ConnectionRequestCreate, current_user
             await db.flush()
         except IntegrityError:
             # Both sides connected back at the same instant — the other transaction created
-            # the match. That's success, not an error.
+            # the match. Reload and finish as success (same heal as accept).
             await db.rollback()
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='You are already matched') from None
+            reverse_request = (
+                await db.execute(
+                    select(ConnectionRequest).where(
+                        ConnectionRequest.sender_id == payload.receiver_id,
+                        ConnectionRequest.receiver_id == current_user.id,
+                    )
+                )
+            ).scalar_one_or_none()
+            if reverse_request is None:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT, detail='You are already matched'
+                ) from None
+            if reverse_request.status == 'pending':
+                reverse_request.status = 'accepted'
+                reverse_request.responded_at = datetime.now(UTC)
+            new_match = await existing_match(db, current_user.id, payload.receiver_id)
+            if new_match is None:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT, detail='You are already matched'
+                ) from None
+        new_match.disconnected_at = None
         await ensure_dm_conversation(db, new_match)  # every match gets its conversation
         await db.commit()
         await db.refresh(reverse_request)
