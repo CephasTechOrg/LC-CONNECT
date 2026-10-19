@@ -252,15 +252,14 @@ export default function AdminsPage() {
           ) : items.length === 0 ? (
             <OpsEmpty title="No admins yet">Invite an administrator to get started.</OpsEmpty>
           ) : (
-            <table className="ops-table">
+            <table className="ops-table ops-cards-sm">
               <thead>
                 <tr>
                   <th>Administrator</th>
-                  <th>Email</th>
                   <th>Role</th>
                   <th>Status</th>
-                  <th>Invited</th>
-                  <th>Actions</th>
+                  <th className="ops-col-hide-md">Invited</th>
+                  <th className="ops-col-actions">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -278,14 +277,18 @@ export default function AdminsPage() {
                       <td>
                         <div className="ops-user-cell">
                           <div className="ops-avatar">{initials(item.display_name, item.user_email)}</div>
-                          <div className="ops-cell-title">{label}</div>
+                          <div className="ops-user-cell-text">
+                            <div className="ops-cell-title" title={label}>{label}</div>
+                            <div className="ops-cell-sub" title={item.user_email}>{item.user_email}</div>
+                          </div>
                         </div>
                       </td>
-                      <td>{item.user_email}</td>
-                      <td><span className="ops-chip">{ROLE_LABELS[item.role] ?? item.role}</span></td>
-                      <td><span className={statusClass}>{item.status}</span></td>
-                      <td>{when(item.invited_at)}</td>
-                      <td>
+                      <td data-label="Role">
+                        <span className="ops-chip">{ROLE_LABELS[item.role] ?? item.role}</span>
+                      </td>
+                      <td data-label="Status"><span className={statusClass}>{item.status}</span></td>
+                      <td className="ops-col-hide-md meta" data-label="Invited">{when(item.invited_at)}</td>
+                      <td className="ops-col-actions ops-cell-actions">
                         {canManage ? (
                           <div className="ops-row-actions">
                             {item.status === 'invited' ? (
@@ -308,7 +311,7 @@ export default function AdminsPage() {
                             </button>
                           </div>
                         ) : (
-                          <span className="ops-cell-sub">
+                          <span className="ops-cell-sub" style={{ marginTop: 0 }}>
                             {item.status === 'revoked' ? 'Read-only' : '—'}
                           </span>
                         )}

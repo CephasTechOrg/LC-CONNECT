@@ -175,10 +175,12 @@
 .ops-user-cell-text {
   min-width: 0;
   flex: 1 1 auto;
+  max-width: 100%;
 }
 
-.ops-user-cell .ops-cell-title {
-  /* Prefer a single-line name with ellipsis over stacking "Cephas" / "Bonsu". */
+/* Prefer a single-line name with ellipsis over stacking "First" / "Last". */
+.ops-user-cell .ops-cell-title,
+.ops-user-cell-text > .ops-cell-title {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -186,12 +188,18 @@
   overflow-wrap: normal;
 }
 
-.ops-user-cell .ops-cell-sub {
+.ops-user-cell .ops-cell-sub,
+.ops-user-cell-text > .ops-cell-sub {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   word-break: normal;
   overflow-wrap: anywhere; /* long emails may still need to break */
+}
+
+/* Extra identity detail shown only when the table collapses to cards. */
+.ops-only-sm {
+  display: none;
 }
 
 .ops-avatar {
@@ -913,6 +921,14 @@
 
   .ops-table.ops-cards-sm td:first-child .ops-cell-sub {
     margin-top: 3px;
+  }
+
+  .ops-table.ops-cards-sm .ops-only-sm {
+    display: block;
+  }
+
+  .ops-table.ops-cards-sm .ops-user-cell-text {
+    max-width: none;
   }
 
   /* Chip pairs (e.g. email + campus) stay readable on the right of the card row. */

@@ -257,32 +257,36 @@ export default function EmployersPage() {
                 {`No ${orgTab} employer organizations.`}
               </OpsEmpty>
             ) : (
-              <table className="ops-table">
+              <table className="ops-table ops-cards-sm">
                 <thead>
                   <tr>
                     <th>Organization</th>
-                    <th>Contact</th>
-                    <th>Email</th>
                     <th>Status</th>
-                    <th>Review Note</th>
-                    <th>Actions</th>
+                    <th className="ops-col-hide-md">Note</th>
+                    <th className="ops-col-actions">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {orgs.map((item) => (
                     <tr key={item.id}>
-                      <td><div className="ops-cell-title">{item.name}</div></td>
-                      <td>{item.contact_name || '—'}</td>
-                      <td>{item.contact_email}</td>
-                      <td><span className={statusChip(orgTab)}>{item.status}</span></td>
                       <td>
-                        {item.review_note ? (
-                          <span className="ops-cell-sub">{item.review_note}</span>
-                        ) : (
-                          <span className="ops-cell-sub">—</span>
-                        )}
+                        <div className="ops-user-cell-text">
+                          <div className="ops-cell-title" title={item.name}>{item.name}</div>
+                          <div className="ops-cell-sub" title={item.contact_email}>
+                            {item.contact_name ? `${item.contact_name} · ` : ''}
+                            {item.contact_email}
+                          </div>
+                        </div>
                       </td>
-                      <td>
+                      <td data-label="Status">
+                        <span className={statusChip(orgTab)}>{item.status}</span>
+                      </td>
+                      <td className="ops-col-hide-md" data-label="Note">
+                        <span className="ops-cell-sub" style={{ marginTop: 0 }}>
+                          {item.review_note || '—'}
+                        </span>
+                      </td>
+                      <td className="ops-col-actions ops-cell-actions">
                         <div className="ops-row-actions">
                           {orgTab === 'pending' ? (
                             <button
@@ -307,7 +311,7 @@ export default function EmployersPage() {
                             </button>
                           ) : null}
                           {orgTab === 'rejected' ? (
-                            <span className="ops-cell-sub">Read-only</span>
+                            <span className="ops-cell-sub" style={{ marginTop: 0 }}>Read-only</span>
                           ) : null}
                         </div>
                       </td>
@@ -326,37 +330,47 @@ export default function EmployersPage() {
                 {`No ${oppTab} opportunity submissions.`}
               </OpsEmpty>
             ) : (
-              <table className="ops-table">
+              <table className="ops-table ops-cards-sm">
                 <thead>
                   <tr>
                     <th>Opportunity</th>
-                    <th>Organization</th>
                     <th>Category</th>
-                    <th>Link</th>
+                    <th className="ops-col-hide-md">Link</th>
                     <th>Status</th>
-                    <th>Review</th>
+                    <th className="ops-col-actions">Review</th>
                   </tr>
                 </thead>
                 <tbody>
                   {opps.map((item) => (
                     <tr key={item.id}>
                       <td>
-                        <div className="ops-cell-title">{item.title}</div>
-                        <div className="ops-cell-sub">{item.description.slice(0, 90)}</div>
+                        <div className="ops-user-cell-text">
+                          <div className="ops-cell-title" title={item.title}>{item.title}</div>
+                          <div className="ops-cell-sub" title={item.organization_name}>
+                            {item.organization_name}
+                            {item.description ? ` · ${item.description.slice(0, 72)}` : ''}
+                          </div>
+                        </div>
                       </td>
-                      <td>{item.organization_name}</td>
-                      <td style={{ textTransform: 'capitalize' }}>{item.category}</td>
-                      <td>
+                      <td data-label="Category" style={{ textTransform: 'capitalize' }}>{item.category}</td>
+                      <td className="ops-col-hide-md" data-label="Link">
                         {item.external_url ? (
-                          <a href={item.external_url} target="_blank" rel="noopener noreferrer">
-                            Link
+                          <a
+                            className="ops-cell-link"
+                            href={item.external_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            Open link
                           </a>
                         ) : (
-                          <span className="ops-cell-sub">—</span>
+                          <span className="ops-cell-sub" style={{ marginTop: 0 }}>—</span>
                         )}
                       </td>
-                      <td><span className={statusChip(oppTab)}>{item.status}</span></td>
-                      <td>
+                      <td data-label="Status">
+                        <span className={statusChip(oppTab)}>{item.status}</span>
+                      </td>
+                      <td className="ops-col-actions ops-cell-actions">
                         <div className="ops-row-actions">
                           {oppTab === 'pending' ? (
                             <button
@@ -379,7 +393,7 @@ export default function EmployersPage() {
                               Take down
                             </button>
                           ) : (
-                            <span className="ops-cell-sub">
+                            <span className="ops-cell-sub" style={{ marginTop: 0 }}>
                               {item.published_post_status === 'archived'
                                 ? 'Taken down'
                                 : item.review_note

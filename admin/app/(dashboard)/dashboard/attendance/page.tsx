@@ -161,8 +161,8 @@ export default function AttendanceLandingPage() {
       {history.length === 0 ? (
         <OpsEmpty title="No sessions yet">Start your first Honors attendance session above.</OpsEmpty>
       ) : (
-        <div className="ops-table-wrap">
-          <table className="ops-table">
+        <div className="ops-table-wrap table-scroll">
+          <table className="ops-table ops-cards-sm">
             <thead>
               <tr>
                 <th>Session</th>
@@ -175,15 +175,19 @@ export default function AttendanceLandingPage() {
               {history.map((item) => (
                 <tr key={item.session.id}>
                   <td>
-                    <Link href={`/dashboard/attendance/${item.session.id}`} className="ops-cell-title">
-                      {item.session.title}
-                    </Link>
+                    <div className="ops-user-cell-text">
+                      <Link href={`/dashboard/attendance/${item.session.id}`} className="ops-cell-title">
+                        {item.session.title}
+                      </Link>
+                    </div>
                   </td>
-                  <td>{formatDate(item.session.opened_at)}</td>
-                  <td>
+                  <td data-label="When">{formatDate(item.session.opened_at)}</td>
+                  <td data-label="Present">
                     {item.present_count + item.late_count} / {item.honors_student_count}
                   </td>
-                  <td style={{ textTransform: 'capitalize' }}>{item.session.status}</td>
+                  <td data-label="Status" style={{ textTransform: 'capitalize' }}>
+                    {item.session.status}
+                  </td>
                 </tr>
               ))}
             </tbody>

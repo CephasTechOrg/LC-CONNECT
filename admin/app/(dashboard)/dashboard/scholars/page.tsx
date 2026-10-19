@@ -236,14 +236,13 @@ export default function ScholarsPage() {
             </div>
           ) : candidates.length > 0 ? (
             <div className="ops-table-wrap table-scroll">
-              <table className="ops-table">
+              <table className="ops-table ops-cards-sm">
                 <thead>
                   <tr>
                     <th>Student</th>
-                    <th>Email</th>
-                    <th>Account Status</th>
-                    <th>Scholar Status</th>
-                    <th>Action</th>
+                    <th>Account</th>
+                    <th>Scholar</th>
+                    <th className="ops-col-actions">Action</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -254,23 +253,25 @@ export default function ScholarsPage() {
                         <td>
                           <div className="ops-user-cell">
                             <div className="ops-avatar">{initials(s.display_name, s.email)}</div>
-                            <div className="ops-cell-title">{s.display_name || '—'}</div>
+                            <div className="ops-user-cell-text">
+                              <div className="ops-cell-title">{s.display_name || '—'}</div>
+                              <div className="ops-cell-sub" title={s.email}>{s.email}</div>
+                            </div>
                           </div>
                         </td>
-                        <td>{s.email}</td>
-                        <td>
+                        <td data-label="Account">
                           <span className={s.status === 'active' ? 'ops-chip success' : 'ops-chip muted'}>
                             {s.status}
                           </span>
                         </td>
-                        <td>
+                        <td data-label="Scholar">
                           {alreadyScholar ? (
                             <span className="ops-chip success">Already a scholar</span>
                           ) : (
-                            <span className="ops-cell-sub">Not verified</span>
+                            <span className="ops-chip muted">Not verified</span>
                           )}
                         </td>
-                        <td>
+                        <td className="ops-col-actions ops-cell-actions">
                           <div className="ops-row-actions">
                             <button
                               className="ops-btn primary"
@@ -315,14 +316,13 @@ export default function ScholarsPage() {
                 : 'No revoked scholar memberships.'}
             </OpsEmpty>
           ) : (
-            <table className="ops-table">
+            <table className="ops-table ops-cards-sm">
               <thead>
                 <tr>
                   <th>Scholar</th>
-                  <th>Email</th>
                   <th>{tab === 'active' ? 'Verified' : 'Revoked'}</th>
                   <th>Status</th>
-                  <th />
+                  <th className="ops-col-actions" />
                 </tr>
               </thead>
               <tbody>
@@ -333,17 +333,21 @@ export default function ScholarsPage() {
                       <td>
                         <div className="ops-user-cell">
                           <div className="ops-avatar">{initials(item.display_name, item.user_email)}</div>
-                          <div className="ops-cell-title">{label}</div>
+                          <div className="ops-user-cell-text">
+                            <div className="ops-cell-title" title={label}>{label}</div>
+                            <div className="ops-cell-sub" title={item.user_email}>{item.user_email}</div>
+                          </div>
                         </div>
                       </td>
-                      <td>{item.user_email}</td>
-                      <td>{when(tab === 'active' ? item.verified_at : item.revoked_at)}</td>
-                      <td>
+                      <td data-label={tab === 'active' ? 'Verified' : 'Revoked'} className="meta">
+                        {when(tab === 'active' ? item.verified_at : item.revoked_at)}
+                      </td>
+                      <td data-label="Status">
                         <span className={tab === 'active' ? 'ops-chip success' : 'ops-chip muted'}>
                           {item.status}
                         </span>
                       </td>
-                      <td>
+                      <td className="ops-col-actions ops-cell-actions">
                         {tab === 'active' ? (
                           <div className="ops-row-actions">
                             <button

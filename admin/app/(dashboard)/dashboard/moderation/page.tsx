@@ -283,31 +283,43 @@ export default function ModerationPage() {
               Resolving an appeal records the review — reactivate the account on Users if you restore access.
             </p>
             <div className="ops-table-wrap table-scroll">
-              <table className="ops-table">
+              <table className="ops-table ops-cards-sm">
                 <thead>
                   <tr>
                     <th>User</th>
-                    <th>Message</th>
-                    <th>Submitted</th>
-                    <th>Actions</th>
+                    <th className="ops-col-hide-md">Submitted</th>
+                    <th className="ops-col-actions">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {appeals.map((a) => (
                     <tr key={a.id}>
                       <td>
-                        <div className="ops-cell-title">{a.display_name || a.user_email}</div>
-                        <div className="ops-cell-sub">{a.user_email}</div>
+                        <div className="ops-user-cell-text">
+                          <div className="ops-cell-title" title={a.display_name || a.user_email}>
+                            {a.display_name || a.user_email}
+                          </div>
+                          <div className="ops-cell-sub" title={a.message}>
+                            {a.message.slice(0, 120)}
+                            {a.message.length > 120 ? '…' : ''}
+                          </div>
+                          <div className="ops-cell-sub ops-only-sm">
+                            {a.user_email} · {relativeWhen(a.created_at)}
+                          </div>
+                        </div>
                       </td>
-                      <td>{a.message.slice(0, 160)}{a.message.length > 160 ? '…' : ''}</td>
-                      <td>{relativeWhen(a.created_at)}</td>
-                      <td style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                        <button className="ops-btn primary" type="button" onClick={() => void reviewAppeal(a, 'resolve')}>
-                          Mark resolved
-                        </button>
-                        <button className="ops-btn" type="button" onClick={() => void reviewAppeal(a, 'dismiss')}>
-                          Dismiss
-                        </button>
+                      <td className="ops-col-hide-md" data-label="Submitted">
+                        {relativeWhen(a.created_at)}
+                      </td>
+                      <td className="ops-col-actions ops-cell-actions">
+                        <div className="ops-row-actions">
+                          <button className="ops-btn primary" type="button" onClick={() => void reviewAppeal(a, 'resolve')}>
+                            Mark resolved
+                          </button>
+                          <button className="ops-btn" type="button" onClick={() => void reviewAppeal(a, 'dismiss')}>
+                            Dismiss
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -327,16 +339,14 @@ export default function ModerationPage() {
                 : 'Try adjusting your search or filters.'}
             </OpsEmpty>
           ) : (
-            <table className="ops-table">
+            <table className="ops-table ops-cards-sm">
               <thead>
                 <tr>
                   <th>Report</th>
-                  <th>Reported Subject</th>
                   <th>Type</th>
-                  <th>Reason</th>
-                  <th>Submitted</th>
+                  <th className="ops-col-hide-md">Submitted</th>
                   <th>Status</th>
-                  <th>Review</th>
+                  <th className="ops-col-actions">Review</th>
                 </tr>
               </thead>
               <tbody>
@@ -344,25 +354,35 @@ export default function ModerationPage() {
                   const reported = r.reported_user_id ? usersById.get(r.reported_user_id) : undefined;
                   const label = userLabel(reported, r.reported_user_id || '—');
                   const type = reportType(r);
+                  const detail = (r.details || r.message_body || 'No details').slice(0, 80);
                   return (
                     <tr key={r.id}>
                       <td>
-                        <div className="ops-cell-title">#{r.id.slice(0, 8)}</div>
-                        <div className="ops-cell-sub">{(r.details || r.message_body || 'No details').slice(0, 80)}</div>
+                        <div className="ops-user-cell-text">
+                          <div className="ops-cell-title">#{r.id.slice(0, 8)} · {label}</div>
+                          <div className="ops-cell-sub" title={detail}>
+                            {r.reason.replaceAll('_', ' ')}
+                            {detail ? ` · ${detail}` : ''}
+                          </div>
+                        </div>
                       </td>
-                      <td>{label}</td>
-                      <td><span className={typeChip(type)}>{type}</span></td>
-                      <td style={{ textTransform: 'capitalize' }}>{r.reason.replaceAll('_', ' ')}</td>
-                      <td>{relativeWhen(r.created_at)}</td>
-                      <td>
+                      <td data-label="Type">
+                        <span className={typeChip(type)}>{type}</span>
+                      </td>
+                      <td className="ops-col-hide-md" data-label="Submitted">
+                        {relativeWhen(r.created_at)}
+                      </td>
+                      <td data-label="Status">
                         <span className={r.status === 'open' ? 'ops-chip warn' : 'ops-chip muted'}>
                           {r.status}
                         </span>
                       </td>
-                      <td>
-                        <button className="ops-btn primary" type="button" onClick={() => void openReport(r)}>
-                          Review
-                        </button>
+                      <td className="ops-col-actions ops-cell-actions">
+                        <div className="ops-row-actions">
+                          <button className="ops-btn primary" type="button" onClick={() => void openReport(r)}>
+                            Review
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );

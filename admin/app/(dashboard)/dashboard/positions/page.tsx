@@ -185,15 +185,15 @@ export default function PositionsPage() {
                 : 'Try adjusting your search or category filter.'}
             </OpsEmpty>
           ) : (
-            <table className="ops-table">
+            <table className="ops-table ops-cards-sm">
               <thead>
                 <tr>
                   <th>Person</th>
-                  <th>Official Position</th>
-                  <th>Department</th>
+                  <th>Position</th>
+                  <th className="ops-col-hide-md">Department</th>
                   <th>Category</th>
-                  {tab === 'pending' ? <th>Contact</th> : <th>Status</th>}
-                  <th>{tab === 'pending' ? 'Review' : 'Action'}</th>
+                  <th>{tab === 'pending' ? 'Contact' : 'Status'}</th>
+                  <th className="ops-col-actions">{tab === 'pending' ? 'Review' : 'Action'}</th>
                 </tr>
               </thead>
               <tbody>
@@ -204,23 +204,27 @@ export default function PositionsPage() {
                       <td>
                         <div className="ops-user-cell">
                           <div className="ops-avatar">{initials(item.display_name, item.user_email)}</div>
-                          <div>
-                            <div className="ops-cell-title">{label}</div>
-                            <div className="ops-cell-sub">{item.user_email}</div>
+                          <div className="ops-user-cell-text">
+                            <div className="ops-cell-title" title={label}>{label}</div>
+                            <div className="ops-cell-sub" title={item.user_email}>{item.user_email}</div>
                           </div>
                         </div>
                       </td>
-                      <td>{item.official_title}</td>
-                      <td>{item.department}</td>
-                      <td style={{ textTransform: 'capitalize' }}>{item.category.replaceAll('_', ' ')}</td>
-                      <td>
+                      <td data-label="Position">{item.official_title}</td>
+                      <td className="ops-col-hide-md" data-label="Department">{item.department}</td>
+                      <td data-label="Category" style={{ textTransform: 'capitalize' }}>
+                        {item.category.replaceAll('_', ' ')}
+                      </td>
+                      <td data-label={tab === 'pending' ? 'Contact' : 'Status'}>
                         {tab === 'pending' ? (
-                          item.contact_email
+                          <span className="ops-cell-link" title={item.contact_email || undefined}>
+                            {item.contact_email || '—'}
+                          </span>
                         ) : (
                           <span className="ops-chip success">{item.status}</span>
                         )}
                       </td>
-                      <td>
+                      <td className="ops-col-actions ops-cell-actions">
                         <div className="ops-row-actions">
                           {tab === 'pending' ? (
                             <button
