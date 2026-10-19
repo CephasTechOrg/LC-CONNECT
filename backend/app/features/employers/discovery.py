@@ -1,9 +1,9 @@
 """Approved-employer scholar discovery (Blueprint Bond Phase 6).
 
-Every read here re-evaluates eligibility live — active `presidential_scholars` membership AND
-current `employer_visibility_consent = true` — rather than trusting anything cached. Revoking
-consent (or losing scholar status) removes a scholar from discovery immediately, on the very next
-request; there is no separate "sync" step that could lag behind.
+Every read here re-evaluates eligibility live — active `presidential_scholars` membership,
+`employer_visibility_consent = true`, AND Honors `review_status == approved` — rather than
+trusting anything cached. Revoking consent, losing scholar status, or leaving approved status
+removes a scholar from discovery on the very next request.
 """
 
 from __future__ import annotations
@@ -28,6 +28,7 @@ def _eligible_scholars_stmt():
         .join(Program, Program.id == ProgramMembership.program_id)
         .where(
             ScholarProfessionalProfile.employer_visibility_consent.is_(True),
+            ScholarProfessionalProfile.review_status == 'approved',
             ProgramMembership.status == 'active',
             Program.slug == PRESIDENTIAL_SCHOLARS_SLUG,
         )

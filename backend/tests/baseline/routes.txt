@@ -32,6 +32,7 @@ GET /api/v1/admin/employers/opportunities
 GET /api/v1/admin/programs/{slug}/members
 GET /api/v1/admin/reports
 GET /api/v1/admin/reports/{report_id}
+GET /api/v1/admin/scholar-profiles
 GET /api/v1/admin/suspension-appeals
 GET /api/v1/admin/system-status
 GET /api/v1/admin/users
@@ -126,6 +127,9 @@ POST /api/v1/admin/employers/{org_id}/resend-invite
 POST /api/v1/admin/programs/{slug}/members
 POST /api/v1/admin/programs/{slug}/members/{user_id}/revoke
 POST /api/v1/admin/reports/{report_id}/resolve
+POST /api/v1/admin/scholar-profiles/{profile_id}/approve
+POST /api/v1/admin/scholar-profiles/{profile_id}/request-changes
+POST /api/v1/admin/scholar-profiles/{profile_id}/revoke
 POST /api/v1/admin/suspension-appeals/{appeal_id}/dismiss
 POST /api/v1/admin/suspension-appeals/{appeal_id}/resolve
 POST /api/v1/admin/users/{user_id}/campus-verify
@@ -171,4 +175,5 @@ POST /api/v1/reports
 POST /api/v1/scholars/me/consent
 POST /api/v1/scholars/me/headshot
 POST /api/v1/scholars/me/resume
+POST /api/v1/scholars/me/submit
 PUT /api/v1/messages/{message_id}/reactions/{emoji}

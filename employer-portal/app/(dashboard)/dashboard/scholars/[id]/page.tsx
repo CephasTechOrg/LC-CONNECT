@@ -157,7 +157,7 @@ export default function ScholarDetailPage() {
                 {scholar.display_name || 'Presidential Scholar'}
               </h2>
               <p className="meta" style={{ margin: 0 }}>
-                Opted in to employer visibility
+                Honors-approved · opted in to employer visibility
               </p>
             </div>
           </div>

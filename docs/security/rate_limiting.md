@@ -79,9 +79,20 @@ avatar, report, invite).
 
 ---
 
-## 4. Not covered (deferred)
+## 4. Redis, WebSocket, and edge
 
-- **IP/edge rate limiting** (crude flood protection before requests reach the app) — best done at
-  Render/Cloudflare when needed.
-- **Redis-backed** distributed buckets — needed only when running multiple API workers.
-- **WebSocket** message/typing/subscribe already have their own limiters (see the realtime docs).
+**Redis-backed buckets are implemented**, not deferred. `UserRateLimit.aallow()` uses Redis when
+`REDIS_URL` is connected (shared across instances) and falls back to in-process memory when Redis
+is unset or briefly unavailable. That matches campus pilot (single instance, Redis optional) and
+horizontal scale (Redis required before 2+ workers). See
+[`docs/ops/scaling_1500.md`](../ops/scaling_1500.md).
+
+**WebSocket** send / typing / subscribe use the same `aallow` path with per-minute caps from
+`config.py` (e.g. message sends, reactions, edits). REST message routes share those budgets so a
+client cannot bypass WS limits by switching to HTTP.
+
+**Still deferred until abuse appears:**
+
+- **IP/edge rate limiting** (crude flood protection before requests reach the app) — Render /
+  Cloudflare when needed.
+- A blunt global “N req/s per user” — prefer the per-action tables above.

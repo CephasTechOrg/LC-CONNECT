@@ -1,9 +1,18 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+ScholarReviewStatus = Literal[
+    'draft',
+    'pending_review',
+    'approved',
+    'changes_requested',
+    'revoked',
+]
 
 
 def _strip_or_none(value: object) -> object:
@@ -77,6 +86,10 @@ class ScholarProfessionalProfileRead(BaseModel):
     projects: list[ScholarProjectEntry]
     employer_visibility_consent: bool
     consent_given_at: datetime | None
+    review_status: ScholarReviewStatus
+    review_note: str | None
+    submitted_at: datetime | None
+    reviewed_at: datetime | None
     has_headshot: bool
     has_resume: bool
     created_at: datetime

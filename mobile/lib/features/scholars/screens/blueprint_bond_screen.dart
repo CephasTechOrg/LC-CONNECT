@@ -34,6 +34,7 @@ class _BlueprintBondScreenState extends ConsumerState<BlueprintBondScreen> {
   final List<ScholarProject> _projects = [];
   bool _initialized = false;
   bool _saving = false;
+  bool _submitting = false;
   bool _uploadingHeadshot = false;
   bool _uploadingResume = false;
 
@@ -92,9 +93,13 @@ class _BlueprintBondScreenState extends ConsumerState<BlueprintBondScreen> {
             projects: List.of(_projects),
           );
       if (mounted) {
+        final status = ref.read(scholarProfileNotifierProvider).asData?.value.reviewStatus;
+        final msg = status == 'pending_review'
+            ? 'Saved — back in Honors review until approved again'
+            : 'Saved';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Saved', style: GoogleFonts.dmSans()),
+            content: Text(msg, style: GoogleFonts.dmSans()),
             backgroundColor: AppColors.green,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -162,6 +167,37 @@ class _BlueprintBondScreenState extends ConsumerState<BlueprintBondScreen> {
       await ref.read(scholarProfileNotifierProvider.notifier).setConsent(value);
     } catch (e) {
       _showError(e, fallback: 'Failed to update visibility.');
+    }
+  }
+
+  Future<void> _submitForReview() async {
+    setState(() => _submitting = true);
+    try {
+      // Persist local edits first so Honors reviews what the student currently sees.
+      await ref.read(scholarProfileNotifierProvider.notifier).updateFields(
+            linkedinUrl: _linkedinCtrl.text.trim(),
+            handshakeUrl: _handshakeCtrl.text.trim(),
+            summary: _summaryCtrl.text.trim(),
+            skills: _skills.toList(),
+            careerInterests: _careerInterests.toList(),
+            internships: List.of(_internships),
+            projects: List.of(_projects),
+          );
+      await ref.read(scholarProfileNotifierProvider.notifier).submitForReview();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Submitted for Honors review', style: GoogleFonts.dmSans()),
+            backgroundColor: AppColors.green,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
+    } catch (e) {
+      _showError(e, fallback: 'Could not submit for review.');
+    } finally {
+      if (mounted) setState(() => _submitting = false);
     }
   }
 
@@ -301,7 +337,7 @@ class _BlueprintBondScreenState extends ConsumerState<BlueprintBondScreen> {
                           Text('Visible to employers', style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, color: AppColors.textDark)),
                           const SizedBox(height: 2),
                           Text(
-                            'Let employer partners discover you.',
+                            'Consent is required; Honors approval publishes you to partners.',
                             style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textMuted, height: 1.35),
                           ),
                         ],
@@ -314,6 +350,12 @@ class _BlueprintBondScreenState extends ConsumerState<BlueprintBondScreen> {
                     ),
                   ],
                 ),
+              ),
+              const SizedBox(height: 16),
+              _ReviewStatusCard(
+                profile: profile,
+                submitting: _submitting,
+                onSubmit: profile.canSubmitForReview ? _submitForReview : null,
               ),
             ],
           );

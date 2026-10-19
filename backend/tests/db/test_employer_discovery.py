@@ -42,6 +42,7 @@ async def _eligible_scholar(db, factory, *, display_name: str = 'Scholar', conse
     profile = ScholarProfessionalProfile(
         user_id=scholar.id,
         employer_visibility_consent=consent,
+        review_status='approved' if consent else 'draft',
         linkedin_url='https://linkedin.com/in/scholar',
         summary='A dedicated student leader.',
         skills=['Python'],

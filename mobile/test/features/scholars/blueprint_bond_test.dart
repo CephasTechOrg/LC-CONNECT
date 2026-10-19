@@ -204,14 +204,14 @@ void _cardTests() {
       expect(find.text('Finish your Blueprint Bond profile'), findsOneWidget);
     });
 
-    testWidgets('Profile entry STAYS once complete, showing completed status', (tester) async {
+    testWidgets('Profile entry STAYS once complete, showing review status', (tester) async {
       // Load-bearing: this is the only place a finished scholar can still see their status now
       // that the dashboard prompt retires.
       await tester.pumpWidget(_card(BlueprintBondStyle.entry,
           scholar: true, profile: _profile(isComplete: true)));
       await tester.pumpAndSettle();
       expect(find.text('Honors Student'), findsOneWidget);
-      expect(find.text('Blueprint Bond · profile complete'), findsOneWidget);
+      expect(find.text('Blueprint Bond · ready to submit'), findsOneWidget);
     });
 
     testWidgets('Profile entry asserts neither state when the profile cannot be read',

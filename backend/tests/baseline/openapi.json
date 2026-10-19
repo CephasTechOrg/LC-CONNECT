@@ -6906,12 +6906,58 @@
             "title": "Projects",
             "type": "array"
           },
+          "review_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Review Note"
+          },
+          "review_status": {
+            "enum": [
+              "draft",
+              "pending_review",
+              "approved",
+              "changes_requested",
+              "revoked"
+            ],
+            "title": "Review Status",
+            "type": "string"
+          },
+          "reviewed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewed At"
+          },
           "skills": {
             "items": {
               "type": "string"
             },
             "title": "Skills",
             "type": "array"
+          },
+          "submitted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Submitted At"
           },
           "summary": {
             "anyOf": [
@@ -6947,6 +6993,10 @@
           "projects",
           "employer_visibility_consent",
           "consent_given_at",
+          "review_status",
+          "review_note",
+          "submitted_at",
+          "reviewed_at",
           "has_headshot",
           "has_resume",
           "created_at",
@@ -7057,6 +7107,212 @@
           }
         },
         "title": "ScholarProfessionalProfileUpdate",
+        "type": "object"
+      },
+      "ScholarProfileAdminRead": {
+        "description": "Honors review queue row \u2014 professional fields only, plus identity for the roster.",
+        "properties": {
+          "career_interests": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Career Interests",
+            "type": "array"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "employer_visibility_consent": {
+            "title": "Employer Visibility Consent",
+            "type": "boolean"
+          },
+          "handshake_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Handshake Url"
+          },
+          "has_headshot": {
+            "title": "Has Headshot",
+            "type": "boolean"
+          },
+          "has_resume": {
+            "title": "Has Resume",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "internships": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Internships",
+            "type": "array"
+          },
+          "linkedin_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Linkedin Url"
+          },
+          "projects": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Projects",
+            "type": "array"
+          },
+          "review_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Review Note"
+          },
+          "review_status": {
+            "title": "Review Status",
+            "type": "string"
+          },
+          "reviewed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewed At"
+          },
+          "skills": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Skills",
+            "type": "array"
+          },
+          "submitted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Submitted At"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "user_email": {
+            "format": "email",
+            "title": "User Email",
+            "type": "string"
+          },
+          "user_id": {
+            "format": "uuid",
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "user_id",
+          "user_email",
+          "display_name",
+          "summary",
+          "skills",
+          "career_interests",
+          "internships",
+          "projects",
+          "linkedin_url",
+          "handshake_url",
+          "has_headshot",
+          "has_resume",
+          "employer_visibility_consent",
+          "review_status",
+          "review_note",
+          "submitted_at",
+          "reviewed_at",
+          "updated_at"
+        ],
+        "title": "ScholarProfileAdminRead",
+        "type": "object"
+      },
+      "ScholarProfileReviewNoteRequest": {
+        "properties": {
+          "reason": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "ScholarProfileReviewNoteRequest",
+        "type": "object"
+      },
+      "ScholarProfileRevokeRequest": {
+        "properties": {
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "title": "ScholarProfileRevokeRequest",
         "type": "object"
       },
       "ScholarProjectEntry": {
@@ -10288,6 +10544,229 @@
           }
         ],
         "summary": "Resolve Report",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/scholar-profiles": {
+      "get": {
+        "operationId": "list_scholar_profiles_api_v1_admin_scholar_profiles_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "default": "pending_review",
+              "title": "Status",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ScholarProfileAdminRead"
+                  },
+                  "title": "Response List Scholar Profiles Api V1 Admin Scholar Profiles Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Scholar Profiles",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/scholar-profiles/{profile_id}/approve": {
+      "post": {
+        "operationId": "approve_scholar_profile_api_v1_admin_scholar_profiles__profile_id__approve_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "profile_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Profile Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScholarProfileAdminRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Approve Scholar Profile",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/scholar-profiles/{profile_id}/request-changes": {
+      "post": {
+        "operationId": "request_scholar_profile_changes_api_v1_admin_scholar_profiles__profile_id__request_changes_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "profile_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Profile Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScholarProfileReviewNoteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScholarProfileAdminRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Request Scholar Profile Changes",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/scholar-profiles/{profile_id}/revoke": {
+      "post": {
+        "operationId": "revoke_scholar_profile_api_v1_admin_scholar_profiles__profile_id__revoke_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "profile_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Profile Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/ScholarProfileRevokeRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Payload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScholarProfileAdminRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Revoke Scholar Profile",
         "tags": [
           "admin"
         ]
@@ -15487,6 +15966,33 @@
           }
         ],
         "summary": "Get My Resume Url",
+        "tags": [
+          "scholars"
+        ]
+      }
+    },
+    "/api/v1/scholars/me/submit": {
+      "post": {
+        "description": "Queue a complete profile for Honors admin approval before employer discovery.",
+        "operationId": "submit_my_profile_for_review_api_v1_scholars_me_submit_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScholarProfessionalProfileRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Submit My Profile For Review",
         "tags": [
           "scholars"
         ]

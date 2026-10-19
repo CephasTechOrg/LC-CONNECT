@@ -9,7 +9,7 @@ from app.dependencies import require_admin_aal2
 from app.features.account import suspension as suspension_service
 from app.features.account.schema import SuspensionAppealRead
 from app.features.admin import admins as admins_admin
-from app.features.admin import admins_router, campus_verification_router
+from app.features.admin import admins_router, campus_verification_router, scholar_profiles_router
 from app.features.admin import campus_positions as campus_admin
 from app.features.admin import campus_posts as posts_admin
 from app.features.admin import campus_resources as resources_admin
@@ -63,6 +63,7 @@ router = APIRouter(prefix='/admin', tags=['admin'])
 # API surface is identical to when they were declared inline here.
 router.include_router(admins_router.router)
 router.include_router(campus_verification_router.router)
+router.include_router(scholar_profiles_router.router)
 
 
 def _position_admin_read(position, user: User, profile: Profile) -> CampusPositionAdminRead:

@@ -80,6 +80,8 @@ class ScholarProfile {
   final List<ScholarInternship> internships;
   final List<ScholarProject> projects;
   final bool employerVisibilityConsent;
+  final String reviewStatus;
+  final String? reviewNote;
   final bool hasHeadshot;
   final bool hasResume;
 
@@ -103,11 +105,19 @@ class ScholarProfile {
     this.internships = const [],
     this.projects = const [],
     required this.employerVisibilityConsent,
+    this.reviewStatus = 'draft',
+    this.reviewNote,
     required this.hasHeadshot,
     required this.hasResume,
     required this.isComplete,
     required this.missingFields,
   });
+
+  bool get canSubmitForReview =>
+      isComplete &&
+      (reviewStatus == 'draft' ||
+          reviewStatus == 'changes_requested' ||
+          reviewStatus == 'revoked');
 
   factory ScholarProfile.fromJson(Map<String, dynamic> j) => ScholarProfile(
         id: j['id'] as String,
@@ -126,6 +136,8 @@ class ScholarProfile {
             ScholarProject.fromJson(Map<String, dynamic>.from(item as Map)),
         ],
         employerVisibilityConsent: j['employer_visibility_consent'] as bool? ?? false,
+        reviewStatus: j['review_status'] as String? ?? 'draft',
+        reviewNote: j['review_note'] as String?,
         hasHeadshot: j['has_headshot'] as bool? ?? false,
         hasResume: j['has_resume'] as bool? ?? false,
         // Absent means an older server. Defaulting to *incomplete* keeps the prompt visible,
@@ -178,6 +190,12 @@ class ScholarProfileNotifier extends AsyncNotifier<ScholarProfile> {
   Future<void> setConsent(bool consent) async {
     final client = ref.read(apiClientProvider);
     final response = await client.dio.post('/scholars/me/consent', data: {'consent': consent});
+    state = AsyncData(ScholarProfile.fromJson(response.data as Map<String, dynamic>));
+  }
+
+  Future<void> submitForReview() async {
+    final client = ref.read(apiClientProvider);
+    final response = await client.dio.post('/scholars/me/submit');
     state = AsyncData(ScholarProfile.fromJson(response.data as Map<String, dynamic>));
   }
 

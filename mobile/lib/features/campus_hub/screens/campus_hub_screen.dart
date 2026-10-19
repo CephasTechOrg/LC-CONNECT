@@ -96,7 +96,8 @@ class CampusHubScreen extends ConsumerWidget {
           child: ListView(
             children: [
               _HomeGreetingHeader(timeOfDay: timeOfDay, name: firstName),
-              const SizedBox(height: 8),
+              // Greeting stays the hero. Blueprint / attendance are quiet follow-ups (their own
+              // padding); no extra gap that pushes the spotlight out of the first fold.
               const BlueprintBondCard(style: BlueprintBondStyle.prompt),
               const AttendanceOpenCard(),
               const _SpotlightCarousel(),
@@ -112,7 +113,7 @@ class CampusHubScreen extends ConsumerWidget {
                 ],
                 data: (overview) => [
                   if (overview.urgentPosts.isNotEmpty) ...[
-                    const SizedBox(height: 18),
+                    const SizedBox(height: AppSpacing.lg),
                     UrgentUpdateBanner(
                       post: overview.urgentPosts.first,
                       onTap: () => context.push('/home/posts/${overview.urgentPosts.first.id}'),
@@ -135,7 +136,7 @@ class CampusHubScreen extends ConsumerWidget {
                 ),
                 const _SuggestedConnectionsPreview(),
               ],
-              const SizedBox(height: 24),
+              const SizedBox(height: AppSpacing.xxl),
             ],
           ),
         ),

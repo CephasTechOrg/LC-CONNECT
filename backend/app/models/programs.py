@@ -83,6 +83,15 @@ class ScholarProfessionalProfile(Base):
     employer_visibility_consent: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     consent_given_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     consent_version: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    # Honors review gate before employer discovery (Wave C). Consent alone is not enough.
+    # draft | pending_review | approved | changes_requested | revoked
+    review_status: Mapped[str] = mapped_column(String(30), default='draft', index=True, nullable=False)
+    review_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    reviewed_by_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey('users.id', ondelete='SET NULL'), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False

@@ -199,3 +199,35 @@ class SuspensionAppealAdminRead(BaseModel):
 
 class SuspensionAppealReviewRequest(BaseModel):
     note: str | None = Field(default=None, max_length=500)
+
+
+class ScholarProfileReviewNoteRequest(BaseModel):
+    reason: str = Field(min_length=1, max_length=500)
+
+
+class ScholarProfileRevokeRequest(BaseModel):
+    reason: str | None = Field(default=None, max_length=500)
+
+
+class ScholarProfileAdminRead(BaseModel):
+    """Honors review queue row — professional fields only, plus identity for the roster."""
+
+    id: UUID
+    user_id: UUID
+    user_email: EmailStr
+    display_name: str | None
+    summary: str | None
+    skills: list[str]
+    career_interests: list[str]
+    internships: list[dict]
+    projects: list[dict]
+    linkedin_url: str | None
+    handshake_url: str | None
+    has_headshot: bool
+    has_resume: bool
+    employer_visibility_consent: bool
+    review_status: str
+    review_note: str | None
+    submitted_at: datetime | None
+    reviewed_at: datetime | None
+    updated_at: datetime

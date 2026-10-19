@@ -24,29 +24,25 @@ from app.features.scholars.schema import (
     ScholarProjectEntry,
 )
 from app.models import ScholarProfessionalProfile
+from app.shared import scholar_profile as _scholar_completeness
 from app.shared.image_processing import sanitize_avatar
 from app.shared.programs import PRESIDENTIAL_SCHOLARS_SLUG, is_active_program_member
+from app.shared.scholar_profile import missing_profile_fields
 from app.shared.storage import storage_service
 
-CURRENT_CONSENT_VERSION = 1
+# Re-export completeness constants so existing
+# `from app.features.scholars.service import MIN_SUMMARY_LENGTH` call sites keep working.
+CURRENT_CONSENT_VERSION = _scholar_completeness.CURRENT_CONSENT_VERSION
+MIN_SUMMARY_LENGTH = _scholar_completeness.MIN_SUMMARY_LENGTH
+MIN_SKILLS = _scholar_completeness.MIN_SKILLS
+MIN_CAREER_INTERESTS = _scholar_completeness.MIN_CAREER_INTERESTS
+
 MAX_SKILL_LENGTH = 60
 MAX_EXPERIENCE_ENTRIES = 5
 
-# ── Profile completeness ──────────────────────────────────────────────────────────────
-# What "complete" means, in exactly one place.
-#
-# This decides whether the Blueprint Bond prompt leaves the student's dashboard, so it has to be
-# defined rather than implied. It used to be computed *on the client* as
-# `summary.isNotEmpty && (hasResume || hasHeadshot)`, which had two problems: it accepted a
-# one-character summary and a headshot with no résumé, and — worse — it ignored
-# `employer_visibility_consent` entirely. A scholar could therefore be "complete", stop being
-# prompted, and still be invisible to every employer, which is the whole point of the module.
-#
-# Tunable here on purpose: too strict and the prompt never retires (the complaint inverted), too
-# loose and thin profiles reach employers.
-MIN_SUMMARY_LENGTH = 80
-MIN_SKILLS = 3
-MIN_CAREER_INTERESTS = 1
+# Material edits to an approved profile pull it out of the employer directory until Honors
+# re-approves. Draft / changes_requested stay put until the scholar submits again.
+_STATUSES_REQUIRING_REREVIEW_ON_EDIT = frozenset({'approved'})
 
 _PDF_MAGIC = b'%PDF-'
 _ZIP_MAGIC = b'PK\x03\x04'
@@ -57,31 +53,6 @@ async def is_verified_scholar(db: AsyncSession, user_id: UUID) -> bool:
     """Whether this user has an active `presidential_scholars` membership — the single gate
     every professional-profile endpoint enforces."""
     return await is_active_program_member(db, user_id, PRESIDENTIAL_SCHOLARS_SLUG)
-
-
-def missing_profile_fields(profile: ScholarProfessionalProfile) -> list[str]:
-    """Which required fields are still outstanding, in the order a student would fill them.
-
-    Returned to the client so the prompt can name what is left instead of nudging generically, and
-    so "complete" has one definition shared by mobile, the admin portal, and any employer-facing
-    view. Field names match the API's own field names.
-    """
-    missing: list[str] = []
-    if not (profile.summary or '').strip() or len((profile.summary or '').strip()) < MIN_SUMMARY_LENGTH:
-        missing.append('summary')
-    if profile.headshot_path is None:
-        missing.append('headshot')
-    if profile.resume_path is None:
-        missing.append('resume')
-    if len(profile.skills or []) < MIN_SKILLS:
-        missing.append('skills')
-    if len(profile.career_interests or []) < MIN_CAREER_INTERESTS:
-        missing.append('career_interests')
-    # Last because it is the final act of publishing, and because without it everything above is
-    # invisible to employers — which is why completeness cannot be defined without it.
-    if not profile.employer_visibility_consent or profile.consent_version < CURRENT_CONSENT_VERSION:
-        missing.append('employer_visibility_consent')
-    return missing
 
 
 def _parse_internships(raw: object) -> list[ScholarInternshipEntry]:
@@ -110,6 +81,10 @@ def _to_read(profile: ScholarProfessionalProfile) -> ScholarProfessionalProfileR
         projects=_parse_projects(profile.projects),
         employer_visibility_consent=profile.employer_visibility_consent,
         consent_given_at=profile.consent_given_at,
+        review_status=profile.review_status,  # type: ignore[arg-type]
+        review_note=profile.review_note,
+        submitted_at=profile.submitted_at,
+        reviewed_at=profile.reviewed_at,
         has_headshot=profile.headshot_path is not None,
         has_resume=profile.resume_path is not None,
         created_at=profile.created_at,
@@ -117,6 +92,14 @@ def _to_read(profile: ScholarProfessionalProfile) -> ScholarProfessionalProfileR
         is_complete=not missing,
         missing_fields=missing,
     )
+
+
+def _bump_to_pending_if_approved(profile: ScholarProfessionalProfile) -> None:
+    """Material change on a live (approved) profile — leave the directory until re-reviewed."""
+    if profile.review_status in _STATUSES_REQUIRING_REREVIEW_ON_EDIT:
+        profile.review_status = 'pending_review'
+        profile.submitted_at = datetime.now(UTC)
+        profile.review_note = None
 
 
 async def _get_or_create(db: AsyncSession, user_id: UUID) -> ScholarProfessionalProfile:
@@ -181,32 +164,79 @@ async def update_profile(
     db: AsyncSession, user_id: UUID, payload: ScholarProfessionalProfileUpdate
 ) -> ScholarProfessionalProfileRead:
     profile = await _get_or_create(db, user_id)
+    material = False
     if payload.linkedin_url is not None:
-        profile.linkedin_url = payload.linkedin_url.strip() or None
+        new = payload.linkedin_url.strip() or None
+        if new != profile.linkedin_url:
+            profile.linkedin_url = new
+            material = True
     if payload.handshake_url is not None:
-        profile.handshake_url = payload.handshake_url.strip() or None
+        new = payload.handshake_url.strip() or None
+        if new != profile.handshake_url:
+            profile.handshake_url = new
+            material = True
     if payload.summary is not None:
-        profile.summary = payload.summary.strip() or None
+        new = payload.summary.strip() or None
+        if new != profile.summary:
+            profile.summary = new
+            material = True
     skills = _validate_skills(payload.skills)
-    if skills is not None:
+    if skills is not None and skills != list(profile.skills or []):
         profile.skills = skills
+        material = True
     career_interests = _validate_skills(payload.career_interests)
-    if career_interests is not None:
+    if career_interests is not None and career_interests != list(profile.career_interests or []):
         profile.career_interests = career_interests
+        material = True
     if payload.internships is not None:
         if len(payload.internships) > MAX_EXPERIENCE_ENTRIES:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f'At most {MAX_EXPERIENCE_ENTRIES} internships allowed',
             )
-        profile.internships = [entry.model_dump() for entry in payload.internships]
+        dumped = [entry.model_dump() for entry in payload.internships]
+        if dumped != list(profile.internships or []):
+            profile.internships = dumped
+            material = True
     if payload.projects is not None:
         if len(payload.projects) > MAX_EXPERIENCE_ENTRIES:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f'At most {MAX_EXPERIENCE_ENTRIES} projects allowed',
             )
-        profile.projects = [entry.model_dump() for entry in payload.projects]
+        dumped = [entry.model_dump() for entry in payload.projects]
+        if dumped != list(profile.projects or []):
+            profile.projects = dumped
+            material = True
+    if material:
+        _bump_to_pending_if_approved(profile)
+    await db.commit()
+    await db.refresh(profile)
+    return _to_read(profile)
+
+
+async def submit_for_review(db: AsyncSession, user_id: UUID) -> ScholarProfessionalProfileRead:
+    """Student publishes their completed profile into the Honors review queue.
+
+    Consent + completeness are required; approval is what makes the row employer-visible.
+    Idempotent when already `pending_review` (e.g. Save bumped an approved profile, then Submit).
+    """
+    profile = await _get_or_create(db, user_id)
+    missing = missing_profile_fields(profile)
+    if missing:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f'Profile is incomplete. Still needed: {", ".join(missing)}',
+        )
+    if profile.review_status == 'pending_review':
+        return _to_read(profile)
+    if profile.review_status == 'approved':
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail='Profile is already approved'
+        )
+    profile.review_status = 'pending_review'
+    profile.submitted_at = datetime.now(UTC)
+    profile.review_note = None
     await db.commit()
     await db.refresh(profile)
     return _to_read(profile)
@@ -261,6 +291,7 @@ async def upload_headshot(db: AsyncSession, user_id: UUID, data: bytes) -> Schol
         )
     clean_data, content_type, ext = _validate_headshot(data)
     profile.headshot_path = storage_service.upload_scholar_file(user_id, 'headshot', ext, content_type, clean_data)
+    _bump_to_pending_if_approved(profile)
     await db.commit()
     await db.refresh(profile)
     return _to_read(profile)
@@ -272,6 +303,7 @@ async def upload_resume(db: AsyncSession, user_id: UUID, data: bytes) -> Scholar
         raise HTTPException(status_code=status.HTTP_413_CONTENT_TOO_LARGE, detail='Résumé file is too large')
     content_type, ext = _validate_resume(data)
     profile.resume_path = storage_service.upload_scholar_file(user_id, 'resume', ext, content_type, data)
+    _bump_to_pending_if_approved(profile)
     await db.commit()
     await db.refresh(profile)
     return _to_read(profile)

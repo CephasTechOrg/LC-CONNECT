@@ -62,6 +62,7 @@ class BlueprintBondCard extends ConsumerWidget {
     // profile may well be finished — worse than saying nothing.
     return _EntryRow(
       isComplete: profile?.isComplete,
+      reviewStatus: profile?.reviewStatus,
       onTap: () => context.push('/profile/blueprint-bond'),
     );
   }
@@ -93,7 +94,7 @@ class _PromptCard extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.gutter,
-        AppSpacing.md,
+        AppSpacing.sm,
         AppSpacing.gutter,
         AppSpacing.xs,
       ),
@@ -106,20 +107,20 @@ class _PromptCard extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.symmetric(
               horizontal: AppSpacing.md,
-              vertical: AppSpacing.sm + 2,
+              vertical: AppSpacing.sm,
             ),
             child: Row(
               children: [
                 Container(
-                  width: 32,
-                  height: 32,
+                  width: 28,
+                  height: 28,
                   decoration: BoxDecoration(
                     color: _blueprintNavy,
                     borderRadius: BorderRadius.circular(AppRadii.md),
                   ),
-                  child: const Icon(Icons.workspace_premium_rounded, color: Colors.white, size: 18),
+                  child: const Icon(Icons.workspace_premium_rounded, color: Colors.white, size: 16),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: AppSpacing.sm),
                 Expanded(
                   child: Text(
                     'Finish your Blueprint Bond profile',
@@ -127,13 +128,13 @@ class _PromptCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: AppTypography.label.copyWith(
                       fontWeight: FontWeight.w700,
-                      fontSize: 13.5,
+                      fontSize: 13,
                       color: _blueprintNavy,
                     ),
                   ),
                 ),
                 const SizedBox(width: AppSpacing.sm),
-                const Icon(Icons.arrow_forward_rounded, color: _blueprintNavy, size: 16),
+                const Icon(Icons.arrow_forward_rounded, color: _blueprintNavy, size: 15),
               ],
             ),
           ),
@@ -148,16 +149,28 @@ class _PromptCard extends StatelessWidget {
 class _EntryRow extends StatelessWidget {
   /// `null` when the profile could not be read — render neither "complete" nor "incomplete".
   final bool? isComplete;
+  final String? reviewStatus;
   final VoidCallback onTap;
-  const _EntryRow({required this.isComplete, required this.onTap});
+  const _EntryRow({required this.isComplete, this.reviewStatus, required this.onTap});
+
+  (Color, String) get _status {
+    if (isComplete == null) return (AppColors.textMuted, 'Blueprint Bond');
+    if (isComplete == false) {
+      return (const Color(0xFFD97706), 'Blueprint Bond · profile incomplete');
+    }
+    // Prefer review state once the profile itself is filled in.
+    return switch (reviewStatus) {
+      'approved' => (AppColors.green, 'Blueprint Bond · approved for partners'),
+      'pending_review' => (AppColors.primary, 'Blueprint Bond · awaiting Honors review'),
+      'changes_requested' => (const Color(0xFFD97706), 'Blueprint Bond · changes requested'),
+      'revoked' => (AppColors.error, 'Blueprint Bond · visibility revoked'),
+      _ => (AppColors.textMuted, 'Blueprint Bond · ready to submit'),
+    };
+  }
 
   @override
   Widget build(BuildContext context) {
-    final statusColor = switch (isComplete) {
-      true => AppColors.green,
-      false => const Color(0xFFD97706),
-      null => AppColors.textMuted,
-    };
+    final (statusColor, statusLabel) = _status;
     return Material(
       color: AppColors.surface,
       child: InkWell(
@@ -202,11 +215,7 @@ class _EntryRow extends StatelessWidget {
                         const SizedBox(width: 6),
                         Flexible(
                           child: Text(
-                            switch (isComplete) {
-                              true => 'Blueprint Bond · profile complete',
-                              false => 'Blueprint Bond · profile incomplete',
-                              null => 'Blueprint Bond',
-                            },
+                            statusLabel,
                             overflow: TextOverflow.ellipsis,
                             style: GoogleFonts.dmSans(fontSize: 12.5, color: AppColors.textMuted),
                           ),

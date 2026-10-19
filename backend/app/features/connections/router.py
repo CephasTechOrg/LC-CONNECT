@@ -188,7 +188,25 @@ async def accept_request(request_id: UUID, current_user: User = Depends(require_
     if match is None:
         match = Match(user_a_id=left, user_b_id=right)
         db.add(match)
-        await db.flush()
+        try:
+            await db.flush()
+        except IntegrityError:
+            # Race with mutual-connect (or a double-tap accept): the other txn created the pair.
+            # Roll back, then re-apply accept against the surviving match — same success path.
+            await db.rollback()
+            request = await db.get(ConnectionRequest, request_id)
+            if request is None or request.receiver_id != current_user.id:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND, detail='Pending request not found'
+                ) from None
+            if request.status == 'pending':
+                request.status = 'accepted'
+                request.responded_at = datetime.now(UTC)
+            match = await existing_match(db, request.sender_id, request.receiver_id)
+            if match is None:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT, detail='You are already matched'
+                ) from None
     # Reconnecting reuses the old row (uq_match_pair forbids a second one), so the disconnect
     # flag has to be cleared or the pair stays disconnected despite an accepted request.
     match.disconnected_at = None

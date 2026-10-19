@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_theme.dart';
 import '../providers/attendance_provider.dart';
 
@@ -103,7 +104,12 @@ class _AttendanceOpenCardState extends ConsumerState<AttendanceOpenCard> {
     final checkedIn = active.isCheckedIn;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.gutter,
+        AppSpacing.xs,
+        AppSpacing.gutter,
+        AppSpacing.sm,
+      ),
       child: Semantics(
         container: true,
         label: checkedIn

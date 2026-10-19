@@ -57,6 +57,15 @@ async def set_my_employer_consent(
     return await service.set_consent(db, current_user.id, payload.consent)
 
 
+@router.post('/me/submit', response_model=ScholarProfessionalProfileRead)
+async def submit_my_profile_for_review(
+    current_user: User = Depends(require_verified_scholar),
+    db: AsyncSession = Depends(get_db),
+) -> ScholarProfessionalProfileRead:
+    """Queue a complete profile for Honors admin approval before employer discovery."""
+    return await service.submit_for_review(db, current_user.id)
+
+
 @router.post(
     '/me/headshot',
     response_model=ScholarProfessionalProfileRead,

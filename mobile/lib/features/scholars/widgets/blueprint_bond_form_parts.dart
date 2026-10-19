@@ -125,6 +125,110 @@ class _FileRow extends StatelessWidget {
   }
 }
 
+class _ReviewStatusCard extends StatelessWidget {
+  final ScholarProfile profile;
+  final bool submitting;
+  final VoidCallback? onSubmit;
+
+  const _ReviewStatusCard({
+    required this.profile,
+    required this.submitting,
+    this.onSubmit,
+  });
+
+  (String title, String body, Color accent) get _copy {
+    return switch (profile.reviewStatus) {
+      'pending_review' => (
+          'Awaiting Honors review',
+          'Your profile is in the queue. Employer partners will see it after approval.',
+          AppColors.primary,
+        ),
+      'approved' => (
+          'Approved for partners',
+          'Visible to employer partners while consent stays on. Material edits return you to review.',
+          AppColors.green,
+        ),
+      'changes_requested' => (
+          'Changes requested',
+          profile.reviewNote?.isNotEmpty == true
+              ? profile.reviewNote!
+              : 'Honors asked for updates. Edit your profile, then submit again.',
+          const Color(0xFFD97706),
+        ),
+      'revoked' => (
+          'Visibility revoked',
+          profile.reviewNote?.isNotEmpty == true
+              ? profile.reviewNote!
+              : 'Honors removed partner visibility. You can update and submit again.',
+          AppColors.error,
+        ),
+      _ => (
+          'Not submitted',
+          profile.isComplete
+              ? 'Ready when you are — submit for Honors approval to appear to partners.'
+              : 'Finish the required fields, turn on consent, then submit for Honors approval.',
+          AppColors.textMuted,
+        ),
+    };
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final (title, body, accent) = _copy;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(color: accent, shape: BoxShape.circle),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  title,
+                  style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, color: AppColors.textDark),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            body,
+            style: GoogleFonts.dmSans(fontSize: 12.5, color: AppColors.textMuted, height: 1.35),
+          ),
+          if (onSubmit != null) ...[
+            const SizedBox(height: 12),
+            FilledButton(
+              onPressed: submitting ? null : onSubmit,
+              style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
+              child: submitting
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                  : Text(
+                      'Submit for Honors review',
+                      style: GoogleFonts.dmSans(fontWeight: FontWeight.w700),
+                    ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 class _TagInput extends StatelessWidget {
   final String label;
   final TextEditingController controller;

@@ -55,7 +55,7 @@ Set in **Render → lc-connect-api → Environment**. Declared in `render.yaml` 
 |----------|---------|------------------|
 | `SUPPORT_EMAIL` | `support@livingstone.edu` | **Set to your real student-support inbox** before launch — shown on suspended-user screen and `GET /account/suspension-status`. |
 | `MESSAGE_SOFT_DELETE_RETENTION_DAYS` | `90` | Only change after policy review; used by retention cron. |
-| `REDIS_URL` | unset | **Deferred** until 2+ API instances — see `PHASE_0_1_STATUS.md` |
+| `REDIS_URL` | unset | Optional on a **single** API instance. **Required before 2+ workers** (WS fan-out + shared rate limits). See [`docs/ops/scaling_1500.md`](../docs/ops/scaling_1500.md) and `PHASE_0_1_STATUS.md`. |
 | `RESEND_REPLY_TO` | unset | Support inbox for email replies |
 | `ALLOWED_EMAIL_DOMAINS` | `students.livingstone.edu,livingstone.edu` | Campus signup policy |
 
@@ -180,6 +180,8 @@ PYTHONPATH=. python scripts/purge_soft_deleted_messages.py   # dry-run
 | Doc | Topic |
 |-----|--------|
 | [`docs/getting-started/deployment.md`](../docs/getting-started/deployment.md) | Render web service details, troubleshooting |
+| [`docs/ops/scaling_1500.md`](../docs/ops/scaling_1500.md) | When to add Redis, rate-limit posture, watching latency |
+| [`docs/security/rate_limiting.md`](../docs/security/rate_limiting.md) | Per-action buckets + 429 UX |
 | [`SUSPENSION_APPEAL_RUNBOOK.md`](./SUSPENSION_APPEAL_RUNBOOK.md) | Suspend / appeal / reactivate workflow |
 | [`MESSAGE_RETENTION_CRON_RUNBOOK.md`](./MESSAGE_RETENTION_CRON_RUNBOOK.md) | Daily purge cron |
 | [`AUTH_USER_LINKING_RUNBOOK.md`](./AUTH_USER_LINKING_RUNBOOK.md) | `auth_user_id` backfill (#25) |

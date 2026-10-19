@@ -46,6 +46,7 @@ const NAV_SECTIONS: NavSection[] = [
     dividerBefore: true,
     items: [
       { href: '/dashboard/scholars', label: 'Presidential Scholars', Icon: IconScholars },
+      { href: '/dashboard/scholar-profiles', label: 'Blueprint profiles', Icon: IconScholars },
       { href: '/dashboard/employers', label: 'Employer Partners', Icon: IconEmployers },
       { href: '/dashboard/attendance', label: 'Attendance', Icon: IconAttendance },
     ],

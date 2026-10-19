@@ -25,7 +25,7 @@ class _ActivitiesPreview extends ConsumerWidget {
         }
         final visible = activities.take(2).toList();
         return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.gutter),
           child: Column(
             children: [
               for (var i = 0; i < visible.length; i++)
@@ -234,6 +234,7 @@ class _SuggestedConnectionsPreview extends ConsumerWidget {
   }
 }
 
+/// Compact preview aligned with Connect discovery density (radius 14, avatar 52, no shadow).
 class _SuggestedConnectionCard extends StatelessWidget {
   final DiscoveryCard card;
   const _SuggestedConnectionCard({required this.card});
@@ -242,39 +243,38 @@ class _SuggestedConnectionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: AppColors.surface,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(14),
       child: InkWell(
         onTap: () => context.push('/users/${card.profileId}', extra: card.displayName),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         child: Container(
-          padding: const EdgeInsets.all(13),
+          padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(14),
             border: Border.all(color: AppColors.border),
-            boxShadow: const [_cardShadow],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
               _ConnectionAvatar(card: card),
-              const SizedBox(height: 9),
+              const SizedBox(height: AppSpacing.sm),
               Text(
                 card.displayName ?? 'LC Student',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: GoogleFonts.dmSans(
-                  fontSize: 14.5,
+                  fontSize: 13.5,
                   fontWeight: FontWeight.w700,
                   color: AppColors.textDark,
                 ),
               ),
-              const SizedBox(height: 1),
+              const SizedBox(height: 2),
               Text(
                 card.major ?? 'Student',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textMuted),
+                style: GoogleFonts.dmSans(fontSize: 11.5, color: AppColors.textMuted),
               ),
             ],
           ),
@@ -291,25 +291,25 @@ class _ConnectionAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 48,
-      height: 48,
+      width: 52,
+      height: 52,
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          AvatarWidget(imageUrl: card.avatarUrl, size: 48, cacheScope: card.userId),
+          AvatarWidget(imageUrl: card.avatarUrl, size: 52, cacheScope: card.userId),
           Positioned(
-            bottom: -3,
-            left: -3,
+            bottom: -2,
+            left: -2,
             child: Container(
-              width: 24,
-              height: 24,
+              width: 22,
+              height: 22,
               alignment: Alignment.center,
               decoration: BoxDecoration(
                 color: AppColors.primarySoft,
                 shape: BoxShape.circle,
                 border: Border.all(color: AppColors.surface, width: 2),
               ),
-              child: const Icon(Icons.person_add_alt_1_rounded, size: 13, color: AppColors.primary),
+              child: const Icon(Icons.person_add_alt_1_rounded, size: 12, color: AppColors.primary),
             ),
           ),
         ],

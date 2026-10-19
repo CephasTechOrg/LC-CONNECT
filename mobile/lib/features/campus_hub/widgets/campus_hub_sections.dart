@@ -75,9 +75,9 @@ class _SectionHeader extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.gutter,
-        AppSpacing.xxl,
+        AppSpacing.xl,
         AppSpacing.gutter,
-        AppSpacing.md,
+        AppSpacing.sm,
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.baseline,

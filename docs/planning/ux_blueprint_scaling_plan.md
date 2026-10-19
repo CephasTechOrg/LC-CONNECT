@@ -1,6 +1,7 @@
 # Implementation Plan — UX, Blueprint Bond, Messaging, Scaling
 
-**Status:** Sprints 1–2 (Waves A–B) implemented — Waves C–E pending  
+**Status:** Sprints 1–4 (Waves A–E) implemented — login hero swap waits on a new asset  
+
 **Scope:** Connect/Discovery polish, Campus Hub UX, Blueprint Bond professional profile + Honors approval, message reactions fix, login asset, scaling readiness for ≤ ~1,500 users  
 **Source of truth for architecture:** `architecture_review/` (this plan does not change locked ADRs)
 
@@ -110,7 +111,7 @@ So the reaction **picker** is unreliable when report/delete aren’t offered the
 
 **Work**
 - [x] Visual hierarchy: headshot + name → summary → experience → projects → skills → links → documents → consent/status.
-- [ ] Clear **submission status** UI once Wave C lands (draft / pending review / approved / changes requested).
+- [x] Clear **submission status** UI once Wave C lands (draft / pending review / approved / changes requested).
 - [x] Keep social Profile separate (no leaking dating-style bio to employers).
 
 **Done when:** Scholars can save internships/projects; incomplete optional fields don’t break existing complete profiles.
@@ -142,21 +143,21 @@ AND (optional) is_complete   # product choice — recommend require complete bef
 
 ### C2. Student flow
 
-- [ ] “Submit for review” (not auto-publish on consent alone).
-- [ ] Consent remains required but **insufficient** without approval.
-- [ ] Edits after approval: either auto-revert to `pending_review` (recommended) or allow minor edits without re-review (product call — recommend **re-review on material fields**).
+- [x] “Submit for review” (not auto-publish on consent alone).
+- [x] Consent remains required but **insufficient** without approval.
+- [x] Edits after approval: either auto-revert to `pending_review` (recommended) or allow minor edits without re-review (product call — recommend **re-review on material fields**).
 
 ### C3. Honors admin
 
-- [ ] Admin API under `require_admin_scope('honors_admin')`: list pending, approve, request changes (note), revoke.
-- [ ] Admin portal page (mirror Employers queue UX).
-- [ ] Audit log entries for approve/reject/revoke.
+- [x] Admin API under `require_admin_scope('honors_admin')`: list pending, approve, request changes (note), revoke.
+- [x] Admin portal page (mirror Employers queue UX).
+- [x] Audit log entries for approve/reject/revoke.
 - [ ] In-app or email notify scholar on decision (nice-to-have in same wave or follow-up).
 
 ### C4. Employer portal
 
-- [ ] Directory copy: only Honors-approved profiles.
-- [ ] No change to social discovery — Blueprint Bond remains employer-facing only.
+- [x] Directory copy: only Honors-approved profiles.
+- [x] No change to social discovery — Blueprint Bond remains employer-facing only.
 
 **Done when:** A scholar with consent but unapproved status never appears in employer directory; approving makes them visible.
 
@@ -169,14 +170,14 @@ AND (optional) is_complete   # product choice — recommend require complete bef
 **File area:** `campus_hub_screen.dart` + widgets
 
 **Work (light polish — not a redesign)**
-- [ ] Tighten section spacing; ensure Blueprint prompt (A3) doesn’t dominate.
-- [ ] Align “Suggested connections” preview cards with compact Connect card density.
-- [ ] Keep one clear greeting; avoid competing CTAs in the first viewport.
-- [ ] Quick actions / updates hierarchy: one job per section.
+- [x] Tighten section spacing; ensure Blueprint prompt (A3) doesn’t dominate.
+- [x] Align “Suggested connections” preview cards with compact Connect card density.
+- [x] Keep one clear greeting; avoid competing CTAs in the first viewport.
+- [x] Quick actions / updates hierarchy: one job per section.
 
 ### D2. Login image
 
-- [ ] Swap login hero/branding asset when new image is provided (`login_branding.dart` / assets).
+- [ ] Swap login hero/branding asset when new image is provided (`login_branding.dart` / assets). *(still on `groupstudent.webp` — no replacement asset designated)*
 - [ ] Verify light/dark and small-phone crop.
 
 ---
@@ -194,8 +195,8 @@ AND (optional) is_complete   # product choice — recommend require complete bef
 | **API abuse** | Existing token buckets in `app/shared/rate_limit.py` + `config.py` (e.g. WS send 20/10s, REST messages 60/min, reactions 60/min). Tune env vars for pilot; global “20 req/s per user” is usually **too blunt** — prefer per-endpoint caps already present. |
 
 **Work**
-- [ ] Add short runbook section to `architecture_review/PRODUCTION_SETUP_CHECKLIST.md` or a new `docs/ops/scaling_1500.md`: when to set Redis, readiness (`/health/ready`), what breaks if Redis is down with multi-instance.
-- [ ] Fix doc drift: `docs/security/rate_limiting.md` still says Redis limits are deferred — update to match code.
+- [x] Add short runbook section to `architecture_review/PRODUCTION_SETUP_CHECKLIST.md` or a new `docs/ops/scaling_1500.md`: when to set Redis, readiness (`/health/ready`), what breaks if Redis is down with multi-instance.
+- [x] Fix doc drift: `docs/security/rate_limiting.md` still says Redis limits are deferred — update to match code.
 - [ ] Optional: Cloudflare/Render edge rate limit for anonymous floods (deferred unless abuse appears).
 
 ### E2. Concurrency / correctness (spot harden)
@@ -203,16 +204,16 @@ AND (optional) is_complete   # product choice — recommend require complete bef
 Already strong patterns: message idempotency, reaction unique constraint, bootstrap unique indexes, `SELECT FOR UPDATE` on activity/group capacity.
 
 **Work**
-- [ ] Add `IntegrityError` handling on connection **accept → match** if missing (mirror mutual-connect path).
-- [ ] Confirm scholar profile create + submit-for-review are transaction-safe (single commit; no half-approved state).
-- [ ] Wave C approve/reject: row lock or version column so two admins can’t double-decide.
+- [x] Add `IntegrityError` handling on connection **accept → match** if missing (mirror mutual-connect path).
+- [x] Confirm scholar profile create + submit-for-review are transaction-safe (single commit; no half-approved state).
+- [x] Wave C approve/reject: row lock or version column so two admins can’t double-decide.
 
 ### E3. Latency / throughput (observability lite)
 
 **Work**
-- [ ] Ensure request-id logging stays on; document how to watch Render latency for `/discover`, `/messages`, `/ws`.
-- [ ] No full APM required for pilot; add simple timing logs on discovery list + employer scholar list if p95 becomes an issue.
-- [ ] Cap group size / reaction fan-out awareness (existing `GROUP_MAX_MEMBERS`).
+- [x] Ensure request-id logging stays on; document how to watch Render latency for `/discover`, `/messages`, `/ws`.
+- [x] No full APM required for pilot; add simple timing logs on discovery list + employer scholar list if p95 becomes an issue. *(documented trigger in `scaling_1500.md` — no code until needed)*
+- [x] Cap group size / reaction fan-out awareness (existing `GROUP_MAX_MEMBERS`).
 
 ---
 
@@ -231,8 +232,8 @@ Already strong patterns: message idempotency, reaction unique constraint, bootst
 |--------|----------------|
 | **1** | Wave A (Connect + prompt + reactions) — **done** |
 | **2** | Wave B (fields + professional UI) — **done** |
-| **3** | Wave C (approval workflow end-to-end) |
-| **4** | Wave D + E (hub/login + scaling docs/hardening) |
+| **3** | Wave C (approval workflow end-to-end) — **done** |
+| **4** | Wave D + E (hub polish + scaling docs/hardening) — **done** (login asset swap pending) |
 
 ---
 
@@ -241,10 +242,10 @@ Already strong patterns: message idempotency, reaction unique constraint, bootst
 - [x] Connect: no redundant study-partners header; compact cards; limited chips; consistent looking-for.
 - [x] Blueprint prompt: single clean line.
 - [x] Blueprint: internships + projects editable; professional layout.
-- [ ] Employer directory shows only Honors-**approved** + consented scholars.
+- [x] Employer directory shows only Honors-**approved** + consented scholars.
 - [x] Reactions work on partner messages via long-press (or better affordance). *(code fix shipped; confirm on device)*
-- [ ] Scaling note published; Redis provision path clear; rate-limit docs accurate.
-- [ ] Tests: scholars approval + employer discovery filter; Flutter card/prompt tests; reaction menu unit/widget test.
+- [x] Scaling note published; Redis provision path clear; rate-limit docs accurate.
+- [x] Tests: scholars approval + employer discovery filter; Flutter card/prompt tests. *(reaction menu: code fix shipped; device QA + dedicated widget test still optional)*
 - [ ] `pytest` + `flutter analyze` + line limits green; OpenAPI snapshot updated only for intentional API changes.
 
 ---
