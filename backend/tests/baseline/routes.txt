@@ -33,6 +33,8 @@ GET /api/v1/admin/programs/{slug}/members
 GET /api/v1/admin/reports
 GET /api/v1/admin/reports/{report_id}
 GET /api/v1/admin/scholar-profiles
+GET /api/v1/admin/scholar-profiles/{profile_id}/headshot-url
+GET /api/v1/admin/scholar-profiles/{profile_id}/resume-url
 GET /api/v1/admin/suspension-appeals
 GET /api/v1/admin/system-status
 GET /api/v1/admin/users

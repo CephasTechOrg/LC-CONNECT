@@ -6816,6 +6816,25 @@
         "title": "ScholarInternshipEntry",
         "type": "object"
       },
+      "ScholarMediaSignedUrlRead": {
+        "description": "Short-lived Supabase signed URL for Honors review of headshot / r\u00e9sum\u00e9.",
+        "properties": {
+          "expires_in": {
+            "title": "Expires In",
+            "type": "integer"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url",
+          "expires_in"
+        ],
+        "title": "ScholarMediaSignedUrlRead",
+        "type": "object"
+      },
       "ScholarProfessionalProfileRead": {
         "properties": {
           "career_interests": {
@@ -10649,6 +10668,54 @@
         ]
       }
     },
+    "/api/v1/admin/scholar-profiles/{profile_id}/headshot-url": {
+      "get": {
+        "operationId": "scholar_profile_headshot_url_api_v1_admin_scholar_profiles__profile_id__headshot_url_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "profile_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Profile Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScholarMediaSignedUrlRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Scholar Profile Headshot Url",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
     "/api/v1/admin/scholar-profiles/{profile_id}/request-changes": {
       "post": {
         "operationId": "request_scholar_profile_changes_api_v1_admin_scholar_profiles__profile_id__request_changes_post",
@@ -10702,6 +10769,54 @@
           }
         ],
         "summary": "Request Scholar Profile Changes",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/scholar-profiles/{profile_id}/resume-url": {
+      "get": {
+        "operationId": "scholar_profile_resume_url_api_v1_admin_scholar_profiles__profile_id__resume_url_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "profile_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Profile Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScholarMediaSignedUrlRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Scholar Profile Resume Url",
         "tags": [
           "admin"
         ]

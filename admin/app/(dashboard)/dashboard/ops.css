@@ -448,6 +448,183 @@
   overflow-y: auto;
 }
 
+.ops-drawer.ops-drawer-wide {
+  width: min(560px, 100%);
+}
+
+/* Blueprint Bond Honors review drawer */
+.bb-review-identity {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  min-width: 0;
+  flex: 1;
+}
+
+.bb-review-photo {
+  width: 88px;
+  height: 88px;
+  border-radius: 16px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: #f1eff6;
+  border: 1px solid #eeebf3;
+}
+
+.bb-review-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.bb-review-photo-fallback {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  font-size: 22px;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(135deg, #7546ec, #5a31cf);
+}
+
+.bb-review-identity-text {
+  min-width: 0;
+}
+
+.bb-review-identity-text h2 {
+  margin: 0;
+  font-size: 20px;
+  letter-spacing: -0.02em;
+}
+
+.bb-review-email {
+  margin: 4px 0 0;
+  font-size: 13.5px;
+  color: var(--muted-strong);
+  word-break: break-word;
+}
+
+.bb-review-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.bb-review-submitted {
+  margin: 8px 0 0;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.bb-review-docs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 0 0 18px;
+  padding: 12px;
+  border: 1px solid #eeebf3;
+  border-radius: 14px;
+  background: #faf9fd;
+}
+
+.bb-review-doc {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.bb-review-doc-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.bb-review-section {
+  margin-bottom: 18px;
+}
+
+.bb-review-section h3 {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.bb-review-prose {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text);
+  white-space: pre-wrap;
+}
+
+.bb-review-prose-sm {
+  margin-top: 6px;
+  font-size: 13.5px;
+  color: var(--text-mid);
+}
+
+.bb-review-empty {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--muted);
+}
+
+.bb-review-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 12px;
+}
+
+.bb-review-list-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.bb-review-list-title span {
+  font-weight: 500;
+  color: var(--text-mid);
+}
+
+.bb-review-list-meta {
+  margin-top: 2px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.bb-review-links {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.bb-review-link {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--primary);
+}
+
+@media (max-width: 560px) {
+  .bb-review-docs {
+    grid-template-columns: 1fr;
+  }
+
+  .bb-review-identity {
+    flex-direction: column;
+  }
+}
+
 .ops-drawer-head {
   display: flex;
   align-items: flex-start;

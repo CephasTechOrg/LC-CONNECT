@@ -229,3 +229,37 @@ async def test_incomplete_material_edit_after_approve_goes_to_draft(db, factory)
     assert updated.review_status == 'draft'
     rows = await discovery.list_eligible_scholars(db)
     assert all(p.user_id != scholar.id for p, _ in rows)
+
+
+@pytest.mark.asyncio
+async def test_admin_media_urls_require_files(db, factory, monkeypatch):
+    """Honors review can mint signed URLs only when the media paths exist."""
+    scholar = await _verified_scholar(db, factory)
+    await service.get_my_profile(db, scholar.id)
+    profile = (
+        await db.execute(
+            select(ScholarProfessionalProfile).where(ScholarProfessionalProfile.user_id == scholar.id)
+        )
+    ).scalar_one()
+
+    with pytest.raises(HTTPException) as missing_headshot:
+        await admin_service.headshot_signed_url(db, profile_id=profile.id)
+    assert missing_headshot.value.status_code == 404
+
+    with pytest.raises(HTTPException) as missing_resume:
+        await admin_service.resume_signed_url(db, profile_id=profile.id)
+    assert missing_resume.value.status_code == 404
+
+    profile.headshot_path = 'scholars/u/headshot.jpg'
+    profile.resume_path = 'scholars/u/resume.pdf'
+    await db.commit()
+
+    monkeypatch.setattr(
+        admin_service.storage_service,
+        'scholar_signed_url',
+        lambda path, expires_in: f'https://signed.example/{path}?e={expires_in}',
+    )
+    headshot = await admin_service.headshot_signed_url(db, profile_id=profile.id)
+    resume = await admin_service.resume_signed_url(db, profile_id=profile.id)
+    assert 'headshot.jpg' in headshot
+    assert 'resume.pdf' in resume

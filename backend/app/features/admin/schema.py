@@ -231,3 +231,10 @@ class ScholarProfileAdminRead(BaseModel):
     submitted_at: datetime | None
     reviewed_at: datetime | None
     updated_at: datetime
+
+
+class ScholarMediaSignedUrlRead(BaseModel):
+    """Short-lived Supabase signed URL for Honors review of headshot / résumé."""
+
+    url: str
+    expires_in: int

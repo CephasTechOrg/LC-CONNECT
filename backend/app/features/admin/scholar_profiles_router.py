@@ -11,11 +11,13 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.database import get_db
 from app.email_notices import send_quietly, send_scholar_profile_decision_email
 from app.features.admin import admins as admins_admin
 from app.features.admin import scholar_profiles as scholar_profiles_admin
 from app.features.admin.schema import (
+    ScholarMediaSignedUrlRead,
     ScholarProfileAdminRead,
     ScholarProfileReviewNoteRequest,
     ScholarProfileRevokeRequest,
@@ -91,6 +93,32 @@ async def list_scholar_profiles(
 ) -> list[ScholarProfileAdminRead]:
     rows = await scholar_profiles_admin.list_profiles(db, status_filter=status)
     return [_admin_read(profile, user, social) for profile, user, social in rows]
+
+
+@router.get(
+    '/scholar-profiles/{profile_id}/headshot-url',
+    response_model=ScholarMediaSignedUrlRead,
+)
+async def scholar_profile_headshot_url(
+    profile_id: UUID,
+    _: User = Depends(admins_admin.require_admin_scope('honors_admin')),
+    db: AsyncSession = Depends(get_db),
+) -> ScholarMediaSignedUrlRead:
+    url = await scholar_profiles_admin.headshot_signed_url(db, profile_id=profile_id)
+    return ScholarMediaSignedUrlRead(url=url, expires_in=settings.scholar_signed_url_expires_seconds)
+
+
+@router.get(
+    '/scholar-profiles/{profile_id}/resume-url',
+    response_model=ScholarMediaSignedUrlRead,
+)
+async def scholar_profile_resume_url(
+    profile_id: UUID,
+    _: User = Depends(admins_admin.require_admin_scope('honors_admin')),
+    db: AsyncSession = Depends(get_db),
+) -> ScholarMediaSignedUrlRead:
+    url = await scholar_profiles_admin.resume_signed_url(db, profile_id=profile_id)
+    return ScholarMediaSignedUrlRead(url=url, expires_in=settings.scholar_signed_url_expires_seconds)
 
 
 @router.post('/scholar-profiles/{profile_id}/approve', response_model=ScholarProfileAdminRead)

@@ -13,9 +13,11 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.models import Profile, ScholarProfessionalProfile, User
 from app.shared.audit import record_audit
 from app.shared.scholar_profile import REVIEW_STATUSES, missing_profile_fields
+from app.shared.storage import storage_service
 
 
 def _snapshot(profile: ScholarProfessionalProfile) -> dict[str, str | None]:
@@ -150,3 +152,30 @@ async def revoke_profile(
     await db.commit()
     await db.refresh(profile)
     return profile
+
+
+async def _profile_or_404(db: AsyncSession, profile_id: UUID) -> ScholarProfessionalProfile:
+    profile = await db.get(ScholarProfessionalProfile, profile_id)
+    if profile is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Scholar profile not found')
+    return profile
+
+
+async def headshot_signed_url(db: AsyncSession, *, profile_id: UUID) -> str:
+    """Short-lived URL so Honors can review the headshot without a permanent public path."""
+    profile = await _profile_or_404(db, profile_id)
+    if profile.headshot_path is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='No headshot on file')
+    return storage_service.scholar_signed_url(
+        profile.headshot_path, expires_in=settings.scholar_signed_url_expires_seconds
+    )
+
+
+async def resume_signed_url(db: AsyncSession, *, profile_id: UUID) -> str:
+    """Short-lived URL so Honors can open the résumé during review."""
+    profile = await _profile_or_404(db, profile_id)
+    if profile.resume_path is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='No résumé on file')
+    return storage_service.scholar_signed_url(
+        profile.resume_path, expires_in=settings.scholar_signed_url_expires_seconds
+    )
