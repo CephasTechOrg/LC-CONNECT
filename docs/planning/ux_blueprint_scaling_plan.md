@@ -1,6 +1,7 @@
 # Implementation Plan — UX, Blueprint Bond, Messaging, Scaling
 
-**Status:** Sprints 1–4 (Waves A–E) implemented — login hero swap waits on a new asset  
+**Status:** Sprints 1–4 (Waves A–E) implemented  
+
 
 **Scope:** Connect/Discovery polish, Campus Hub UX, Blueprint Bond professional profile + Honors approval, message reactions fix, login asset, scaling readiness for ≤ ~1,500 users  
 **Source of truth for architecture:** `architecture_review/` (this plan does not change locked ADRs)
@@ -177,8 +178,8 @@ AND (optional) is_complete   # product choice — recommend require complete bef
 
 ### D2. Login image
 
-- [ ] Swap login hero/branding asset when new image is provided (`login_branding.dart` / assets). *(still on `groupstudent.webp` — no replacement asset designated)*
-- [ ] Verify light/dark and small-phone crop.
+- [x] Swap login hero/branding asset when new image is provided (`login_branding.dart` / assets).
+- [x] Verify light/dark and small-phone crop. *(login surface stays light; hero shrinks with keyboard — see `login_screen.dart`)*
 
 ---
 
@@ -233,7 +234,7 @@ Already strong patterns: message idempotency, reaction unique constraint, bootst
 | **1** | Wave A (Connect + prompt + reactions) — **done** |
 | **2** | Wave B (fields + professional UI) — **done** |
 | **3** | Wave C (approval workflow end-to-end) — **done** |
-| **4** | Wave D + E (hub polish + scaling docs/hardening) — **done** (login asset swap pending) |
+| **4** | Wave D + E (hub polish + login hero + scaling docs/hardening) — **done** |
 
 ---
 

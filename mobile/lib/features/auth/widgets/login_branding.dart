@@ -13,16 +13,18 @@ class _HeroScene extends StatelessWidget {
         fit: StackFit.expand,
         children: [
           Image.asset(
-            'assets/images/groupstudent.webp',
+            'assets/images/login_student_portrait.webp',
             fit: BoxFit.cover,
-            // Bias slightly up so faces stay above the wave on tall phones.
-            alignment: const Alignment(0, -0.15),
+            // Asset already fades to white at the bottom; bias up so faces stay
+            // clear of the wave seam on short phones and when the hero compresses.
+            alignment: const Alignment(0, -0.2),
           ),
           Positioned(
             left: 0,
             right: 0,
             bottom: -1,
-            height: 40,
+            // Shorter wave — the portrait includes its own soft white fade.
+            height: 28,
             child: CustomPaint(painter: _WavePainter()),
           ),
         ],
