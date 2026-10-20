@@ -77,6 +77,9 @@ class _BubbleTile extends StatelessWidget {
 
   bool get _isEdited => message.editedAt != null && !message.deleted;
 
+  /// A short all-emoji message reads better large and bare, as in most chat apps.
+  bool get _isBigEmoji => !message.deleted && isEmojiOnly(message.body);
+
   /// A failed or in-flight send must never hide inside a run — it is the one footer the
   /// sender has to act on (or wait on).
   bool get _footerVisible =>
@@ -121,17 +124,34 @@ class _BubbleTile extends StatelessWidget {
                   // Double-tap opens the same sheet so reacting does not depend on discovering
                   // long-press alone (Wave A optional affordance).
                   onDoubleTap: _canReact ? () => _showOptions(context) : null,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 10,
-                    ),
-                    decoration: _bubbleDecoration(),
-                    constraints: BoxConstraints(
-                      maxWidth: MediaQuery.of(context).size.width * 0.72,
-                    ),
-                    child: message.deleted ? _deletedBody() : _textBody(),
-                  ),
+                  child: _isBigEmoji
+                      ? Padding(
+                          // Newer color-emoji glyphs can paint wider than their measured advance,
+                          // so the text overflows visibly into this inset instead of clipping.
+                          padding: EdgeInsets.only(
+                            left: isMine ? AppSpacing.lg : 2,
+                            right: isMine ? AppSpacing.lg : AppSpacing.sm,
+                            top: 2,
+                            bottom: 2,
+                          ),
+                          child: Text(
+                            message.body.trim(),
+                            softWrap: false,
+                            overflow: TextOverflow.visible,
+                            style: const TextStyle(fontSize: 30, height: 1.2),
+                          ),
+                        )
+                      : Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 10,
+                          ),
+                          decoration: _bubbleDecoration(),
+                          constraints: BoxConstraints(
+                            maxWidth: MediaQuery.of(context).size.width * 0.72,
+                          ),
+                          child: message.deleted ? _deletedBody() : _textBody(),
+                        ),
                 ),
                 if (_footerVisible) _footer(),
                 // Below the bubble rather than inside it: chips belong to the message but are not

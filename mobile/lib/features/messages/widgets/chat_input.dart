@@ -54,7 +54,13 @@ class _InputBar extends StatelessWidget {
                 decoration: InputDecoration(
                   hintText: 'Message',
                   hintStyle: AppTypography.body.copyWith(color: AppColors.textMuted),
+                  // The app theme gives every field a fill and outline; the pill around this
+                  // one already draws both, so all states must opt out explicitly.
                   border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  disabledBorder: InputBorder.none,
+                  filled: false,
                   isDense: true,
                   contentPadding: const EdgeInsets.symmetric(vertical: 11),
                 ),

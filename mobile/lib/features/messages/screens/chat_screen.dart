@@ -34,6 +34,7 @@ import '../widgets/message_status_icon.dart';
 import '../data/chat_draft_store.dart';
 import '../data/message_limits.dart';
 import '../data/chat_message_cache.dart';
+import '../data/emoji_only.dart';
 import '../data/message_runs.dart';
 
 part '../widgets/chat_header.dart';
