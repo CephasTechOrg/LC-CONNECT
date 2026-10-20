@@ -26,7 +26,9 @@ import '../models/campus_post.dart';
 import '../providers/campus_hub_provider.dart';
 import '../providers/campus_publishing_provider.dart';
 import '../providers/opportunity_badge_provider.dart';
+import '../../../core/theme/app_radii.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../core/theme/app_typography.dart';
 
 part '../widgets/urgent_update_banner.dart';
 part '../widgets/campus_home_header.dart';
@@ -62,7 +64,10 @@ class CampusHubScreen extends ConsumerWidget {
     final user = ref.watch(authNotifierProvider).asData?.value;
     final profile = ref.watch(myProfileNotifierProvider).asData?.value;
     final isStudent = (user?.role ?? 'student') == 'student';
-    final firstName = _greetingName(displayName: profile?.displayName, email: user?.email);
+    final firstName = _greetingName(
+      displayName: profile?.displayName,
+      email: user?.email,
+    );
     final timeOfDay = _greeting();
     final overviewAsync = ref.watch(campusHubOverviewProvider);
     // Keep badge notifiers alive while Hub is visible (announcements WS + opportunities cursor).
@@ -96,13 +101,32 @@ class CampusHubScreen extends ConsumerWidget {
           child: ListView(
             children: [
               _HomeGreetingHeader(timeOfDay: timeOfDay, name: firstName),
-              // Greeting stays the hero. Blueprint / attendance are quiet follow-ups (their own
-              // padding); no extra gap that pushes the spotlight out of the first fold.
+              // Only the urgent alert outranks the original layout: it is
+              // time-sensitive, so it leads. Everything else keeps its
+              // established order — greeting, gated personal cards, spotlight,
+              // quick actions, latest updates, then previews.
+              // The urgent slot reads the same overview provider as Latest
+              // Updates below (a second `when` on one provider is free) so an
+              // alert can lead without moving the panel's loading skeleton up.
+              ...overviewAsync.when(
+                loading: () => const <Widget>[],
+                error: (_, _) => const <Widget>[],
+                data: (overview) => [
+                  if (overview.urgentPosts.isNotEmpty) ...[
+                    const SizedBox(height: AppSpacing.sm),
+                    UrgentUpdateBanner(
+                      post: overview.urgentPosts.first,
+                      onTap: () => context.push(
+                        '/home/posts/${overview.urgentPosts.first.id}',
+                      ),
+                    ),
+                  ],
+                ],
+              ),
               const BlueprintBondCard(style: BlueprintBondStyle.prompt),
               const AttendanceOpenCard(),
               const _SpotlightCarousel(),
               const _QuickActionsRow(),
-              const _PublisherCta(),
               ...overviewAsync.when(
                 loading: () => const [AppHubPanelSkeleton()],
                 error: (_, _) => [
@@ -112,16 +136,10 @@ class CampusHubScreen extends ConsumerWidget {
                   ),
                 ],
                 data: (overview) => [
-                  if (overview.urgentPosts.isNotEmpty) ...[
-                    const SizedBox(height: AppSpacing.lg),
-                    UrgentUpdateBanner(
-                      post: overview.urgentPosts.first,
-                      onTap: () => context.push('/home/posts/${overview.urgentPosts.first.id}'),
-                    ),
-                  ],
                   _LatestUpdatesPanel(updates: overview.latestUpdates),
                 ],
               ),
+              const _PublisherCta(),
               if (isStudent) ...[
                 _SectionHeader(
                   title: 'Upcoming activities',
@@ -136,7 +154,7 @@ class CampusHubScreen extends ConsumerWidget {
                 ),
                 const _SuggestedConnectionsPreview(),
               ],
-              const SizedBox(height: AppSpacing.xxl),
+              const SizedBox(height: AppSpacing.xxxl),
             ],
           ),
         ),

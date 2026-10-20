@@ -20,13 +20,13 @@ class _QuickActionsRow extends ConsumerWidget {
             label: 'Directory',
             onTap: () => context.push('/home/directory'),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpacing.md),
           CampusQuickAction(
             icon: Icons.menu_book_outlined,
             label: 'Resources',
             onTap: () => context.push('/home/resources'),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpacing.md),
           CampusQuickAction(
             icon: Icons.work_outline,
             label: 'Opportunities',
@@ -49,13 +49,23 @@ class _SectionEmpty extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(AppSpacing.gutter, 0, AppSpacing.gutter, AppSpacing.xs),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.gutter,
+        0,
+        AppSpacing.gutter,
+        AppSpacing.xs,
+      ),
       child: Row(
         children: [
           Icon(icon, size: 16, color: AppColors.textMuted),
           const SizedBox(width: 8),
           Expanded(
-            child: Text(text, style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.textMuted)),
+            child: Text(
+              text,
+              style: AppTypography.bodySmall.copyWith(
+                color: AppColors.textMuted,
+              ),
+            ),
           ),
         ],
       ),
@@ -86,12 +96,7 @@ class _SectionHeader extends StatelessWidget {
         children: [
           Text(
             title,
-            style: GoogleFonts.dmSans(
-              fontSize: 19,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textDark,
-              letterSpacing: -0.19,
-            ),
+            style: AppTypography.title.copyWith(color: AppColors.textDark),
           ),
           if (action != null && onAction != null)
             AppAccessibleTextAction(
@@ -114,7 +119,12 @@ class _PublisherCta extends ConsumerWidget {
     if (caps == null || !caps.canPublish) return const SizedBox.shrink();
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(AppSpacing.gutter, AppSpacing.md, AppSpacing.gutter, 0),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.gutter,
+        AppSpacing.md,
+        AppSpacing.gutter,
+        0,
+      ),
       child: Material(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
@@ -136,7 +146,11 @@ class _PublisherCta extends ConsumerWidget {
                     color: AppColors.primarySoft,
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(Icons.edit_note_outlined, color: AppColors.primary, size: 22),
+                  child: const Icon(
+                    Icons.edit_note_outlined,
+                    color: AppColors.primary,
+                    size: 22,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -145,20 +159,25 @@ class _PublisherCta extends ConsumerWidget {
                     children: [
                       Text(
                         'Publish to campus',
-                        style: GoogleFonts.dmSans(
-                          fontSize: 13.5,
+                        style: AppTypography.bodySmall.copyWith(
                           fontWeight: FontWeight.w600,
                           color: AppColors.textDark,
                         ),
                       ),
                       Text(
                         'Create updates and opportunities. Manage your posts.',
-                        style: GoogleFonts.dmSans(fontSize: 11.5, color: AppColors.textMuted),
+                        style: AppTypography.caption.copyWith(
+                          color: AppColors.textMuted,
+                        ),
                       ),
                     ],
                   ),
                 ),
-                const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted, size: 20),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppColors.textMuted,
+                  size: 20,
+                ),
               ],
             ),
           ),

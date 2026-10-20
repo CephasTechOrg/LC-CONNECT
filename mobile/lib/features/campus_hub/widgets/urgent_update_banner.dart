@@ -4,12 +4,16 @@ class UrgentUpdateBanner extends StatelessWidget {
   final CampusPostSummary post;
   final VoidCallback onTap;
 
-  const UrgentUpdateBanner({super.key, required this.post, required this.onTap});
+  const UrgentUpdateBanner({
+    super.key,
+    required this.post,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.gutter),
       child: Material(
         color: const Color(0xFFFFF1F2),
         borderRadius: BorderRadius.circular(14),
@@ -31,7 +35,11 @@ class UrgentUpdateBanner extends StatelessWidget {
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(Icons.warning_amber_rounded, color: AppColors.error, size: 22),
+                  child: const Icon(
+                    Icons.warning_amber_rounded,
+                    color: AppColors.error,
+                    size: 22,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -40,11 +48,9 @@ class UrgentUpdateBanner extends StatelessWidget {
                     children: [
                       Text(
                         'Urgent campus alert',
-                        style: GoogleFonts.dmSans(
-                          fontSize: 11.5,
+                        style: AppTypography.caption.copyWith(
                           fontWeight: FontWeight.w700,
                           color: AppColors.error,
-                          letterSpacing: 0.2,
                         ),
                       ),
                       const SizedBox(height: 2),
@@ -61,7 +67,10 @@ class UrgentUpdateBanner extends StatelessWidget {
                     ],
                   ),
                 ),
-                const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppColors.textMuted,
+                ),
               ],
             ),
           ),

@@ -12,7 +12,12 @@ class _LatestUpdatesPanel extends StatelessWidget {
     final featured = updates.isEmpty ? null : updates.first;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(AppSpacing.gutter, AppSpacing.lg, AppSpacing.gutter, 0),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.gutter,
+        AppSpacing.lg,
+        AppSpacing.gutter,
+        0,
+      ),
       child: Container(
         padding: const EdgeInsets.fromLTRB(16, 15, 16, 16),
         decoration: BoxDecoration(
@@ -23,7 +28,11 @@ class _LatestUpdatesPanel extends StatelessWidget {
             colors: [Color(0xFF264A6E), Color(0xFF1B3A5C)],
           ),
           boxShadow: const [
-            BoxShadow(color: Color(0x471B3A5C), blurRadius: 18, offset: Offset(0, 6)),
+            BoxShadow(
+              color: Color(0x471B3A5C),
+              blurRadius: 18,
+              offset: Offset(0, 6),
+            ),
           ],
         ),
         child: Column(
@@ -31,7 +40,11 @@ class _LatestUpdatesPanel extends StatelessWidget {
           children: [
             Row(
               children: [
-                const Icon(Icons.campaign_outlined, color: Colors.white, size: 20),
+                const Icon(
+                  Icons.campaign_outlined,
+                  color: Colors.white,
+                  size: 20,
+                ),
                 const SizedBox(width: 9),
                 Expanded(
                   child: Text(
@@ -50,7 +63,10 @@ class _LatestUpdatesPanel extends StatelessWidget {
             if (featured == null)
               Text(
                 'No campus announcements yet.',
-                style: GoogleFonts.dmSans(fontSize: 13, color: Colors.white.withValues(alpha: 0.7)),
+                style: GoogleFonts.dmSans(
+                  fontSize: 13,
+                  color: Colors.white.withValues(alpha: 0.7),
+                ),
               )
             else
               _FeaturedUpdateCard(post: featured),
@@ -68,41 +84,51 @@ class _UpdatesSeeAll extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     // Live count of new announcements since the user last opened the list — ticks up in real time.
     final count = ref.watch(announcementCountProvider);
-    return GestureDetector(
-      onTap: () => context.push('/home/updates'),
-      behavior: HitTestBehavior.opaque,
-      child: Row(
-        children: [
-          Text(
-            'See all',
-            style: GoogleFonts.dmSans(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: Colors.white.withValues(alpha: 0.9),
-            ),
-          ),
-          if (count > 0) ...[
-            const SizedBox(width: 7),
-            Container(
-              constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
-              padding: const EdgeInsets.symmetric(horizontal: 5),
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: AppColors.error,
-                borderRadius: BorderRadius.circular(9),
-              ),
-              child: Text(
-                count > 99 ? '99+' : '$count',
-                style: GoogleFonts.dmSans(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
-                  height: 1,
+    return Semantics(
+      button: true,
+      label: count > 0 ? 'See all updates, $count new' : 'See all updates',
+      child: InkWell(
+        onTap: () => context.push('/home/updates'),
+        borderRadius: BorderRadius.circular(AppRadii.sm),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 48),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'See all',
+                style: AppTypography.bodySmall.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white.withValues(alpha: 0.9),
                 ),
               ),
-            ),
-          ],
-        ],
+              if (count > 0) ...[
+                const SizedBox(width: 7),
+                Container(
+                  constraints: const BoxConstraints(
+                    minWidth: 18,
+                    minHeight: 18,
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 5),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: AppColors.error,
+                    borderRadius: BorderRadius.circular(9),
+                  ),
+                  child: Text(
+                    count > 99 ? '99+' : '$count',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                      height: 1,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -146,8 +172,7 @@ class _FeaturedUpdateCard extends StatelessWidget {
                       post.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.dmSans(
-                        fontSize: 15,
+                      style: AppTypography.bodyLarge.copyWith(
                         fontWeight: FontWeight.w700,
                         color: Colors.white,
                       ),
@@ -158,9 +183,7 @@ class _FeaturedUpdateCard extends StatelessWidget {
                         post.summary!,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.dmSans(
-                          fontSize: 12.5,
-                          height: 1.4,
+                        style: AppTypography.bodySmall.copyWith(
                           color: Colors.white.withValues(alpha: 0.82),
                         ),
                       ),
@@ -168,8 +191,7 @@ class _FeaturedUpdateCard extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       _postAge(post.publishAt),
-                      style: GoogleFonts.dmSans(
-                        fontSize: 11.5,
+                      style: AppTypography.caption.copyWith(
                         color: Colors.white.withValues(alpha: 0.6),
                       ),
                     ),
@@ -177,7 +199,10 @@ class _FeaturedUpdateCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              Icon(Icons.chevron_right_rounded, color: Colors.white.withValues(alpha: 0.7)),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: Colors.white.withValues(alpha: 0.7),
+              ),
             ],
           ),
         ),

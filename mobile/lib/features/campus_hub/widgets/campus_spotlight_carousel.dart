@@ -73,7 +73,12 @@ class _SpotlightCarouselState extends State<_SpotlightCarousel> {
       _restartTimer();
     }
     return Padding(
-      padding: const EdgeInsets.fromLTRB(AppSpacing.gutter, AppSpacing.xs, AppSpacing.gutter, 0),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.gutter,
+        AppSpacing.xs,
+        AppSpacing.gutter,
+        0,
+      ),
       child: Column(
         children: [
           SizedBox(
@@ -91,7 +96,8 @@ class _SpotlightCarouselState extends State<_SpotlightCarousel> {
                 controller: _controller,
                 itemCount: campusSpotlights.length,
                 onPageChanged: (i) => setState(() => _index = i),
-                itemBuilder: (_, i) => _SpotlightCard(spotlight: campusSpotlights[i]),
+                itemBuilder: (_, i) =>
+                    _SpotlightCard(spotlight: campusSpotlights[i]),
               ),
             ),
           ),
@@ -101,7 +107,11 @@ class _SpotlightCarouselState extends State<_SpotlightCarousel> {
             active: _index,
             onTap: (i) {
               _restartTimer();
-              _controller.animateToPage(i, duration: _slide, curve: Curves.easeOutCubic);
+              _controller.animateToPage(
+                i,
+                duration: _slide,
+                curve: Curves.easeOutCubic,
+              );
             },
           ),
         ],
@@ -115,7 +125,11 @@ class _SpotlightDots extends StatelessWidget {
   final int active;
   final ValueChanged<int> onTap;
 
-  const _SpotlightDots({required this.count, required this.active, required this.onTap});
+  const _SpotlightDots({
+    required this.count,
+    required this.active,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -123,16 +137,32 @@ class _SpotlightDots extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         for (var i = 0; i < count; i++)
-          GestureDetector(
-            onTap: () => onTap(i),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              margin: EdgeInsets.only(right: i == count - 1 ? 0 : 7),
-              width: i == active ? 20 : 7,
-              height: 7,
-              decoration: BoxDecoration(
-                color: i == active ? AppColors.primary : const Color(0xFFC4D3E0),
-                borderRadius: BorderRadius.circular(4),
+          // The visible dot is 7dp, but the tap target must not be: wrap it in
+          // a 32dp hit box (dots are a supplementary control — the carousel
+          // itself swipes — so 32dp here rather than the full 48dp row height).
+          Semantics(
+            button: true,
+            selected: i == active,
+            label: 'Show spotlight ${i + 1} of $count',
+            child: GestureDetector(
+              onTap: () => onTap(i),
+              behavior: HitTestBehavior.opaque,
+              child: SizedBox(
+                width: 32,
+                height: 32,
+                child: Center(
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    width: i == active ? 20 : 7,
+                    height: 7,
+                    decoration: BoxDecoration(
+                      color: i == active
+                          ? AppColors.primary
+                          : const Color(0xFFC4D3E0),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                ),
               ),
             ),
           ),
@@ -152,7 +182,11 @@ class _SpotlightCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(_spotlightRadius),
         border: Border.all(color: AppColors.border),
         boxShadow: const [
-          BoxShadow(color: Color(0x1F245F91), blurRadius: 20, offset: Offset(0, 6)),
+          BoxShadow(
+            color: Color(0x1F245F91),
+            blurRadius: 20,
+            offset: Offset(0, 6),
+          ),
         ],
       ),
       child: ClipRRect(
@@ -194,7 +228,10 @@ class _SpotlightCard extends StatelessWidget {
                 child: Container(
                   width: 230,
                   height: 230,
-                  decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0x293F7FB5)),
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Color(0x293F7FB5),
+                  ),
                 ),
               ),
               if (spotlight.studentAsset != null)
@@ -242,7 +279,12 @@ class _FeatheredStudent extends StatelessWidget {
         begin: Alignment.centerLeft,
         end: Alignment.centerRight,
         stops: [0, 0.12, 0.95, 1],
-        colors: [Color(0x00000000), Color(0xFF000000), Color(0xFF000000), Color(0x00000000)],
+        colors: [
+          Color(0x00000000),
+          Color(0xFF000000),
+          Color(0xFF000000),
+          Color(0x00000000),
+        ],
       ).createShader(bounds),
       child: ShaderMask(
         blendMode: BlendMode.dstIn,
@@ -298,6 +340,11 @@ class _SpotlightContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Copy width follows the card, not a fixed 190dp: on a 320dp phone the
+    // student cut-out takes the right ~56%, so fixed widths either collide
+    // with it or overflow; on a tablet they strand copy in a narrow column.
+    final cardWidth = MediaQuery.sizeOf(context).width - AppSpacing.gutter * 2;
+    final copyWidth = (cardWidth * 0.52).clamp(150.0, 220.0);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
       child: Column(
@@ -323,7 +370,7 @@ class _SpotlightContent extends StatelessWidget {
             'COLLEGE',
             style: TextStyle(
               fontFamily: 'serif',
-              fontSize: 9.5,
+              fontSize: 10,
               fontWeight: FontWeight.w600,
               color: Color(0xFF3A4A5A),
               letterSpacing: 3.99,
@@ -332,37 +379,44 @@ class _SpotlightContent extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 190),
+            constraints: BoxConstraints(maxWidth: copyWidth),
             child: Text.rich(
               TextSpan(
                 children: [
-                  for (var line = 0; line < spotlight.headline.length; line++) ...[
+                  for (
+                    var line = 0;
+                    line < spotlight.headline.length;
+                    line++
+                  ) ...[
                     for (final word in spotlight.headline[line])
                       TextSpan(
                         text: word.text,
                         style: TextStyle(
-                          color: word.highlighted ? AppColors.primary : AppColors.textDark,
+                          color: word.highlighted
+                              ? AppColors.primary
+                              : AppColors.textDark,
                         ),
                       ),
-                    if (line != spotlight.headline.length - 1) const TextSpan(text: '\n'),
+                    if (line != spotlight.headline.length - 1)
+                      const TextSpan(text: '\n'),
                   ],
                 ],
               ),
-              style: GoogleFonts.dmSans(
-                fontSize: 21,
+              style: AppTypography.titleLarge.copyWith(
                 fontWeight: FontWeight.w800,
-                height: 1.14,
-                letterSpacing: -0.21,
                 color: AppColors.textDark,
               ),
             ),
           ),
           const SizedBox(height: 6),
           ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 175),
+            constraints: BoxConstraints(maxWidth: copyWidth - 15),
             child: Text(
               spotlight.description,
-              style: GoogleFonts.dmSans(fontSize: 11.5, color: AppColors.textMid, height: 1.4),
+              style: AppTypography.label.copyWith(
+                fontWeight: FontWeight.w400,
+                color: AppColors.textMid,
+              ),
             ),
           ),
         ],

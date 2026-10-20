@@ -28,8 +28,13 @@ class _HomeGreetingHeader extends ConsumerWidget {
       ),
       child: Row(
         children: [
-          Image.asset('assets/images/lclogo.webp', width: 46, height: 46, fit: BoxFit.contain),
-          const SizedBox(width: 12),
+          Image.asset(
+            'assets/images/lclogo.webp',
+            width: 46,
+            height: 46,
+            fit: BoxFit.contain,
+          ),
+          const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -44,10 +49,8 @@ class _HomeGreetingHeader extends ConsumerWidget {
                   child: Text(
                     timeOfDay,
                     maxLines: 1,
-                    style: GoogleFonts.dmSans(
-                      fontSize: 13.5,
+                    style: AppTypography.bodySmall.copyWith(
                       color: AppColors.textMuted,
-                      height: 1.2,
                     ),
                   ),
                 ),
@@ -58,12 +61,9 @@ class _HomeGreetingHeader extends ConsumerWidget {
                   child: Text(
                     name,
                     maxLines: 1,
-                    style: GoogleFonts.dmSans(
-                      fontSize: 22,
+                    style: AppTypography.display.copyWith(
                       fontWeight: FontWeight.w800,
                       color: AppColors.textDark,
-                      height: 1.15,
-                      letterSpacing: -0.44,
                     ),
                   ),
                 ),

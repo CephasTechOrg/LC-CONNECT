@@ -54,7 +54,10 @@ class CampusQuickAction extends StatelessWidget {
                           top: -4,
                           right: -4,
                           child: Container(
-                            constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+                            constraints: const BoxConstraints(
+                              minWidth: 18,
+                              minHeight: 18,
+                            ),
                             padding: const EdgeInsets.symmetric(horizontal: 5),
                             alignment: Alignment.center,
                             decoration: BoxDecoration(
@@ -76,15 +79,19 @@ class CampusQuickAction extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  label,
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.dmSans(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textDark,
+                // Scale down rather than ellipsize: at 320dp each action is ~90dp
+                // wide and "Opportunities" does not fit at full size — a clipped
+                // label is worse than a slightly smaller whole word.
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    label,
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    style: AppTypography.bodySmall.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textDark,
+                    ),
                   ),
                 ),
               ],

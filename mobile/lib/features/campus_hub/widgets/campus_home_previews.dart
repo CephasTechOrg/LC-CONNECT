@@ -1,6 +1,10 @@
 part of '../screens/campus_hub_screen.dart';
 
-const _cardShadow = BoxShadow(color: Color(0x0A111827), blurRadius: 3, offset: Offset(0, 1));
+const _cardShadow = BoxShadow(
+  color: Color(0x0A111827),
+  blurRadius: 3,
+  offset: Offset(0, 1),
+);
 
 /// Up to two upcoming activities, so the section never crowds out announcements.
 class _ActivitiesPreview extends ConsumerWidget {
@@ -30,7 +34,9 @@ class _ActivitiesPreview extends ConsumerWidget {
             children: [
               for (var i = 0; i < visible.length; i++)
                 Padding(
-                  padding: EdgeInsets.only(bottom: i == visible.length - 1 ? 0 : 11),
+                  padding: EdgeInsets.only(
+                    bottom: i == visible.length - 1 ? 0 : 11,
+                  ),
                   child: _ActivityPreviewCard(activity: visible[i]),
                 ),
             ],
@@ -57,7 +63,8 @@ class _ActivityPreviewCard extends StatelessWidget {
       color: AppColors.surface,
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
-        onTap: () => context.push('/activities/${activity.id}', extra: activity),
+        onTap: () =>
+            context.push('/activities/${activity.id}', extra: activity),
         borderRadius: BorderRadius.circular(16),
         child: Container(
           padding: const EdgeInsets.all(13),
@@ -78,38 +85,31 @@ class _ActivityPreviewCard extends StatelessWidget {
                       activity.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.dmSans(
-                        fontSize: 15.5,
-                        fontWeight: FontWeight.w700,
+                      style: AppTypography.titleSmall.copyWith(
                         color: AppColors.textDark,
                       ),
                     ),
                     const SizedBox(height: 4),
                     _ActivityMetaRow(
                       icon: Icons.place_outlined,
-                      text: '${DateFormat('EEE, MMM d').format(start)} · ${activity.location}',
+                      text:
+                          '${DateFormat('EEE, MMM d').format(start)} · ${activity.location}',
                     ),
                     const SizedBox(height: 3),
-                    _ActivityMetaRow(icon: Icons.people_outline_rounded, text: _going),
+                    _ActivityMetaRow(
+                      icon: Icons.people_outline_rounded,
+                      text: _going,
+                    ),
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
-              Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: AppColors.primarySoft,
-                  borderRadius: BorderRadius.circular(11),
-                ),
-                child: const Icon(
-                  Icons.calendar_today_outlined,
-                  size: 15,
-                  color: AppColors.primary,
-                ),
+              // No trailing calendar box: the date block on the left already
+              // says it, and on a 320dp phone that box cost ~46dp of title width.
+              const SizedBox(width: AppSpacing.sm),
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: AppColors.textMuted,
               ),
-              const SizedBox(width: 4),
-              const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
             ],
           ),
         ),
@@ -136,22 +136,17 @@ class _ActivityDateBlock extends StatelessWidget {
         children: [
           Text(
             DateFormat('MMM').format(date).toUpperCase(),
-            style: GoogleFonts.dmSans(
-              fontSize: 10.5,
+            style: AppTypography.micro.copyWith(
               fontWeight: FontWeight.w700,
               color: AppColors.primary,
-              letterSpacing: 0.63,
-              height: 1,
             ),
           ),
           const SizedBox(height: 2),
           Text(
             DateFormat('d').format(date),
-            style: GoogleFonts.dmSans(
-              fontSize: 21,
+            style: AppTypography.titleLarge.copyWith(
               fontWeight: FontWeight.w800,
               color: AppColors.textDark,
-              height: 1,
             ),
           ),
         ],
@@ -177,7 +172,7 @@ class _ActivityMetaRow extends StatelessWidget {
             text,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.dmSans(fontSize: 12.5, color: AppColors.textMid),
+            style: AppTypography.bodySmall.copyWith(color: AppColors.textMid),
           ),
         ),
       ],
@@ -207,6 +202,10 @@ class _SuggestedConnectionsPreview extends ConsumerWidget {
           );
         }
         final visible = cards.take(3).toList();
+        // Three-across only works while each card stays readable. Below ~360dp
+        // a card is under 95dp wide and names/majors ellipsize to fragments, so
+        // switch to a horizontal strip of fixed-width cards the student can
+        // swipe — same three suggestions, no squeeze.
         // Do not use CrossAxisAlignment.stretch here — this Row lives inside a
         // ListView, which gives unbounded height and stretch would force infinite height.
         return Padding(
@@ -216,17 +215,38 @@ class _SuggestedConnectionsPreview extends ConsumerWidget {
             AppSpacing.gutter,
             AppSpacing.xs,
           ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              for (var i = 0; i < visible.length; i++)
-                Expanded(
-                  child: Padding(
-                    padding: EdgeInsets.only(right: i == visible.length - 1 ? 0 : 12),
-                    child: _SuggestedConnectionCard(card: visible[i]),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              if (constraints.maxWidth < 360) {
+                return SizedBox(
+                  height: 138,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: visible.length,
+                    separatorBuilder: (_, _) =>
+                        const SizedBox(width: AppSpacing.md),
+                    itemBuilder: (_, i) => SizedBox(
+                      width: 132,
+                      child: _SuggestedConnectionCard(card: visible[i]),
+                    ),
                   ),
-                ),
-            ],
+                );
+              }
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (var i = 0; i < visible.length; i++)
+                    Expanded(
+                      child: Padding(
+                        padding: EdgeInsets.only(
+                          right: i == visible.length - 1 ? 0 : 12,
+                        ),
+                        child: _SuggestedConnectionCard(card: visible[i]),
+                      ),
+                    ),
+                ],
+              );
+            },
           ),
         );
       },
@@ -245,7 +265,8 @@ class _SuggestedConnectionCard extends StatelessWidget {
       color: AppColors.surface,
       borderRadius: BorderRadius.circular(14),
       child: InkWell(
-        onTap: () => context.push('/users/${card.profileId}', extra: card.displayName),
+        onTap: () =>
+            context.push('/users/${card.profileId}', extra: card.displayName),
         borderRadius: BorderRadius.circular(14),
         child: Container(
           padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
@@ -263,8 +284,7 @@ class _SuggestedConnectionCard extends StatelessWidget {
                 card.displayName ?? 'LC Student',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.dmSans(
-                  fontSize: 13.5,
+                style: AppTypography.bodySmall.copyWith(
                   fontWeight: FontWeight.w700,
                   color: AppColors.textDark,
                 ),
@@ -274,7 +294,9 @@ class _SuggestedConnectionCard extends StatelessWidget {
                 card.major ?? 'Student',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.dmSans(fontSize: 11.5, color: AppColors.textMuted),
+                style: AppTypography.caption.copyWith(
+                  color: AppColors.textMuted,
+                ),
               ),
             ],
           ),
@@ -296,7 +318,11 @@ class _ConnectionAvatar extends StatelessWidget {
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          AvatarWidget(imageUrl: card.avatarUrl, size: 52, cacheScope: card.userId),
+          AvatarWidget(
+            imageUrl: card.avatarUrl,
+            size: 52,
+            cacheScope: card.userId,
+          ),
           Positioned(
             bottom: -2,
             left: -2,
@@ -309,7 +335,11 @@ class _ConnectionAvatar extends StatelessWidget {
                 shape: BoxShape.circle,
                 border: Border.all(color: AppColors.surface, width: 2),
               ),
-              child: const Icon(Icons.person_add_alt_1_rounded, size: 12, color: AppColors.primary),
+              child: const Icon(
+                Icons.person_add_alt_1_rounded,
+                size: 12,
+                color: AppColors.primary,
+              ),
             ),
           ),
         ],
@@ -323,6 +353,8 @@ class _PreviewLoading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Column(children: [AppPreviewCardSkeleton(), AppPreviewCardSkeleton()]);
+    return const Column(
+      children: [AppPreviewCardSkeleton(), AppPreviewCardSkeleton()],
+    );
   }
 }

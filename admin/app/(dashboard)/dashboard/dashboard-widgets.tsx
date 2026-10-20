@@ -105,7 +105,7 @@ export function ApprovalDonut({
       </svg>
       <div className="dash-donut-label">
         <div className="dash-donut-value">{total}</div>
-        <div className="dash-donut-caption">Items Awaiting Review</div>
+        <div className="dash-donut-caption">Approvals pending</div>
       </div>
     </div>
   );
