@@ -1,12 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/theme/app_typography.dart';
 
 /// Standard tab/shell header: LC logo + title (+ optional subtitle) + trailing.
+///
+/// Sits directly on the page background, like the Home greeting header, so every tab opens
+/// with the same top edge instead of Home floating and the rest in a white bordered bar.
 class AppShellHeader extends StatelessWidget {
   final String title;
   final String? subtitle;
   final Widget? trailing;
+
+  /// Opt-in hairline for screens whose content scrolls directly under the header.
   final bool showBottomBorder;
 
   const AppShellHeader({
@@ -14,15 +21,19 @@ class AppShellHeader extends StatelessWidget {
     required this.title,
     this.subtitle,
     this.trailing,
-    this.showBottomBorder = true,
+    this.showBottomBorder = false,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 12, 12, 14),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.gutter,
+        AppSpacing.sm,
+        AppSpacing.md,
+        AppSpacing.xs,
+      ),
       decoration: BoxDecoration(
-        color: AppColors.surface,
         border: showBottomBorder
             ? const Border(bottom: BorderSide(color: AppColors.border))
             : null,
@@ -31,11 +42,11 @@ class AppShellHeader extends StatelessWidget {
         children: [
           Image.asset(
             'assets/images/lclogo.webp',
-            width: 36,
-            height: 36,
+            width: 40,
+            height: 40,
             fit: BoxFit.contain,
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -44,12 +55,10 @@ class AppShellHeader extends StatelessWidget {
                   title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.dmSans(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
+                  style: AppTypography.display.copyWith(
+                    fontWeight: FontWeight.w800,
                     color: AppColors.textDark,
-                    height: 1.2,
-                    letterSpacing: -0.2,
+                    height: 1.15,
                   ),
                 ),
                 if (subtitle != null)
@@ -57,10 +66,7 @@ class AppShellHeader extends StatelessWidget {
                     subtitle!,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.dmSans(
-                      fontSize: 12,
-                      color: AppColors.textMuted,
-                    ),
+                    style: AppTypography.caption.copyWith(color: AppColors.textMuted),
                   ),
               ],
             ),

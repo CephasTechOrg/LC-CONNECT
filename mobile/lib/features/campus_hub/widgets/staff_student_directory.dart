@@ -40,7 +40,6 @@ class _StaffStudentDirectoryState extends ConsumerState<StaffStudentDirectory> {
         const AppShellHeader(
           title: 'Students',
           subtitle: 'Find and message any student at Livingstone',
-          showBottomBorder: false,
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(

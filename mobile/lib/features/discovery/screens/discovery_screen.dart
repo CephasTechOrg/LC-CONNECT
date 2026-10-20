@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/api/api_error.dart';
+import '../../../core/theme/app_radii.dart';
+import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/avatar_widget.dart';
@@ -114,11 +116,11 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildHeader(),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.sm),
             _buildSearchBar(),
-            const SizedBox(height: 12),
+            // The chips carry their own 48dp tap height, which already spaces them.
             _buildFilterRow(),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.xs),
             Expanded(
               child: discoveryState.when(
                 loading: () => const AppListSkeleton(count: 2),
@@ -159,36 +161,32 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
   Widget _buildSearchBar() {
     // Filters live in `_buildFilterRow` below — no separate tune control (that
     // icon was a dead affordance with no handler).
+    const fieldBorder = OutlineInputBorder(
+      borderRadius: BorderRadius.all(Radius.circular(AppRadii.lg)),
+      borderSide: BorderSide(color: AppColors.border),
+    );
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.gutter),
       child: TextField(
         controller: _searchCtrl,
         onChanged: (v) => setState(() => _query = v),
-        style: GoogleFonts.dmSans(fontSize: 14, color: AppColors.textDark),
+        style: AppTypography.body.copyWith(color: AppColors.textDark),
         decoration: InputDecoration(
           hintText: 'Search by name, major, or interests',
-          hintStyle: GoogleFonts.dmSans(
-              fontSize: 14, color: const Color(0xFF9CA3AF)),
+          hintStyle: AppTypography.body.copyWith(color: AppColors.textMuted),
           prefixIcon: const Icon(Icons.search_rounded,
-              size: 16, color: AppColors.textMuted),
+              size: 18, color: AppColors.textMuted),
           filled: true,
-          fillColor: AppColors.background,
-          contentPadding:
-              const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide:
-                const BorderSide(color: AppColors.border, width: 1.5),
+          fillColor: AppColors.surface,
+          isDense: true,
+          contentPadding: const EdgeInsets.symmetric(
+            vertical: AppSpacing.md,
+            horizontal: AppSpacing.md,
           ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide:
-                const BorderSide(color: AppColors.border, width: 1.5),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide:
-                const BorderSide(color: AppColors.primary, width: 1.5),
+          border: fieldBorder,
+          enabledBorder: fieldBorder,
+          focusedBorder: fieldBorder.copyWith(
+            borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
           ),
         ),
       ),
@@ -196,23 +194,31 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
   }
 
   Widget _buildFilterRow() {
-    return SizedBox(
-      height: 36,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        children: _filters
-            .map(
-              (f) => Padding(
-                padding: const EdgeInsets.only(right: 8),
+    // Fade the trailing edge so a chip cut by the screen reads as "scroll for more" rather
+    // than a clipped label.
+    return ShaderMask(
+      shaderCallback: (rect) => const LinearGradient(
+        colors: [Colors.black, Colors.black, Colors.transparent],
+        stops: [0, 0.88, 1],
+      ).createShader(rect),
+      blendMode: BlendMode.dstIn,
+      child: SizedBox(
+        height: kMinTouchTarget,
+        child: ListView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.gutter),
+          children: [
+            for (final f in _filters)
+              Padding(
+                padding: const EdgeInsets.only(right: AppSpacing.sm),
                 child: AppFilterChip(
                   label: f.$2,
                   selected: _activeFilter == f.$1,
                   onTap: () => setState(() => _activeFilter = f.$1),
                 ),
               ),
-            )
-            .toList(),
+          ],
+        ),
       ),
     );
   }
@@ -220,7 +226,12 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
   Widget _buildList(List<DiscoveryCard> cards) {
     return ListView.builder(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.gutter,
+        AppSpacing.xs,
+        AppSpacing.gutter,
+        AppSpacing.gutter,
+      ),
       itemCount: cards.length,
       itemBuilder: (ctx, i) {
         final card = cards[i];
@@ -242,7 +253,6 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
           key: ValueKey(card.profileId),
           card: card,
           onConnect: () => connect('connect'),
-          onStudyTogether: () => connect('study_together'),
           onSkip: () => ref
               .read(discoveryNotifierProvider.notifier)
               .skip(card.profileId),

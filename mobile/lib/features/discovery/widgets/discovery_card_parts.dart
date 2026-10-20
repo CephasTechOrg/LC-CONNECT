@@ -6,7 +6,7 @@ class _Avatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AvatarWidget(imageUrl: avatarUrl, size: 52);
+    return AvatarWidget(imageUrl: avatarUrl, size: 48);
   }
 }
 
@@ -27,10 +27,10 @@ class _LookingForBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 3),
       decoration: BoxDecoration(
         color: AppColors.primarySoft,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppRadii.full),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -112,51 +112,37 @@ class _InterestLanguageLine extends StatelessWidget {
   }
 }
 
-// ── Action button (Connect / Study Together) ───────────────────────
+// ── Action button (Connect) ────────────────────────────────────────
 class _ActionButton extends StatelessWidget {
   final String label;
   final IconData icon;
   final bool isLoading;
   final VoidCallback onTap;
 
-  /// Secondary actions (Study Together) get an outlined treatment so a card
-  /// has exactly one filled primary — Connect. Two identical filled buttons
-  /// made both read as "the" action and doubled the visual weight.
-  final bool secondary;
-
   const _ActionButton({
     required this.label,
     required this.icon,
     required this.isLoading,
     required this.onTap,
-    this.secondary = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    final foreground = secondary ? AppColors.primary : Colors.white;
+    const foreground = Colors.white;
     return Semantics(
       button: true,
       enabled: !isLoading,
       label: label,
       child: Material(
-        color: secondary
-            ? AppColors.surface
-            : (isLoading ? AppColors.primaryLight : AppColors.primary),
-        borderRadius: BorderRadius.circular(10),
+        color: isLoading ? AppColors.primaryLight : AppColors.primary,
+        borderRadius: BorderRadius.circular(AppRadii.md),
         child: InkWell(
           onTap: isLoading ? null : onTap,
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(AppRadii.md),
           child: Container(
             // 48dp: the app's own minimum touch target. Was 40dp.
             height: kMinTouchTarget,
             alignment: Alignment.center,
-            decoration: secondary
-                ? BoxDecoration(
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: AppColors.primary, width: 1.5),
-                  )
-                : null,
             child: isLoading
                 ? SizedBox(
                     width: 16,

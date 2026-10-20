@@ -30,15 +30,19 @@ class AppFilterChip extends StatelessWidget {
             constraints: const BoxConstraints(minHeight: 48),
             child: Align(
               alignment: Alignment.center,
+              // Soft selected state (tint + accent text), matching the Messages
+              // Chats/Groups track, rather than a solid fill competing with the
+              // screen's primary buttons.
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 150),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
                 decoration: BoxDecoration(
-                  color: selected ? AppColors.primary : AppColors.surface,
+                  color: selected ? AppColors.primarySoft : AppColors.surface,
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                    color: selected ? AppColors.primary : AppColors.border,
-                    width: 1.5,
+                    color: selected
+                        ? AppColors.primary.withValues(alpha: 0.35)
+                        : AppColors.border,
                   ),
                 ),
                 child: ExcludeSemantics(
@@ -46,8 +50,8 @@ class AppFilterChip extends StatelessWidget {
                     label,
                     style: GoogleFonts.dmSans(
                       fontSize: 13,
-                      fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-                      color: selected ? Colors.white : AppColors.textMuted,
+                      fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                      color: selected ? AppColors.primary : AppColors.textMid,
                     ),
                   ),
                 ),

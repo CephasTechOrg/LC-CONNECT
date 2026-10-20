@@ -7,7 +7,6 @@ part of '../screens/discovery_screen.dart';
 class _StudentCard extends StatefulWidget {
   final DiscoveryCard card;
   final Future<void> Function() onConnect;
-  final Future<void> Function() onStudyTogether;
   final VoidCallback onSkip;
   final VoidCallback onMore;
 
@@ -15,7 +14,6 @@ class _StudentCard extends StatefulWidget {
     super.key,
     required this.card,
     required this.onConnect,
-    required this.onStudyTogether,
     required this.onSkip,
     required this.onMore,
   });
@@ -57,7 +55,6 @@ class _StudentCardState extends State<_StudentCard> {
   @override
   Widget build(BuildContext context) {
     final c = widget.card;
-    final showStudyTogether = c.lookingForCodes.contains('study_partner');
     final lookingCodes = c.lookingForCodes;
     final lookingLabels = c.lookingFor;
     // Cap at two on the list card; the rest live on the public profile.
@@ -74,14 +71,19 @@ class _StudentCardState extends State<_StudentCard> {
     return Semantics(
       label: c.displayName ?? 'Student profile',
       child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
+        margin: const EdgeInsets.only(bottom: AppSpacing.md),
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(AppRadii.card),
           border: Border.all(color: AppColors.border),
         ),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(14, 12, 10, 10),
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.md,
+            AppSpacing.md,
+            AppSpacing.xs,
+            AppSpacing.md,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -98,7 +100,7 @@ class _StudentCardState extends State<_StudentCard> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           _Avatar(avatarUrl: c.avatarUrl),
-                          const SizedBox(width: 10),
+                          const SizedBox(width: AppSpacing.md),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -111,11 +113,9 @@ class _StudentCardState extends State<_StudentCard> {
                                         c.displayName ?? 'Student',
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
-                                        style: GoogleFonts.dmSans(
-                                          fontSize: 16,
+                                        style: AppTypography.titleSmall.copyWith(
                                           fontWeight: FontWeight.w700,
                                           color: AppColors.textDark,
-                                          letterSpacing: -0.2,
                                         ),
                                       ),
                                     ),
@@ -135,8 +135,7 @@ class _StudentCardState extends State<_StudentCard> {
                                     ].join(' · '),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style: GoogleFonts.dmSans(
-                                      fontSize: 12,
+                                    style: AppTypography.caption.copyWith(
                                       color: AppColors.textMuted,
                                     ),
                                   ),
@@ -167,7 +166,7 @@ class _StudentCardState extends State<_StudentCard> {
               ),
 
               if (lookingPairs.isNotEmpty) ...[
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpacing.sm),
                 Wrap(
                   spacing: 6,
                   runSpacing: 6,
@@ -183,7 +182,7 @@ class _StudentCardState extends State<_StudentCard> {
               // lead when this student is here for language exchange — for
               // them it is the matching signal, not decoration.
               if (c.interests.isNotEmpty || c.languagesSpoken.isNotEmpty) ...[
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpacing.sm),
                 _InterestLanguageLine(
                   interests: c.interests,
                   languages: c.languagesSpoken,
@@ -194,59 +193,56 @@ class _StudentCardState extends State<_StudentCard> {
               ],
 
               if (matchReason != null) ...[
-                const SizedBox(height: 8),
-                Text(
-                  matchReason,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTypography.caption.copyWith(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(
-                    child: _ActionButton(
-                      label: 'Connect',
-                      icon: Icons.person_add_outlined,
-                      isLoading: _isActing,
-                      onTap: () => _act(widget.onConnect),
-                    ),
-                  ),
-                  if (showStudyTogether) ...[
-                    const SizedBox(width: 8),
+                const SizedBox(height: AppSpacing.xs),
+                Row(
+                  children: [
+                    const Icon(Icons.auto_awesome_rounded, size: 12, color: AppColors.primary),
+                    const SizedBox(width: AppSpacing.xs),
                     Expanded(
-                      child: _ActionButton(
-                        label: 'Study Together',
-                        icon: Icons.menu_book_outlined,
-                        isLoading: _isActing,
-                        secondary: true,
-                        onTap: () => _act(widget.onStudyTogether),
+                      child: Text(
+                        matchReason,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.caption.copyWith(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ],
-                ],
-              ),
-              Center(
-                child: TextButton(
-                  onPressed: _isActing ? null : widget.onSkip,
-                  style: TextButton.styleFrom(
-                    // Visible and quiet — but a full-height target. It used
-                    // to be 36dp tall, under the app's own 48dp minimum.
-                    minimumSize: const Size(kMinTouchTarget, kMinTouchTarget),
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                  ),
-                  child: Text(
-                    'Maybe Later',
-                    style: AppTypography.label.copyWith(
-                      color: AppColors.textMuted,
+                ),
+              ],
+
+              const SizedBox(height: AppSpacing.md),
+              Padding(
+                padding: const EdgeInsets.only(right: AppSpacing.sm),
+                child: Row(
+                  children: [
+                    // "Maybe later" stays a visible, labelled choice — it just shares the
+                    // action row instead of costing the card a 48dp row of its own.
+                    TextButton(
+                      onPressed: _isActing ? null : widget.onSkip,
+                      style: TextButton.styleFrom(
+                        minimumSize: const Size(kMinTouchTarget, kMinTouchTarget),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+                        foregroundColor: AppColors.textMuted,
+                      ),
+                      child: Text(
+                        'Maybe later',
+                        style: AppTypography.label.copyWith(color: AppColors.textMuted),
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: AppSpacing.xs),
+                    Expanded(
+                      child: _ActionButton(
+                        label: 'Connect',
+                        icon: Icons.person_add_outlined,
+                        isLoading: _isActing,
+                        onTap: () => _act(widget.onConnect),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
