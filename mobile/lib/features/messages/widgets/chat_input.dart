@@ -15,19 +15,29 @@ class _InputBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: AppColors.surface,
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        border: Border(top: BorderSide(color: AppColors.border)),
+      ),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.sm,
+        AppSpacing.sm,
+        AppSpacing.sm,
+      ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           // Attachment (+) removed — media chat is not shipped; a no-op button
           // was a false affordance. Re-add when upload/send-media is implemented.
           Expanded(
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14),
+              margin: const EdgeInsets.symmetric(vertical: 2),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
               decoration: BoxDecoration(
                 color: AppColors.background,
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: AppColors.border, width: 1.5),
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(color: AppColors.border),
               ),
               child: TextField(
                 controller: controller,
@@ -40,23 +50,20 @@ class _InputBar extends StatelessWidget {
                 inputFormatters: [
                   LengthLimitingTextInputFormatter(kMaxMessageChars),
                 ],
-                style: GoogleFonts.dmSans(
-                    fontSize: 14, color: AppColors.textDark),
+                style: AppTypography.body.copyWith(color: AppColors.textDark),
                 decoration: InputDecoration(
-                  hintText: 'Type a message...',
-                  hintStyle: GoogleFonts.dmSans(
-                      fontSize: 14, color: AppColors.textMuted),
+                  hintText: 'Message',
+                  hintStyle: AppTypography.body.copyWith(color: AppColors.textMuted),
                   border: InputBorder.none,
                   isDense: true,
-                  contentPadding:
-                      const EdgeInsets.symmetric(vertical: 10),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 11),
                 ),
                 onChanged: (_) => onTyping(),
                 onSubmitted: (_) => onSend(),
               ),
             ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: AppSpacing.xs),
           // Two bugs lived here, and together they produced "sometimes tapping send just closes
           // the keyboard instead of sending".
           //
@@ -70,9 +77,10 @@ class _InputBar extends StatelessWidget {
           // 2. The target was 40x40, under both Apple's 44pt minimum and this app's own
           //    `kMinTouchTarget`. A near-miss fell through to the app-level
           //    `DismissKeyboardOnTap`, which is why the *keyboard* reacted when the button did
-          //    not. The circle still draws at 40; only the hit area grew.
+          //    not. The circle draws at 44; the hit area is the full 48.
           //
           // `sending` now drives the spinner only, which is what it was always meant to say.
+          // An empty field dims the circle but keeps it tappable, for the same reason.
           Semantics(
             button: true,
             label: 'Send message',
@@ -83,22 +91,30 @@ class _InputBar extends StatelessWidget {
                 width: kMinTouchTarget,
                 height: kMinTouchTarget,
                 child: Center(
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 150),
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: sending ? AppColors.primarySoft : AppColors.primary,
-                      shape: BoxShape.circle,
-                    ),
-                    child: sending
-                        ? const Padding(
-                            padding: EdgeInsets.all(10),
-                            child: CircularProgressIndicator(
-                                strokeWidth: 2, color: AppColors.primary),
-                          )
-                        : const Icon(Icons.arrow_upward_rounded,
-                            color: Colors.white, size: 20),
+                  child: ValueListenableBuilder<TextEditingValue>(
+                    valueListenable: controller,
+                    builder: (context, value, _) {
+                      final hasText = value.text.trim().isNotEmpty;
+                      return AnimatedContainer(
+                        duration: const Duration(milliseconds: 150),
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: sending
+                              ? AppColors.primarySoft
+                              : AppColors.primary.withValues(alpha: hasText ? 1 : 0.45),
+                          shape: BoxShape.circle,
+                        ),
+                        child: sending
+                            ? const Padding(
+                                padding: EdgeInsets.all(12),
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2, color: AppColors.primary),
+                              )
+                            : const Icon(Icons.arrow_upward_rounded,
+                                color: Colors.white, size: 22),
+                      );
+                    },
                   ),
                 ),
               ),
@@ -139,20 +155,7 @@ class _OutboxBanner extends StatelessWidget {
         final label = full
             ? 'Send queue full — reconnect to send more'
             : 'Send queue nearly full ($count/${RealtimeClient.maxOutboxSize})';
-        return Container(
-          width: double.infinity,
-          color: AppColors.error.withAlpha(30),
-          padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
-          child: Text(
-            label,
-            textAlign: TextAlign.center,
-            style: GoogleFonts.dmSans(
-              fontSize: 11,
-              color: AppColors.error,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        );
+        return _SlimBanner(label: label, color: AppColors.error, icon: Icons.error_outline_rounded);
       },
     );
   }
@@ -168,45 +171,45 @@ class _ConnectionBanner extends StatelessWidget {
     return ValueListenableBuilder<RealtimeStatus>(
       valueListenable: status,
       builder: (context, value, _) {
-        final (String? label, Color color) = switch (value) {
-          RealtimeStatus.ready => (null, AppColors.primary),
-          RealtimeStatus.disconnected => ('Offline — reconnecting…', AppColors.textMuted),
-          _ => ('Connecting…', AppColors.textMuted),
+        final (String? label, IconData icon) = switch (value) {
+          RealtimeStatus.ready => (null, Icons.wifi_rounded),
+          RealtimeStatus.disconnected => ('Offline — reconnecting…', Icons.wifi_off_rounded),
+          _ => ('Connecting…', Icons.sync_rounded),
         };
         if (label == null) return const SizedBox.shrink();
-        return Container(
-          width: double.infinity,
-          color: color.withAlpha(30),
-          padding: const EdgeInsets.symmetric(vertical: 4),
-          child: Text(
-            label,
-            textAlign: TextAlign.center,
-            style: GoogleFonts.dmSans(fontSize: 11, color: color, fontWeight: FontWeight.w500),
-          ),
-        );
+        return _SlimBanner(label: label, color: AppColors.textMid, icon: icon);
       },
     );
   }
 }
 
-// ── Typing indicator ──────────────────────────────────────────────
-class _TypingIndicator extends StatelessWidget {
-  final String name;
-  const _TypingIndicator({required this.name});
+/// A one-line status strip under the header: tinted, icon + label, no border.
+class _SlimBanner extends StatelessWidget {
+  final String label;
+  final Color color;
+  final IconData icon;
+  const _SlimBanner({required this.label, required this.color, required this.icon});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: AppColors.background,
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, 2),
-      alignment: Alignment.centerLeft,
-      child: Text(
-        '$name is typing...',
-        style: GoogleFonts.dmSans(
-          fontSize: 12,
-          color: AppColors.textMuted,
-          fontStyle: FontStyle.italic,
-        ),
+      width: double.infinity,
+      color: color.withValues(alpha: 0.08),
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: AppSpacing.md),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTypography.caption.copyWith(color: color, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -225,13 +228,19 @@ class _EmptyChatState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.waving_hand_rounded,
-                size: 48, color: AppColors.border),
-            const SizedBox(height: 16),
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                color: AppColors.primarySoft,
+                borderRadius: BorderRadius.circular(AppRadii.sheet),
+              ),
+              child: const Icon(Icons.waving_hand_rounded, size: 28, color: AppColors.primary),
+            ),
+            const SizedBox(height: AppSpacing.lg),
             Text(
               'Start the conversation',
-              style: GoogleFonts.dmSans(
-                fontSize: 16,
+              style: AppTypography.titleSmall.copyWith(
                 fontWeight: FontWeight.w700,
                 color: AppColors.textDark,
               ),
@@ -240,8 +249,7 @@ class _EmptyChatState extends StatelessWidget {
             Text(
               'Say hello to $name!',
               textAlign: TextAlign.center,
-              style: GoogleFonts.dmSans(
-                  fontSize: 13, color: AppColors.textMuted),
+              style: AppTypography.bodySmall.copyWith(color: AppColors.textMuted),
             ),
           ],
         ),

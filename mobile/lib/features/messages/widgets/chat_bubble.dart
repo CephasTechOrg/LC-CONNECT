@@ -6,7 +6,16 @@ class _BubbleTile extends StatelessWidget {
   final bool isGroup;
   final String? partnerAvatarUrl;
   final MessageSender? sender; // group mode: the message's sender identity
-  final bool showSenderIdentity; // first message of a sender's run → show name + avatar
+  final bool showSenderIdentity; // first message of a sender's run in a group → show name
+
+  /// Where this bubble sits in its run (see `computeMessageRuns`). The avatar and the bubble's
+  /// tail anchor to the last message; spacing is tight inside a run and opens up after it.
+  final bool firstOfRun;
+  final bool lastOfRun;
+
+  /// Timestamp + tick row. Usually the last of a run; the list also sets it where my tick
+  /// state changes mid-run. Failed, sending and edited messages show it regardless.
+  final bool showFooter;
   final void Function(ChatMessage)? onReport;
   final void Function(ChatMessage)? onDelete; // delete-for-everyone (own message, or I moderate)
   final void Function(ChatMessage)? onRetry;
@@ -25,12 +34,19 @@ class _BubbleTile extends StatelessWidget {
     this.partnerAvatarUrl,
     this.sender,
     this.showSenderIdentity = false,
+    this.firstOfRun = true,
+    this.lastOfRun = true,
+    this.showFooter = true,
     this.onReport,
     this.onDelete,
     this.onReact,
     this.onEdit,
     this.onRetry,
   });
+
+  static const _avatarSize = 28.0;
+  static const _bubbleRadius = Radius.circular(18);
+  static const _tailRadius = Radius.circular(AppRadii.xs);
 
   bool get _canReport => !isMine && onReport != null;
 
@@ -59,35 +75,29 @@ class _BubbleTile extends StatelessWidget {
   bool get _hasMenu =>
       !message.deleted && (_canReport || _canDelete || _canReact || _canEdit);
 
+  bool get _isEdited => message.editedAt != null && !message.deleted;
+
+  /// A failed or in-flight send must never hide inside a run — it is the one footer the
+  /// sender has to act on (or wait on).
+  bool get _footerVisible =>
+      showFooter ||
+      _isEdited ||
+      (isMine &&
+          !message.deleted &&
+          message.status != MessageStatus.sent);
+
   @override
   Widget build(BuildContext context) {
-    // Leading avatar: DMs show the partner on every incoming bubble; groups show the sender's
-    // avatar once per run and reserve the space (an empty gutter) on the follow-ups so bubbles
-    // stay aligned.
-    final Widget? leading = isMine
-        ? null
-        : isGroup
-            ? (showSenderIdentity
-                ? GestureDetector(
-                    // Tap a sender's avatar → their profile.
-                    onTap: sender?.profileId != null
-                        ? () => context.push('/users/${sender!.profileId}', extra: sender!.name)
-                        : null,
-                    child: AvatarWidget(imageUrl: sender?.avatarUrl, size: 28, cacheScope: message.senderId),
-                  )
-                : const SizedBox(width: 28))
-            : AvatarWidget(imageUrl: partnerAvatarUrl, size: 28);
-
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: EdgeInsets.only(bottom: lastOfRun ? AppSpacing.md : 2),
       child: Row(
         mainAxisAlignment:
             isMine ? MainAxisAlignment.end : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          if (leading != null) ...[
-            leading,
-            const SizedBox(width: 8),
+          if (!isMine) ...[
+            _leadingAvatar(context),
+            const SizedBox(width: AppSpacing.sm),
           ],
           Flexible(
             child: Column(
@@ -97,11 +107,10 @@ class _BubbleTile extends StatelessWidget {
               children: [
                 if (showSenderIdentity && sender != null)
                   Padding(
-                    padding: const EdgeInsets.only(left: 4, bottom: 2),
+                    padding: const EdgeInsets.only(left: AppSpacing.xs, bottom: 2),
                     child: Text(
                       sender!.name,
-                      style: GoogleFonts.dmSans(
-                        fontSize: 11.5,
+                      style: AppTypography.caption.copyWith(
                         fontWeight: FontWeight.w700,
                         color: AppColors.primary,
                       ),
@@ -114,85 +123,17 @@ class _BubbleTile extends StatelessWidget {
                   onDoubleTap: _canReact ? () => _showOptions(context) : null,
                   child: Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: message.deleted
-                          ? AppColors.background
-                          : (isMine ? AppColors.primary : AppColors.surface),
-                      borderRadius: BorderRadius.only(
-                        topLeft: const Radius.circular(18),
-                        topRight: const Radius.circular(18),
-                        bottomLeft: Radius.circular(isMine ? 18 : 4),
-                        bottomRight: Radius.circular(isMine ? 4 : 18),
-                      ),
-                      border: isMine && !message.deleted
-                          ? null
-                          : Border.all(color: AppColors.border),
-                      boxShadow: message.deleted
-                          ? null
-                          : [
-                              BoxShadow(
-                                color: Colors.black.withAlpha(10),
-                                blurRadius: 4,
-                                offset: const Offset(0, 1),
-                              ),
-                            ],
+                      horizontal: 14,
+                      vertical: 10,
                     ),
+                    decoration: _bubbleDecoration(),
                     constraints: BoxConstraints(
-                      maxWidth: MediaQuery.of(context).size.width * 0.68,
+                      maxWidth: MediaQuery.of(context).size.width * 0.72,
                     ),
-                    child: message.deleted
-                        ? Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.block_rounded, size: 13, color: AppColors.textMuted),
-                              const SizedBox(width: 6),
-                              Text(
-                                'This message was deleted',
-                                style: GoogleFonts.dmSans(
-                                  fontSize: 13,
-                                  fontStyle: FontStyle.italic,
-                                  color: AppColors.textMuted,
-                                ),
-                              ),
-                            ],
-                          )
-                        : Text(
-                            message.body,
-                            style: GoogleFonts.dmSans(
-                              fontSize: 14,
-                              color: isMine ? Colors.white : AppColors.textDark,
-                              height: 1.4,
-                            ),
-                          ),
+                    child: message.deleted ? _deletedBody() : _textBody(),
                   ),
                 ),
-                const SizedBox(height: 3),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      DateFormat('h:mm a').format(message.createdAt.toLocal()),
-                      style: GoogleFonts.dmSans(fontSize: 10, color: AppColors.textMuted),
-                    ),
-                    if (message.editedAt != null && !message.deleted) ...[
-                      const SizedBox(width: 4),
-                      // Quiet, and never omitted: a conversation where text can change silently
-                      // is one nobody can rely on.
-                      Text(
-                        'edited',
-                        style: GoogleFonts.dmSans(
-                          fontSize: 10,
-                          fontStyle: FontStyle.italic,
-                          color: isMine
-                              ? Colors.white.withValues(alpha: 0.7)
-                              : AppColors.textMuted,
-                        ),
-                      ),
-                    ],
-                    if (isMine && !message.deleted) ...[const SizedBox(width: 5), _status(context)],
-                  ],
-                ),
+                if (_footerVisible) _footer(),
                 // Below the bubble rather than inside it: chips belong to the message but are not
                 // part of what was said, and inside they would push the text around as people
                 // react.
@@ -204,106 +145,100 @@ class _BubbleTile extends StatelessWidget {
               ],
             ),
           ),
-          if (isMine) const SizedBox(width: 4),
         ],
       ),
     );
   }
 
-  void _showOptions(BuildContext context) {
-    showModalBottomSheet<void>(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (sheetCtx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 12),
-            Container(
-              width: 36,
-              height: 4,
-              decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2)),
-            ),
-            const SizedBox(height: 8),
-            if (_canReact) ...[
-              _ReactionPicker(
-                chosen: {
-                  for (final r in message.reactions)
-                    if (r.reactedByMe) r.emoji,
-                },
-                onPick: (emoji) {
-                  Navigator.of(sheetCtx).pop();
-                  onReact!(message, emoji);
-                },
-              ),
-              const Divider(height: 1, color: AppColors.border),
-            ],
-            if (_canSeeReadBy)
-              ListTile(
-                leading: const Icon(Icons.done_all_rounded, color: AppColors.primary),
-                title: Text('Read by',
-                    style: GoogleFonts.dmSans(fontWeight: FontWeight.w500, color: AppColors.textDark)),
-                subtitle: Text('See who has read this message',
-                    style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textMuted)),
-                onTap: () {
-                  Navigator.of(sheetCtx).pop();
-                  showModalBottomSheet<void>(
-                    context: context,
-                    shape: const RoundedRectangleBorder(
-                      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-                    ),
-                    builder: (_) => _ReadBySheet(messageId: message.id),
-                  );
-                },
-              ),
-            if (_canEdit)
-              ListTile(
-                leading: const Icon(Icons.edit_outlined, color: AppColors.textMid),
-                title: Text('Edit message',
-                    style: GoogleFonts.dmSans(fontWeight: FontWeight.w500, color: AppColors.textDark)),
-                subtitle: Text('Everyone sees it change, marked as edited',
-                    style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textMuted)),
-                onTap: () {
-                  Navigator.of(sheetCtx).pop();
-                  onEdit!(message);
-                },
-              ),
-            if (_canDelete)
-              ListTile(
-                leading: const Icon(Icons.delete_outline_rounded, color: AppColors.error),
-                title: Text('Delete for everyone',
-                    style: GoogleFonts.dmSans(fontWeight: FontWeight.w500, color: AppColors.error)),
-                subtitle: Text('Removes it for all participants',
-                    style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textMuted)),
-                onTap: () {
-                  Navigator.of(sheetCtx).pop();
-                  onDelete?.call(message);
-                },
-              ),
-            if (_canReport)
-              ListTile(
-                leading: const Icon(Icons.flag_outlined, color: AppColors.textMid),
-                title: Text('Report message',
-                    style: GoogleFonts.dmSans(fontWeight: FontWeight.w500, color: AppColors.textDark)),
-                subtitle: Text('Flag this message for review',
-                    style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textMuted)),
-                onTap: () {
-                  Navigator.of(sheetCtx).pop();
-                  onReport?.call(message);
-                },
-              ),
-          ],
-        ),
+  /// One avatar per run, on its last bubble — the one the tail points from. Earlier bubbles
+  /// keep the gutter so the column stays aligned.
+  Widget _leadingAvatar(BuildContext context) {
+    if (!lastOfRun) return const SizedBox(width: _avatarSize);
+    if (!isGroup) {
+      return AvatarWidget(imageUrl: partnerAvatarUrl, size: _avatarSize);
+    }
+    return GestureDetector(
+      // Tap a sender's avatar → their profile.
+      onTap: sender?.profileId != null
+          ? () => context.push('/users/${sender!.profileId}', extra: sender!.name)
+          : null,
+      child: AvatarWidget(
+        imageUrl: sender?.avatarUrl,
+        size: _avatarSize,
+        cacheScope: message.senderId,
       ),
     );
   }
 
-  /// See [MessageStatusIcon] — shared with the conversation row so the two can never show
-  /// different states for the same message.
-  Widget _status(BuildContext context) =>
-      MessageStatusIcon(message: message, onRetry: onRetry);
-}
+  BoxDecoration _bubbleDecoration() {
+    final tailed = lastOfRun && !message.deleted;
+    return BoxDecoration(
+      color: message.deleted
+          ? AppColors.background
+          : (isMine ? AppColors.primary : AppColors.surface),
+      borderRadius: BorderRadius.only(
+        topLeft: _bubbleRadius,
+        topRight: _bubbleRadius,
+        bottomLeft: tailed && !isMine ? _tailRadius : _bubbleRadius,
+        bottomRight: tailed && isMine ? _tailRadius : _bubbleRadius,
+      ),
+      border: isMine && !message.deleted ? null : Border.all(color: AppColors.border),
+    );
+  }
 
-// ── Input bar ─────────────────────────────────────────────────────
+  Widget _deletedBody() => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.block_rounded, size: 13, color: AppColors.textMuted),
+          const SizedBox(width: 6),
+          Text(
+            'This message was deleted',
+            style: AppTypography.bodySmall.copyWith(
+              fontStyle: FontStyle.italic,
+              color: AppColors.textMuted,
+            ),
+          ),
+        ],
+      );
+
+  Widget _textBody() => Text(
+        message.body,
+        style: AppTypography.body.copyWith(
+          color: isMine ? Colors.white : AppColors.textDark,
+          height: 1.4,
+        ),
+      );
+
+  Widget _footer() {
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.xs, left: 2, right: 2),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            DateFormat('h:mm a').format(message.createdAt.toLocal()),
+            style: AppTypography.micro.copyWith(color: AppColors.textMuted),
+          ),
+          if (_isEdited) ...[
+            const SizedBox(width: AppSpacing.xs),
+            // Quiet, and never omitted: a conversation where text can change silently
+            // is one nobody can rely on.
+            Text(
+              'edited',
+              style: AppTypography.micro.copyWith(
+                fontStyle: FontStyle.italic,
+                color: AppColors.textMuted,
+              ),
+            ),
+          ],
+          if (isMine && !message.deleted) ...[
+            const SizedBox(width: 5),
+            // See [MessageStatusIcon] — shared with the conversation row so the two can never
+            // show different states for the same message.
+            MessageStatusIcon(message: message, onRetry: onRetry),
+          ],
+        ],
+      ),
+    );
+  }
+}

@@ -9,24 +9,23 @@ class _QuickActionsRow extends ConsumerWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.gutter,
-        AppSpacing.sm,
-        AppSpacing.gutter,
         AppSpacing.xs,
+        AppSpacing.gutter,
+        0,
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           CampusQuickAction(
             icon: Icons.badge_outlined,
             label: 'Directory',
             onTap: () => context.push('/home/directory'),
           ),
-          const SizedBox(width: AppSpacing.md),
           CampusQuickAction(
             icon: Icons.menu_book_outlined,
             label: 'Resources',
             onTap: () => context.push('/home/resources'),
           ),
-          const SizedBox(width: AppSpacing.md),
           CampusQuickAction(
             icon: Icons.work_outline,
             label: 'Opportunities',
@@ -85,9 +84,9 @@ class _SectionHeader extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.gutter,
-        AppSpacing.xl,
+        AppSpacing.md,
         AppSpacing.gutter,
-        AppSpacing.sm,
+        AppSpacing.xs,
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.baseline,
@@ -127,14 +126,14 @@ class _PublisherCta extends ConsumerWidget {
       ),
       child: Material(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppRadii.card),
         child: InkWell(
           onTap: () => context.push('/home/my-posts'),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(AppRadii.card),
           child: Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(AppRadii.card),
               border: Border.all(color: AppColors.border),
             ),
             child: Row(

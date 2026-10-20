@@ -87,6 +87,7 @@ class _ChatScreenBody extends StatelessWidget {
                 campusVerified: !isGroup && (partner?.campusVerified ?? false),
                 onIdentityTap: onIdentityTap,
                 onMenu: onMenu,
+                partnerTyping: partnerTyping,
               ),
               _ConnectionBanner(status: connectionStatus),
               _OutboxBanner(outboxCount: outboxCount),
@@ -125,7 +126,7 @@ class _ChatScreenBody extends StatelessWidget {
                   ],
                 ),
               ),
-              if (partnerTyping) _TypingIndicator(name: typingName),
+              if (partnerTyping) _TypingBubble(name: typingName, showName: isGroup),
               _InputBar(
                 controller: inputController,
                 // A send is in flight while any bubble is still optimistic. Was hardcoded false,

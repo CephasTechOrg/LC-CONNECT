@@ -33,10 +33,14 @@ const _me = 'current-user-id';
 const _messageIds = ['srv-1', 'srv-2', 'srv-3'];
 
 class _PageAdapter implements HttpClientAdapter {
-  _PageAdapter({this.failMutations = false});
+  _PageAdapter({this.failMutations = false, this.minutesApart = 10});
 
   /// When true, PUT/DELETE fail — the case an optimistic chip has to roll back from.
   final bool failMutations;
+
+  /// Ten by default, so each message is its own run and shows its own tick. One puts all three
+  /// in a single run, where only the last (and any receipt boundary) shows a tick.
+  final int minutesApart;
   final List<String> calls = [];
 
   @override
@@ -58,7 +62,8 @@ class _PageAdapter implements HttpClientAdapter {
             'sender_id': _me,
             'client_message_id': null,
             'body': 'message $i',
-            'created_at': '2026-01-01T10:0$i:00.000Z',
+            'created_at':
+                '2026-01-01T10:${(i * minutesApart).toString().padLeft(2, '0')}:00.000Z',
             'read_at': null,
             'delivered': false,
           },
@@ -121,8 +126,12 @@ void main() {
   /// `ChatScreen` captures `currentUserId` once in `initState`, so a chat that mounts while auth
   /// is still loading treats every message as someone else's and renders no tick at all. The app
   /// cannot reach a conversation unauthenticated, so this reproduces the real ordering.
-  Future<void> openChat(WidgetTester tester, {bool failMutations = false}) async {
-    adapter = _PageAdapter(failMutations: failMutations);
+  Future<void> openChat(
+    WidgetTester tester, {
+    bool failMutations = false,
+    int minutesApart = 10,
+  }) async {
+    adapter = _PageAdapter(failMutations: failMutations, minutesApart: minutesApart);
     socket = FakeWsChannel();
     client = clientOn(socket);
     // Inline rather than hoisted: the list closes over `client`, which is created just above,
@@ -262,6 +271,24 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(ticks(tester), [OutgoingState.sent, OutgoingState.sent, OutgoingState.sent]);
+  });
+
+  /// Close-together messages collapse into one run with one footer — but never in a way that
+  /// hides where a receipt boundary falls.
+  group('runs', () {
+    testWidgets('a run of my messages shows one tick, on its last bubble', (tester) async {
+      await openChat(tester, minutesApart: 1);
+      expect(ticks(tester), [OutgoingState.sent]);
+    });
+
+    testWidgets('a receipt boundary inside a run keeps its own tick', (tester) async {
+      await openChat(tester, minutesApart: 1);
+
+      serverSays('messages.receipt', 'srv-1', 'read_at');
+      await tester.pumpAndSettle();
+
+      expect(ticks(tester), [OutgoingState.read, OutgoingState.sent]);
+    });
   });
 
   /// Report #4 — reactions, end to end through the real socket and a real Dio.

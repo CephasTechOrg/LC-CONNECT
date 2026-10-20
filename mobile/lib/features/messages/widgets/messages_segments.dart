@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
-
+import '../../../core/theme/app_radii.dart';
+import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_typography.dart';
 import '../utils/chat_routes.dart';
 
 /// Which half of the Messages hub is showing.
@@ -37,24 +38,58 @@ class MessagesSegments extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const segments = MessagesSegment.values;
+    final activeIndex = segments.indexOf(active);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+      padding: const EdgeInsets.fromLTRB(AppSpacing.gutter, AppSpacing.md, AppSpacing.gutter, 0),
       child: Semantics(
         container: true,
         label: 'Messages sections',
-        child: Row(
-          children: [
-            for (final segment in MessagesSegment.values)
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 3),
-                  child: _Segment(
-                    segment: segment,
-                    selected: segment == active,
+        // One tinted track with a white thumb under the active label — a single control
+        // rather than two separately filled buttons.
+        child: Container(
+          padding: const EdgeInsets.all(AppSpacing.xs),
+          decoration: BoxDecoration(
+            color: AppColors.primarySoft,
+            borderRadius: BorderRadius.circular(AppRadii.lg),
+          ),
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: AnimatedAlign(
+                  duration: MediaQuery.of(context).disableAnimations
+                      ? Duration.zero
+                      : const Duration(milliseconds: 220),
+                  curve: Curves.easeOutCubic,
+                  alignment: Alignment(
+                    segments.length == 1 ? 0 : -1 + 2 * activeIndex / (segments.length - 1),
+                    0,
+                  ),
+                  child: FractionallySizedBox(
+                    widthFactor: 1 / segments.length,
+                    heightFactor: 1,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(AppRadii.sm),
+                      ),
+                    ),
                   ),
                 ),
               ),
-          ],
+              Row(
+                children: [
+                  for (final segment in segments)
+                    Expanded(
+                      child: _Segment(
+                        segment: segment,
+                        selected: segment == active,
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -75,13 +110,12 @@ class _Segment extends StatelessWidget {
       // reader cannot see and a colour-blind user may not distinguish.
       selected: selected,
       child: Material(
-        color: selected ? AppColors.primary : AppColors.surface,
-        borderRadius: BorderRadius.circular(10),
+        type: MaterialType.transparency,
         child: InkWell(
           // Tapping the segment you are already on must not re-navigate; on Chats that would
           // rebuild the thread list for nothing.
           onTap: selected ? null : () => context.go(segment.path),
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(AppRadii.sm),
           // A floor rather than padding arithmetic: this is primary navigation, so it must meet
           // the 44dp minimum target regardless of the font metrics — padding alone landed at 43.
           // A minimum rather than a fixed height so it still grows with the text scale.
@@ -93,10 +127,9 @@ class _Segment extends StatelessWidget {
                 child: Text(
                   segment.label,
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.dmSans(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: selected ? Colors.white : AppColors.textMid,
+                  style: AppTypography.label.copyWith(
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                    color: selected ? AppColors.primary : AppColors.textMid,
                   ),
                 ),
               ),

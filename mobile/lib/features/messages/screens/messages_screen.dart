@@ -3,9 +3,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/avatar_widget.dart';
 import '../../../shared/widgets/app_search_field.dart';
 import '../../../shared/widgets/app_shell_header.dart';
@@ -120,12 +121,13 @@ class _ThreadList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView.separated(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.only(top: AppSpacing.xs, bottom: 88),
       itemCount: threads.length,
+      // Starts under the text, not the avatar, so each row reads as one unit.
       separatorBuilder: (context, _) => const Divider(
         height: 1,
-        indent: 84,
-        endIndent: 20,
+        indent: AppSpacing.gutter + _ThreadCard.avatarSize + AppSpacing.md,
+        endIndent: AppSpacing.gutter,
         color: AppColors.border,
       ),
       itemBuilder: (_, i) => _ThreadCard(thread: threads[i]),
@@ -136,6 +138,8 @@ class _ThreadList extends StatelessWidget {
 class _ThreadCard extends ConsumerWidget {
   final MessageThread thread;
   const _ThreadCard({required this.thread});
+
+  static const avatarSize = 48.0;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -159,103 +163,31 @@ class _ThreadCard extends ConsumerWidget {
                   name: thread.groupName ?? 'Group', groupId: thread.groupId, avatarUrl: thread.avatarUrl))
           : context.push(dmChatPath(thread.addressingId), extra: thread),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.gutter,
+          vertical: AppSpacing.md,
+        ),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Avatar
-            AvatarWidget(imageUrl: thread.avatarUrl, size: 52),
-            const SizedBox(width: 12),
-            // Content
+            AvatarWidget(imageUrl: thread.avatarUrl, size: avatarSize),
+            const SizedBox(width: AppSpacing.md),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  _titleRow(latest, hasUnread: unread > 0),
+                  const SizedBox(height: 3),
                   Row(
                     children: [
-                      Expanded(
-                        child: Row(
-                          children: [
-                            Flexible(
-                              child: Text(
-                                thread.title,
-                                overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.dmSans(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.textDark,
-                                ),
-                              ),
-                            ),
-                            if (!thread.isGroup && (thread.partner?.campusVerified ?? false)) ...[
-                              const SizedBox(width: 4),
-                              const VerifiedBadge(size: 14),
-                            ],
-                          ],
-                        ),
-                      ),
-                      if (latest != null)
-                        Text(
-                          _formatThreadTime(latest.createdAt),
-                          style: GoogleFonts.dmSans(
-                            fontSize: 11,
-                            color: AppColors.textMuted,
-                          ),
-                        ),
-                    ],
-                  ),
-                  if (!thread.isGroup && (thread.partnerSubtitle ?? thread.partner?.major) != null) ...[
-                    const SizedBox(height: 1),
-                    Text(
-                      thread.partnerSubtitle ?? thread.partner!.major!,
-                      style: GoogleFonts.dmSans(
-                        fontSize: 12,
-                        color: AppColors.textMuted,
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: thread.partnerTyping
-                            ? Text(
-                                'typing…',
-                                style: GoogleFonts.dmSans(
-                                  fontSize: 13,
-                                  color: AppColors.primary,
-                                  fontWeight: FontWeight.w600,
-                                  fontStyle: FontStyle.italic,
-                                ),
-                              )
-                            : Text(
-                                latest?.body ?? 'No messages yet — say hello!',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.dmSans(
-                                  fontSize: 13,
-                                  // Unread → darker + semibold (WhatsApp-style emphasis).
-                                  color: unread > 0
-                                      ? AppColors.textDark
-                                      : (latest != null
-                                          ? AppColors.textMid
-                                          : AppColors.textMuted),
-                                  fontWeight:
-                                      unread > 0 ? FontWeight.w600 : FontWeight.w400,
-                                  fontStyle: latest == null
-                                      ? FontStyle.italic
-                                      : FontStyle.normal,
-                                ),
-                              ),
-                      ),
+                      Expanded(child: _preview(latest, hasUnread: unread > 0)),
                       if (outgoing != null) ...[
-                        const SizedBox(width: 8),
+                        const SizedBox(width: AppSpacing.sm),
                         // Compact: the conversation row has no room for a "Retry" label, and
                         // retrying belongs in the conversation anyway.
                         MessageStatusIcon(message: outgoing, compact: true),
                       ],
                       if (unread > 0) ...[
-                        const SizedBox(width: 8),
+                        const SizedBox(width: AppSpacing.sm),
                         _UnreadBubble(count: unread),
                       ],
                     ],
@@ -265,6 +197,86 @@ class _ThreadCard extends ConsumerWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// Name (+ verified, + role/major for DMs) on the left, time on the right.
+  Widget _titleRow(ChatMessage? latest, {required bool hasUnread}) {
+    final subtitle = thread.isGroup ? null : (thread.partnerSubtitle ?? thread.partner?.major);
+    return Row(
+      children: [
+        Expanded(
+          child: Row(
+            children: [
+              // The name wins the space; the role/major yields first.
+              Flexible(
+                flex: 3,
+                child: Text(
+                  thread.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.titleSmall.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textDark,
+                  ),
+                ),
+              ),
+              if (!thread.isGroup && (thread.partner?.campusVerified ?? false)) ...[
+                const SizedBox(width: AppSpacing.xs),
+                const VerifiedBadge(size: 14),
+              ],
+              if (subtitle != null) ...[
+                const SizedBox(width: 6),
+                Flexible(
+                  flex: 2,
+                  child: Text(
+                    subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.caption.copyWith(color: AppColors.textMuted),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        if (latest != null) ...[
+          const SizedBox(width: AppSpacing.sm),
+          Text(
+            _formatThreadTime(latest.createdAt),
+            style: AppTypography.caption.copyWith(
+              color: hasUnread ? AppColors.primary : AppColors.textMuted,
+              fontWeight: hasUnread ? FontWeight.w700 : FontWeight.w400,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _preview(ChatMessage? latest, {required bool hasUnread}) {
+    if (thread.partnerTyping) {
+      return Text(
+        'typing…',
+        style: AppTypography.bodySmall.copyWith(
+          color: AppColors.primary,
+          fontWeight: FontWeight.w600,
+          fontStyle: FontStyle.italic,
+        ),
+      );
+    }
+    return Text(
+      latest?.body ?? 'No messages yet — say hello!',
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: AppTypography.bodySmall.copyWith(
+        // Unread → darker + semibold (WhatsApp-style emphasis).
+        color: hasUnread
+            ? AppColors.textDark
+            : (latest != null ? AppColors.textMid : AppColors.textMuted),
+        fontWeight: hasUnread ? FontWeight.w600 : FontWeight.w400,
+        fontStyle: latest == null ? FontStyle.italic : FontStyle.normal,
       ),
     );
   }
@@ -287,10 +299,10 @@ class _UnreadBubble extends StatelessWidget {
       alignment: Alignment.center,
       child: Text(
         count > 99 ? '99+' : '$count',
-        style: GoogleFonts.dmSans(
+        style: AppTypography.caption.copyWith(
           color: Colors.white,
-          fontSize: 11,
           fontWeight: FontWeight.w700,
+          height: 1.2,
         ),
       ),
     );

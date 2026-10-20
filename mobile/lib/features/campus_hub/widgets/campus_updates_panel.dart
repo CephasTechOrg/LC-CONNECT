@@ -11,17 +11,84 @@ class _LatestUpdatesPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final featured = updates.isEmpty ? null : updates.first;
 
+    // Empty gets a quiet light row, not the navy feature panel: a saturated
+    // gradient announcing "nothing yet" spends the page's strongest treatment
+    // on the absence of content. The featured treatment is earned by an
+    // actual update below.
+    if (featured == null) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.gutter,
+          AppSpacing.md,
+          AppSpacing.gutter,
+          0,
+        ),
+        child: Container(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(AppRadii.sheet),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: AppColors.primarySoft,
+                  borderRadius: BorderRadius.circular(AppRadii.lg),
+                ),
+                child: const Icon(
+                  Icons.campaign_outlined,
+                  color: AppColors.primary,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Latest updates',
+                      style: AppTypography.titleSmall.copyWith(
+                        color: AppColors.textDark,
+                      ),
+                    ),
+                    Text(
+                      'No campus announcements yet.',
+                      style: AppTypography.caption.copyWith(
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const _UpdatesSeeAll(onLight: true),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.gutter,
-        AppSpacing.lg,
+        AppSpacing.md,
         AppSpacing.gutter,
         0,
       ),
       child: Container(
-        padding: const EdgeInsets.fromLTRB(16, 15, 16, 16),
+        // Small top inset: the 48dp "See all" target already pads the header row.
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.lg,
+          AppSpacing.xs,
+          AppSpacing.sm,
+          AppSpacing.lg,
+        ),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(AppRadii.sheet),
           gradient: const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -29,9 +96,9 @@ class _LatestUpdatesPanel extends StatelessWidget {
           ),
           boxShadow: const [
             BoxShadow(
-              color: Color(0x471B3A5C),
-              blurRadius: 18,
-              offset: Offset(0, 6),
+              color: Color(0x261B3A5C),
+              blurRadius: 12,
+              offset: Offset(0, 4),
             ),
           ],
         ),
@@ -45,12 +112,11 @@ class _LatestUpdatesPanel extends StatelessWidget {
                   color: Colors.white,
                   size: 20,
                 ),
-                const SizedBox(width: 9),
+                const SizedBox(width: AppSpacing.sm),
                 Expanded(
                   child: Text(
                     'Latest updates',
-                    style: GoogleFonts.dmSans(
-                      fontSize: 16,
+                    style: AppTypography.titleSmall.copyWith(
                       fontWeight: FontWeight.w700,
                       color: Colors.white,
                     ),
@@ -59,17 +125,11 @@ class _LatestUpdatesPanel extends StatelessWidget {
                 const _UpdatesSeeAll(),
               ],
             ),
-            const SizedBox(height: 13),
-            if (featured == null)
-              Text(
-                'No campus announcements yet.',
-                style: GoogleFonts.dmSans(
-                  fontSize: 13,
-                  color: Colors.white.withValues(alpha: 0.7),
-                ),
-              )
-            else
-              _FeaturedUpdateCard(post: featured),
+            const SizedBox(height: AppSpacing.xs),
+            Padding(
+              padding: const EdgeInsets.only(right: AppSpacing.sm),
+              child: _FeaturedUpdateCard(post: featured),
+            ),
           ],
         ),
       ),
@@ -78,7 +138,10 @@ class _LatestUpdatesPanel extends StatelessWidget {
 }
 
 class _UpdatesSeeAll extends ConsumerWidget {
-  const _UpdatesSeeAll();
+  /// On the light empty-state row the label is brand blue, not white.
+  final bool onLight;
+
+  const _UpdatesSeeAll({this.onLight = false});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -99,7 +162,9 @@ class _UpdatesSeeAll extends ConsumerWidget {
                 'See all',
                 style: AppTypography.bodySmall.copyWith(
                   fontWeight: FontWeight.w600,
-                  color: Colors.white.withValues(alpha: 0.9),
+                  color: onLight
+                      ? AppColors.primary
+                      : Colors.white.withValues(alpha: 0.9),
                 ),
               ),
               if (count > 0) ...[
@@ -142,20 +207,20 @@ class _FeaturedUpdateCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: Colors.white.withValues(alpha: 0.09),
-      borderRadius: BorderRadius.circular(13),
+      borderRadius: BorderRadius.circular(AppRadii.card),
       child: InkWell(
         onTap: () => context.push('/home/posts/${post.id}'),
-        borderRadius: BorderRadius.circular(13),
+        borderRadius: BorderRadius.circular(AppRadii.card),
         child: Container(
-          padding: const EdgeInsets.all(11),
+          padding: const EdgeInsets.all(AppSpacing.md),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(13),
+            borderRadius: BorderRadius.circular(AppRadii.card),
             border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
           ),
           child: Row(
             children: [
               ClipRRect(
-                borderRadius: BorderRadius.circular(11),
+                borderRadius: BorderRadius.circular(AppRadii.md),
                 child: Image.asset(
                   campusSpotlightBackground,
                   width: 58,
@@ -163,7 +228,7 @@ class _FeaturedUpdateCard extends StatelessWidget {
                   fit: BoxFit.cover,
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,

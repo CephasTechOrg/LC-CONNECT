@@ -1,11 +1,5 @@
 part of '../screens/campus_hub_screen.dart';
 
-const _cardShadow = BoxShadow(
-  color: Color(0x0A111827),
-  blurRadius: 3,
-  offset: Offset(0, 1),
-);
-
 /// Up to two upcoming activities, so the section never crowds out announcements.
 class _ActivitiesPreview extends ConsumerWidget {
   const _ActivitiesPreview();
@@ -35,7 +29,7 @@ class _ActivitiesPreview extends ConsumerWidget {
               for (var i = 0; i < visible.length; i++)
                 Padding(
                   padding: EdgeInsets.only(
-                    bottom: i == visible.length - 1 ? 0 : 11,
+                    bottom: i == visible.length - 1 ? 0 : AppSpacing.sm,
                   ),
                   child: _ActivityPreviewCard(activity: visible[i]),
                 ),
@@ -61,22 +55,21 @@ class _ActivityPreviewCard extends StatelessWidget {
 
     return Material(
       color: AppColors.surface,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(AppRadii.card),
       child: InkWell(
         onTap: () =>
             context.push('/activities/${activity.id}', extra: activity),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppRadii.card),
         child: Container(
-          padding: const EdgeInsets.all(13),
+          padding: const EdgeInsets.all(AppSpacing.md),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(AppRadii.card),
             border: Border.all(color: AppColors.border),
-            boxShadow: const [_cardShadow],
           ),
           child: Row(
             children: [
               _ActivityDateBlock(date: start),
-              const SizedBox(width: 13),
+              const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -129,7 +122,7 @@ class _ActivityDateBlock extends StatelessWidget {
       height: 54,
       decoration: BoxDecoration(
         color: AppColors.primarySoft,
-        borderRadius: BorderRadius.circular(13),
+        borderRadius: BorderRadius.circular(AppRadii.lg),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -239,7 +232,7 @@ class _SuggestedConnectionsPreview extends ConsumerWidget {
                     Expanded(
                       child: Padding(
                         padding: EdgeInsets.only(
-                          right: i == visible.length - 1 ? 0 : 12,
+                          right: i == visible.length - 1 ? 0 : AppSpacing.md,
                         ),
                         child: _SuggestedConnectionCard(card: visible[i]),
                       ),
@@ -263,15 +256,15 @@ class _SuggestedConnectionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: AppColors.surface,
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(AppRadii.card),
       child: InkWell(
         onTap: () =>
             context.push('/users/${card.profileId}', extra: card.displayName),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(AppRadii.card),
         child: Container(
           padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(AppRadii.card),
             border: Border.all(color: AppColors.border),
           ),
           child: Column(

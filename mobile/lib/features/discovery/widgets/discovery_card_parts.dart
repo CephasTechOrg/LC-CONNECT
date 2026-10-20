@@ -17,12 +17,12 @@ class _LookingForBadge extends StatelessWidget {
   const _LookingForBadge({required this.code, required this.label});
 
   IconData get _icon => switch (code) {
-        'study_partner' => Icons.menu_book_outlined,
-        'friendship' => Icons.people_outline,
-        'language_exchange' => Icons.language_outlined,
-        'events' => Icons.event_outlined,
-        _ => Icons.connect_without_contact_rounded,
-      };
+    'study_partner' => Icons.menu_book_outlined,
+    'friendship' => Icons.people_outline,
+    'language_exchange' => Icons.language_outlined,
+    'events' => Icons.event_outlined,
+    _ => Icons.connect_without_contact_rounded,
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -39,8 +39,7 @@ class _LookingForBadge extends StatelessWidget {
           const SizedBox(width: 4),
           Text(
             label,
-            style: GoogleFonts.dmSans(
-              fontSize: 11.5,
+            style: AppTypography.caption.copyWith(
               fontWeight: FontWeight.w600,
               color: AppColors.primary,
             ),
@@ -51,77 +50,61 @@ class _LookingForBadge extends StatelessWidget {
   }
 }
 
-/// Interest chips — max 2 + overflow; full list on the public profile.
-class _InterestChips extends StatelessWidget {
+/// One brief interests + languages line for the list card.
+///
+/// Replaces the two stacked rows (interest chips, then a languages line) that
+/// made every card four text rows tall. Caps mirror the old widgets - two
+/// interests, two languages, overflow counted - and the full lists still live
+/// on the public profile. [prioritizeLanguage] puts "Speaks ..." first because
+/// for language-exchange seekers it is the reason to connect.
+class _InterestLanguageLine extends StatelessWidget {
   final List<String> interests;
-  const _InterestChips({required this.interests});
-
-  @override
-  Widget build(BuildContext context) {
-    final visible = interests.take(2).toList();
-    final overflow = interests.length - visible.length;
-    return Wrap(
-      spacing: 6,
-      runSpacing: 6,
-      children: [
-        ...visible.map((name) => Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: AppColors.background,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: Text(
-                name,
-                style: GoogleFonts.dmSans(
-                    fontSize: 11.5, color: AppColors.textMid),
-              ),
-            )),
-        if (overflow > 0)
-          Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: AppColors.background,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.border),
-            ),
-            child: Text(
-              '+$overflow',
-              style: GoogleFonts.dmSans(
-                  fontSize: 11.5, color: AppColors.textMuted),
-            ),
-          ),
-      ],
-    );
-  }
-}
-
-/// Cap spoken languages at two on the list card.
-class _LanguageLine extends StatelessWidget {
   final List<String> languages;
-  const _LanguageLine({required this.languages});
+  final bool prioritizeLanguage;
+
+  const _InterestLanguageLine({
+    required this.interests,
+    required this.languages,
+    this.prioritizeLanguage = false,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final visible = languages.take(2).toList();
-    final overflow = languages.length - visible.length;
-    final text = overflow > 0
-        ? 'Speaks ${visible.join(', ')} +$overflow'
-        : 'Speaks ${visible.join(', ')}';
+    final visibleInterests = interests.take(2).join(' \u00b7 ');
+    final interestOverflow = interests.length - 2;
+    final interestText = interests.isEmpty
+        ? null
+        : (interestOverflow > 0
+              ? '$visibleInterests \u00b7 +$interestOverflow'
+              : visibleInterests);
+    final visibleLanguages = languages.take(2).join(', ');
+    final languageOverflow = languages.length - 2;
+    final languageText = languages.isEmpty
+        ? null
+        : (languageOverflow > 0
+              ? 'Speaks $visibleLanguages +$languageOverflow'
+              : 'Speaks $visibleLanguages');
+    final segments = prioritizeLanguage
+        ? [languageText, interestText]
+        : [interestText, languageText];
+    final text = segments.whereType<String>().join('  \u00b7  ');
+    if (text.isEmpty) return const SizedBox.shrink();
     return Row(
       children: [
-        const Icon(Icons.language_outlined,
-            size: 12, color: AppColors.textMuted),
+        Icon(
+          prioritizeLanguage
+              ? Icons.language_outlined
+              : Icons.interests_outlined,
+          size: 12,
+          color: AppColors.textMuted,
+        ),
         const SizedBox(width: 4),
         Expanded(
           child: Text(
             text,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.dmSans(
-                fontSize: 11.5, color: AppColors.textMuted),
+            style: AppTypography.caption.copyWith(color: AppColors.textMid),
           ),
         ),
       ],
@@ -136,46 +119,66 @@ class _ActionButton extends StatelessWidget {
   final bool isLoading;
   final VoidCallback onTap;
 
+  /// Secondary actions (Study Together) get an outlined treatment so a card
+  /// has exactly one filled primary — Connect. Two identical filled buttons
+  /// made both read as "the" action and doubled the visual weight.
+  final bool secondary;
+
   const _ActionButton({
     required this.label,
     required this.icon,
     required this.isLoading,
     required this.onTap,
+    this.secondary = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    final foreground = secondary ? AppColors.primary : Colors.white;
     return Semantics(
       button: true,
       enabled: !isLoading,
       label: label,
       child: Material(
-        color: isLoading ? AppColors.primaryLight : AppColors.primary,
+        color: secondary
+            ? AppColors.surface
+            : (isLoading ? AppColors.primaryLight : AppColors.primary),
         borderRadius: BorderRadius.circular(10),
         child: InkWell(
           onTap: isLoading ? null : onTap,
           borderRadius: BorderRadius.circular(10),
           child: Container(
-            height: 40,
+            // 48dp: the app's own minimum touch target. Was 40dp.
+            height: kMinTouchTarget,
             alignment: Alignment.center,
+            decoration: secondary
+                ? BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppColors.primary, width: 1.5),
+                  )
+                : null,
             child: isLoading
-                ? const SizedBox(
+                ? SizedBox(
                     width: 16,
                     height: 16,
                     child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.white),
+                      strokeWidth: 2,
+                      color: foreground,
+                    ),
                   )
                 : Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(icon, size: 14, color: Colors.white),
+                      Icon(icon, size: 14, color: foreground),
                       const SizedBox(width: 5),
-                      Text(
-                        label,
-                        style: GoogleFonts.dmSans(
-                          color: Colors.white,
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w600,
+                      Flexible(
+                        child: Text(
+                          label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTypography.label.copyWith(
+                            color: foreground,
+                          ),
                         ),
                       ),
                     ],

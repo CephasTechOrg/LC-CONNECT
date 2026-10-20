@@ -34,29 +34,47 @@ class _MessageList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Build list with date separators. In a group, mark the first message of each run from a
-    // given sender (a separator, or a change of sender, starts a new run) so we show the
-    // sender's name/avatar once per run — WhatsApp-style — instead of on every bubble.
+    // Build list with date separators, and mark where each message sits in its run (same
+    // sender, same day, close together) so identity, timestamps and the bubble tail appear once
+    // per run rather than on every bubble.
+    final runs = computeMessageRuns<ChatMessage>(
+      messages,
+      senderOf: (m) => m.senderId,
+      createdAtOf: (m) => m.createdAt,
+    );
     final items = <_ListItem>[];
     DateTime? lastDate;
-    String? runSenderId;
 
-    for (final msg in messages) {
+    for (var i = 0; i < messages.length; i++) {
+      final msg = messages[i];
       final local = msg.createdAt.toLocal();
       final msgDate = DateTime(local.year, local.month, local.day);
       if (lastDate == null || msgDate != lastDate) {
         items.add(_DateSeparatorItem(msgDate));
         lastDate = msgDate;
-        runSenderId = null; // a date break restarts the run
       }
-      final firstOfRun = msg.senderId != runSenderId;
-      runSenderId = msg.senderId;
-      items.add(_MessageItem(msg, firstOfRun));
+      final run = runs[i];
+      // Mid-run footers are hidden, except where my tick changes (e.g. read up to here,
+      // delivered after) — collapsing that would hide where the receipt boundary is.
+      final tickChangesHere = msg.senderId == currentUserId &&
+          !run.lastOfRun &&
+          OutgoingState.of(msg) != OutgoingState.of(messages[i + 1]);
+      items.add(_MessageItem(
+        msg,
+        firstOfRun: run.firstOfRun,
+        lastOfRun: run.lastOfRun,
+        showFooter: run.lastOfRun || tickChangesHere,
+      ));
     }
 
     return ListView.builder(
       controller: scrollController,
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.md,
+        AppSpacing.lg,
+        AppSpacing.sm,
+      ),
       itemCount: items.length,
       itemBuilder: (_, i) {
         final item = items[i];
@@ -74,6 +92,9 @@ class _MessageList extends StatelessWidget {
           partnerAvatarUrl: partnerAvatarUrl,
           sender: isGroup ? senders[msg.senderId] : null,
           showSenderIdentity: showSenderIdentity,
+          firstOfRun: messageItem.firstOfRun,
+          lastOfRun: messageItem.lastOfRun,
+          showFooter: messageItem.showFooter,
           onReport: onReport,
           // Delete for everyone: my own messages anywhere, or anyone's when I moderate the group.
           onDelete: (isMine || iAmGroupAdmin) ? onDelete : null,
@@ -147,8 +168,15 @@ class _DateSeparatorItem extends _ListItem {
 
 class _MessageItem extends _ListItem {
   final ChatMessage message;
-  final bool firstOfRun; // first message of a run from this sender (group identity anchor)
-  _MessageItem(this.message, this.firstOfRun);
+  final bool firstOfRun; // group sender name anchors here
+  final bool lastOfRun; // avatar and tail anchor here
+  final bool showFooter; // timestamp + tick row
+  _MessageItem(
+    this.message, {
+    required this.firstOfRun,
+    required this.lastOfRun,
+    required this.showFooter,
+  });
 }
 
 // ── Date separator ────────────────────────────────────────────────
@@ -169,23 +197,25 @@ class _DateSeparator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      child: Row(
-        children: [
-          const Expanded(child: Divider(color: AppColors.border)),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Text(
-              _label(),
-              style: GoogleFonts.dmSans(
-                fontSize: 12,
-                color: AppColors.textMuted,
-                fontWeight: FontWeight.w500,
-              ),
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.xs,
+          ),
+          decoration: BoxDecoration(
+            color: AppColors.primarySoft,
+            borderRadius: BorderRadius.circular(AppRadii.full),
+          ),
+          child: Text(
+            _label(),
+            style: AppTypography.caption.copyWith(
+              color: AppColors.textMid,
+              fontWeight: FontWeight.w600,
             ),
           ),
-          const Expanded(child: Divider(color: AppColors.border)),
-        ],
+        ),
       ),
     );
   }

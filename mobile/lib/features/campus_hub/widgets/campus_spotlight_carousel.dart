@@ -101,7 +101,8 @@ class _SpotlightCarouselState extends State<_SpotlightCarousel> {
               ),
             ),
           ),
-          const SizedBox(height: 8),
+          // The dots' 32dp hit boxes already add ~12dp of air around them.
+          const SizedBox(height: AppSpacing.xs),
           _SpotlightDots(
             count: campusSpotlights.length,
             active: _index,

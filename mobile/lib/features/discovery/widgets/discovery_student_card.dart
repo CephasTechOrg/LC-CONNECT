@@ -38,13 +38,17 @@ class _StudentCardState extends State<_StudentCard> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            apiErrorMessage(e, fallback: 'Something went wrong. Please try again.'),
+            apiErrorMessage(
+              e,
+              fallback: 'Something went wrong. Please try again.',
+            ),
             style: GoogleFonts.dmSans(),
           ),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10)),
+            borderRadius: BorderRadius.circular(10),
+          ),
         ),
       );
     }
@@ -58,11 +62,14 @@ class _StudentCardState extends State<_StudentCard> {
     final lookingLabels = c.lookingFor;
     // Cap at two on the list card; the rest live on the public profile.
     final lookingPairs = <(String, String)>[
-      for (var i = 0; i < lookingCodes.length && i < lookingLabels.length && i < 2; i++)
+      for (
+        var i = 0;
+        i < lookingCodes.length && i < lookingLabels.length && i < 2;
+        i++
+      )
         (lookingCodes[i], lookingLabels[i]),
     ];
-    final matchReason =
-        c.matchReasons.isNotEmpty ? c.matchReasons[0] : null;
+    final matchReason = c.matchReasons.isNotEmpty ? c.matchReasons[0] : null;
 
     return Semantics(
       label: c.displayName ?? 'Student profile',
@@ -122,13 +129,16 @@ class _StudentCardState extends State<_StudentCard> {
                                   const SizedBox(height: 2),
                                   Text(
                                     [
-                                      if (c.classYear != null) 'Class of ${c.classYear}',
+                                      if (c.classYear != null)
+                                        'Class of ${c.classYear}',
                                       if (c.major != null) c.major!,
                                     ].join(' · '),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: GoogleFonts.dmSans(
-                                        fontSize: 12, color: AppColors.textMuted),
+                                      fontSize: 12,
+                                      color: AppColors.textMuted,
+                                    ),
                                   ),
                                 ],
                               ],
@@ -141,8 +151,11 @@ class _StudentCardState extends State<_StudentCard> {
                   IconButton(
                     onPressed: widget.onMore,
                     tooltip: 'More options',
-                    icon: const Icon(Icons.more_horiz,
-                        color: AppColors.textMuted, size: 20),
+                    icon: const Icon(
+                      Icons.more_horiz,
+                      color: AppColors.textMuted,
+                      size: 20,
+                    ),
                     constraints: const BoxConstraints(
                       minWidth: kMinTouchTarget,
                       minHeight: kMinTouchTarget,
@@ -165,14 +178,19 @@ class _StudentCardState extends State<_StudentCard> {
                 ),
               ],
 
-              if (c.interests.isNotEmpty) ...[
+              // One brief line for interests + languages, not two stacked
+              // rows: the full lists live on the public profile. Languages
+              // lead when this student is here for language exchange — for
+              // them it is the matching signal, not decoration.
+              if (c.interests.isNotEmpty || c.languagesSpoken.isNotEmpty) ...[
                 const SizedBox(height: 8),
-                _InterestChips(interests: c.interests),
-              ],
-
-              if (c.languagesSpoken.isNotEmpty) ...[
-                const SizedBox(height: 6),
-                _LanguageLine(languages: c.languagesSpoken),
+                _InterestLanguageLine(
+                  interests: c.interests,
+                  languages: c.languagesSpoken,
+                  prioritizeLanguage: lookingCodes.contains(
+                    'language_exchange',
+                  ),
+                ),
               ],
 
               if (matchReason != null) ...[
@@ -181,8 +199,7 @@ class _StudentCardState extends State<_StudentCard> {
                   matchReason,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.dmSans(
-                    fontSize: 11.5,
+                  style: AppTypography.caption.copyWith(
                     color: AppColors.primary,
                     fontWeight: FontWeight.w500,
                   ),
@@ -207,6 +224,7 @@ class _StudentCardState extends State<_StudentCard> {
                         label: 'Study Together',
                         icon: Icons.menu_book_outlined,
                         isLoading: _isActing,
+                        secondary: true,
                         onTap: () => _act(widget.onStudyTogether),
                       ),
                     ),
@@ -217,14 +235,15 @@ class _StudentCardState extends State<_StudentCard> {
                 child: TextButton(
                   onPressed: _isActing ? null : widget.onSkip,
                   style: TextButton.styleFrom(
-                    minimumSize: const Size(kMinTouchTarget, 36),
+                    // Visible and quiet — but a full-height target. It used
+                    // to be 36dp tall, under the app's own 48dp minimum.
+                    minimumSize: const Size(kMinTouchTarget, kMinTouchTarget),
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     padding: const EdgeInsets.symmetric(vertical: 4),
                   ),
                   child: Text(
                     'Maybe Later',
-                    style: GoogleFonts.dmSans(
-                      fontSize: 12,
+                    style: AppTypography.label.copyWith(
                       color: AppColors.textMuted,
                     ),
                   ),

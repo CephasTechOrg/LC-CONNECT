@@ -18,6 +18,9 @@ class _ChatHeader extends StatelessWidget {
   /// DM only: the ⋯ menu (report / block the partner).
   final VoidCallback? onMenu;
 
+  /// DM only: the partner is typing — replaces the subtitle, so no separate strip is needed.
+  final bool partnerTyping;
+
   const _ChatHeader({
     this.title = 'Messages',
     this.subtitle,
@@ -26,32 +29,35 @@ class _ChatHeader extends StatelessWidget {
     this.campusVerified = false,
     this.onIdentityTap,
     this.onMenu,
+    this.partnerTyping = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    final showTyping = partnerTyping && !isGroup;
     return Container(
-      padding: const EdgeInsets.fromLTRB(4, 6, 6, 6),
+      padding: const EdgeInsets.fromLTRB(AppSpacing.xs, AppSpacing.xs, AppSpacing.xs, AppSpacing.xs),
       decoration: const BoxDecoration(
         color: AppColors.surface,
         border: Border(bottom: BorderSide(color: AppColors.border)),
       ),
       child: Row(
         children: [
-          IconButton(
+          AppAccessibleIconButton(
+            tooltip: 'Back',
             icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: AppColors.textDark),
             onPressed: () => Navigator.of(context).pop(),
           ),
           Expanded(
             child: InkWell(
               onTap: onIdentityTap,
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(AppRadii.md),
               child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
+                padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
                 child: Row(
                   children: [
                     _HeaderAvatar(url: avatarUrl, isGroup: isGroup),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: AppSpacing.md),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -65,8 +71,7 @@ class _ChatHeader extends StatelessWidget {
                                   title,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: GoogleFonts.dmSans(
-                                    fontSize: 16,
+                                  style: AppTypography.titleSmall.copyWith(
                                     fontWeight: FontWeight.w700,
                                     color: AppColors.textDark,
                                   ),
@@ -78,12 +83,21 @@ class _ChatHeader extends StatelessWidget {
                               ],
                             ],
                           ),
-                          if (subtitle != null)
+                          if (showTyping)
+                            Text(
+                              'typing…',
+                              maxLines: 1,
+                              style: AppTypography.caption.copyWith(
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            )
+                          else if (subtitle != null)
                             Text(
                               subtitle!,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: GoogleFonts.dmSans(fontSize: 11.5, color: AppColors.textMuted),
+                              style: AppTypography.caption.copyWith(color: AppColors.textMuted),
                             ),
                         ],
                       ),
@@ -94,17 +108,19 @@ class _ChatHeader extends StatelessWidget {
             ),
           ),
           if (isGroup)
-            IconButton(
-              icon: const Icon(Icons.info_outline_rounded, size: 21, color: AppColors.textMuted),
+            AppAccessibleIconButton(
+              tooltip: 'Group info',
+              icon: const Icon(Icons.info_outline_rounded, size: 21, color: AppColors.textMid),
               onPressed: onIdentityTap,
             )
           else if (onMenu != null)
-            IconButton(
-              icon: const Icon(Icons.more_horiz_rounded, size: 22, color: AppColors.textMuted),
+            AppAccessibleIconButton(
+              tooltip: 'More options',
+              icon: const Icon(Icons.more_horiz_rounded, size: 22, color: AppColors.textMid),
               onPressed: onMenu,
             )
           else
-            const SizedBox(width: 8),
+            const SizedBox(width: AppSpacing.sm),
         ],
       ),
     );
