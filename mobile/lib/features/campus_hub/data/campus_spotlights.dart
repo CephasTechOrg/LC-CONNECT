@@ -51,7 +51,7 @@ const campusSpotlights = <CampusSpotlight>[
     description: 'Join groups built\naround what you love.',
     studentAsset: 'assets/images/lcbear.webp',
     studentLabel: 'Livingstone College Blue Bear mascot',
-    dwell: const Duration(seconds: 12),
+    dwell: Duration(seconds: 12),
   ),
   // 2 — events + athletics.
   CampusSpotlight(
