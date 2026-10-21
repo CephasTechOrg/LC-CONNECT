@@ -1,7 +1,11 @@
+import 'dart:io';
+
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/api/api_error.dart';
@@ -10,6 +14,8 @@ import '../../../shared/widgets/app_filter_chip.dart';
 import '../models/campus_post.dart';
 import '../providers/campus_hub_provider.dart';
 import '../providers/campus_publishing_provider.dart';
+
+part '../widgets/compose_post_images.dart';
 
 /// Create or edit a campus post. Pass `existing` to edit. One clean form — grouped selectors up
 /// top, then the content fields — styled to match the rest of the app (no raw Material chips).
@@ -32,8 +38,12 @@ class _ComposeCampusPostScreenState extends ConsumerState<ComposeCampusPostScree
   late String _priority;
   DateTime? _expiresAt;
   bool _loading = false;
+  String? _savedPostId;
+  List<CampusPostImage> _images = const [];
+  final List<XFile> _pending = [];
 
   bool get _isEditing => widget.existing != null;
+  int get _imageCount => _images.length + _pending.length;
 
   static const _audiences = {'all': 'Everyone', 'students': 'Students', 'staff': 'Staff'};
   static const _priorities = {'normal': 'Normal', 'important': 'Important'};
@@ -53,6 +63,8 @@ class _ComposeCampusPostScreenState extends ConsumerState<ComposeCampusPostScree
     _bodyCtrl.text = p?.body ?? '';
     _urlCtrl.text = p?.externalUrl ?? '';
     _expiresAt = p?.expiresAt?.toLocal();
+    _savedPostId = p?.id;
+    _images = List<CampusPostImage>.from(p?.images ?? const []);
   }
 
   /// Switching type changes the category vocabulary — reset to that vocabulary's first option so
@@ -126,9 +138,10 @@ class _ComposeCampusPostScreenState extends ConsumerState<ComposeCampusPostScree
       final service = ref.read(campusPublishingServiceProvider);
       // Opportunities: title + summary (+ link). Body is filled from summary on the API.
       final resolvedBody = isOpportunity ? '' : body;
-      if (_isEditing) {
-        await service.updatePost(
-          widget.existing!.id,
+      AuthorCampusPost saved;
+      if (_savedPostId != null) {
+        saved = await service.updatePost(
+          _savedPostId!,
           kind: _kind,
           title: title,
           summary: summary,
@@ -140,7 +153,7 @@ class _ComposeCampusPostScreenState extends ConsumerState<ComposeCampusPostScree
           expiresAt: _expiresAt,
         );
       } else {
-        final draft = await service.createPost(
+        saved = await service.createPost(
           kind: _kind,
           title: title,
           summary: summary.isEmpty ? null : summary,
@@ -151,8 +164,19 @@ class _ComposeCampusPostScreenState extends ConsumerState<ComposeCampusPostScree
           externalUrl: url.isEmpty ? null : url,
           expiresAt: _expiresAt,
         );
-        if (publish) await service.publishPost(draft.id);
       }
+      _savedPostId = saved.id;
+      for (final file in List<XFile>.from(_pending)) {
+        saved = await service.uploadImage(
+          saved.id,
+          path: file.path,
+          mimeType: _imageMime(file.path),
+          filename: file.name,
+        );
+      }
+      _pending.clear();
+      _images = saved.images;
+      if (publish && saved.isDraft) await service.publishPost(saved.id);
       _invalidateFeeds();
       if (!mounted) return;
       _toast(_isEditing ? 'Changes saved' : (publish ? 'Published' : 'Draft saved'));
@@ -162,6 +186,54 @@ class _ComposeCampusPostScreenState extends ConsumerState<ComposeCampusPostScree
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  Future<void> _pickImage() async {
+    if (_imageCount >= 4 || _loading) return;
+    final picked = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 92,
+    );
+    if (picked == null || !mounted) return;
+    if (_savedPostId != null) {
+      setState(() => _loading = true);
+      try {
+        final saved = await ref.read(campusPublishingServiceProvider).uploadImage(
+          _savedPostId!,
+          path: picked.path,
+          mimeType: _imageMime(picked.path),
+          filename: picked.name,
+        );
+        if (!mounted) return;
+        setState(() => _images = saved.images);
+      } catch (e) {
+        if (mounted) _toast(apiErrorMessage(e, fallback: 'Could not upload photo'));
+      } finally {
+        if (mounted) setState(() => _loading = false);
+      }
+      return;
+    }
+    setState(() => _pending.add(picked));
+  }
+
+  Future<void> _removeUploadedImage(CampusPostImage image) async {
+    final postId = _savedPostId;
+    if (postId == null || _loading) return;
+    setState(() => _loading = true);
+    try {
+      final saved = await ref.read(campusPublishingServiceProvider).deleteImage(postId, image.id);
+      if (!mounted) return;
+      setState(() => _images = saved.images);
+    } catch (e) {
+      if (mounted) _toast(apiErrorMessage(e, fallback: 'Could not remove photo'));
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  void _removePendingImage(int index) {
+    if (index < 0 || index >= _pending.length) return;
+    setState(() => _pending.removeAt(index));
   }
 
   Future<bool?> _confirmPublish() => showDialog<bool>(
@@ -254,6 +326,16 @@ class _ComposeCampusPostScreenState extends ConsumerState<ComposeCampusPostScree
                     ),
                   ),
                   if (_kind == 'announcement') ...[
+                    const SizedBox(height: 16),
+                    _ComposePostImages(
+                      uploaded: _images,
+                      pending: _pending,
+                      remaining: 4 - _imageCount,
+                      busy: _loading,
+                      onAdd: _pickImage,
+                      onRemoveUploaded: _removeUploadedImage,
+                      onRemovePending: _removePendingImage,
+                    ),
                     const SizedBox(height: 16),
                     const _Label('Details'),
                     TextField(

@@ -221,12 +221,26 @@ class _FeaturedUpdateCard extends StatelessWidget {
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(AppRadii.md),
-                child: Image.asset(
-                  campusSpotlightBackground,
-                  width: 58,
-                  height: 58,
-                  fit: BoxFit.cover,
-                ),
+                child: post.coverUrl != null
+                    ? CachedNetworkImage(
+                        key: const ValueKey('featured-update-cover'),
+                        imageUrl: post.coverUrl!,
+                        width: 58,
+                        height: 58,
+                        fit: BoxFit.cover,
+                        errorWidget: (_, _, _) => Image.asset(
+                          campusSpotlightBackground,
+                          width: 58,
+                          height: 58,
+                          fit: BoxFit.cover,
+                        ),
+                      )
+                    : Image.asset(
+                        campusSpotlightBackground,
+                        width: 58,
+                        height: 58,
+                        fit: BoxFit.cover,
+                      ),
               ),
               const SizedBox(width: AppSpacing.md),
               Expanded(

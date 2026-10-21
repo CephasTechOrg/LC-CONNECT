@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.admin.schema import CampusPostAdminRead
 from app.features.campus_hub import publishing
+from app.features.campus_hub.images import delete_all_for_post, serialized_images
 from app.features.campus_hub.schema import CampusPostCreate, CampusPostUpdate
 from app.models import CampusPost, User
 from app.shared.audit import record_audit
@@ -19,6 +20,7 @@ get_post_or_404 = publishing.get_post_or_404
 def to_admin_read(post: CampusPost) -> CampusPostAdminRead:
     data = CampusPostAdminRead.model_validate(post).model_dump()
     data['link_preview'] = link_preview_dict(post)
+    data['images'] = serialized_images(post)
     return CampusPostAdminRead.model_validate(data)
 
 
@@ -52,6 +54,7 @@ async def delete_post(db: AsyncSession, *, actor: User, post_id: UUID) -> None:
     """Permanently remove a post (admin only). Archive is the reversible option; this is the
     hard delete for content that should not exist at all. Audited before removal."""
     post = await get_post_or_404(db, post_id)
+    await delete_all_for_post(post)
     await record_audit(
         db,
         actor_id=actor.id,

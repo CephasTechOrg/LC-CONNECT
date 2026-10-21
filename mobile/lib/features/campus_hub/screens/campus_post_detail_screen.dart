@@ -9,6 +9,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/app_states.dart';
 import '../models/campus_post.dart';
 import '../providers/campus_hub_provider.dart';
+import '../widgets/campus_post_image_pager.dart';
 import '../widgets/campus_post_style.dart';
 import '../widgets/campus_subpage_header.dart';
 import '../widgets/link_preview_card.dart';
@@ -101,6 +102,10 @@ class _PostBody extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
       children: [
+        if (post.images.isNotEmpty) ...[
+          CampusPostImagePager(images: post.images, postId: post.id),
+          const SizedBox(height: 16),
+        ],
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

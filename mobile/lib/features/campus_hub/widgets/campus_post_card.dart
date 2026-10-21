@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
@@ -7,9 +8,8 @@ import '../models/campus_post.dart';
 import 'campus_post_style.dart';
 import '../../../core/theme/app_spacing.dart';
 
-/// One row on the Announcements list. There are no per-announcement images, so the leading
-/// thumbnail is a tinted icon placeholder — colored by category, same visual language as the
-/// Opportunities cards. An unread dot marks announcements the user hasn't opened yet.
+/// One row on the Announcements list. A 56dp cover thumbnail when the post has photos;
+/// otherwise the tinted category icon. An unread dot marks announcements not yet opened.
 class CampusPostCard extends StatelessWidget {
   final CampusPostSummary post;
   final VoidCallback onTap;
@@ -43,15 +43,11 @@ class CampusPostCard extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Icon placeholder — stands in for an image (announcements have no photo).
-                Container(
-                  width: 56,
-                  height: 56,
-                  decoration: BoxDecoration(
-                    color: badgeBg,
-                    borderRadius: BorderRadius.circular(13),
-                  ),
-                  child: Icon(icon, color: badgeColor, size: 26),
+                _CoverThumb(
+                  coverUrl: post.coverUrl,
+                  badgeBg: badgeBg,
+                  badgeColor: badgeColor,
+                  icon: icon,
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -116,6 +112,52 @@ class CampusPostCard extends StatelessWidget {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CoverThumb extends StatelessWidget {
+  final String? coverUrl;
+  final Color badgeBg;
+  final Color badgeColor;
+  final IconData icon;
+
+  const _CoverThumb({
+    required this.coverUrl,
+    required this.badgeBg,
+    required this.badgeColor,
+    required this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (coverUrl == null) {
+      return Container(
+        key: const ValueKey('campus-post-icon'),
+        width: 56,
+        height: 56,
+        decoration: BoxDecoration(
+          color: badgeBg,
+          borderRadius: BorderRadius.circular(13),
+        ),
+        child: Icon(icon, color: badgeColor, size: 26),
+      );
+    }
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(13),
+      child: CachedNetworkImage(
+        key: const ValueKey('campus-post-cover'),
+        imageUrl: coverUrl!,
+        width: 56,
+        height: 56,
+        fit: BoxFit.cover,
+        errorWidget: (_, _, _) => Container(
+          width: 56,
+          height: 56,
+          color: badgeBg,
+          child: Icon(icon, color: badgeColor, size: 26),
         ),
       ),
     );

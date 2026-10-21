@@ -78,6 +78,41 @@ export async function apiFetch<T>(
   return data as T;
 }
 
+/** Multipart upload — do not set Content-Type; the browser supplies the boundary. */
+export async function apiUpload<T>(
+  path: string,
+  accessToken: string | null,
+  formData: FormData,
+): Promise<T> {
+  const response = await fetch(`${apiBase()}${path}`, {
+    method: 'POST',
+    headers: {
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+    },
+    body: formData,
+  });
+
+  const text = await response.text();
+  let data: unknown = null;
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = text;
+    }
+  }
+
+  if (!response.ok) {
+    const detail =
+      data && typeof data === 'object' && data !== null && 'detail' in data
+        ? String((data as { detail: unknown }).detail)
+        : '';
+    throw new Error(detail || statusMessage(response.status));
+  }
+
+  return data as T;
+}
+
 function statusMessage(status: number): string {
   if (status === 401) return 'Your session has expired. Please sign in again.';
   if (status === 403) return 'You do not have permission to perform this action.';

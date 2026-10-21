@@ -253,3 +253,18 @@ class ScholarProfileNotifier extends AsyncNotifier<ScholarProfile> {
     return (response.data as Map<String, dynamic>)['url'] as String;
   }
 }
+
+/// Short-lived signed URL for the scholar's own headshot, for on-page preview.
+///
+/// The profile payload only has `has_headshot` — the file lives in a private bucket. Null when
+/// nothing is on file, or if signing fails (the editor keeps the placeholder). Auto-dispose so
+/// the credential does not outlive the editor.
+final scholarHeadshotPreviewProvider = FutureProvider.autoDispose<String?>((ref) async {
+  final profile = await ref.watch(scholarProfileNotifierProvider.future);
+  if (!profile.hasHeadshot) return null;
+  try {
+    return await ref.read(scholarProfileNotifierProvider.notifier).headshotUrl();
+  } catch (_) {
+    return null;
+  }
+});

@@ -7,7 +7,7 @@ from fastapi import HTTPException
 from PIL import Image
 
 from app.shared import image_processing
-from app.shared.image_processing import sanitize_avatar
+from app.shared.image_processing import sanitize_announcement_image, sanitize_avatar
 
 
 def _jpeg(size=(50, 50), color='red', exif=None) -> bytes:
@@ -74,6 +74,13 @@ def test_applies_exif_orientation_before_stripping():
 def test_downscales_oversized_preserving_aspect():
     out, _ = sanitize_avatar(_jpeg(size=(3000, 1500)))
     assert _reopen(out).size == (1024, 512)
+
+
+def test_announcement_image_downscales_to_1600():
+    out, ctype = sanitize_announcement_image(_jpeg(size=(3000, 1500)))
+    assert ctype == 'image/jpeg'
+    assert _reopen(out).format == 'JPEG'
+    assert _reopen(out).size == (1600, 800)
 
 
 def test_small_images_are_not_upscaled():

@@ -59,6 +59,18 @@ class StudentDirectoryEntry(BaseModel):
     class_year: int | None
 
 
+class CampusPostImageRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
+    id: UUID
+    url: str = Field(validation_alias='public_url', serialization_alias='url')
+    sort_order: int
+
+
+class CampusPostImageReorder(BaseModel):
+    image_ids: list[UUID] = Field(min_length=1, max_length=4)
+
+
 class CampusPostSummaryRead(BaseModel):
     id: UUID
     kind: str
@@ -70,6 +82,7 @@ class CampusPostSummaryRead(BaseModel):
     expires_at: datetime | None
     external_url: str | None
     link_preview: LinkPreviewRead | None = None
+    images: list[CampusPostImageRead] = Field(default_factory=list)
     read: bool = False  # whether the requesting user has read this post
     source: str = 'campus'  # 'campus' (staff/admin-authored) or 'employer' (Blueprint Bond partner)
     is_blueprint_bond: bool = False  # drives the Blueprint Bond opportunity filter on the client
@@ -98,6 +111,7 @@ class AuthorCampusPostRead(BaseModel):
     expires_at: datetime | None
     external_url: str | None
     link_preview: LinkPreviewRead | None = None
+    images: list[CampusPostImageRead] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
 

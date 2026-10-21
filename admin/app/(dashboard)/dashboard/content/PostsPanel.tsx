@@ -2,8 +2,9 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { OpsEmpty, OpsLoading } from '@/components/ops-states';
-import { apiFetch, toUserMessage } from '@/lib/api/client';
+import { apiFetch, apiUpload, toUserMessage } from '@/lib/api/client';
 import { getAccessToken } from '@/lib/auth/session';
+import PostImageStrip, { PostImage } from './PostImageStrip';
 
 type Post = {
   id: string;
@@ -17,6 +18,7 @@ type Post = {
   status: string;
   external_url: string | null;
   expires_at: string | null;
+  images?: PostImage[];
 };
 
 const ANNOUNCEMENT_CATEGORIES: Record<string, string> = {
@@ -67,6 +69,7 @@ export default function PostsPanel() {
   const [body, setBody] = useState('');
   const [externalUrl, setExternalUrl] = useState('');
   const [expiresAt, setExpiresAt] = useState('');
+  const [images, setImages] = useState<PostImage[]>([]);
   const [saving, setSaving] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [q, setQ] = useState('');
@@ -84,6 +87,7 @@ export default function PostsPanel() {
     setBody('');
     setExternalUrl('');
     setExpiresAt('');
+    setImages([]);
     setShowForm(false);
   }
 
@@ -103,6 +107,7 @@ export default function PostsPanel() {
     setBody(item.body);
     setExternalUrl(item.external_url ?? '');
     setExpiresAt(item.expires_at ? item.expires_at.slice(0, 10) : '');
+    setImages(item.images ?? []);
     setShowForm(true);
   }
 
@@ -167,16 +172,25 @@ export default function PostsPanel() {
         expires_at: expiresAt ? `${expiresAt}T23:59:59.000Z` : null,
       };
       if (editingId) {
-        await apiFetch(`/admin/campus-posts/${editingId}`, token, {
+        const updated = await apiFetch<Post>(`/admin/campus-posts/${editingId}`, token, {
           method: 'PATCH',
           body: JSON.stringify(payload),
         });
+        setImages(updated.images ?? []);
         setFlash('Changes saved.');
       } else {
-        await apiFetch('/admin/campus-posts', token, { method: 'POST', body: JSON.stringify(payload) });
-        setFlash('Draft saved.');
+        const created = await apiFetch<Post>('/admin/campus-posts', token, {
+          method: 'POST',
+          body: JSON.stringify(payload),
+        });
+        setEditingId(created.id);
+        setImages(created.images ?? []);
+        setFlash(
+          created.kind === 'announcement'
+            ? 'Draft saved. You can add up to 4 photos below.'
+            : 'Draft saved.',
+        );
       }
-      resetForm();
       await load();
     } catch (err) {
       setError(true);
@@ -321,6 +335,43 @@ export default function PostsPanel() {
               <label htmlFor="body">Body</label>
               <textarea id="body" rows={4} value={body} onChange={(e) => setBody(e.target.value)} required />
             </div>
+          ) : null}
+          {kind === 'announcement' && editingId ? (
+            <PostImageStrip
+              images={images}
+              remaining={Math.max(0, 4 - images.length)}
+              busy={saving}
+              onAdd={async (file) => {
+                try {
+                  const token = await getAccessToken();
+                  if (!token) throw new Error('Not signed in');
+                  const form = new FormData();
+                  form.append('file', file);
+                  const updated = await apiUpload<Post>(`/admin/campus-posts/${editingId}/images`, token, form);
+                  setImages(updated.images ?? []);
+                } catch (err) {
+                  setError(true);
+                  setStatus(toUserMessage(err, 'Could not upload photo'));
+                }
+              }}
+              onRemove={async (imageId) => {
+                try {
+                  const token = await getAccessToken();
+                  if (!token) throw new Error('Not signed in');
+                  const updated = await apiFetch<Post>(
+                    `/admin/campus-posts/${editingId}/images/${imageId}`,
+                    token,
+                    { method: 'DELETE' },
+                  );
+                  setImages(updated.images ?? []);
+                } catch (err) {
+                  setError(true);
+                  setStatus(toUserMessage(err, 'Could not remove photo'));
+                }
+              }}
+            />
+          ) : kind === 'announcement' ? (
+            <p className="ops-cell-sub">Save the draft first, then you can attach up to 4 photos.</p>
           ) : null}
           <div className="grid-2">
             <div className="field">

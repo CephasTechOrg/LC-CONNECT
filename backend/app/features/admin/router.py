@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, Depends
+from fastapi import APIRouter, Depends
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -9,9 +9,8 @@ from app.dependencies import require_admin_aal2
 from app.features.account import suspension as suspension_service
 from app.features.account.schema import SuspensionAppealRead
 from app.features.admin import admins as admins_admin
-from app.features.admin import admins_router, campus_verification_router, scholar_profiles_router
+from app.features.admin import admins_router, campus_posts_router, campus_verification_router, scholar_profiles_router
 from app.features.admin import campus_positions as campus_admin
-from app.features.admin import campus_posts as posts_admin
 from app.features.admin import campus_resources as resources_admin
 from app.features.admin import dashboard as dashboard_admin
 from app.features.admin import employers as employers_admin
@@ -21,7 +20,6 @@ from app.features.admin.schema import (
     AdminDashboardSummary,
     AdminUserRead,
     CampusPositionAdminRead,
-    CampusPostAdminRead,
     CampusResourceAdminRead,
     EmployerOrganizationAdminRead,
     EmployerRejectRequest,
@@ -43,10 +41,7 @@ from app.features.admin.service import reactivate_user as do_reactivate_user
 from app.features.admin.service import remove_activity as do_remove_activity
 from app.features.admin.service import resolve_report as do_resolve_report
 from app.features.admin.service import suspend_user as do_suspend_user
-from app.features.campus_hub import publishing
 from app.features.campus_hub.schema import (
-    CampusPostCreate,
-    CampusPostUpdate,
     CampusResourceCreate,
     CampusResourceUpdate,
 )
@@ -64,6 +59,7 @@ router = APIRouter(prefix='/admin', tags=['admin'])
 router.include_router(admins_router.router)
 router.include_router(campus_verification_router.router)
 router.include_router(scholar_profiles_router.router)
+router.include_router(campus_posts_router.router)
 
 
 def _position_admin_read(position, user: User, profile: Profile) -> CampusPositionAdminRead:
@@ -247,70 +243,6 @@ async def revoke_campus_position(
         archive_posts=payload.archive_posts,
     )
     return CampusPositionRead.model_validate(position)
-
-
-@router.get('/campus-posts', response_model=list[CampusPostAdminRead])
-async def list_campus_posts(
-    _: User = Depends(require_admin_aal2),
-    db: AsyncSession = Depends(get_db),
-) -> list[CampusPostAdminRead]:
-    posts = await posts_admin.list_posts(db)
-    return [posts_admin.to_admin_read(post) for post in posts]
-
-
-@router.post('/campus-posts', response_model=CampusPostAdminRead, status_code=201)
-async def create_campus_post(
-    payload: CampusPostCreate,
-    actor: User = Depends(require_admin_aal2),
-    db: AsyncSession = Depends(get_db),
-) -> CampusPostAdminRead:
-    post = await posts_admin.create_post(db, actor=actor, payload=payload)
-    return posts_admin.to_admin_read(post)
-
-
-@router.patch('/campus-posts/{post_id}', response_model=CampusPostAdminRead)
-async def update_campus_post(
-    post_id: UUID,
-    payload: CampusPostUpdate,
-    actor: User = Depends(require_admin_aal2),
-    db: AsyncSession = Depends(get_db),
-) -> CampusPostAdminRead:
-    post = await posts_admin.update_post(db, actor=actor, post_id=post_id, payload=payload)
-    return posts_admin.to_admin_read(post)
-
-
-@router.post('/campus-posts/{post_id}/publish', response_model=CampusPostAdminRead)
-async def publish_campus_post(
-    post_id: UUID,
-    background_tasks: BackgroundTasks,
-    actor: User = Depends(require_admin_aal2),
-    db: AsyncSession = Depends(get_db),
-) -> CampusPostAdminRead:
-    post = await posts_admin.publish_post(db, actor=actor, post_id=post_id)
-    # Only fan out push for posts that are live now — scheduled posts wait for a future job.
-    if publishing.should_push_on_publish(post):
-        background_tasks.add_task(publishing.push_published_post, post.id)
-    return posts_admin.to_admin_read(post)
-
-
-@router.post('/campus-posts/{post_id}/archive', response_model=CampusPostAdminRead)
-async def archive_campus_post(
-    post_id: UUID,
-    actor: User = Depends(require_admin_aal2),
-    db: AsyncSession = Depends(get_db),
-) -> CampusPostAdminRead:
-    post = await posts_admin.archive_post(db, actor=actor, post_id=post_id)
-    return posts_admin.to_admin_read(post)
-
-
-@router.delete('/campus-posts/{post_id}')
-async def delete_campus_post(
-    post_id: UUID,
-    actor: User = Depends(require_admin_aal2),
-    db: AsyncSession = Depends(get_db),
-):
-    await posts_admin.delete_post(db, actor=actor, post_id=post_id)
-    return {'status': 'deleted', 'post_id': str(post_id)}
 
 
 @router.get('/campus-resources', response_model=list[CampusResourceAdminRead])

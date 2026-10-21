@@ -200,6 +200,10 @@ campus_post_publish_limit = UserRateLimit(
     'campus_post_publish', settings.rate_limit_campus_post_publishes_per_day, _DAY,
     "You've published too many campus posts today — try again tomorrow.",
 )
+campus_post_image_upload_limit = UserRateLimit(
+    'campus_post_image_upload', settings.rate_limit_campus_post_image_uploads_per_day, _DAY,
+    "You've uploaded too many announcement photos today — try again tomorrow.",
+)
 attendance_check_in_limiter = RateLimiter(
     settings.rate_limit_attendance_check_ins_per_minute,
     60,

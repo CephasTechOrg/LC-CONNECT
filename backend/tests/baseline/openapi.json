@@ -1210,6 +1210,13 @@
             "title": "Id",
             "type": "string"
           },
+          "images": {
+            "items": {
+              "$ref": "#/components/schemas/CampusPostImageRead"
+            },
+            "title": "Images",
+            "type": "array"
+          },
           "kind": {
             "title": "Kind",
             "type": "string"
@@ -1352,6 +1359,20 @@
         "title": "Body_upload_activity_banner_api_v1_activities__activity_id__banner_post",
         "type": "object"
       },
+      "Body_upload_campus_post_image_api_v1_admin_campus_posts__post_id__images_post": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_campus_post_image_api_v1_admin_campus_posts__post_id__images_post",
+        "type": "object"
+      },
       "Body_upload_group_avatar_api_v1_groups__group_id__avatar_post": {
         "properties": {
           "file": {
@@ -1392,6 +1413,20 @@
           "file"
         ],
         "title": "Body_upload_my_headshot_api_v1_scholars_me_headshot_post",
+        "type": "object"
+      },
+      "Body_upload_my_post_image_api_v1_campus_hub_my_posts__post_id__images_post": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_my_post_image_api_v1_campus_hub_my_posts__post_id__images_post",
         "type": "object"
       },
       "Body_upload_my_resume_api_v1_scholars_me_resume_post": {
@@ -2018,6 +2053,13 @@
             "title": "Id",
             "type": "string"
           },
+          "images": {
+            "items": {
+              "$ref": "#/components/schemas/CampusPostImageRead"
+            },
+            "title": "Images",
+            "type": "array"
+          },
           "kind": {
             "title": "Kind",
             "type": "string"
@@ -2194,6 +2236,49 @@
         "title": "CampusPostCreate",
         "type": "object"
       },
+      "CampusPostImageRead": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "sort_order": {
+            "title": "Sort Order",
+            "type": "integer"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "url",
+          "sort_order"
+        ],
+        "title": "CampusPostImageRead",
+        "type": "object"
+      },
+      "CampusPostImageReorder": {
+        "properties": {
+          "image_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 4,
+            "minItems": 1,
+            "title": "Image Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "image_ids"
+        ],
+        "title": "CampusPostImageReorder",
+        "type": "object"
+      },
       "CampusPostRead": {
         "properties": {
           "audience": {
@@ -2242,6 +2327,13 @@
             "format": "uuid",
             "title": "Id",
             "type": "string"
+          },
+          "images": {
+            "items": {
+              "$ref": "#/components/schemas/CampusPostImageRead"
+            },
+            "title": "Images",
+            "type": "array"
           },
           "is_blueprint_bond": {
             "default": false,
@@ -2353,6 +2445,13 @@
             "format": "uuid",
             "title": "Id",
             "type": "string"
+          },
+          "images": {
+            "items": {
+              "$ref": "#/components/schemas/CampusPostImageRead"
+            },
+            "title": "Images",
+            "type": "array"
           },
           "is_blueprint_bond": {
             "default": false,
@@ -9634,6 +9733,180 @@
         ]
       }
     },
+    "/api/v1/admin/campus-posts/{post_id}/images": {
+      "post": {
+        "operationId": "upload_campus_post_image_api_v1_admin_campus_posts__post_id__images_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "post_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Post Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_campus_post_image_api_v1_admin_campus_posts__post_id__images_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampusPostAdminRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Upload Campus Post Image",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/campus-posts/{post_id}/images/reorder": {
+      "patch": {
+        "operationId": "reorder_campus_post_images_api_v1_admin_campus_posts__post_id__images_reorder_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "post_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Post Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CampusPostImageReorder"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampusPostAdminRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Reorder Campus Post Images",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/campus-posts/{post_id}/images/{image_id}": {
+      "delete": {
+        "operationId": "delete_campus_post_image_api_v1_admin_campus_posts__post_id__images__image_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "post_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Post Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "image_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Image Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampusPostAdminRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete Campus Post Image",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
     "/api/v1/admin/campus-posts/{post_id}/publish": {
       "post": {
         "operationId": "publish_campus_post_api_v1_admin_campus_posts__post_id__publish_post",
@@ -12183,6 +12456,183 @@
           }
         ],
         "summary": "Archive My Post",
+        "tags": [
+          "campus-hub",
+          "campus-hub"
+        ]
+      }
+    },
+    "/api/v1/campus-hub/my-posts/{post_id}/images": {
+      "post": {
+        "operationId": "upload_my_post_image_api_v1_campus_hub_my_posts__post_id__images_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "post_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Post Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_my_post_image_api_v1_campus_hub_my_posts__post_id__images_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorCampusPostRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Upload My Post Image",
+        "tags": [
+          "campus-hub",
+          "campus-hub"
+        ]
+      }
+    },
+    "/api/v1/campus-hub/my-posts/{post_id}/images/reorder": {
+      "patch": {
+        "operationId": "reorder_my_post_images_api_v1_campus_hub_my_posts__post_id__images_reorder_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "post_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Post Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CampusPostImageReorder"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorCampusPostRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Reorder My Post Images",
+        "tags": [
+          "campus-hub",
+          "campus-hub"
+        ]
+      }
+    },
+    "/api/v1/campus-hub/my-posts/{post_id}/images/{image_id}": {
+      "delete": {
+        "operationId": "delete_my_post_image_api_v1_campus_hub_my_posts__post_id__images__image_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "post_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Post Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "image_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Image Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorCampusPostRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete My Post Image",
         "tags": [
           "campus-hub",
           "campus-hub"

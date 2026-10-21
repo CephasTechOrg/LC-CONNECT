@@ -1,7 +1,9 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_client.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../models/campus_post.dart';
 
 class PublishingCapabilities {
   final bool canPublish;
@@ -34,6 +36,7 @@ class AuthorCampusPost {
   final DateTime? publishAt;
   final DateTime? expiresAt;
   final String? externalUrl;
+  final List<CampusPostImage> images;
 
   const AuthorCampusPost({
     required this.id,
@@ -48,6 +51,7 @@ class AuthorCampusPost {
     this.publishAt,
     this.expiresAt,
     this.externalUrl,
+    this.images = const [],
   });
 
   factory AuthorCampusPost.fromJson(Map<String, dynamic> json) => AuthorCampusPost(
@@ -63,6 +67,7 @@ class AuthorCampusPost {
     publishAt: json['publish_at'] != null ? DateTime.parse(json['publish_at'] as String) : null,
     expiresAt: json['expires_at'] != null ? DateTime.parse(json['expires_at'] as String) : null,
     externalUrl: json['external_url'] as String?,
+    images: campusPostImagesFromJson(json['images']),
   );
 
   bool get isDraft => status == 'draft';
@@ -154,6 +159,28 @@ class CampusPublishingService {
 
   Future<AuthorCampusPost> archivePost(String postId) async {
     final response = await _client.dio.post('/campus-hub/my-posts/$postId/archive');
+    return AuthorCampusPost.fromJson(response.data as Map<String, dynamic>);
+  }
+
+  Future<AuthorCampusPost> uploadImage(
+    String postId, {
+    required String path,
+    required String mimeType,
+    required String filename,
+  }) async {
+    final formData = FormData.fromMap({
+      'file': await MultipartFile.fromFile(
+        path,
+        filename: filename,
+        contentType: DioMediaType.parse(mimeType),
+      ),
+    });
+    final response = await _client.dio.post('/campus-hub/my-posts/$postId/images', data: formData);
+    return AuthorCampusPost.fromJson(response.data as Map<String, dynamic>);
+  }
+
+  Future<AuthorCampusPost> deleteImage(String postId, String imageId) async {
+    final response = await _client.dio.delete('/campus-hub/my-posts/$postId/images/$imageId');
     return AuthorCampusPost.fromJson(response.data as Map<String, dynamic>);
   }
 }

@@ -68,6 +68,9 @@ class Settings(BaseSettings):
     rate_limit_campus_post_publishes_per_day: int = Field(
         default=20, alias='RATE_LIMIT_CAMPUS_POST_PUBLISHES_PER_DAY'
     )
+    rate_limit_campus_post_image_uploads_per_day: int = Field(
+        default=20, alias='RATE_LIMIT_CAMPUS_POST_IMAGE_UPLOADS_PER_DAY'
+    )
     rate_limit_scholar_uploads_per_day: int = Field(default=10, alias='RATE_LIMIT_SCHOLAR_UPLOADS_PER_DAY')
     # Resending an invite re-sends a real email every time. Bulk *inviting* is legitimate
     # onboarding, but repeatedly resending to the same person has no high-volume use — so this

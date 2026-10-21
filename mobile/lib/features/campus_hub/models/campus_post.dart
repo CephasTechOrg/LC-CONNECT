@@ -38,6 +38,30 @@ String? linkPreviewHost(String url) {
   return host.toLowerCase();
 }
 
+class CampusPostImage {
+  final String id;
+  final String url;
+  final int sortOrder;
+
+  const CampusPostImage({required this.id, required this.url, required this.sortOrder});
+
+  factory CampusPostImage.fromJson(Map<String, dynamic> json) => CampusPostImage(
+    id: json['id'] as String,
+    url: json['url'] as String,
+    sortOrder: json['sort_order'] as int? ?? 0,
+  );
+}
+
+List<CampusPostImage> campusPostImagesFromJson(Object? raw) {
+  if (raw is! List) return const [];
+  final images = raw
+      .whereType<Map<String, dynamic>>()
+      .map(CampusPostImage.fromJson)
+      .toList();
+  images.sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+  return images;
+}
+
 class CampusPostSummary {
   final String id;
   final String kind;
@@ -49,6 +73,7 @@ class CampusPostSummary {
   final DateTime? expiresAt;
   final String? externalUrl;
   final LinkPreview? linkPreview;
+  final List<CampusPostImage> images;
   final bool read;
   // Blueprint Bond: 'campus' (staff/admin-authored) or 'employer' (an approved employer
   // partner's opportunity) — drives the source badge. isBlueprintBond drives the opportunities
@@ -67,6 +92,7 @@ class CampusPostSummary {
     this.expiresAt,
     this.externalUrl,
     this.linkPreview,
+    this.images = const [],
     this.read = false,
     this.source = 'campus',
     this.isBlueprintBond = false,
@@ -85,6 +111,7 @@ class CampusPostSummary {
     linkPreview: json['link_preview'] is Map<String, dynamic>
         ? LinkPreview.fromJson(json['link_preview'] as Map<String, dynamic>)
         : null,
+    images: campusPostImagesFromJson(json['images']),
     read: json['read'] as bool? ?? false,
     source: json['source'] as String? ?? 'campus',
     isBlueprintBond: json['is_blueprint_bond'] as bool? ?? false,
@@ -93,8 +120,9 @@ class CampusPostSummary {
   bool get isUrgent => priority == 'urgent';
   bool get isImportant => priority == 'important';
   bool get isEmployerPartner => source == 'employer';
+  String? get coverUrl => images.isEmpty ? null : images.first.url;
 
-  CampusPostSummary copyWith({bool? read}) => CampusPostSummary(
+  CampusPostSummary copyWith({bool? read, List<CampusPostImage>? images}) => CampusPostSummary(
     id: id,
     kind: kind,
     title: title,
@@ -105,6 +133,7 @@ class CampusPostSummary {
     expiresAt: expiresAt,
     externalUrl: externalUrl,
     linkPreview: linkPreview,
+    images: images ?? this.images,
     read: read ?? this.read,
     source: source,
     isBlueprintBond: isBlueprintBond,
@@ -126,6 +155,7 @@ class CampusPost extends CampusPostSummary {
     super.expiresAt,
     super.externalUrl,
     super.linkPreview,
+    super.images,
     super.source,
     super.isBlueprintBond,
     required this.body,
@@ -145,6 +175,7 @@ class CampusPost extends CampusPostSummary {
     linkPreview: json['link_preview'] is Map<String, dynamic>
         ? LinkPreview.fromJson(json['link_preview'] as Map<String, dynamic>)
         : null,
+    images: campusPostImagesFromJson(json['images']),
     source: json['source'] as String? ?? 'campus',
     isBlueprintBond: json['is_blueprint_bond'] as bool? ?? false,
     body: json['body'] as String,

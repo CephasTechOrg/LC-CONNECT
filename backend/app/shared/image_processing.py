@@ -1,4 +1,4 @@
-"""Avatar image sanitization.
+"""Image sanitization.
 
 Turns arbitrary uploaded bytes into a safe, metadata-free JPEG:
 
@@ -11,7 +11,7 @@ Turns arbitrary uploaded bytes into a safe, metadata-free JPEG:
   is neutralized;
 - **orientation fix** — EXIF orientation is applied *before* stripping, so portrait
   photos don't come out sideways;
-- **downscale** — capped to a sane avatar size.
+- **downscale** — capped to a sane size (avatars 1024px, announcement flyers 1600px).
 
 Cross-cutting infra → lives in the shared kernel (like `storage.py`), not owned by a feature.
 """
@@ -27,14 +27,16 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 MAX_PIXELS = 24_000_000  # ~24 MP
 # Final avatar bound (aspect-preserving, downscale only).
 MAX_DIMENSION = 1024
+# Announcement flyers need more pixels so printed text stays readable.
+ANNOUNCEMENT_MAX_DIMENSION = 1600
 JPEG_QUALITY = 85
 
 # Make Pillow *raise* on oversized images instead of merely warning.
 Image.MAX_IMAGE_PIXELS = MAX_PIXELS
 
 
-def sanitize_avatar(data: bytes) -> tuple[bytes, str]:
-    """Validate + sanitize avatar bytes → ``(clean_jpeg_bytes, 'image/jpeg')``.
+def sanitize_image(data: bytes, *, max_dimension: int = MAX_DIMENSION) -> tuple[bytes, str]:
+    """Validate + sanitize image bytes → ``(clean_jpeg_bytes, 'image/jpeg')``.
 
     Raises 400 for anything that isn't a decodable image within the pixel cap.
     """
@@ -59,9 +61,19 @@ def sanitize_avatar(data: bytes) -> tuple[bytes, str]:
         ) from exc
 
     # Downscale in place (never upscale).
-    rgb.thumbnail((MAX_DIMENSION, MAX_DIMENSION), Image.Resampling.LANCZOS)
+    rgb.thumbnail((max_dimension, max_dimension), Image.Resampling.LANCZOS)
 
     # Re-encode to a fresh JPEG — this is what strips EXIF/metadata and normalizes format.
     out = io.BytesIO()
     rgb.save(out, format='JPEG', quality=JPEG_QUALITY, optimize=True)
     return out.getvalue(), 'image/jpeg'
+
+
+def sanitize_avatar(data: bytes) -> tuple[bytes, str]:
+    """Avatar / banner path — longest side 1024px."""
+    return sanitize_image(data, max_dimension=MAX_DIMENSION)
+
+
+def sanitize_announcement_image(data: bytes) -> tuple[bytes, str]:
+    """Campus announcement flyer path — longest side 1600px so body text stays readable."""
+    return sanitize_image(data, max_dimension=ANNOUNCEMENT_MAX_DIMENSION)

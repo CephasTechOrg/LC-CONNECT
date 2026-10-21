@@ -14,6 +14,9 @@ class _MockScholarNotifier extends ScholarProfileNotifier {
 
   @override
   Future<ScholarProfile> build() async => _fixed;
+
+  @override
+  Future<String> headshotUrl() async => '';
 }
 
 class _MockAuthNotifier extends AuthNotifier {
@@ -56,6 +59,7 @@ Widget _scope(ScholarProfile profile) {
   return ProviderScope(
     overrides: [
       scholarProfileNotifierProvider.overrideWith(() => _MockScholarNotifier(profile)),
+      scholarHeadshotPreviewProvider.overrideWith((ref) async => null),
       authNotifierProvider.overrideWith(_MockAuthNotifier.new),
     ],
     child: const MaterialApp(home: BlueprintBondScreen()),
@@ -84,8 +88,8 @@ void main() {
     expect(find.text('Skills'), findsOneWidget);
     expect(find.text('Python'), findsOneWidget);
     expect(find.text('Public Speaking'), findsOneWidget);
-    expect(find.text('EXPERIENCE'), findsOneWidget);
-    expect(find.text('PROJECTS'), findsOneWidget);
+    expect(find.text('Experience'), findsOneWidget);
+    expect(find.text('Projects'), findsOneWidget);
     expect(find.text('Add internship'), findsOneWidget);
     expect(find.text('Add project'), findsOneWidget);
   });
@@ -106,6 +110,7 @@ void main() {
 
     expect(find.text('Replace'), findsNWidgets(2));
     expect(find.text('View'), findsOneWidget);
+    expect(find.byKey(const Key('blueprint-headshot')), findsOneWidget);
   });
 
   testWidgets('employer visibility switch reflects consent state', (tester) async {

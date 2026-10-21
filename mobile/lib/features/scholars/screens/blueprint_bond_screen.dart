@@ -6,11 +6,17 @@ import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/api/api_error.dart';
+import '../../../core/theme/app_radii.dart';
+import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_typography.dart';
+import '../../../shared/widgets/a11y.dart';
 import '../providers/scholars_provider.dart';
 
 part '../widgets/blueprint_bond_form_parts.dart';
+part '../widgets/blueprint_bond_headshot.dart';
 part '../widgets/blueprint_bond_experience.dart';
+part '../widgets/blueprint_bond_status.dart';
 
 /// The Presidential Scholar's professional-extension editor — kept fully separate from the
 /// social profile (own screen, own provider). Verified-scholar-only; the backend 403s anyone
@@ -241,14 +247,25 @@ class _BlueprintBondScreenState extends ConsumerState<BlueprintBondScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: AppColors.surface,
-        title: Text('Blueprint Bond', style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, color: AppColors.textDark)),
+        backgroundColor: AppColors.background,
+        surfaceTintColor: Colors.transparent,
+        scrolledUnderElevation: 0,
+        elevation: 0,
+        centerTitle: false,
+        title: Text(
+          'Blueprint Bond',
+          style: AppTypography.title.copyWith(fontWeight: FontWeight.w800, color: AppColors.textDark),
+        ),
         actions: [
           TextButton(
             onPressed: _saving ? null : _save,
+            style: TextButton.styleFrom(minimumSize: const Size(kMinTouchTarget, kMinTouchTarget)),
             child: _saving
                 ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                : Text('Save', style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, color: AppColors.primary)),
+                : Text(
+                    'Save',
+                    style: AppTypography.label.copyWith(fontWeight: FontWeight.w700, color: AppColors.primary),
+                  ),
           ),
         ],
       ),
@@ -259,108 +276,134 @@ class _BlueprintBondScreenState extends ConsumerState<BlueprintBondScreen> {
         ),
         data: (profile) {
           _initFrom(profile);
-          return ListView(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+          return Column(
             children: [
-              const _PrivacyNote(),
-              const SizedBox(height: 22),
-              const _SectionLabel('Documents'),
-              const SizedBox(height: 10),
-              _FileRow(
-                label: 'Professional headshot',
+              Expanded(child: _buildForm(profile)),
+              if (profile.canSubmitForReview)
+                _SubmitBar(submitting: _submitting, onSubmit: _submitForReview),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildForm(ScholarProfile profile) {
+    bool doneUnless(List<String> fields) =>
+        profile.isComplete || !fields.any(profile.missingFields.contains);
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(AppSpacing.gutter, AppSpacing.xs, AppSpacing.gutter, AppSpacing.xxl),
+      children: [
+        _StatusHeader(profile: profile),
+        _SectionCard(
+          title: 'Documents',
+          requiredDone: doneUnless(const ['headshot', 'resume']),
+          child: Column(
+            children: [
+              _HeadshotRow(
                 hasFile: profile.hasHeadshot,
                 uploading: _uploadingHeadshot,
                 onUpload: _pickAndUploadHeadshot,
               ),
-              const SizedBox(height: 10),
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
+                child: Divider(height: 1, color: AppColors.border),
+              ),
               _FileRow(
-                label: 'Résumé (PDF or Word)',
+                label: 'Résumé',
+                hint: 'PDF or Word',
                 hasFile: profile.hasResume,
                 uploading: _uploadingResume,
                 onUpload: _pickAndUploadResume,
                 onView: profile.hasResume ? _openResume : null,
               ),
-              const SizedBox(height: 24),
-              const _SectionLabel('About you'),
-              const SizedBox(height: 12),
-              _Field(label: 'Professional summary', controller: _summaryCtrl, maxLines: 4),
-              const SizedBox(height: 24),
-              _InternshipSection(
-                items: _internships,
-                onAdd: _addInternship,
-                onRemove: (i) => setState(() => _internships.removeAt(i)),
-                onEdit: _editInternship,
-              ),
-              const SizedBox(height: 24),
-              _ProjectSection(
-                items: _projects,
-                onAdd: _addProject,
-                onRemove: (i) => setState(() => _projects.removeAt(i)),
-                onEdit: _editProject,
-              ),
-              const SizedBox(height: 24),
+            ],
+          ),
+        ),
+        _SectionCard(
+          title: 'About you',
+          requiredDone: doneUnless(const ['summary']),
+          child: _Field(
+            controller: _summaryCtrl,
+            maxLines: 5,
+            hint: 'What you study, what you are good at, and what you are looking for.',
+          ),
+        ),
+        _SectionCard(
+          title: 'Experience',
+          child: _InternshipSection(
+            items: _internships,
+            onAdd: _addInternship,
+            onRemove: (i) => setState(() => _internships.removeAt(i)),
+            onEdit: _editInternship,
+          ),
+        ),
+        _SectionCard(
+          title: 'Projects',
+          child: _ProjectSection(
+            items: _projects,
+            onAdd: _addProject,
+            onRemove: (i) => setState(() => _projects.removeAt(i)),
+            onEdit: _editProject,
+          ),
+        ),
+        _SectionCard(
+          title: 'Skills & interests',
+          requiredDone: doneUnless(const ['skills', 'career_interests']),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
               _TagInput(
                 label: 'Skills',
+                hint: 'e.g. Python, public speaking',
                 controller: _skillCtrl,
                 tags: _skills,
                 onAdd: () => _addTag(_skillCtrl, _skills),
                 onRemove: (t) => setState(() => _skills.remove(t)),
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: AppSpacing.lg),
               _TagInput(
                 label: 'Career interests',
+                hint: 'e.g. Software engineering',
                 controller: _careerCtrl,
                 tags: _careerInterests,
                 onAdd: () => _addTag(_careerCtrl, _careerInterests),
                 onRemove: (t) => setState(() => _careerInterests.remove(t)),
               ),
-              const SizedBox(height: 24),
-              const _SectionLabel('Links'),
-              const SizedBox(height: 12),
-              _Field(label: 'LinkedIn URL', controller: _linkedinCtrl),
-              const SizedBox(height: 14),
-              _Field(label: 'Handshake URL', controller: _handshakeCtrl),
-              const SizedBox(height: 26),
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.border),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Visible to employers', style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, color: AppColors.textDark)),
-                          const SizedBox(height: 2),
-                          Text(
-                            'Consent is required; Honors approval publishes you to partners.',
-                            style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textMuted, height: 1.35),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Switch(
-                      value: profile.employerVisibilityConsent,
-                      activeTrackColor: AppColors.primary,
-                      onChanged: _toggleConsent,
-                    ),
-                  ],
-                ),
+            ],
+          ),
+        ),
+        _SectionCard(
+          title: 'Links',
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _Field(
+                label: 'LinkedIn URL',
+                controller: _linkedinCtrl,
+                hint: 'linkedin.com/in/…',
+                keyboardType: TextInputType.url,
               ),
-              const SizedBox(height: 16),
-              _ReviewStatusCard(
-                profile: profile,
-                submitting: _submitting,
-                onSubmit: profile.canSubmitForReview ? _submitForReview : null,
+              const SizedBox(height: AppSpacing.md),
+              _Field(
+                label: 'Handshake URL',
+                controller: _handshakeCtrl,
+                hint: 'Optional',
+                keyboardType: TextInputType.url,
               ),
             ],
-          );
-        },
-      ),
+          ),
+        ),
+        _SectionCard(
+          title: 'Employer visibility',
+          requiredDone: doneUnless(const ['employer_visibility_consent']),
+          child: _ConsentRow(
+            value: profile.employerVisibilityConsent,
+            onChanged: _toggleConsent,
+          ),
+        ),
+      ],
     );
   }
 }

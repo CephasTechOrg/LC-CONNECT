@@ -2,7 +2,7 @@ part of '../screens/blueprint_bond_screen.dart';
 
 const _kMaxExperienceEntries = 5;
 
-/// Editable list of internships / experience rows (optional enrichment for employers).
+/// Internship / experience entries + add button — the body of the Experience card.
 class _InternshipSection extends StatelessWidget {
   final List<ScholarInternship> items;
   final VoidCallback onAdd;
@@ -18,23 +18,13 @@ class _InternshipSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const _SectionLabel('Experience'),
-        const SizedBox(height: 6),
-        Text(
-          'Internships and relevant roles (optional, up to $_kMaxExperienceEntries).',
-          style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textMuted, height: 1.35),
-        ),
-        const SizedBox(height: 10),
-        if (items.isEmpty)
-          Text(
-            'No experience added yet.',
-            style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.textMuted),
-          ),
-        for (var i = 0; i < items.length; i++) ...[
-          if (i > 0) const SizedBox(height: 8),
+    return _EntryList(
+      emptyText: 'No experience added yet.',
+      addLabel: 'Add internship',
+      canAdd: items.length < _kMaxExperienceEntries,
+      onAdd: onAdd,
+      entries: [
+        for (var i = 0; i < items.length; i++)
           _ExperienceCard(
             title: items[i].title,
             subtitle: items[i].organization,
@@ -43,16 +33,6 @@ class _InternshipSection extends StatelessWidget {
             onEdit: () => onEdit(i, items[i]),
             onRemove: () => onRemove(i),
           ),
-        ],
-        const SizedBox(height: 8),
-        TextButton.icon(
-          onPressed: items.length >= _kMaxExperienceEntries ? null : onAdd,
-          icon: const Icon(Icons.add_rounded, size: 18),
-          label: Text(
-            'Add internship',
-            style: GoogleFonts.dmSans(fontWeight: FontWeight.w600),
-          ),
-        ),
       ],
     );
   }
@@ -67,7 +47,7 @@ class _InternshipSection extends StatelessWidget {
   }
 }
 
-/// Editable list of projects (optional).
+/// Project entries + add button — the body of the Projects card.
 class _ProjectSection extends StatelessWidget {
   final List<ScholarProject> items;
   final VoidCallback onAdd;
@@ -83,23 +63,13 @@ class _ProjectSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const _SectionLabel('Projects'),
-        const SizedBox(height: 6),
-        Text(
-          'Projects you want partners to see (optional, up to $_kMaxExperienceEntries).',
-          style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textMuted, height: 1.35),
-        ),
-        const SizedBox(height: 10),
-        if (items.isEmpty)
-          Text(
-            'No projects added yet.',
-            style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.textMuted),
-          ),
-        for (var i = 0; i < items.length; i++) ...[
-          if (i > 0) const SizedBox(height: 8),
+    return _EntryList(
+      emptyText: 'No projects added yet.',
+      addLabel: 'Add project',
+      canAdd: items.length < _kMaxExperienceEntries,
+      onAdd: onAdd,
+      entries: [
+        for (var i = 0; i < items.length; i++)
           _ExperienceCard(
             title: items[i].name,
             subtitle: items[i].role,
@@ -108,16 +78,45 @@ class _ProjectSection extends StatelessWidget {
             onEdit: () => onEdit(i, items[i]),
             onRemove: () => onRemove(i),
           ),
-        ],
-        const SizedBox(height: 8),
-        TextButton.icon(
-          onPressed: items.length >= _kMaxExperienceEntries ? null : onAdd,
-          icon: const Icon(Icons.add_rounded, size: 18),
-          label: Text(
-            'Add project',
-            style: GoogleFonts.dmSans(fontWeight: FontWeight.w600),
+      ],
+    );
+  }
+}
+
+class _EntryList extends StatelessWidget {
+  final String emptyText;
+  final String addLabel;
+  final bool canAdd;
+  final VoidCallback onAdd;
+  final List<Widget> entries;
+
+  const _EntryList({
+    required this.emptyText,
+    required this.addLabel,
+    required this.canAdd,
+    required this.onAdd,
+    required this.entries,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (entries.isEmpty)
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.md),
+            child: Text(
+              emptyText,
+              style: AppTypography.bodySmall.copyWith(color: AppColors.textMuted),
+            ),
           ),
-        ),
+        for (final entry in entries) ...[
+          entry,
+          const SizedBox(height: AppSpacing.sm),
+        ],
+        if (entries.isNotEmpty) const SizedBox(height: AppSpacing.xs),
+        _AddEntryButton(label: addLabel, onTap: canAdd ? onAdd : null),
       ],
     );
   }
@@ -143,11 +142,10 @@ class _ExperienceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(12, 10, 4, 10),
+      padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.md, 0, AppSpacing.md),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.border),
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(AppRadii.md),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -158,27 +156,22 @@ class _ExperienceCard extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: GoogleFonts.dmSans(
-                    fontSize: 14,
+                  style: AppTypography.body.copyWith(
                     fontWeight: FontWeight.w700,
                     color: AppColors.textDark,
                   ),
                 ),
-                if (subtitle != null && subtitle!.isNotEmpty) ...[
-                  const SizedBox(height: 2),
-                  Text(subtitle!, style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.textMid)),
-                ],
-                if (meta != null && meta!.isNotEmpty) ...[
-                  const SizedBox(height: 2),
-                  Text(meta!, style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textMuted)),
-                ],
+                if (subtitle != null && subtitle!.isNotEmpty)
+                  Text(subtitle!, style: AppTypography.bodySmall.copyWith(color: AppColors.textMid)),
+                if (meta != null && meta!.isNotEmpty)
+                  Text(meta!, style: AppTypography.caption.copyWith(color: AppColors.textMuted)),
                 if (description != null && description!.isNotEmpty) ...[
-                  const SizedBox(height: 4),
+                  const SizedBox(height: AppSpacing.xs),
                   Text(
                     description!,
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.dmSans(fontSize: 12.5, color: AppColors.textMid, height: 1.35),
+                    style: AppTypography.bodySmall.copyWith(color: AppColors.textMid, height: 1.35),
                   ),
                 ],
               ],
@@ -234,7 +227,7 @@ Future<ScholarInternship?> showInternshipEditor(
                 children: [
                   Text(
                     initial == null ? 'Add internship' : 'Edit internship',
-                    style: GoogleFonts.dmSans(fontSize: 17, fontWeight: FontWeight.w700),
+                    style: AppTypography.title.copyWith(fontWeight: FontWeight.w700, color: AppColors.textDark),
                   ),
                   const SizedBox(height: 14),
                   _Field(label: 'Role / title', controller: titleCtrl),
@@ -245,7 +238,7 @@ Future<ScholarInternship?> showInternshipEditor(
                   const SizedBox(height: 12),
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: Text('Currently in this role', style: GoogleFonts.dmSans(fontSize: 14)),
+                    title: Text('Currently in this role', style: AppTypography.body.copyWith(color: AppColors.textDark)),
                     value: isCurrent,
                     activeTrackColor: AppColors.primary,
                     onChanged: (v) => setModal(() => isCurrent = v),
@@ -272,7 +265,11 @@ Future<ScholarInternship?> showInternshipEditor(
                         description: descCtrl.text.trim().isEmpty ? null : descCtrl.text.trim(),
                       ));
                     },
-                    style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      minimumSize: const Size.fromHeight(kMinTouchTarget),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.lg)),
+                    ),
                     child: Text('Save', style: GoogleFonts.dmSans(fontWeight: FontWeight.w700)),
                   ),
                 ],
@@ -322,7 +319,7 @@ Future<ScholarProject?> showProjectEditor(
             children: [
               Text(
                 initial == null ? 'Add project' : 'Edit project',
-                style: GoogleFonts.dmSans(fontSize: 17, fontWeight: FontWeight.w700),
+                style: AppTypography.title.copyWith(fontWeight: FontWeight.w700, color: AppColors.textDark),
               ),
               const SizedBox(height: 14),
               _Field(label: 'Project name', controller: nameCtrl),
@@ -344,7 +341,11 @@ Future<ScholarProject?> showProjectEditor(
                     description: descCtrl.text.trim().isEmpty ? null : descCtrl.text.trim(),
                   ));
                 },
-                style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
+                style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      minimumSize: const Size.fromHeight(kMinTouchTarget),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.lg)),
+                    ),
                 child: Text('Save', style: GoogleFonts.dmSans(fontWeight: FontWeight.w700)),
               ),
             ],

@@ -17,6 +17,7 @@ from uuid import UUID
 from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.config import settings
 from app.features.campus_hub.schema import CampusPostCreate, CampusPostUpdate, categories_for_kind
@@ -37,7 +38,13 @@ def _post_snapshot(post: CampusPost) -> dict[str, str | None]:
 
 
 async def get_post_or_404(db: AsyncSession, post_id: UUID) -> CampusPost:
-    post = await db.get(CampusPost, post_id)
+    post = (
+        await db.execute(
+            select(CampusPost)
+            .where(CampusPost.id == post_id)
+            .options(selectinload(CampusPost.images))
+        )
+    ).scalar_one_or_none()
     if post is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Campus post not found')
     return post
@@ -79,16 +86,28 @@ def _assert_staff_priority(payload_priority: str | None) -> None:
         )
 
 
-def _assert_owner_or_admin(*, actor: User, post: CampusPost) -> None:
+def require_post_owner_or_admin(*, actor: User, post: CampusPost) -> None:
     if actor.role == 'admin':
         return
     if post.author_id != actor.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='You can only manage your own posts')
 
 
+_assert_owner_or_admin = require_post_owner_or_admin
+
+
 async def list_all_posts(db: AsyncSession, *, limit: int = 100) -> list[CampusPost]:
     return list(
-        (await db.execute(select(CampusPost).order_by(CampusPost.updated_at.desc()).limit(limit))).scalars().all()
+        (
+            await db.execute(
+                select(CampusPost)
+                .options(selectinload(CampusPost.images))
+                .order_by(CampusPost.updated_at.desc())
+                .limit(limit)
+            )
+        )
+        .scalars()
+        .all()
     )
 
 
@@ -98,10 +117,13 @@ async def list_author_posts(db: AsyncSession, *, author_id: UUID, limit: int = 1
             await db.execute(
                 select(CampusPost)
                 .where(CampusPost.author_id == author_id)
+                .options(selectinload(CampusPost.images))
                 .order_by(CampusPost.updated_at.desc())
                 .limit(limit)
             )
-        ).scalars().all()
+        )
+        .scalars()
+        .all()
     )
 
 
@@ -134,8 +156,7 @@ async def create_post(
         after_data=_post_snapshot(post),
     )
     await db.commit()
-    await db.refresh(post)
-    return post
+    return await get_post_or_404(db, post.id)
 
 
 async def update_post(
@@ -204,8 +225,7 @@ async def update_post(
         after_data=_post_snapshot(post),
     )
     await db.commit()
-    await db.refresh(post)
-    return post
+    return await get_post_or_404(db, post.id)
 
 
 async def publish_post(
@@ -240,7 +260,7 @@ async def publish_post(
         after_data=_post_snapshot(post),
     )
     await db.commit()
-    await db.refresh(post)
+    post = await get_post_or_404(db, post.id)
     # Live ping so hub badges tick up the moment a post goes live. Scheduled (future publish_at)
     # posts wait — nothing to show yet. Fully isolated: the post is already committed, so a
     # realtime hiccup (or import error) must never fail the publish.
@@ -284,8 +304,7 @@ async def archive_post(
         after_data=_post_snapshot(post),
     )
     await db.commit()
-    await db.refresh(post)
-    return post
+    return await get_post_or_404(db, post.id)
 
 
 def should_push_on_publish(post: CampusPost, *, now: datetime | None = None) -> bool:

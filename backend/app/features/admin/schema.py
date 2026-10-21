@@ -4,7 +4,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
-from app.features.campus_hub.schema import LinkPreviewRead
+from app.features.campus_hub.schema import CampusPostImageRead, LinkPreviewRead
 from app.features.campus_positions.schema import CampusPositionRead
 from app.features.employers.schema import EmployerOrganizationRead, OpportunitySubmissionRead
 from app.features.programs.schema import ProgramMembershipRead
@@ -162,6 +162,7 @@ class CampusPostAdminRead(BaseModel):
     expires_at: datetime | None
     external_url: str | None
     link_preview: LinkPreviewRead | None = None
+    images: list[CampusPostImageRead] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
 

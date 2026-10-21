@@ -4,22 +4,28 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends, File, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.database import get_db
 from app.dependencies import require_verified_user
+from app.features.campus_hub import images as post_images
 from app.features.campus_hub import publishing
 from app.features.campus_hub.schema import (
     AuthorCampusPostRead,
     CampusPostCreate,
+    CampusPostImageReorder,
     CampusPostUpdate,
     PublishingCapabilitiesRead,
 )
 from app.models import CampusPost, User
 from app.shared.link_preview import link_preview_dict
-from app.shared.rate_limit import campus_post_create_limit, campus_post_publish_limit
+from app.shared.rate_limit import (
+    campus_post_create_limit,
+    campus_post_image_upload_limit,
+    campus_post_publish_limit,
+)
 
 router = APIRouter(tags=['campus-hub'])
 
@@ -27,6 +33,7 @@ router = APIRouter(tags=['campus-hub'])
 def _author_read(post: CampusPost) -> AuthorCampusPostRead:
     data = AuthorCampusPostRead.model_validate(post).model_dump()
     data['link_preview'] = link_preview_dict(post)
+    data['images'] = post_images.serialized_images(post)
     return AuthorCampusPostRead.model_validate(data)
 
 
@@ -111,4 +118,48 @@ async def archive_my_post(
     db: AsyncSession = Depends(get_db),
 ) -> AuthorCampusPostRead:
     post = await publishing.archive_post(db, actor=current_user, post_id=post_id, as_staff=True)
+    return _author_read(post)
+
+
+@router.post(
+    '/my-posts/{post_id}/images',
+    response_model=AuthorCampusPostRead,
+    status_code=201,
+)
+async def upload_my_post_image(
+    post_id: UUID,
+    file: UploadFile = File(...),
+    current_user: User = Depends(campus_post_image_upload_limit),
+    db: AsyncSession = Depends(get_db),
+) -> AuthorCampusPostRead:
+    data = await post_images.read_upload(file)
+    post = await post_images.add_image(
+        db, actor=current_user, post_id=post_id, data=data, as_staff=True
+    )
+    return _author_read(post)
+
+
+@router.patch('/my-posts/{post_id}/images/reorder', response_model=AuthorCampusPostRead)
+async def reorder_my_post_images(
+    post_id: UUID,
+    payload: CampusPostImageReorder,
+    current_user: User = Depends(require_verified_user),
+    db: AsyncSession = Depends(get_db),
+) -> AuthorCampusPostRead:
+    post = await post_images.reorder_images(
+        db, actor=current_user, post_id=post_id, image_ids=payload.image_ids, as_staff=True
+    )
+    return _author_read(post)
+
+
+@router.delete('/my-posts/{post_id}/images/{image_id}', response_model=AuthorCampusPostRead)
+async def delete_my_post_image(
+    post_id: UUID,
+    image_id: UUID,
+    current_user: User = Depends(require_verified_user),
+    db: AsyncSession = Depends(get_db),
+) -> AuthorCampusPostRead:
+    post = await post_images.delete_image(
+        db, actor=current_user, post_id=post_id, image_id=image_id, as_staff=True
+    )
     return _author_read(post)

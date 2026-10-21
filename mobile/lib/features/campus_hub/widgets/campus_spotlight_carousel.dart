@@ -21,12 +21,6 @@ class _SpotlightCarousel extends StatefulWidget {
 }
 
 class _SpotlightCarouselState extends State<_SpotlightCarousel> {
-  /// How long each slide holds before advancing.
-  ///
-  /// Ten seconds: unhurried enough to read a headline plus its description without feeling
-  /// rushed, still quick enough that a student who lingers sees all three. Much slower than
-  /// this and most would only ever see slide one, which defeats having the other two.
-  static const _dwell = Duration(seconds: 10);
   static const _slide = Duration(milliseconds: 420);
 
   final _controller = PageController();
@@ -46,10 +40,17 @@ class _SpotlightCarouselState extends State<_SpotlightCarousel> {
     super.dispose();
   }
 
+  Duration get _dwell => campusSpotlights[_index].dwell;
+
   void _restartTimer() {
     _timer?.cancel();
     if (campusSpotlights.length < 2) return;
-    _timer = Timer.periodic(_dwell, (_) => _advance());
+    _timer = Timer(_dwell, _onDwell);
+  }
+
+  void _onDwell() {
+    if (!mounted) return;
+    _advance();
   }
 
   void _advance() {
@@ -88,14 +89,17 @@ class _SpotlightCarouselState extends State<_SpotlightCarousel> {
               // full turn instead of sliding away a moment later.
               onNotification: (n) {
                 if (n is ScrollStartNotification && n.dragDetails != null) {
-                  _restartTimer();
+                  _timer?.cancel();
                 }
                 return false;
               },
               child: PageView.builder(
                 controller: _controller,
                 itemCount: campusSpotlights.length,
-                onPageChanged: (i) => setState(() => _index = i),
+                onPageChanged: (i) {
+                  setState(() => _index = i);
+                  _restartTimer();
+                },
                 itemBuilder: (_, i) =>
                     _SpotlightCard(spotlight: campusSpotlights[i]),
               ),
@@ -107,7 +111,6 @@ class _SpotlightCarouselState extends State<_SpotlightCarousel> {
             count: campusSpotlights.length,
             active: _index,
             onTap: (i) {
-              _restartTimer();
               _controller.animateToPage(
                 i,
                 duration: _slide,
@@ -378,7 +381,7 @@ class _SpotlightContent extends StatelessWidget {
               height: 1,
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 10),
           ConstrainedBox(
             constraints: BoxConstraints(maxWidth: copyWidth),
             child: Text.rich(
@@ -405,11 +408,12 @@ class _SpotlightContent extends StatelessWidget {
               ),
               style: AppTypography.titleLarge.copyWith(
                 fontWeight: FontWeight.w800,
+                height: 1.15,
                 color: AppColors.textDark,
               ),
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           ConstrainedBox(
             constraints: BoxConstraints(maxWidth: copyWidth - 15),
             child: Text(

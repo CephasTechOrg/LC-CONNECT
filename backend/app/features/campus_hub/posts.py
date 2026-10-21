@@ -9,8 +9,10 @@ from fastapi import HTTPException, status
 from sqlalchemy import func, or_, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.features.campus_hub.content_visibility import is_post_visible, published_posts_stmt
+from app.features.campus_hub.images import serialized_images
 from app.models import CampusPost, CampusPostRead, User
 from app.shared.link_preview import link_preview_dict
 
@@ -27,6 +29,7 @@ def _summary(post: CampusPost, *, read: bool = False) -> dict:
         'expires_at': post.expires_at,
         'external_url': post.external_url,
         'link_preview': link_preview_dict(post),
+        'images': serialized_images(post),
         'read': read,
         'source': post.source,
         'is_blueprint_bond': post.eligible_program_slug is not None,
@@ -71,7 +74,11 @@ async def list_posts(
     limit: int = 50,
     offset: int = 0,
 ) -> list[dict]:
-    stmt = published_posts_stmt(user=user).add_columns(_seen(user).label('read'))
+    stmt = (
+        published_posts_stmt(user=user)
+        .options(selectinload(CampusPost.images))
+        .add_columns(_seen(user).label('read'))
+    )
     if kind:
         stmt = stmt.where(CampusPost.kind == kind.strip().lower())
     if priority:
@@ -85,7 +92,11 @@ async def list_posts(
 
 
 async def get_post(db: AsyncSession, *, user: User, post_id: UUID) -> dict:
-    post = await db.get(CampusPost, post_id)
+    post = (
+        await db.execute(
+            select(CampusPost).where(CampusPost.id == post_id).options(selectinload(CampusPost.images))
+        )
+    ).scalar_one_or_none()
     if post is None or not await is_post_visible(db, post, user=user):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Campus post not found')
     return _detail(post)
@@ -93,7 +104,11 @@ async def get_post(db: AsyncSession, *, user: User, post_id: UUID) -> dict:
 
 async def build_overview(db: AsyncSession, *, user: User) -> dict:
     now = datetime.now(UTC)
-    base = published_posts_stmt(user=user, now=now).add_columns(_seen(user).label('read'))
+    base = (
+        published_posts_stmt(user=user, now=now)
+        .options(selectinload(CampusPost.images))
+        .add_columns(_seen(user).label('read'))
+    )
     urgent = (
         await db.execute(
             base.where(CampusPost.priority == 'urgent').order_by(CampusPost.publish_at.desc()).limit(3)

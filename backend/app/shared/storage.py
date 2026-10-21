@@ -78,6 +78,29 @@ class SupabaseStorageService:
             except Exception:
                 pass
 
+    def upload_campus_post_image(
+        self, post_id: UUID, image_id: UUID, content_type: str, data: bytes
+    ) -> tuple[str, str]:
+        """Store a sanitized announcement photo and return ``(object_path, public_url)``.
+
+        Path is ``campus-posts/{post_id}/{image_id}.jpg`` — a generated name, never the
+        uploader's filename. Using the image UUID (not sort order) means reorder does
+        not move objects in the bucket.
+        """
+        prefix = f'campus-posts/{post_id}'
+        name = str(image_id)
+        url = self._upload_image(prefix, name, content_type, data)
+        return f'{prefix}/{name}.jpg', url
+
+    def delete_campus_post_image(self, object_path: str) -> None:
+        """Best-effort removal of one announcement photo. Never raises."""
+        if self.client is None or not object_path:
+            return
+        try:
+            self.client.storage.from_(settings.supabase_profile_bucket).remove([object_path])
+        except Exception:
+            pass
+
     # ── Blueprint Bond: private scholar files (headshot / résumé) ───────────────────
     # A separate PRIVATE bucket, never `supabase_profile_bucket` (public). Uploads return only
     # the object *path* — never a URL. Every read goes through `scholar_signed_url`, generated

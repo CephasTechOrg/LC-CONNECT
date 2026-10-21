@@ -1,9 +1,21 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint, func, text
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
+    text,
+)
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
 
@@ -101,6 +113,34 @@ class CampusPost(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
+    images: Mapped[list['CampusPostImage']] = relationship(
+        back_populates='post',
+        cascade='all, delete-orphan',
+        order_by='CampusPostImage.sort_order',
+    )
+
+
+class CampusPostImage(Base):
+    """Sanitized JPEG attached to a campus post. Cover is sort_order 0; cap is 4 (0–3)."""
+
+    __tablename__ = 'campus_post_images'
+    __table_args__ = (
+        UniqueConstraint('post_id', 'sort_order', name='uq_campus_post_image_sort'),
+        CheckConstraint('sort_order >= 0 AND sort_order <= 3', name='ck_campus_post_image_sort'),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    post_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey('campus_posts.id', ondelete='CASCADE'), index=True, nullable=False
+    )
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False)
+    object_path: Mapped[str] = mapped_column(String(400), nullable=False)
+    public_url: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+    post: Mapped[CampusPost] = relationship(back_populates='images')
 
 
 class CampusPostRead(Base):

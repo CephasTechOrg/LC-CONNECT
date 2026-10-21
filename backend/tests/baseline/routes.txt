@@ -1,8 +1,10 @@
 DELETE /api/v1/account
 DELETE /api/v1/activities/{activity_id}/leave
 DELETE /api/v1/admin/campus-posts/{post_id}
+DELETE /api/v1/admin/campus-posts/{post_id}/images/{image_id}
 DELETE /api/v1/admin/campus-resources/{resource_id}
 DELETE /api/v1/blocks/{user_id}
+DELETE /api/v1/campus-hub/my-posts/{post_id}/images/{image_id}
 DELETE /api/v1/devices/{token}
 DELETE /api/v1/groups/{group_id}
 DELETE /api/v1/groups/{group_id}/members/me
@@ -93,8 +95,10 @@ GET /health/ready
 PATCH /api/v1/activities/{activity_id}
 PATCH /api/v1/admin/attendance/records/{record_id}
 PATCH /api/v1/admin/campus-posts/{post_id}
+PATCH /api/v1/admin/campus-posts/{post_id}/images/reorder
 PATCH /api/v1/admin/campus-resources/{resource_id}
 PATCH /api/v1/campus-hub/my-posts/{post_id}
+PATCH /api/v1/campus-hub/my-posts/{post_id}/images/reorder
 PATCH /api/v1/campus-positions/me
 PATCH /api/v1/groups/{group_id}
 PATCH /api/v1/groups/{group_id}/members/me
@@ -119,6 +123,7 @@ POST /api/v1/admin/campus-positions/{position_id}/reject
 POST /api/v1/admin/campus-positions/{position_id}/revoke
 POST /api/v1/admin/campus-posts
 POST /api/v1/admin/campus-posts/{post_id}/archive
+POST /api/v1/admin/campus-posts/{post_id}/images
 POST /api/v1/admin/campus-posts/{post_id}/publish
 POST /api/v1/admin/campus-resources
 POST /api/v1/admin/employers/opportunities/{submission_id}/approve
@@ -148,6 +153,7 @@ POST /api/v1/campus-hub/announcements/read
 POST /api/v1/campus-hub/announcements/{post_id}/read
 POST /api/v1/campus-hub/my-posts
 POST /api/v1/campus-hub/my-posts/{post_id}/archive
+POST /api/v1/campus-hub/my-posts/{post_id}/images
 POST /api/v1/campus-hub/my-posts/{post_id}/publish
 POST /api/v1/campus-positions/me
 POST /api/v1/connections/disconnect/{user_id}

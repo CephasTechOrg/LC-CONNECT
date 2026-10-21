@@ -24,8 +24,13 @@ void main() {
           .join(' ');
 
       test('"$headline"', () {
-        expect(headline.length, lessThanOrEqualTo(maxHeadline),
-            reason: 'headline wraps past two lines and pushes the description out');
+        expect(s.headline.length, lessThanOrEqualTo(3),
+            reason: 'explicit line breaks past three lines crowd the card');
+        for (final line in s.headline) {
+          final text = line.map((w) => w.text).join();
+          expect(text.length, lessThanOrEqualTo(maxHeadline),
+              reason: 'a headline line wraps and pushes the description out');
+        }
         expect(s.description.length, lessThanOrEqualTo(maxDescription),
             reason: 'description needs a third line, crowding the card');
         expect(s.studentAsset, isNotNull,
@@ -40,6 +45,17 @@ void main() {
         expect(s.studentAsset, endsWith('.webp'),
             reason: 'PNG photos ship ~20x larger than WebP at this size');
       }
+    });
+
+    test('Blue Bear leads, then volleyball, then the cap, and holds 12s', () {
+      expect(campusSpotlights.map((s) => s.studentAsset).toList(), [
+        'assets/images/lcbear.webp',
+        'assets/images/spotlight_student.webp',
+        'assets/images/lcgrad.webp',
+      ]);
+      expect(campusSpotlights.first.dwell, const Duration(seconds: 12));
+      expect(campusSpotlights[1].dwell, const Duration(seconds: 10));
+      expect(campusSpotlights[2].dwell, const Duration(seconds: 10));
     });
   });
 }
