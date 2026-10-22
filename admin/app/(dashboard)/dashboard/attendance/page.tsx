@@ -154,8 +154,11 @@ export default function AttendanceLandingPage() {
         )}
       </section>
 
-      <div className="ops-toolbar" style={{ marginTop: 22 }}>
-        <strong>Recent sessions</strong>
+      <div style={{ marginTop: 22, marginBottom: 14 }}>
+        <strong>Session history</strong>
+        <p className="ops-cell-sub" style={{ marginTop: 4, marginBottom: 0 }}>
+          Open a closed session to see who was present or absent and make corrections.
+        </p>
       </div>
 
       {history.length === 0 ? (
@@ -168,28 +171,44 @@ export default function AttendanceLandingPage() {
                 <th>Session</th>
                 <th>When</th>
                 <th>Present</th>
+                <th>Absent</th>
                 <th>Status</th>
+                <th className="ops-col-actions" />
               </tr>
             </thead>
             <tbody>
-              {history.map((item) => (
-                <tr key={item.session.id}>
-                  <td>
-                    <div className="ops-user-cell-text">
-                      <Link href={`/dashboard/attendance/${item.session.id}`} className="ops-cell-title">
-                        {item.session.title}
+              {history.map((item) => {
+                const href = `/dashboard/attendance/${item.session.id}`;
+                const isOpen = item.session.status === 'open';
+                return (
+                  <tr
+                    key={item.session.id}
+                    className="attendance-history-row"
+                    onClick={() => router.push(href)}
+                  >
+                    <td>
+                      <div className="ops-cell-title">{item.session.title}</div>
+                    </td>
+                    <td data-label="When">{formatDate(item.session.opened_at)}</td>
+                    <td data-label="Present">{item.present_count + item.late_count}</td>
+                    <td data-label="Absent">{item.absent_count}</td>
+                    <td data-label="Status">
+                      <span className={isOpen ? 'ops-chip success' : 'ops-chip muted'}>
+                        {item.session.status}
+                      </span>
+                    </td>
+                    <td className="ops-cell-actions">
+                      <Link
+                        className={isOpen ? 'ops-btn primary' : 'ops-btn'}
+                        href={href}
+                        onClick={(event) => event.stopPropagation()}
+                      >
+                        {isOpen ? 'Open' : 'Review'}
                       </Link>
-                    </div>
-                  </td>
-                  <td data-label="When">{formatDate(item.session.opened_at)}</td>
-                  <td data-label="Present">
-                    {item.present_count + item.late_count} / {item.honors_student_count}
-                  </td>
-                  <td data-label="Status" style={{ textTransform: 'capitalize' }}>
-                    {item.session.status}
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

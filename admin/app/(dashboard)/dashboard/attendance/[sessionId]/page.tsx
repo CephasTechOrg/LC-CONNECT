@@ -3,30 +3,27 @@
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { AttendanceCorrectionDrawer } from '@/components/attendance/AttendanceCorrectionDrawer';
 import { AttendanceFeatureDisabled } from '@/components/attendance/AttendanceFeatureDisabled';
 import { AttendanceQrDisplay } from '@/components/attendance/AttendanceQrDisplay';
-import { OpsEmpty, OpsLoading } from '@/components/ops-states';
-import type {
-  AttendanceQRPayload,
-  AttendanceRoster,
-  AttendanceRosterEntry,
-} from '@/lib/api/attendance';
+import { AttendanceRosterList } from '@/components/attendance/AttendanceRosterList';
 import {
-  fetchHonorsAttendanceStatus,
-  isAttendanceDisabledError,
-} from '@/lib/api/attendance';
+  formatAttendanceDateTime,
+  formatAttendanceTime,
+  sortRosterEntries,
+  studentLabel,
+  type AttendanceStatus,
+  type AttendanceStatusFilter,
+} from '@/components/attendance/attendance-ui';
+import { OpsEmpty, OpsLoading } from '@/components/ops-states';
+import type { AttendanceQRPayload, AttendanceRoster, AttendanceRosterEntry } from '@/lib/api/attendance';
+import { fetchHonorsAttendanceStatus, isAttendanceDisabledError } from '@/lib/api/attendance';
 import { apiFetch, toUserMessage } from '@/lib/api/client';
 import { getAccessToken } from '@/lib/auth/session';
 import '../attendance.css';
 
 const ROSTER_POLL_MS = 3000;
 const QR_POLL_MS = 8000;
-
-function formatTime(iso: string | null): string {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-}
 
 function sessionEndAt(session: AttendanceRoster['session']): Date {
   return new Date(session.late_until ?? session.present_until);
@@ -39,14 +36,6 @@ function remainingLabel(session: AttendanceRoster['session']): string {
   const mins = Math.floor(diffMs / 60000);
   const secs = Math.floor((diffMs % 60000) / 1000);
   return `${mins}:${secs.toString().padStart(2, '0')} remaining`;
-}
-
-function statusChip(status: string | null): string {
-  if (status === 'present') return 'ops-chip success';
-  if (status === 'late') return 'ops-chip warn';
-  if (status === 'absent') return 'ops-chip danger';
-  if (status === 'excused') return 'ops-chip';
-  return 'ops-chip';
 }
 
 export default function AttendanceSessionPage() {
@@ -63,8 +52,7 @@ export default function AttendanceSessionPage() {
   const [flash, setFlash] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [editing, setEditing] = useState<AttendanceRosterEntry | null>(null);
-  const [newStatus, setNewStatus] = useState<'present' | 'late' | 'absent' | 'excused'>('present');
-  const [reason, setReason] = useState('');
+  const [statusFilter, setStatusFilter] = useState<AttendanceStatusFilter>('all');
   const [liveStale, setLiveStale] = useState(false);
 
   const loadRoster = useCallback(async () => {
@@ -110,8 +98,6 @@ export default function AttendanceSessionPage() {
 
   useEffect(() => {
     if (!isOpen) return;
-    // Polls keep the last good data on failure (the screen never wipes mid-class); a transient
-    // network blip just flags the live feed as stale until the next poll succeeds.
     const rosterTimer = setInterval(() => {
       void loadRoster()
         .then((data) => {
@@ -139,22 +125,11 @@ export default function AttendanceSessionPage() {
     const term = search.trim().toLowerCase();
     const matches = term
       ? roster.entries.filter((entry) => {
-          // Email too: the roster shows it under every name, so it is the obvious thing to
-          // paste in when looking someone up, and searching it used to silently fail.
-          const name = (entry.display_name || entry.email).toLowerCase();
+          const name = studentLabel(entry).toLowerCase();
           return name.includes(term) || entry.email.toLowerCase().includes(term);
         })
       : roster.entries;
-
-    // Alphabetical, always. The API returns membership order, which looks arbitrary to an admin
-    // scanning for one student. Sorting by check-in time was the alternative, but it makes rows
-    // jump as people scan — the stats row and the recent-check-ins panel already cover activity;
-    // this list's job is being findable.
-    return [...matches].sort((a, b) =>
-      (a.display_name || a.email).localeCompare(b.display_name || b.email, undefined, {
-        sensitivity: 'base',
-      }),
-    );
+    return sortRosterEntries(matches);
   }, [roster, search]);
 
   const recentCheckIns = useMemo(() => {
@@ -179,6 +154,7 @@ export default function AttendanceSessionPage() {
       const data = await loadRoster();
       setRoster(data);
       setQr(null);
+      setStatusFilter('all');
       setFlash('Attendance ended. Absent rows were recorded for students who did not check in.');
     } catch (err) {
       setFlash(toUserMessage(err, 'Could not end attendance.'));
@@ -187,19 +163,18 @@ export default function AttendanceSessionPage() {
     }
   }
 
-  async function saveCorrection() {
-    if (!editing?.record_id) return;
+  async function saveCorrection(entry: AttendanceRosterEntry, status: AttendanceStatus, reason: string) {
+    if (!entry.record_id) return;
     setBusy(true);
     setFlash(null);
     try {
       const token = await getAccessToken();
       if (!token) throw new Error('Not signed in');
-      await apiFetch(`/admin/attendance/records/${editing.record_id}`, token, {
+      await apiFetch(`/admin/attendance/records/${entry.record_id}`, token, {
         method: 'PATCH',
-        body: JSON.stringify({ status: newStatus, reason: reason.trim() }),
+        body: JSON.stringify({ status, reason }),
       });
       setEditing(null);
-      setReason('');
       setRoster(await loadRoster());
       setFlash('Attendance updated.');
     } catch (err) {
@@ -207,6 +182,10 @@ export default function AttendanceSessionPage() {
     } finally {
       setBusy(false);
     }
+  }
+
+  function toggleFilter(next: AttendanceStatusFilter) {
+    setStatusFilter((current) => (current === next ? 'all' : next));
   }
 
   if (loading) return <OpsLoading label="Loading session…" />;
@@ -240,13 +219,17 @@ export default function AttendanceSessionPage() {
           <p>
             {isOpen
               ? `Attendance open · ${remainingLabel(roster.session)}`
-              : `Session closed · ${formatTime(roster.session.closed_at)}`}
+              : `Session closed · ${formatAttendanceDateTime(roster.session.closed_at)}`}
           </p>
           {isOpen ? (
             <span className={`attendance-live-dot ${liveStale ? 'stale' : 'live'}`}>
               {liveStale ? 'Live updates paused — retrying…' : 'Live'}
             </span>
-          ) : null}
+          ) : (
+            <p className="attendance-review-note">
+              Corrections need a reason and are audit-logged. Any honors admin can edit this session.
+            </p>
+          )}
         </div>
         {isOpen ? (
           <button className="ops-btn danger" type="button" onClick={() => void endSession()} disabled={busy}>
@@ -286,22 +269,42 @@ export default function AttendanceSessionPage() {
           </>
         ) : (
           <>
-            <div className="attendance-stat">
+            <button
+              className={`attendance-stat ${statusFilter === 'present' ? 'is-active' : ''}`}
+              type="button"
+              aria-pressed={statusFilter === 'present'}
+              onClick={() => toggleFilter('present')}
+            >
               <strong>{roster.present_count}</strong>
               <span>Present</span>
-            </div>
-            <div className="attendance-stat">
+            </button>
+            <button
+              className={`attendance-stat ${statusFilter === 'late' ? 'is-active' : ''}`}
+              type="button"
+              aria-pressed={statusFilter === 'late'}
+              onClick={() => toggleFilter('late')}
+            >
               <strong>{roster.late_count}</strong>
               <span>Late</span>
-            </div>
-            <div className="attendance-stat">
+            </button>
+            <button
+              className={`attendance-stat ${statusFilter === 'absent' ? 'is-active' : ''}`}
+              type="button"
+              aria-pressed={statusFilter === 'absent'}
+              onClick={() => toggleFilter('absent')}
+            >
               <strong>{roster.absent_count}</strong>
               <span>Absent</span>
-            </div>
-            <div className="attendance-stat">
+            </button>
+            <button
+              className={`attendance-stat ${statusFilter === 'excused' ? 'is-active' : ''}`}
+              type="button"
+              aria-pressed={statusFilter === 'excused'}
+              onClick={() => toggleFilter('excused')}
+            >
               <strong>{roster.excused_count}</strong>
               <span>Excused</span>
-            </div>
+            </button>
           </>
         )}
       </div>
@@ -312,73 +315,16 @@ export default function AttendanceSessionPage() {
         </div>
       ) : null}
 
-      <div className="attendance-live-grid">
-        <section className="ops-table-wrap" style={{ padding: 18 }}>
-          <strong>{isOpen ? 'Live roster' : 'Session review'}</strong>
-          <div className="ops-search" style={{ marginTop: 12, maxWidth: '100%' }}>
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by name or email…"
-              aria-label="Search students"
-            />
-          </div>
-          <table className="ops-table ops-cards-sm" style={{ marginTop: 12 }}>
-            <thead>
-              <tr>
-                <th>Student</th>
-                <th>Status</th>
-                <th>Time</th>
-                {!isOpen ? <th /> : null}
-              </tr>
-            </thead>
-            <tbody>
-              {filteredEntries.map((entry) => (
-                <tr key={entry.student_id}>
-                  <td>
-                    <div className="ops-cell-title">{entry.display_name || entry.email}</div>
-                    <div className="ops-cell-sub">{entry.email}</div>
-                  </td>
-                  <td data-label="Status">
-                    <span className={statusChip(entry.status)}>{entry.status || '—'}</span>
-                  </td>
-                  <td data-label="Checked in">{formatTime(entry.checked_in_at)}</td>
-                  {!isOpen ? (
-                    <td className="ops-cell-actions">
-                      {entry.record_id ? (
-                        <button
-                          className="ops-btn"
-                          type="button"
-                          onClick={() => {
-                            setEditing(entry);
-                            setNewStatus((entry.status as typeof newStatus) || 'present');
-                            setReason('');
-                          }}
-                        >
-                          Edit
-                        </button>
-                      ) : null}
-                    </td>
-                  ) : null}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </section>
+      {isOpen ? (
+        <div className="attendance-live-grid">
+          <section className="ops-table-wrap" style={{ padding: 18 }}>
+            <strong>Live roster</strong>
+            <RosterSearch value={search} onChange={setSearch} />
+            <AttendanceRosterList entries={filteredEntries} mode="live" />
+          </section>
 
-        <section>
-          {isOpen && qr ? (
-            <AttendanceQrDisplay payload={qr as unknown as Record<string, string | number>} />
-          ) : (
-            <div className="ops-table-wrap" style={{ padding: 18 }}>
-              <strong>Session closed</strong>
-              <p className="ops-cell-sub" style={{ marginTop: 8 }}>
-                Select a student below to make a manual correction. All changes require a reason and are audit-logged.
-              </p>
-            </div>
-          )}
-
-          {isOpen ? (
+          <section>
+            {qr ? <AttendanceQrDisplay payload={qr as unknown as Record<string, string | number>} /> : null}
             <div className="ops-table-wrap" style={{ padding: 18, marginTop: 16 }}>
               <strong>Recent check-ins</strong>
               {recentCheckIns.length === 0 ? (
@@ -389,68 +335,52 @@ export default function AttendanceSessionPage() {
                 <ul className="attendance-recent-list" style={{ marginTop: 12 }}>
                   {recentCheckIns.map((entry) => (
                     <li key={`${entry.student_id}-${entry.checked_in_at}`}>
-                      <span>{entry.display_name || entry.email}</span>
-                      <span>{formatTime(entry.checked_in_at)}</span>
+                      <span>{studentLabel(entry)}</span>
+                      <span>{formatAttendanceTime(entry.checked_in_at)}</span>
                     </li>
                   ))}
                 </ul>
               )}
             </div>
-          ) : null}
+          </section>
+        </div>
+      ) : (
+        <section className="ops-table-wrap attendance-review-panel">
+          <strong>Session review</strong>
+          <p className="ops-cell-sub" style={{ marginTop: 6 }}>
+            Names are grouped A–Z. Click a count above to show only that group.
+          </p>
+          <RosterSearch value={search} onChange={setSearch} />
+          <AttendanceRosterList
+            entries={filteredEntries}
+            mode="review"
+            statusFilter={statusFilter}
+            onEdit={setEditing}
+          />
         </section>
-      </div>
+      )}
 
       {editing ? (
-        <>
-          <div className="ops-drawer-backdrop" onClick={() => setEditing(null)} aria-hidden />
-          <aside className="ops-drawer" role="dialog" aria-label="Edit attendance">
-            <div className="ops-drawer-head">
-              <div>
-                <h2>{editing.display_name || editing.email}</h2>
-                <div className="ops-drawer-meta">Manual correction</div>
-              </div>
-              <button className="ops-drawer-close" type="button" aria-label="Close" onClick={() => setEditing(null)}>
-                ✕
-              </button>
-            </div>
-            <div className="ops-drawer-grid">
-              <div className="ops-drawer-field">
-                <label htmlFor="attendance-status">Status</label>
-                <select
-                  id="attendance-status"
-                  className="ops-select"
-                  value={newStatus}
-                  onChange={(e) => setNewStatus(e.target.value as typeof newStatus)}
-                >
-                  <option value="present">Present</option>
-                  <option value="late">Late</option>
-                  <option value="absent">Absent</option>
-                  <option value="excused">Excused</option>
-                </select>
-              </div>
-              <div className="ops-drawer-field">
-                <label htmlFor="attendance-reason">Reason</label>
-                <textarea
-                  id="attendance-reason"
-                  value={reason}
-                  onChange={(e) => setReason(e.target.value)}
-                  rows={4}
-                  style={{ width: '100%', borderRadius: 12, border: '1px solid var(--border)', padding: 10 }}
-                  placeholder="Required — e.g. Approved absence"
-                />
-              </div>
-            </div>
-            <div className="ops-drawer-footer">
-              <button className="ops-btn" type="button" onClick={() => setEditing(null)} disabled={busy}>
-                Cancel
-              </button>
-              <button className="ops-btn primary" type="button" onClick={() => void saveCorrection()} disabled={busy}>
-                Save
-              </button>
-            </div>
-          </aside>
-        </>
+        <AttendanceCorrectionDrawer
+          entry={editing}
+          busy={busy}
+          onClose={() => setEditing(null)}
+          onSave={(status, reason) => void saveCorrection(editing, status, reason)}
+        />
       ) : null}
+    </div>
+  );
+}
+
+function RosterSearch({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  return (
+    <div className="ops-search" style={{ marginTop: 12, maxWidth: '100%' }}>
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="Search by name or email…"
+        aria-label="Search students"
+      />
     </div>
   );
 }
