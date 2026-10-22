@@ -1,56 +1,11 @@
 'use client';
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { OpsEmpty, OpsLoading } from '@/components/ops-states';
-import { apiFetch, apiUpload, toUserMessage } from '@/lib/api/client';
+import { apiFetch, toUserMessage } from '@/lib/api/client';
 import { getAccessToken } from '@/lib/auth/session';
-import PostImageStrip, { PostImage } from './PostImageStrip';
-
-type Post = {
-  id: string;
-  kind: string;
-  title: string;
-  summary: string | null;
-  body: string;
-  audience: string;
-  category: string | null;
-  priority: string;
-  status: string;
-  external_url: string | null;
-  expires_at: string | null;
-  images?: PostImage[];
-};
-
-const ANNOUNCEMENT_CATEGORIES: Record<string, string> = {
-  general: 'General',
-  academic: 'Academic',
-  campus: 'Campus',
-  events: 'Events',
-  safety: 'Safety',
-};
-
-const OPPORTUNITY_CATEGORIES: Record<string, string> = {
-  internship: 'Internships',
-  job: 'Jobs',
-  volunteer: 'Volunteering',
-  leadership: 'Leadership',
-};
-
-function categoriesForKind(kind: string): Record<string, string> {
-  return kind === 'opportunity' ? OPPORTUNITY_CATEGORIES : ANNOUNCEMENT_CATEGORIES;
-}
-
-function priorityChip(priority: string): string {
-  if (priority === 'urgent') return 'ops-chip danger';
-  if (priority === 'important') return 'ops-chip warn';
-  return 'ops-chip muted';
-}
-
-function statusChip(status: string): string {
-  if (status === 'published') return 'ops-chip success';
-  if (status === 'archived') return 'ops-chip muted';
-  return 'ops-chip warn';
-}
+import PostComposeForm from './PostComposeForm';
+import { categoriesForKind, priorityChip, statusChip, type Post } from './post-shared';
 
 export default function PostsPanel() {
   const [items, setItems] = useState<Post[]>([]);
@@ -59,57 +14,11 @@ export default function PostsPanel() {
   const [status, setStatus] = useState('');
   const [flash, setFlash] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [kind, setKind] = useState('announcement');
-  const [category, setCategory] = useState(Object.keys(ANNOUNCEMENT_CATEGORIES)[0]);
-  const [priority, setPriority] = useState('normal');
-  const [audience, setAudience] = useState('all');
-  const [title, setTitle] = useState('');
-  const [summary, setSummary] = useState('');
-  const [body, setBody] = useState('');
-  const [externalUrl, setExternalUrl] = useState('');
-  const [expiresAt, setExpiresAt] = useState('');
-  const [images, setImages] = useState<PostImage[]>([]);
-  const [saving, setSaving] = useState(false);
+  const [editingPost, setEditingPost] = useState<Post | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [q, setQ] = useState('');
   const [filterKind, setFilterKind] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
-
-  function resetForm() {
-    setEditingId(null);
-    setKind('announcement');
-    setCategory(Object.keys(ANNOUNCEMENT_CATEGORIES)[0]);
-    setPriority('normal');
-    setAudience('all');
-    setTitle('');
-    setSummary('');
-    setBody('');
-    setExternalUrl('');
-    setExpiresAt('');
-    setImages([]);
-    setShowForm(false);
-  }
-
-  function onKindChange(nextKind: string) {
-    setKind(nextKind);
-    setCategory(Object.keys(categoriesForKind(nextKind))[0]);
-  }
-
-  function startEdit(item: Post) {
-    setEditingId(item.id);
-    setKind(item.kind);
-    setCategory(item.category ?? Object.keys(categoriesForKind(item.kind))[0]);
-    setPriority(item.priority);
-    setAudience(item.audience);
-    setTitle(item.title);
-    setSummary(item.summary ?? '');
-    setBody(item.body);
-    setExternalUrl(item.external_url ?? '');
-    setExpiresAt(item.expires_at ? item.expires_at.slice(0, 10) : '');
-    setImages(item.images ?? []);
-    setShowForm(true);
-  }
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -145,59 +54,25 @@ export default function PostsPanel() {
     });
   }, [items, q, filterKind, filterStatus]);
 
-  async function submitForm(event: FormEvent) {
-    event.preventDefault();
-    setSaving(true);
-    try {
-      const token = await getAccessToken();
-      if (!token) throw new Error('Not signed in');
-      const isOpportunity = kind === 'opportunity';
-      const trimmedSummary = summary.trim();
-      if (isOpportunity && !trimmedSummary) {
-        setError(true);
-        setStatus('Opportunities need a brief summary.');
-        setSaving(false);
-        return;
-      }
-      const payload = {
-        kind,
-        category,
-        priority,
-        audience,
-        title: title.trim(),
-        summary: trimmedSummary || null,
-        // Announcements send body; opportunities omit it (API fills from summary).
-        body: isOpportunity ? '' : body.trim(),
-        external_url: externalUrl.trim() || null,
-        expires_at: expiresAt ? `${expiresAt}T23:59:59.000Z` : null,
-      };
-      if (editingId) {
-        const updated = await apiFetch<Post>(`/admin/campus-posts/${editingId}`, token, {
-          method: 'PATCH',
-          body: JSON.stringify(payload),
-        });
-        setImages(updated.images ?? []);
-        setFlash('Changes saved.');
-      } else {
-        const created = await apiFetch<Post>('/admin/campus-posts', token, {
-          method: 'POST',
-          body: JSON.stringify(payload),
-        });
-        setEditingId(created.id);
-        setImages(created.images ?? []);
-        setFlash(
-          created.kind === 'announcement'
-            ? 'Draft saved. You can add up to 4 photos below.'
-            : 'Draft saved.',
-        );
-      }
-      await load();
-    } catch (err) {
-      setError(true);
-      setStatus(toUserMessage(err, 'Could not save post'));
-    } finally {
-      setSaving(false);
-    }
+  function openCreate() {
+    setEditingPost(null);
+    setShowForm(true);
+  }
+
+  function openEdit(item: Post) {
+    setEditingPost(item);
+    setShowForm(true);
+  }
+
+  function closeForm() {
+    setShowForm(false);
+    setEditingPost(null);
+  }
+
+  async function onSaved(message: string) {
+    closeForm();
+    setFlash(message);
+    await load();
   }
 
   async function run(id: string, label: string, doIt: (token: string) => Promise<void>) {
@@ -209,7 +84,7 @@ export default function PostsPanel() {
       if (!token) throw new Error('Not signed in');
       await doIt(token);
       setFlash(label);
-      if (editingId === id) resetForm();
+      if (editingPost?.id === id) closeForm();
       await load();
     } catch (err) {
       setError(true);
@@ -242,6 +117,11 @@ export default function PostsPanel() {
     );
   }
 
+  const emptyBody =
+    items.length === 0
+      ? 'Create a post to share campus announcements and opportunities.'
+      : 'No posts match these filters.';
+
   return (
     <>
       <div className="ops-toolbar">
@@ -259,163 +139,28 @@ export default function PostsPanel() {
           <option value="published">Published</option>
           <option value="archived">Archived</option>
         </select>
-        <span className="ops-count">
-          {loading ? '…' : `${filtered.length} of ${items.length} posts`}
-        </span>
+        <span className="ops-count">{loading ? '…' : `${filtered.length} of ${items.length} posts`}</span>
         <button className="ops-btn" type="button" disabled={loading} onClick={() => void load()}>Refresh</button>
-        <button
-          className="ops-btn primary"
-          type="button"
-          onClick={() => {
-            resetForm();
-            setShowForm(true);
-          }}
-        >
-          Create post
-        </button>
+        <button className="ops-btn primary" type="button" onClick={openCreate}>Create post</button>
       </div>
 
       {error ? <div className="error-banner">{status}</div> : null}
-
       {flash ? <p className="ops-flash">{flash}</p> : null}
 
       {showForm ? (
-        <form className="ops-form" onSubmit={submitForm}>
-          <h2>{editingId ? 'Edit post' : 'Create draft'}</h2>
-          <div className="grid-2">
-            <div className="field">
-              <label htmlFor="kind">Kind</label>
-              <select id="kind" value={kind} onChange={(e) => onKindChange(e.target.value)}>
-                <option value="announcement">Announcement</option>
-                <option value="opportunity">Opportunity</option>
-              </select>
-            </div>
-            <div className="field">
-              <label htmlFor="category">Category</label>
-              <select id="category" value={category} onChange={(e) => setCategory(e.target.value)}>
-                {Object.entries(categoriesForKind(kind)).map(([value, label]) => (
-                  <option key={value} value={value}>{label}</option>
-                ))}
-              </select>
-            </div>
-            <div className="field">
-              <label htmlFor="priority">Priority</label>
-              <select id="priority" value={priority} onChange={(e) => setPriority(e.target.value)}>
-                <option value="normal">Normal</option>
-                <option value="important">Important</option>
-                <option value="urgent">Urgent</option>
-              </select>
-            </div>
-            <div className="field">
-              <label htmlFor="audience">Audience</label>
-              <select id="audience" value={audience} onChange={(e) => setAudience(e.target.value)}>
-                <option value="all">All</option>
-                <option value="students">Students</option>
-                <option value="staff">Staff</option>
-              </select>
-            </div>
-            <div className="field">
-              <label htmlFor="title">Title</label>
-              <input id="title" value={title} onChange={(e) => setTitle(e.target.value)} required maxLength={200} />
-            </div>
-          </div>
-          <div className="field">
-            <label htmlFor="summary">{kind === 'opportunity' ? 'Brief summary' : 'Summary (optional)'}</label>
-            <input
-              id="summary"
-              value={summary}
-              onChange={(e) => setSummary(e.target.value)}
-              maxLength={400}
-              required={kind === 'opportunity'}
-              placeholder={kind === 'opportunity' ? 'One or two lines students see on the card' : undefined}
-            />
-          </div>
-          {kind === 'announcement' ? (
-            <div className="field">
-              <label htmlFor="body">Body</label>
-              <textarea id="body" rows={4} value={body} onChange={(e) => setBody(e.target.value)} required />
-            </div>
-          ) : null}
-          {kind === 'announcement' && editingId ? (
-            <PostImageStrip
-              images={images}
-              remaining={Math.max(0, 4 - images.length)}
-              busy={saving}
-              onAdd={async (file) => {
-                try {
-                  const token = await getAccessToken();
-                  if (!token) throw new Error('Not signed in');
-                  const form = new FormData();
-                  form.append('file', file);
-                  const updated = await apiUpload<Post>(`/admin/campus-posts/${editingId}/images`, token, form);
-                  setImages(updated.images ?? []);
-                } catch (err) {
-                  setError(true);
-                  setStatus(toUserMessage(err, 'Could not upload photo'));
-                }
-              }}
-              onRemove={async (imageId) => {
-                try {
-                  const token = await getAccessToken();
-                  if (!token) throw new Error('Not signed in');
-                  const updated = await apiFetch<Post>(
-                    `/admin/campus-posts/${editingId}/images/${imageId}`,
-                    token,
-                    { method: 'DELETE' },
-                  );
-                  setImages(updated.images ?? []);
-                } catch (err) {
-                  setError(true);
-                  setStatus(toUserMessage(err, 'Could not remove photo'));
-                }
-              }}
-            />
-          ) : kind === 'announcement' ? (
-            <p className="ops-cell-sub">Save the draft first, then you can attach up to 4 photos.</p>
-          ) : null}
-          <div className="grid-2">
-            <div className="field">
-              <label htmlFor="external_url">
-                {kind === 'opportunity' ? 'Application / details link' : 'External link (optional)'}
-              </label>
-              <input
-                id="external_url"
-                type="url"
-                value={externalUrl}
-                onChange={(e) => setExternalUrl(e.target.value)}
-                placeholder="https://…"
-              />
-            </div>
-            <div className="field">
-              <label htmlFor="expires_at">Closes on (optional)</label>
-              <input
-                id="expires_at"
-                type="date"
-                value={expiresAt}
-                onChange={(e) => setExpiresAt(e.target.value)}
-              />
-            </div>
-          </div>
-          <div className="actions">
-            <button className="btn" type="submit" disabled={saving} style={{ width: 'auto' }}>
-              {saving ? 'Saving…' : editingId ? 'Save changes' : 'Save draft'}
-            </button>
-            <button className="btn ghost" type="button" onClick={resetForm} style={{ width: 'auto' }}>
-              Cancel
-            </button>
-          </div>
-        </form>
+        <PostComposeForm
+          key={editingPost?.id ?? 'new'}
+          existing={editingPost}
+          onCancel={closeForm}
+          onSaved={onSaved}
+        />
       ) : null}
 
       <div className="ops-table-wrap table-scroll ops-responsive-desktop">
         {loading ? (
           <OpsLoading label="Loading posts…" />
         ) : filtered.length === 0 ? (
-          <OpsEmpty title={items.length === 0 ? 'No posts' : 'No matches'}>
-            {items.length === 0
-              ? 'Create a draft to publish campus announcements and opportunities.'
-              : 'No posts match these filters.'}
-          </OpsEmpty>
+          <OpsEmpty title={items.length === 0 ? 'No posts' : 'No matches'}>{emptyBody}</OpsEmpty>
         ) : (
           <table className="ops-table">
             <thead>
@@ -437,12 +182,7 @@ export default function PostsPanel() {
                     <div className="ops-cell-sub">{item.summary || item.body.slice(0, 80)}</div>
                     {item.external_url ? (
                       <div className="ops-cell-sub">
-                        <a
-                          className="ops-cell-link"
-                          href={item.external_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
+                        <a className="ops-cell-link" href={item.external_url} target="_blank" rel="noopener noreferrer">
                           {item.external_url}
                         </a>
                       </div>
@@ -458,7 +198,7 @@ export default function PostsPanel() {
                       item={item}
                       busy={busy === item.id}
                       onPublish={() => publish(item)}
-                      onEdit={() => startEdit(item)}
+                      onEdit={() => openEdit(item)}
                       onArchive={() => archive(item)}
                       onDelete={() => remove(item)}
                     />
@@ -474,11 +214,7 @@ export default function PostsPanel() {
         {loading ? (
           <OpsLoading label="Loading posts…" />
         ) : filtered.length === 0 ? (
-          <OpsEmpty title={items.length === 0 ? 'No posts' : 'No matches'}>
-            {items.length === 0
-              ? 'Create a draft to publish campus announcements and opportunities.'
-              : 'No posts match these filters.'}
-          </OpsEmpty>
+          <OpsEmpty title={items.length === 0 ? 'No posts' : 'No matches'}>{emptyBody}</OpsEmpty>
         ) : (
           filtered.map((item) => (
             <article key={item.id} className="ops-card">
@@ -510,7 +246,7 @@ export default function PostsPanel() {
                   item={item}
                   busy={busy === item.id}
                   onPublish={() => publish(item)}
-                  onEdit={() => startEdit(item)}
+                  onEdit={() => openEdit(item)}
                   onArchive={() => archive(item)}
                   onDelete={() => remove(item)}
                 />
@@ -540,28 +276,13 @@ function PostActions({
 }) {
   return (
     <div className="ops-row-actions">
-      <button
-        className="ops-btn primary"
-        type="button"
-        disabled={busy || item.status === 'published'}
-        onClick={onPublish}
-      >
+      <button className="ops-btn primary" type="button" disabled={busy || item.status === 'published'} onClick={onPublish}>
         Publish
       </button>
-      <button
-        className="ops-btn"
-        type="button"
-        disabled={busy || item.status === 'archived'}
-        onClick={onEdit}
-      >
+      <button className="ops-btn" type="button" disabled={busy || item.status === 'archived'} onClick={onEdit}>
         Edit
       </button>
-      <button
-        className="ops-btn"
-        type="button"
-        disabled={busy || item.status === 'archived'}
-        onClick={onArchive}
-      >
+      <button className="ops-btn" type="button" disabled={busy || item.status === 'archived'} onClick={onArchive}>
         Archive
       </button>
       <button className="ops-btn danger" type="button" disabled={busy} onClick={onDelete}>

@@ -173,9 +173,13 @@ class _ComposeCampusPostScreenState extends ConsumerState<ComposeCampusPostScree
           mimeType: _imageMime(file.path),
           filename: file.name,
         );
+        // Drop each photo the moment it lands. If a later upload fails, the post stays a draft and
+        // only the not-yet-uploaded photos remain queued — pressing save again retries just those,
+        // never re-uploading a duplicate of one that already succeeded.
+        _pending.remove(file);
+        _images = saved.images;
       }
-      _pending.clear();
-      _images = saved.images;
+      // Only publish once every queued photo is in — a partial upload throws above and stays draft.
       if (publish && saved.isDraft) await service.publishPost(saved.id);
       _invalidateFeeds();
       if (!mounted) return;
