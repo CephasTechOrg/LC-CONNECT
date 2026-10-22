@@ -17,6 +17,10 @@
   align-items: start;
 }
 
+.dash-layout.solo {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .dash-main {
   display: flex;
   flex-direction: column;
@@ -37,12 +41,18 @@
   position: relative;
   background: linear-gradient(120deg, #f6eedd 0%, #f9f1e3 55%, #f4e9d0 100%);
   border-radius: 22px;
-  padding: 28px 30px;
+  padding: 24px 28px;
   overflow: hidden;
   display: flex;
-  align-items: stretch;
-  gap: 24px;
+  align-items: flex-start;
+  gap: 16px;
   min-height: 0;
+}
+
+.dash-welcome-refresh {
+  margin-left: auto;
+  background: rgba(255, 255, 255, 0.55);
+  border-color: rgba(122, 90, 46, 0.16);
 }
 
 .dash-welcome-copy {
@@ -212,27 +222,21 @@ a.dash-chip:hover {
   background: var(--bg-soft);
 }
 
-/* KPIs — campus default 3 cols; honors 5 */
 .dash-kpi-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 14px;
-}
-
-.dash-kpi-grid.honors {
-  grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
 .dash-kpi {
   background: #fff;
   border: 1px solid #eeebf3;
   border-radius: 18px;
-  padding: 18px 16px;
+  padding: 16px;
   box-shadow: 0 8px 22px -16px rgba(52, 38, 104, 0.4);
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  min-height: 142px;
+  gap: 12px;
 }
 
 .dash-kpi-fill {
@@ -359,10 +363,7 @@ a.dash-chip:hover {
 
 /* Work queues */
 .dash-queues-body {
-  display: flex;
-  gap: 28px;
-  margin-top: 20px;
-  align-items: center;
+  margin-top: 16px;
 }
 
 .dash-donut {
@@ -694,8 +695,8 @@ a.dash-chip:hover {
     gap: 16px;
   }
 
-  .dash-kpi-grid.honors {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+  .dash-layout.solo {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -719,8 +720,7 @@ a.dash-chip:hover {
     font-size: 24px;
   }
 
-  .dash-kpi-grid,
-  .dash-kpi-grid.honors {
+  .dash-kpi-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -743,7 +743,6 @@ a.dash-chip:hover {
 
 @media (max-width: 560px) {
   .dash-kpi-grid,
-  .dash-kpi-grid.honors,
   .dash-welcome-aside {
     grid-template-columns: 1fr;
     flex-direction: column;

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AttendanceCorrectionDrawer } from '@/components/attendance/AttendanceCorrectionDrawer';
 import { AttendanceFeatureDisabled } from '@/components/attendance/AttendanceFeatureDisabled';
@@ -40,7 +40,6 @@ function remainingLabel(session: AttendanceRoster['session']): string {
 
 export default function AttendanceSessionPage() {
   const params = useParams<{ sessionId: string }>();
-  const router = useRouter();
   const sessionId = params.sessionId;
 
   const [loading, setLoading] = useState(true);
@@ -225,21 +224,13 @@ export default function AttendanceSessionPage() {
             <span className={`attendance-live-dot ${liveStale ? 'stale' : 'live'}`}>
               {liveStale ? 'Live updates paused — retrying…' : 'Live'}
             </span>
-          ) : (
-            <p className="attendance-review-note">
-              Corrections need a reason and are audit-logged. Any honors admin can edit this session.
-            </p>
-          )}
+          ) : null}
         </div>
         {isOpen ? (
           <button className="ops-btn danger" type="button" onClick={() => void endSession()} disabled={busy}>
             End Attendance
           </button>
-        ) : (
-          <button className="ops-btn" type="button" onClick={() => router.push('/dashboard/attendance')}>
-            Back to Attendance
-          </button>
-        )}
+        ) : null}
       </div>
 
       {error ? <p className="ops-status error">{error}</p> : null}
@@ -254,57 +245,71 @@ export default function AttendanceSessionPage() {
               </strong>
               <span>Checked in</span>
             </div>
-            <div className="attendance-stat">
-              <strong>{roster.present_count}</strong>
-              <span>Present</span>
-            </div>
-            <div className="attendance-stat">
-              <strong>{roster.late_count}</strong>
-              <span>Late</span>
-            </div>
-            <div className="attendance-stat">
-              <strong>{roster.remaining_count}</strong>
-              <span>Remaining</span>
-            </div>
+            {roster.present_count > 0 ? (
+              <div className="attendance-stat">
+                <strong>{roster.present_count}</strong>
+                <span>Present</span>
+              </div>
+            ) : null}
+            {roster.late_count > 0 ? (
+              <div className="attendance-stat">
+                <strong>{roster.late_count}</strong>
+                <span>Late</span>
+              </div>
+            ) : null}
+            {roster.remaining_count > 0 ? (
+              <div className="attendance-stat">
+                <strong>{roster.remaining_count}</strong>
+                <span>Remaining</span>
+              </div>
+            ) : null}
           </>
         ) : (
           <>
-            <button
-              className={`attendance-stat ${statusFilter === 'present' ? 'is-active' : ''}`}
-              type="button"
-              aria-pressed={statusFilter === 'present'}
-              onClick={() => toggleFilter('present')}
-            >
-              <strong>{roster.present_count}</strong>
-              <span>Present</span>
-            </button>
-            <button
-              className={`attendance-stat ${statusFilter === 'late' ? 'is-active' : ''}`}
-              type="button"
-              aria-pressed={statusFilter === 'late'}
-              onClick={() => toggleFilter('late')}
-            >
-              <strong>{roster.late_count}</strong>
-              <span>Late</span>
-            </button>
-            <button
-              className={`attendance-stat ${statusFilter === 'absent' ? 'is-active' : ''}`}
-              type="button"
-              aria-pressed={statusFilter === 'absent'}
-              onClick={() => toggleFilter('absent')}
-            >
-              <strong>{roster.absent_count}</strong>
-              <span>Absent</span>
-            </button>
-            <button
-              className={`attendance-stat ${statusFilter === 'excused' ? 'is-active' : ''}`}
-              type="button"
-              aria-pressed={statusFilter === 'excused'}
-              onClick={() => toggleFilter('excused')}
-            >
-              <strong>{roster.excused_count}</strong>
-              <span>Excused</span>
-            </button>
+            {roster.present_count > 0 ? (
+              <button
+                className={`attendance-stat ${statusFilter === 'present' ? 'is-active' : ''}`}
+                type="button"
+                aria-pressed={statusFilter === 'present'}
+                onClick={() => toggleFilter('present')}
+              >
+                <strong>{roster.present_count}</strong>
+                <span>Present</span>
+              </button>
+            ) : null}
+            {roster.late_count > 0 ? (
+              <button
+                className={`attendance-stat ${statusFilter === 'late' ? 'is-active' : ''}`}
+                type="button"
+                aria-pressed={statusFilter === 'late'}
+                onClick={() => toggleFilter('late')}
+              >
+                <strong>{roster.late_count}</strong>
+                <span>Late</span>
+              </button>
+            ) : null}
+            {roster.absent_count > 0 ? (
+              <button
+                className={`attendance-stat ${statusFilter === 'absent' ? 'is-active' : ''}`}
+                type="button"
+                aria-pressed={statusFilter === 'absent'}
+                onClick={() => toggleFilter('absent')}
+              >
+                <strong>{roster.absent_count}</strong>
+                <span>Absent</span>
+              </button>
+            ) : null}
+            {roster.excused_count > 0 ? (
+              <button
+                className={`attendance-stat ${statusFilter === 'excused' ? 'is-active' : ''}`}
+                type="button"
+                aria-pressed={statusFilter === 'excused'}
+                onClick={() => toggleFilter('excused')}
+              >
+                <strong>{roster.excused_count}</strong>
+                <span>Excused</span>
+              </button>
+            ) : null}
           </>
         )}
       </div>
@@ -325,13 +330,9 @@ export default function AttendanceSessionPage() {
 
           <section>
             {qr ? <AttendanceQrDisplay payload={qr as unknown as Record<string, string | number>} /> : null}
-            <div className="ops-table-wrap" style={{ padding: 18, marginTop: 16 }}>
-              <strong>Recent check-ins</strong>
-              {recentCheckIns.length === 0 ? (
-                <p className="ops-cell-sub" style={{ marginTop: 10 }}>
-                  Waiting for the first scan…
-                </p>
-              ) : (
+            {recentCheckIns.length > 0 ? (
+              <div className="ops-table-wrap" style={{ padding: 18, marginTop: 16 }}>
+                <strong>Recent check-ins</strong>
                 <ul className="attendance-recent-list" style={{ marginTop: 12 }}>
                   {recentCheckIns.map((entry) => (
                     <li key={`${entry.student_id}-${entry.checked_in_at}`}>
@@ -340,16 +341,12 @@ export default function AttendanceSessionPage() {
                     </li>
                   ))}
                 </ul>
-              )}
-            </div>
+              </div>
+            ) : null}
           </section>
         </div>
       ) : (
-        <section className="ops-table-wrap attendance-review-panel">
-          <strong>Session review</strong>
-          <p className="ops-cell-sub" style={{ marginTop: 6 }}>
-            Names are grouped A–Z. Click a count above to show only that group.
-          </p>
+        <section className="attendance-review-panel">
           <RosterSearch value={search} onChange={setSearch} />
           <AttendanceRosterList
             entries={filteredEntries}

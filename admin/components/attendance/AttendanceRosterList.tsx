@@ -73,10 +73,10 @@ function ReviewRosterList({
   const groups = ATTENDANCE_STATUS_GROUPS.map((status) => ({
     status,
     items: entries.filter((entry) => reviewStatusOf(entry) === status),
-  }));
+  })).filter((group) => group.items.length > 0);
   const visible = statusFilter === 'all' ? groups : groups.filter((group) => group.status === statusFilter);
 
-  if (statusFilter === 'all' && entries.length === 0) {
+  if (visible.length === 0) {
     return <p className="ops-cell-sub" style={{ marginTop: 12 }}>No students match this search.</p>;
   }
 

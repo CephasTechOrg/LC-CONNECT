@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { AttendanceFeatureDisabled } from '@/components/attendance/AttendanceFeatureDisabled';
-import { OpsEmpty, OpsLoading } from '@/components/ops-states';
+import { OpsLoading } from '@/components/ops-states';
 import type { AttendanceDashboard, AttendanceHistoryItem } from '@/lib/api/attendance';
 import {
   fetchHonorsAttendanceStatus,
@@ -16,7 +16,9 @@ import './attendance.css';
 
 function formatDate(iso: string): string {
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleString();
+  return Number.isNaN(d.getTime())
+    ? '—'
+    : d.toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
 
 export default function AttendanceLandingPage() {
@@ -110,108 +112,92 @@ export default function AttendanceLandingPage() {
     );
   }
 
+  const liveSession = dashboard?.active_session ?? null;
+  const closedHistory = history.filter((item) => item.session.status !== 'open');
+
   return (
     <div>
       <div className="ops-top">
         <div>
           <h1>Honors Attendance</h1>
-          <p>Start a session, display the classroom QR, and review Honors student check-ins.</p>
+          <p>
+            {dashboard?.honors_student_count
+              ? `${dashboard.honors_student_count} Presidential Scholars on the roster.`
+              : 'Classroom check-in for Presidential Scholars.'}
+          </p>
         </div>
-        <button className="ops-btn primary" type="button" onClick={() => setDialogOpen(true)}>
-          Start Attendance
-        </button>
+        {liveSession ? null : (
+          <button className="ops-btn primary" type="button" onClick={() => setDialogOpen(true)}>
+            Start Attendance
+          </button>
+        )}
       </div>
 
       {error ? <p className="ops-status error">{error}</p> : null}
       {flash ? <p className="ops-status">{flash}</p> : null}
 
-      <section className="ops-table-wrap" style={{ marginTop: 18 }}>
-        <div style={{ padding: '16px 18px', borderBottom: '1px solid #efecf5' }}>
-          <strong>Today</strong>
-          <div className="ops-cell-sub" style={{ marginTop: 4 }}>
-            {dashboard?.honors_student_count ?? 0} active Honors students on the roster
-          </div>
-        </div>
-        {dashboard?.active_session ? (
-          <div style={{ padding: '18px' }}>
-            <div className="ops-cell-title">{dashboard.active_session.title}</div>
+      {liveSession ? (
+        <section className="attendance-live-card">
+          <div>
+            <span className="attendance-live-dot live">Live</span>
+            <div className="ops-cell-title" style={{ marginTop: 8 }}>{liveSession.title}</div>
             <div className="ops-cell-sub" style={{ marginTop: 4 }}>
-              Attendance is open · {dashboard.checked_in_count ?? 0} / {dashboard.honors_student_count} checked in
-            </div>
-            <div style={{ marginTop: 14 }}>
-              <Link className="ops-btn primary" href={`/dashboard/attendance/${dashboard.active_session.id}`}>
-                Open live session
-              </Link>
+              {dashboard?.checked_in_count ?? 0} of {dashboard?.honors_student_count ?? 0} checked in
             </div>
           </div>
-        ) : (
-          <div style={{ padding: '18px' }}>
-            <div className="ops-cell-title">No active attendance session</div>
-            <div className="ops-cell-sub" style={{ marginTop: 4 }}>
-              Start attendance when class begins.
-            </div>
-          </div>
-        )}
-      </section>
+          <Link className="ops-btn primary" href={`/dashboard/attendance/${liveSession.id}`}>
+            Open live session
+          </Link>
+        </section>
+      ) : null}
 
-      <div style={{ marginTop: 22, marginBottom: 14 }}>
-        <strong>Session history</strong>
-        <p className="ops-cell-sub" style={{ marginTop: 4, marginBottom: 0 }}>
-          Open a closed session to see who was present or absent and make corrections.
+      {closedHistory.length > 0 ? (
+        <>
+          <div className="attendance-history-head">
+            <strong>Closed sessions</strong>
+          </div>
+          <div className="ops-table-wrap table-scroll">
+            <table className="ops-table ops-cards-sm">
+              <thead>
+                <tr>
+                  <th>Session</th>
+                  <th>When</th>
+                  <th>Present</th>
+                  <th>Absent</th>
+                  <th className="ops-col-actions" />
+                </tr>
+              </thead>
+              <tbody>
+                {closedHistory.map((item) => {
+                  const href = `/dashboard/attendance/${item.session.id}`;
+                  return (
+                    <tr
+                      key={item.session.id}
+                      className="attendance-history-row"
+                      onClick={() => router.push(href)}
+                    >
+                      <td>
+                        <div className="ops-cell-title">{item.session.title}</div>
+                      </td>
+                      <td data-label="When">{formatDate(item.session.opened_at)}</td>
+                      <td data-label="Present">{item.present_count + item.late_count}</td>
+                      <td data-label="Absent">{item.absent_count}</td>
+                      <td className="ops-cell-actions">
+                        <Link className="ops-btn" href={href} onClick={(event) => event.stopPropagation()}>
+                          Review
+                        </Link>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
+      ) : liveSession ? null : (
+        <p className="ops-cell-sub" style={{ marginTop: 22 }}>
+          No closed sessions yet. Start attendance when class begins.
         </p>
-      </div>
-
-      {history.length === 0 ? (
-        <OpsEmpty title="No sessions yet">Start your first Honors attendance session above.</OpsEmpty>
-      ) : (
-        <div className="ops-table-wrap table-scroll">
-          <table className="ops-table ops-cards-sm">
-            <thead>
-              <tr>
-                <th>Session</th>
-                <th>When</th>
-                <th>Present</th>
-                <th>Absent</th>
-                <th>Status</th>
-                <th className="ops-col-actions" />
-              </tr>
-            </thead>
-            <tbody>
-              {history.map((item) => {
-                const href = `/dashboard/attendance/${item.session.id}`;
-                const isOpen = item.session.status === 'open';
-                return (
-                  <tr
-                    key={item.session.id}
-                    className="attendance-history-row"
-                    onClick={() => router.push(href)}
-                  >
-                    <td>
-                      <div className="ops-cell-title">{item.session.title}</div>
-                    </td>
-                    <td data-label="When">{formatDate(item.session.opened_at)}</td>
-                    <td data-label="Present">{item.present_count + item.late_count}</td>
-                    <td data-label="Absent">{item.absent_count}</td>
-                    <td data-label="Status">
-                      <span className={isOpen ? 'ops-chip success' : 'ops-chip muted'}>
-                        {item.session.status}
-                      </span>
-                    </td>
-                    <td className="ops-cell-actions">
-                      <Link
-                        className={isOpen ? 'ops-btn primary' : 'ops-btn'}
-                        href={href}
-                        onClick={(event) => event.stopPropagation()}
-                      >
-                        {isOpen ? 'Open' : 'Review'}
-                      </Link>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
       )}
 
       {dialogOpen ? (

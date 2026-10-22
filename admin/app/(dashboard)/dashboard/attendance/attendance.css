@@ -67,7 +67,7 @@
 
 .attendance-stat-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 12px;
   margin: 16px 0;
 }
@@ -212,16 +212,35 @@ button.attendance-stat.is-active {
   cursor: pointer;
 }
 
-.attendance-review-note {
-  margin: 8px 0 0;
-  max-width: 42rem;
-  font-size: 13px;
-  line-height: 1.45;
-  color: var(--muted);
+.attendance-history-head {
+  margin: 28px 0 12px;
+}
+
+.attendance-live-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 18px;
+  padding: 18px 20px;
+  border-radius: 18px;
+  border: 1px solid #d8f0e4;
+  background: #f4fbf7;
+}
+
+@media (max-width: 640px) {
+  .attendance-live-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }
 
 .attendance-review-panel {
-  padding: 18px;
+  margin-top: 8px;
+  padding: 0;
+  background: none;
+  border: none;
+  box-shadow: none;
 }
 
 .ops-user-cell.attendance-student-name {
@@ -235,8 +254,13 @@ button.attendance-stat.is-active {
 .attendance-review-groups {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-top: 8px;
+  gap: 4px;
+  margin-top: 14px;
+  padding: 8px 18px 14px;
+  background: #fff;
+  border: 1px solid #eeebf3;
+  border-radius: 20px;
+  box-shadow: 0 8px 22px -16px rgba(52, 38, 104, 0.35);
 }
 
 .attendance-roster-group {
