@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/theme/app_radii.dart';
+import '../../core/theme/app_shadows.dart';
+import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_theme.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../../features/connections/providers/connections_provider.dart';
@@ -71,43 +74,57 @@ class NavShell extends ConsumerWidget {
     final current = _currentIndex(context, tabs);
     return Scaffold(
       body: child,
-      bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
-          border: Border(top: BorderSide(color: AppColors.border)),
+      // A floating pill rather than a full-width bar with a top rule — the same soft, rounded
+      // surface as the cards and the search pill above it.
+      bottomNavigationBar: SafeArea(
+        minimum: const EdgeInsets.fromLTRB(
+          AppSpacing.lg,
+          0,
+          AppSpacing.lg,
+          AppSpacing.md,
         ),
-        child: Semantics(
-          container: true,
-          label: 'Main navigation',
-          child: BottomNavigationBar(
-            currentIndex: current,
-            onTap: (i) => context.go(tabs[i].path),
-            items: tabs
-                .map(
-                  (t) => BottomNavigationBarItem(
-                    icon: _tabIcon(
-                      t,
-                      active: false,
-                      totalUnread: totalUnread,
-                      incomingRequests: isStaff ? 0 : incomingRequests,
-                      // This was hardcoded `false`. Review finding #19 read that as "a
-                      // screen-reader user is never told which tab is current" — **it is not**:
-                      // `BottomNavigationBar` sets the flag itself on the outer "Tab N of M"
-                      // node, which is what assistive technology actually reads, and it was
-                      // already correct. Passing the real value only stops the inner node from
-                      // stating something false.
-                      selected: tabs[current].path == t.path,
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: AppRadii.all(AppRadii.full),
+            boxShadow: AppShadows.raised,
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Semantics(
+            container: true,
+            label: 'Main navigation',
+            child: BottomNavigationBar(
+              backgroundColor: Colors.transparent,
+              currentIndex: current,
+              onTap: (i) => context.go(tabs[i].path),
+              items: tabs
+                  .map(
+                    (t) => BottomNavigationBarItem(
+                      icon: _tabIcon(
+                        t,
+                        active: false,
+                        totalUnread: totalUnread,
+                        incomingRequests: isStaff ? 0 : incomingRequests,
+                        // This was hardcoded `false`. Review finding #19 read that as "a
+                        // screen-reader user is never told which tab is current" — **it is not**:
+                        // `BottomNavigationBar` sets the flag itself on the outer "Tab N of M"
+                        // node, which is what assistive technology actually reads, and it was
+                        // already correct. Passing the real value only stops the inner node from
+                        // stating something false.
+                        selected: tabs[current].path == t.path,
+                      ),
+                      activeIcon: _tabIcon(
+                        t,
+                        active: true,
+                        totalUnread: totalUnread,
+                        incomingRequests: isStaff ? 0 : incomingRequests,
+                        selected: tabs[current].path == t.path,
+                      ),
+                      label: t.label,
                     ),
-                    activeIcon: _tabIcon(
-                      t,
-                      active: true,
-                      totalUnread: totalUnread,
-                      incomingRequests: isStaff ? 0 : incomingRequests,
-                      selected: tabs[current].path == t.path,
-                    ),
-                    label: t.label,
-                  ),
-                )
-                .toList(),
+                  )
+                  .toList(),
+            ),
           ),
         ),
       ),

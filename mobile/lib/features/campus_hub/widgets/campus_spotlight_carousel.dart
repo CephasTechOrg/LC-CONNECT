@@ -184,7 +184,6 @@ class _SpotlightCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(_spotlightRadius),
-        border: Border.all(color: AppColors.border),
         boxShadow: const [
           BoxShadow(
             color: Color(0x1F245F91),

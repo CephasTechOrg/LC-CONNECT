@@ -1,9 +1,10 @@
 part of '../screens/campus_hub_screen.dart';
 
-/// A Home shortcut: a soft tinted tile with the label underneath, no card around it.
+/// A Home shortcut: a white circle floating on a soft shadow, with the label underneath.
 ///
 /// The bordered card that used to wrap each action made three boxes compete with the spotlight
-/// directly above them. The tile alone carries the affordance; the whole column is the target.
+/// directly above them. The circle alone carries the affordance — the same round, borderless
+/// language as the cards and the floating navigation bar — and the whole column is the target.
 class CampusQuickAction extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -47,16 +48,17 @@ class CampusQuickAction extends StatelessWidget {
                       Container(
                         width: _tileSize,
                         height: _tileSize,
-                        decoration: BoxDecoration(
-                          color: AppColors.primarySoft,
-                          borderRadius: BorderRadius.circular(AppRadii.xl),
+                        decoration: const BoxDecoration(
+                          color: AppColors.surface,
+                          shape: BoxShape.circle,
+                          boxShadow: AppShadows.soft,
                         ),
                         child: Icon(icon, color: AppColors.primary, size: 24),
                       ),
                       if (badgeCount > 0)
                         Positioned(
-                          top: -6,
-                          right: -6,
+                          top: -2,
+                          right: -2,
                           child: Container(
                             constraints: const BoxConstraints(
                               minWidth: 20,
@@ -67,7 +69,7 @@ class CampusQuickAction extends StatelessWidget {
                             decoration: BoxDecoration(
                               color: AppColors.error,
                               borderRadius: BorderRadius.circular(AppRadii.full),
-                              border: Border.all(color: AppColors.background, width: 2),
+                              border: Border.all(color: AppColors.surface, width: 2),
                             ),
                             child: Text(
                               badge,

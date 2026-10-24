@@ -28,6 +28,7 @@ import '../providers/campus_hub_provider.dart';
 import '../providers/campus_publishing_provider.dart';
 import '../providers/opportunity_badge_provider.dart';
 import '../../../core/theme/app_radii.dart';
+import '../../../core/theme/app_shadows.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
 

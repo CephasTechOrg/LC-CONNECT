@@ -1,20 +1,27 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_radii.dart';
+import '../../core/theme/app_shadows.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_theme.dart';
 
-/// The app's standard surface card: white, hairline border, card radius, optional tap.
+/// The app's standard surface card: white, borderless, floating on a soft shadow, optional tap.
 ///
 /// The Material + InkWell + bordered Container recipe was hand-rolled on every Home card, each
 /// with its own padding (10, 12, 14) and radius (14 as a literal, `AppRadii.card`, 20). One widget
-/// means one look — the ripple is clipped to the same corners as the border, always.
+/// means one look — the ripple is clipped to the same corners as the card, always.
+///
+/// Depth comes from [AppShadows.soft] rather than an outline: a hairline border on every card was
+/// the main source of visual noise on Home.
 class AppCard extends StatelessWidget {
   final Widget child;
   final VoidCallback? onTap;
   final EdgeInsetsGeometry padding;
   final Color color;
-  final Color borderColor;
+
+  /// Only for tinted cards that need an edge to hold their colour (the urgent alert). Plain white
+  /// cards stay borderless.
+  final Color? borderColor;
 
   const AppCard({
     super.key,
@@ -22,23 +29,29 @@ class AppCard extends StatelessWidget {
     this.onTap,
     this.padding = const EdgeInsets.all(AppSpacing.md),
     this.color = AppColors.surface,
-    this.borderColor = AppColors.border,
+    this.borderColor,
   });
 
-  static final _radius = AppRadii.all(AppRadii.card);
+  static final _radius = AppRadii.all(AppRadii.sheet);
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: color,
-      shape: RoundedRectangleBorder(
+    final edge = borderColor;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: color,
         borderRadius: _radius,
-        side: BorderSide(color: borderColor),
+        border: edge == null ? null : Border.all(color: edge),
+        boxShadow: AppShadows.soft,
       ),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(padding: padding, child: child),
+      child: Material(
+        type: MaterialType.transparency,
+        borderRadius: _radius,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(padding: padding, child: child),
+        ),
       ),
     );
   }
