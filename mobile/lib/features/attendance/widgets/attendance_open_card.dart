@@ -104,11 +104,12 @@ class _AttendanceOpenCardState extends ConsumerState<AttendanceOpenCard> {
     final checkedIn = active.isCheckedIn;
 
     return Padding(
+      // Top gap only — matches the other Home blocks, so hiding this card leaves no seam.
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.gutter,
-        AppSpacing.xs,
-        AppSpacing.gutter,
         AppSpacing.sm,
+        AppSpacing.gutter,
+        0,
       ),
       child: Semantics(
         container: true,

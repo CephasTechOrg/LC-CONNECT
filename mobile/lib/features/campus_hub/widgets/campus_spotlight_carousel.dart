@@ -76,7 +76,7 @@ class _SpotlightCarouselState extends State<_SpotlightCarousel> {
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.gutter,
-        AppSpacing.xs,
+        AppSpacing.md,
         AppSpacing.gutter,
         0,
       ),

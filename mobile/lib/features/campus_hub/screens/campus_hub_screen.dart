@@ -4,7 +4,6 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_theme.dart';
@@ -12,6 +11,7 @@ import '../../../core/widgets/avatar_widget.dart';
 import '../../../shared/widgets/app_states.dart';
 import '../../../shared/widgets/app_skeleton.dart';
 import '../../../shared/widgets/a11y.dart';
+import '../../../shared/widgets/app_card.dart';
 import '../../activities/providers/activities_provider.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../discovery/providers/discovery_provider.dart';
@@ -27,6 +27,7 @@ import '../models/campus_post.dart';
 import '../providers/campus_hub_provider.dart';
 import '../providers/campus_publishing_provider.dart';
 import '../providers/opportunity_badge_provider.dart';
+import '../widgets/campus_post_style.dart';
 import '../../../core/theme/app_radii.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
@@ -102,55 +103,59 @@ class CampusHubScreen extends ConsumerWidget {
           child: ListView(
             children: [
               _HomeGreetingHeader(timeOfDay: timeOfDay, name: firstName),
-              // Only the urgent alert outranks the original layout: it is
-              // time-sensitive, so it leads. Everything else keeps its
-              // established order — greeting, gated personal cards, spotlight,
-              // quick actions, latest updates, then previews.
-              // The urgent slot reads the same overview provider as Latest
-              // Updates below (a second `when` on one provider is free) so an
-              // alert can lead without moving the panel's loading skeleton up.
+              // Two bands. The top is *you, now*: the urgent alert (time-sensitive, so it
+              // leads), the gated personal cards, the spotlight, and the shortcuts — including
+              // the publisher's, which is an action like the others. The bottom is *campus*:
+              // three content sections under one shared header style, each owning a wider gap
+              // above it than anything inside it, so grouping reads by proximity alone.
+              // The urgent slot reads the same overview provider as Latest Updates below (a
+              // second `when` on one provider is free) so an alert can lead without moving the
+              // section's loading skeleton up.
               ...overviewAsync.when(
                 loading: () => const <Widget>[],
                 error: (_, _) => const <Widget>[],
                 data: (overview) => [
-                  if (overview.urgentPosts.isNotEmpty) ...[
-                    const SizedBox(height: AppSpacing.sm),
+                  if (overview.urgentPosts.isNotEmpty)
                     UrgentUpdateBanner(
                       post: overview.urgentPosts.first,
                       onTap: () => context.push(
                         '/home/posts/${overview.urgentPosts.first.id}',
                       ),
                     ),
-                  ],
                 ],
               ),
               const BlueprintBondCard(style: BlueprintBondStyle.prompt),
               const AttendanceOpenCard(),
               const _SpotlightCarousel(),
               const _QuickActionsRow(),
+              const _PublisherCta(),
+              const _LatestUpdatesHeader(),
               ...overviewAsync.when(
-                loading: () => const [AppHubPanelSkeleton()],
+                loading: () => const [AppHubPanelSkeleton(count: 1)],
                 error: (_, _) => [
-                  AppErrorState(
+                  // Inline, not the full-screen AppErrorState: one failed section must not
+                  // swallow the rest of the dashboard.
+                  AppInlineMessage(
                     message: 'Could not load campus updates.',
                     onRetry: () => ref.invalidate(campusHubOverviewProvider),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.gutter,
+                      vertical: AppSpacing.lg,
+                    ),
                   ),
                 ],
                 data: (overview) => [
-                  _LatestUpdatesPanel(updates: overview.latestUpdates),
+                  _LatestUpdatesList(updates: overview.latestUpdates),
                 ],
               ),
-              const _PublisherCta(),
               if (isStudent) ...[
                 _SectionHeader(
                   title: 'Upcoming activities',
-                  action: 'See all',
                   onAction: () => context.go('/activities'),
                 ),
                 const _ActivitiesPreview(),
                 _SectionHeader(
                   title: 'Suggested connections',
-                  action: 'See all',
                   onAction: () => context.go('/discover'),
                 ),
                 const _SuggestedConnectionsPreview(),

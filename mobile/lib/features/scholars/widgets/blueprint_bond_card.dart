@@ -92,11 +92,13 @@ class _PromptCard extends StatelessWidget {
     // invitation — still branded by its navy icon and title, no longer competing for the same
     // signal. Copy stays a single line; field-level “still needed” detail lives in the editor.
     return Padding(
+      // Top gap only, like every Home block above the sections: whether this card shows or
+      // hides, the cards around it keep the same rhythm.
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.gutter,
         AppSpacing.sm,
         AppSpacing.gutter,
-        AppSpacing.xs,
+        0,
       ),
       child: Material(
         color: AppColors.primarySoft,
