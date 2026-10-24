@@ -57,7 +57,7 @@ class _ActivityPreviewCard extends StatelessWidget {
       onTap: () => context.push('/activities/${activity.id}', extra: activity),
       child: Row(
         children: [
-          _ActivityDateBlock(date: start, going: activity.hasJoined),
+          AppDateBlock(date: start, going: activity.hasJoined),
           const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
@@ -76,7 +76,7 @@ class _ActivityPreviewCard extends StatelessWidget {
                 // how full it is — it used to repeat the date and push the place off the end.
                 _ActivityMetaRow(
                   icon: Icons.schedule_rounded,
-                  text: '${DateFormat('EEE · h:mm a').format(start)} · $_going',
+                  text: '${AppDateFormat.weekdayTime(start)} · $_going',
                 ),
                 const SizedBox(height: 2),
                 _ActivityMetaRow(
@@ -93,73 +93,6 @@ class _ActivityPreviewCard extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _ActivityDateBlock extends StatelessWidget {
-  final DateTime date;
-
-  /// The student has joined. Shown as a check on the date rather than a pill beside the title:
-  /// on a 320dp phone a pill cost the title half its width.
-  final bool going;
-
-  const _ActivityDateBlock({required this.date, required this.going});
-
-  @override
-  Widget build(BuildContext context) {
-    final block = Container(
-      width: 54,
-      height: 54,
-      decoration: BoxDecoration(
-        color: AppColors.primarySoft,
-        borderRadius: BorderRadius.circular(AppRadii.lg),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            DateFormat('MMM').format(date).toUpperCase(),
-            style: AppTypography.micro.copyWith(
-              fontWeight: FontWeight.w700,
-              color: AppColors.primaryText,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            DateFormat('d').format(date),
-            style: AppTypography.titleLarge.copyWith(
-              fontWeight: FontWeight.w800,
-              color: AppColors.textDark,
-            ),
-          ),
-        ],
-      ),
-    );
-    if (!going) return block;
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        block,
-        Positioned(
-          top: -5,
-          right: -5,
-          child: Semantics(
-            container: true,
-            label: "You're going",
-            child: Container(
-              width: 20,
-              height: 20,
-              decoration: BoxDecoration(
-                color: AppColors.primary,
-                shape: BoxShape.circle,
-                border: Border.all(color: AppColors.surface, width: 2),
-              ),
-              child: const Icon(Icons.check_rounded, size: 12, color: Colors.white),
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

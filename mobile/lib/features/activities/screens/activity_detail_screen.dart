@@ -2,6 +2,11 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+
+import '../../../core/theme/app_radii.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../core/theme/app_typography.dart';
+import '../../../shared/widgets/app_card.dart';
 import '../../../core/api/api_error.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/util/app_date_format.dart';
@@ -9,6 +14,10 @@ import '../../auth/providers/auth_provider.dart';
 import '../providers/activities_provider.dart';
 import '../widgets/activity_participants_sheet.dart';
 import 'create_activity_screen.dart';
+
+part '../widgets/activity_detail_parts.dart';
+
+const _bannerHeight = 200.0;
 
 class ActivityDetailScreen extends ConsumerStatefulWidget {
   final Activity activity;
@@ -21,6 +30,27 @@ class ActivityDetailScreen extends ConsumerStatefulWidget {
 
 class _ActivityDetailScreenState extends ConsumerState<ActivityDetailScreen> {
   bool _loading = false;
+
+  /// The title lives in the content below the banner. It used to also sit in the app bar over the
+  /// banner, so the screen opened with the same title twice; now the bar only shows it once the
+  /// banner has scrolled away and the big title has gone with it.
+  final _scroll = ScrollController();
+  bool _titleInBar = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scroll.addListener(() {
+      final show = _scroll.hasClients && _scroll.offset > _bannerHeight - kToolbarHeight;
+      if (show != _titleInBar) setState(() => _titleInBar = show);
+    });
+  }
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
 
   void _edit(Activity activity) {
     Navigator.of(context).push(
@@ -113,21 +143,24 @@ class _ActivityDetailScreenState extends ConsumerState<ActivityDetailScreen> {
         onToggle: () => _toggle(activity),
       ),
       body: CustomScrollView(
+        controller: _scroll,
         slivers: [
-          // ── Collapsing banner ──────────────────────────────────
           SliverAppBar(
-            expandedHeight: 200,
+            expandedHeight: _bannerHeight,
             pinned: true,
             backgroundColor: AppColors.surface,
             foregroundColor: AppColors.textDark,
-            title: Text(
-              activity.title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.dmSans(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textDark,
+            title: AnimatedOpacity(
+              opacity: _titleInBar ? 1 : 0,
+              duration: const Duration(milliseconds: 150),
+              child: Text(
+                activity.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTypography.titleSmall.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textDark,
+                ),
               ),
             ),
             actions: [
@@ -142,131 +175,41 @@ class _ActivityDetailScreenState extends ConsumerState<ActivityDetailScreen> {
                 ),
             ],
             flexibleSpace: FlexibleSpaceBar(
-              background: Stack(
-                fit: StackFit.expand,
-                children: [
-                  if (activity.bannerUrl != null)
-                    CachedNetworkImage(
-                      imageUrl: activity.bannerUrl!,
-                      fit: BoxFit.cover,
-                      errorWidget: (_, _, _) =>
-                          Image.asset('assets/images/school.webp', fit: BoxFit.cover),
-                    )
-                  else
-                    Image.asset('assets/images/school.webp', fit: BoxFit.cover),
-                  DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.black.withAlpha(20),
-                          Colors.black.withAlpha(120),
-                        ],
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    bottom: 14,
-                    left: 16,
-                    child: _CategoryBadge(category: activity.category),
-                  ),
-                ],
-              ),
+              background: _DetailBanner(activity: activity),
             ),
           ),
-
-          // ── Content ────────────────────────────────────────────
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.gutter,
+              AppSpacing.xl,
+              AppSpacing.gutter,
+              AppSpacing.xxxl,
+            ),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
-                // Title
                 Text(
                   activity.title,
-                  style: GoogleFonts.dmSans(
-                    fontSize: 22,
+                  style: AppTypography.display.copyWith(
                     fontWeight: FontWeight.w800,
                     color: AppColors.textDark,
-                    height: 1.2,
                   ),
                 ),
-                const SizedBox(height: 6),
-
-                // Participant count — tap to see who's going (public roster)
-                InkWell(
+                const SizedBox(height: AppSpacing.xs),
+                // The one place the count appears — tap to see who's going (public roster).
+                _GoingLink(
+                  activity: activity,
                   onTap: () => showActivityParticipantsSheet(context, activity.id),
-                  borderRadius: BorderRadius.circular(8),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.people_outline_rounded,
-                            size: 15, color: AppColors.textMuted),
-                        const SizedBox(width: 5),
-                        Text(
-                          activity.maxParticipants != null
-                              ? '${activity.participantCount} / ${activity.maxParticipants} going'
-                              : '${activity.participantCount} going',
-                          style: GoogleFonts.dmSans(
-                              fontSize: 13,
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.w600),
-                        ),
-                        const SizedBox(width: 2),
-                        const Icon(Icons.chevron_right_rounded,
-                            size: 16, color: AppColors.primary),
-                      ],
-                    ),
-                  ),
                 ),
-
-                // Description
                 if (activity.description != null &&
-                    activity.description!.isNotEmpty) ...[
-                  const SizedBox(height: 16),
+                    activity.description!.trim().isNotEmpty) ...[
+                  const SizedBox(height: AppSpacing.lg),
                   Text(
-                    activity.description!,
-                    style: GoogleFonts.dmSans(
-                      fontSize: 14,
-                      color: AppColors.textMid,
-                      height: 1.6,
-                    ),
+                    activity.description!.trim(),
+                    style: AppTypography.body.copyWith(color: AppColors.textMid, height: 1.6),
                   ),
                 ],
-
-                const SizedBox(height: 20),
-                const Divider(color: AppColors.border),
-                const SizedBox(height: 16),
-
-                // Date & Time
-                _DetailRow(
-                  icon: Icons.calendar_today_outlined,
-                  label: 'Date',
-                  value: AppDateFormat.fullDate(activity.startTime),
-                ),
-                const SizedBox(height: 12),
-                _DetailRow(
-                  icon: Icons.access_time_outlined,
-                  label: 'Time',
-                  value: AppDateFormat.timeRange(activity.startTime, activity.endTime),
-                ),
-                const SizedBox(height: 12),
-
-                // Location
-                _DetailRow(
-                  icon: Icons.location_on_outlined,
-                  label: 'Location',
-                  value: activity.location,
-                ),
-
-                // Capacity bar
-                if (activity.maxParticipants != null) ...[
-                  const SizedBox(height: 20),
-                  const Divider(color: AppColors.border),
-                  const SizedBox(height: 16),
-                  _CapacityBar(activity: activity),
-                ],
+                const SizedBox(height: AppSpacing.xl),
+                _DetailsCard(activity: activity),
               ]),
             ),
           ),
@@ -275,229 +218,3 @@ class _ActivityDetailScreenState extends ConsumerState<ActivityDetailScreen> {
     );
   }
 }
-
-// ── Category badge ────────────────────────────────────────────────
-class _CategoryBadge extends StatelessWidget {
-  final String category;
-  const _CategoryBadge({required this.category});
-
-  IconData get _icon => switch (category) {
-        'study' => Icons.menu_book_outlined,
-        'sports' => Icons.sports_outlined,
-        'social' => Icons.people_outline,
-        'culture' => Icons.palette_outlined,
-        _ => Icons.star_outline_rounded,
-      };
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.white.withAlpha(220),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(_icon, size: 13, color: AppColors.primary),
-          const SizedBox(width: 5),
-          Text(
-            category[0].toUpperCase() + category.substring(1),
-            style: GoogleFonts.dmSans(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: AppColors.primary,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Detail row (icon + label + value) ────────────────────────────
-class _DetailRow extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-  const _DetailRow(
-      {required this.icon, required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, size: 18, color: AppColors.primary),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: GoogleFonts.dmSans(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textMuted,
-                  letterSpacing: 0.5,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                value,
-                style: GoogleFonts.dmSans(
-                  fontSize: 14,
-                  color: AppColors.textDark,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// ── Capacity bar ──────────────────────────────────────────────────
-class _CapacityBar extends StatelessWidget {
-  final Activity activity;
-  const _CapacityBar({required this.activity});
-
-  @override
-  Widget build(BuildContext context) {
-    final max = activity.maxParticipants!;
-    final count = activity.participantCount;
-    final ratio = (count / max).clamp(0.0, 1.0);
-    final spotsLeft = max - count;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Capacity',
-              style: GoogleFonts.dmSans(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textDark,
-              ),
-            ),
-            Text(
-              spotsLeft > 0 ? '$spotsLeft spots left' : 'Full',
-              style: GoogleFonts.dmSans(
-                fontSize: 13,
-                color: spotsLeft > 0 ? AppColors.green : AppColors.error,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(4),
-          child: LinearProgressIndicator(
-            value: ratio,
-            minHeight: 6,
-            backgroundColor: AppColors.border,
-            valueColor: AlwaysStoppedAnimation<Color>(
-              ratio >= 1.0 ? AppColors.error : AppColors.primary,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// ── Join / Leave bottom bar ───────────────────────────────────────
-class _JoinBar extends StatelessWidget {
-  final Activity activity;
-  final bool isFull;
-  final bool loading;
-  final VoidCallback onToggle;
-
-  const _JoinBar({
-    required this.activity,
-    required this.isFull,
-    required this.loading,
-    required this.onToggle,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        border: Border(top: BorderSide(color: AppColors.border)),
-      ),
-      padding: EdgeInsets.fromLTRB(
-          20, 12, 20, 12 + MediaQuery.of(context).viewPadding.bottom),
-      child: Row(
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                '${activity.participantCount} going',
-                style: GoogleFonts.dmSans(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textDark,
-                ),
-              ),
-              if (activity.maxParticipants != null)
-                Text(
-                  '${activity.maxParticipants! - activity.participantCount} spots left',
-                  style: GoogleFonts.dmSans(
-                      fontSize: 12, color: AppColors.textMuted),
-                ),
-            ],
-          ),
-          const Spacer(),
-          SizedBox(
-            height: 44,
-            width: 120,
-            child: FilledButton(
-              onPressed: isFull ? null : (loading ? null : onToggle),
-              style: FilledButton.styleFrom(
-                backgroundColor: activity.hasJoined
-                    ? AppColors.primarySoft
-                    : isFull
-                        ? AppColors.border
-                        : AppColors.primary,
-                foregroundColor: activity.hasJoined
-                    ? AppColors.primary
-                    : Colors.white,
-                minimumSize: const Size(0, 44),
-              ),
-              child: loading
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2, color: AppColors.primary),
-                    )
-                  : Text(
-                      activity.hasJoined
-                          ? 'Leave'
-                          : isFull
-                              ? 'Full'
-                              : 'Join',
-                      style: GoogleFonts.dmSans(
-                          fontWeight: FontWeight.w700, fontSize: 15),
-                    ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Helpers ───────────────────────────────────────────────────────

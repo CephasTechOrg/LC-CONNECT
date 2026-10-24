@@ -27,6 +27,8 @@ class AppDateFormat {
   static final DateFormat _dayMonth = DateFormat('MMM d'); // Sep 16
   static final DateFormat _weekday = DateFormat('EEE'); // Tue
   static final DateFormat _time = DateFormat('h:mm a'); // 6:00 PM
+  static final DateFormat _month = DateFormat('MMM'); // Sep
+  static final DateFormat _dayOfMonth = DateFormat('d'); // 16
 
   /// Compact date for lists and cards — `Tue, Sep 16`.
   static String date(DateTime at) => _compactDate.format(at.toLocal());
@@ -39,6 +41,16 @@ class AppDateFormat {
 
   /// Time of day — `6:00 PM`.
   static String time(DateTime at) => _time.format(at.toLocal());
+
+  /// Abbreviated month — `Sep`. The top line of a date block.
+  static String month(DateTime at) => _month.format(at.toLocal());
+
+  /// Day of the month — `16`. The big number on a date block.
+  static String dayOfMonth(DateTime at) => _dayOfMonth.format(at.toLocal());
+
+  /// Weekday and time — `Tue · 6:00 PM`. Beside a date block, which already shows the date.
+  static String weekdayTime(DateTime at) =>
+      '${_weekday.format(at.toLocal())} · ${time(at)}';
 
   /// Time range — `6:00 PM – 8:00 PM`, or just the start when [end] is null.
   ///

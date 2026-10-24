@@ -46,17 +46,11 @@ class _FeaturedCardState extends ConsumerState<_FeaturedCard> {
     return GestureDetector(
       onTap: () => context.push('/activities/${a.id}', extra: widget.activity),
       child: Container(
+        // Borderless on a soft shadow — the same surface as the cards on Home.
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppColors.border),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x12000000),
-              blurRadius: 18,
-              offset: Offset(0, 4),
-            ),
-          ],
+          borderRadius: BorderRadius.circular(AppRadii.sheet),
+          boxShadow: AppShadows.soft,
         ),
         clipBehavior: Clip.antiAlias,
         child: Column(
@@ -111,9 +105,9 @@ class _FeaturedCardState extends ConsumerState<_FeaturedCard> {
                       ),
                       child: Text(
                         'FEATURED',
-                        style: GoogleFonts.dmSans(
+                        // 10, not 9: the smallest size on the app's type scale.
+                        style: AppTypography.micro.copyWith(
                           color: Colors.white,
-                          fontSize: 9,
                           fontWeight: FontWeight.w700,
                           letterSpacing: 0.6,
                         ),
@@ -138,7 +132,8 @@ class _FeaturedCardState extends ConsumerState<_FeaturedCard> {
                   ),
                   Positioned(
                     right: 15,
-                    bottom: 14,
+                    // The button's 48dp target extends 6dp above and below the visible pill.
+                    bottom: 8,
                     child: _JoinButton(
                       joined: joined,
                       loading: _loading,
@@ -146,6 +141,7 @@ class _FeaturedCardState extends ConsumerState<_FeaturedCard> {
                       full: a.maxParticipants != null &&
                           a.participantCount >= a.maxParticipants! &&
                           !joined,
+                      title: a.title,
                     ),
                   ),
                 ],

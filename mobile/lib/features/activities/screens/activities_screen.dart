@@ -5,7 +5,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/api/api_error.dart';
+import '../../../core/theme/app_radii.dart';
+import '../../../core/theme/app_shadows.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_typography.dart';
+import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/app_filter_chip.dart';
 import '../../../shared/widgets/app_shell_header.dart';
 import '../../../shared/widgets/app_skeleton.dart';
@@ -42,10 +46,13 @@ class ActivitiesScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppColors.background,
+      // Round, like the shortcuts and the navigation pill it floats above.
       floatingActionButton: FloatingActionButton(
         onPressed: () => context.push('/activities/create'),
+        tooltip: 'Create activity',
         backgroundColor: AppColors.primary,
         elevation: 3,
+        shape: const CircleBorder(),
         child: const Icon(Icons.add, color: Colors.white, size: 26),
       ),
       body: SafeArea(

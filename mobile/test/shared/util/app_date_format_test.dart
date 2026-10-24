@@ -28,6 +28,20 @@ void main() {
         AppDateFormat.timeRange(instantUtc, null),
         AppDateFormat.timeRange(instantLocal, null),
       );
+      // The date-block helpers: near midnight UTC a missing `.toLocal()` shows the wrong *day*.
+      expect(AppDateFormat.month(instantUtc), AppDateFormat.month(instantLocal));
+      expect(AppDateFormat.dayOfMonth(instantUtc), AppDateFormat.dayOfMonth(instantLocal));
+      expect(AppDateFormat.weekdayTime(instantUtc), AppDateFormat.weekdayTime(instantLocal));
+    });
+
+    test('date-block helpers read the local calendar', () {
+      final local = instantUtc.toLocal();
+      expect(AppDateFormat.month(instantUtc), DateFormat('MMM').format(local));
+      expect(AppDateFormat.dayOfMonth(instantUtc), DateFormat('d').format(local));
+      expect(
+        AppDateFormat.weekdayTime(instantUtc),
+        '${DateFormat('EEE').format(local)} · ${DateFormat('h:mm a').format(local)}',
+      );
     });
 
     test('formats the local wall clock, not the UTC one', () {

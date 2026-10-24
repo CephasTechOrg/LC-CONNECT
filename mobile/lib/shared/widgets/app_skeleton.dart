@@ -191,11 +191,12 @@ class AppActivityListSkeleton extends StatelessWidget {
         shrinkWrap: true,
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
         children: const [
-          AppSkeletonBox(width: double.infinity, height: 180, borderRadius: 16),
+          // Shaped like the cards they stand in for (radius 20, as on Home), so nothing jumps.
+          AppSkeletonBox(width: double.infinity, height: 250, borderRadius: 20),
           SizedBox(height: 16),
-          AppSkeletonBox(width: double.infinity, height: 88, borderRadius: 14),
+          AppSkeletonBox(width: double.infinity, height: 82, borderRadius: 20),
           SizedBox(height: 10),
-          AppSkeletonBox(width: double.infinity, height: 88, borderRadius: 14),
+          AppSkeletonBox(width: double.infinity, height: 82, borderRadius: 20),
         ],
       ),
     );
