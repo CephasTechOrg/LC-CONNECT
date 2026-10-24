@@ -281,6 +281,22 @@ void main() {
     handle.dispose();
   });
 
+  testWidgets('the spotlight banner is a button that names where it goes', (tester) async {
+    final handle = tester.ensureSemantics();
+    await _pumpHome(tester);
+    // The slide's own copy follows the action: "Open groups, Livingstone College, Find your…".
+    expect(find.bySemanticsLabel(RegExp(r'^Open groups\n')), findsOneWidget);
+    handle.dispose();
+  });
+
+  testWidgets('the spotlight does not advance on its own', (tester) async {
+    await _pumpHome(tester);
+    final before = tester.widget<PageView>(find.byType(PageView)).controller!.page;
+    await tester.pump(const Duration(seconds: 30));
+    await tester.pump(const Duration(seconds: 1));
+    expect(tester.widget<PageView>(find.byType(PageView)).controller!.page, before);
+  });
+
   testWidgets('a joined activity is marked as going', (tester) async {
     final handle = tester.ensureSemantics();
     await _pumpHome(tester);

@@ -77,7 +77,7 @@ class AppAccessibleTextAction extends StatelessWidget {
                 label,
                 style: GoogleFonts.dmSans(
                   fontSize: 13,
-                  color: AppColors.primary,
+                  color: AppColors.primaryText,
                   fontWeight: FontWeight.w600,
                 ),
               ),

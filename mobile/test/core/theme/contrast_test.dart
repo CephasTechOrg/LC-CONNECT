@@ -60,6 +60,31 @@ void main() {
     });
   });
 
+  group('primaryText — the brand blue as text', () {
+    // `primary` is 4.0:1 (see the exceptions below), so links, "See all", the selected tab label
+    // and date-block months use this shade instead. It must clear AA on every ground it sits on,
+    // including the pale-blue tiles.
+    const grounds = {
+      'background': AppColors.background,
+      'surface': AppColors.surface,
+      'primarySoft': AppColors.primarySoft,
+    };
+    for (final ground in grounds.entries) {
+      test('primaryText on ${ground.key}', () {
+        expect(contrast(AppColors.primaryText, ground.value), greaterThanOrEqualTo(4.5));
+      });
+    }
+
+    // testWidgets, not test: building the theme builds DM Sans styles, and google_fonts' failed
+    // offline fetch only stays contained under the widget binding (see design_tokens_test).
+    testWidgets('navigation labels are readable text colours', (tester) async {
+      // The unselected tab label was #9CA3AF — 2.5:1 on the white bar.
+      final nav = AppTheme.light.bottomNavigationBarTheme;
+      expect(contrast(nav.selectedItemColor!, AppColors.surface), greaterThanOrEqualTo(4.5));
+      expect(contrast(nav.unselectedItemColor!, AppColors.surface), greaterThanOrEqualTo(4.5));
+    });
+  });
+
   group('known contrast exceptions — recorded, not hidden', () {
     // These fail AA for normal text today. Changing them is a brand decision, so the failures are
     // pinned here rather than silently tolerated: the numbers may not get *worse* without a test

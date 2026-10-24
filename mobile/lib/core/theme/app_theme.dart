@@ -7,6 +7,10 @@ import 'app_typography.dart';
 class AppColors {
   static const primary    = Color(0xFF3F7FB5);
   static const primaryLight = Color(0xFF8CB0BF);
+  /// [primary] as *text*. The brand blue itself is 4.0:1 on the page — under AA (4.5:1) for
+  /// normal text — so it stays for fills, icons and large headings, and links and labels use
+  /// this one shade deeper. Passes on surface (5.1), background (4.8) and [primarySoft] (4.56).
+  static const primaryText  = Color(0xFF3772A4);
   static const primarySoft  = Color(0xFFEBF3F9);
   static const primaryPale  = Color(0xFFEFF6FB);
   static const background = Color(0xFFF6F9FB);
@@ -109,8 +113,10 @@ class AppTheme {
       ),
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
         backgroundColor: AppColors.surface,
-        selectedItemColor: AppColors.primary,
-        unselectedItemColor: const Color(0xFF9CA3AF),
+        // Text colours, not the brand fill: these are 10px labels. The old unselected grey
+        // (#9CA3AF) was 2.5:1 on white — the least legible text in the app.
+        selectedItemColor: AppColors.primaryText,
+        unselectedItemColor: AppColors.textMuted,
         type: BottomNavigationBarType.fixed,
         elevation: 0,
         selectedLabelStyle: AppTypography.micro,

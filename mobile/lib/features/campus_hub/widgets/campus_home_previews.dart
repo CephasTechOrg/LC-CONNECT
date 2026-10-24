@@ -122,7 +122,7 @@ class _ActivityDateBlock extends StatelessWidget {
             DateFormat('MMM').format(date).toUpperCase(),
             style: AppTypography.micro.copyWith(
               fontWeight: FontWeight.w700,
-              color: AppColors.primary,
+              color: AppColors.primaryText,
             ),
           ),
           const SizedBox(height: 2),

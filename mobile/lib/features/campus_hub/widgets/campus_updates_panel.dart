@@ -167,7 +167,7 @@ class _UpdatesSeeAll extends ConsumerWidget {
                 style: AppTypography.bodySmall.copyWith(
                   fontWeight: FontWeight.w600,
                   color: onLight
-                      ? AppColors.primary
+                      ? AppColors.primaryText
                       : Colors.white.withValues(alpha: 0.9),
                 ),
               ),
@@ -273,8 +273,9 @@ class _FeaturedUpdateCard extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       _postAge(post.publishAt),
+                      // 0.75, not 0.6: at 0.6 this 11px timestamp was 3.8:1 on the panel.
                       style: AppTypography.caption.copyWith(
-                        color: Colors.white.withValues(alpha: 0.6),
+                        color: Colors.white.withValues(alpha: 0.75),
                       ),
                     ),
                   ],

@@ -145,7 +145,7 @@ class _SectionAction extends StatelessWidget {
                 label,
                 style: AppTypography.bodySmall.copyWith(
                   fontWeight: FontWeight.w600,
-                  color: AppColors.primary,
+                  color: AppColors.primaryText,
                 ),
               ),
             ),

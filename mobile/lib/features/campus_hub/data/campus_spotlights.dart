@@ -1,4 +1,4 @@
-/// Home hero spotlights — brand copy that rotates over the campus photo.
+/// Home hero spotlights — brand copy over the campus photo, one swipeable slide per feature.
 ///
 /// Three slides, in this order: Blue Bear (community), volleyball (events), grad cap
 /// (academics). Each carries its own subject image, cut out and feathered into the campus
@@ -25,15 +25,19 @@ class CampusSpotlight {
   final String? studentAsset;
   final String studentLabel;
 
-  /// How long this slide holds before the carousel advances.
-  final Duration dwell;
+  /// Where tapping the slide goes — the feature its copy is advertising.
+  final String route;
+
+  /// What a screen reader announces for that tap, e.g. "Open groups".
+  final String actionLabel;
 
   const CampusSpotlight({
     required this.headline,
     required this.description,
+    required this.route,
+    required this.actionLabel,
     this.studentAsset,
     this.studentLabel = '',
-    this.dwell = const Duration(seconds: 10),
   });
 }
 
@@ -51,7 +55,9 @@ const campusSpotlights = <CampusSpotlight>[
     description: 'Join groups you love.',
     studentAsset: 'assets/images/lcbear.webp',
     studentLabel: 'Livingstone College Blue Bear mascot',
-    dwell: Duration(seconds: 12),
+    // "Join groups you love." — groups live under Messages (`groupsPath`).
+    route: '/messages/groups',
+    actionLabel: 'Open groups',
   ),
   // 2 — events + athletics.
   CampusSpotlight(
@@ -61,6 +67,8 @@ const campusSpotlights = <CampusSpotlight>[
     description: 'Events, games, and study sessions every week.',
     studentAsset: 'assets/images/spotlight_student.webp',
     studentLabel: 'Livingstone College volleyball student-athlete, #1',
+    route: '/activities',
+    actionLabel: 'Open activities',
   ),
   // 3 — academics.
   CampusSpotlight(
@@ -70,5 +78,8 @@ const campusSpotlights = <CampusSpotlight>[
     description: 'Honors, tutoring, and the push to graduation day.',
     studentAsset: 'assets/images/lcgrad.webp',
     studentLabel: 'Livingstone College graduate holding an LC cap',
+    // Tutoring and academic support live in Resources.
+    route: '/home/resources',
+    actionLabel: 'Open academic resources',
   ),
 ];
