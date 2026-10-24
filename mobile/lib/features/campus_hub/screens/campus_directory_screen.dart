@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/avatar_widget.dart';
 import '../../../shared/widgets/app_filter_chip.dart';
+import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/app_states.dart';
 import '../../messages/providers/staff_messaging_provider.dart';
 import '../providers/campus_directory_provider.dart';
@@ -213,50 +214,40 @@ class _DirectoryTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.surface,
-      borderRadius: BorderRadius.circular(14),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
-        child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppColors.border),
-          ),
-          child: Row(
+    // The shared card surface (borderless, soft shadow), same as Home and Activities.
+    return AppCard(
+      onTap: onTap,
+      padding: const EdgeInsets.all(14),
+      child: Row(
+      children: [
+        AvatarWidget(imageUrl: entry.avatarUrl, size: 44, cacheScope: entry.userId),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              AvatarWidget(imageUrl: entry.avatarUrl, size: 44, cacheScope: entry.userId),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      entry.displayName ?? entry.officialTitle,
-                      style: GoogleFonts.dmSans(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textDark,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      entry.officialTitle,
-                      style: GoogleFonts.dmSans(fontSize: 12.5, color: AppColors.textMid),
-                    ),
-                    Text(
-                      entry.department,
-                      style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textMuted),
-                    ),
-                  ],
+              Text(
+                entry.displayName ?? entry.officialTitle,
+                style: GoogleFonts.dmSans(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textDark,
                 ),
               ),
-              const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
+              const SizedBox(height: 2),
+              Text(
+                entry.officialTitle,
+                style: GoogleFonts.dmSans(fontSize: 12.5, color: AppColors.textMid),
+              ),
+              Text(
+                entry.department,
+                style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textMuted),
+              ),
             ],
           ),
         ),
+        const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
+        ],
       ),
     );
   }

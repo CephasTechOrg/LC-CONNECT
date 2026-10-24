@@ -9,6 +9,7 @@ import '../../../shared/widgets/app_filter_chip.dart';
 import '../../../shared/widgets/app_states.dart';
 import '../models/campus_resource.dart';
 import '../providers/campus_resources_provider.dart';
+import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/app_skeleton.dart';
 
 class _ResourceCategory {
@@ -247,64 +248,54 @@ class _StaticCategoryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.surface,
-      borderRadius: BorderRadius.circular(16),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          padding: const EdgeInsets.all(16),
+    // The shared card surface (borderless, soft shadow), same as Home and Activities.
+    return AppCard(
+      onTap: onTap,
+      padding: const EdgeInsets.all(16),
+      child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 48,
+          height: 48,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.border),
+            color: cat.iconBg,
+            borderRadius: BorderRadius.circular(14),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: cat.iconBg,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Icon(cat.icon, color: cat.iconColor, size: 24),
-              ),
-              const SizedBox(height: 14),
-              Text(
-                cat.title,
-                style: GoogleFonts.dmSans(
-                  fontSize: 14.5,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textDark,
-                  height: 1.25,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Expanded(
-                child: Text(
-                  cat.description,
-                  style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textMid, height: 1.4),
-                ),
-              ),
-              Row(
-                children: [
-                  Text(
-                    'View resources',
-                    style: GoogleFonts.dmSans(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  const Icon(Icons.chevron_right_rounded, size: 18, color: AppColors.primary),
-                ],
-              ),
-            ],
+          child: Icon(cat.icon, color: cat.iconColor, size: 24),
+        ),
+        const SizedBox(height: 14),
+        Text(
+          cat.title,
+          style: GoogleFonts.dmSans(
+            fontSize: 14.5,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textDark,
+            height: 1.25,
           ),
         ),
+        const SizedBox(height: 6),
+        Expanded(
+          child: Text(
+            cat.description,
+            style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textMid, height: 1.4),
+          ),
+        ),
+        Row(
+          children: [
+            Text(
+              'View resources',
+              style: GoogleFonts.dmSans(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+                color: AppColors.primaryText,
+              ),
+            ),
+            const SizedBox(width: 4),
+            const Icon(Icons.chevron_right_rounded, size: 18, color: AppColors.primaryText),
+          ],
+        ),
+        ],
       ),
     );
   }
@@ -357,7 +348,7 @@ class _ComingSoon extends StatelessWidget {
               style: GoogleFonts.dmSans(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
-                color: AppColors.primary,
+                color: AppColors.primaryText,
               ),
             ),
             const SizedBox(height: 8),
@@ -371,7 +362,7 @@ class _ComingSoon extends StatelessWidget {
               onPressed: onBack,
               icon: const Icon(Icons.arrow_back_rounded, size: 16),
               label: const Text('Back to all categories'),
-              style: TextButton.styleFrom(foregroundColor: AppColors.primary),
+              style: TextButton.styleFrom(foregroundColor: AppColors.primaryText),
             ),
           ],
         ),
@@ -413,13 +404,9 @@ class _ResourceCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final categoryLabel = resourceCategories[resource.category] ?? resource.category;
 
-    return Container(
+    // The shared card surface (borderless, soft shadow), same as Home and Activities.
+    return AppCard(
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -428,7 +415,7 @@ class _ResourceCard extends StatelessWidget {
             style: GoogleFonts.dmSans(
               fontSize: 11,
               fontWeight: FontWeight.w600,
-              color: AppColors.primary,
+              color: AppColors.primaryText,
             ),
           ),
           const SizedBox(height: 4),
@@ -462,7 +449,7 @@ class _ResourceCard extends StatelessWidget {
               icon: const Icon(Icons.open_in_new_rounded, size: 16),
               label: const Text('Visit website'),
               style: TextButton.styleFrom(
-                foregroundColor: AppColors.primary,
+                foregroundColor: AppColors.primaryText,
                 padding: EdgeInsets.zero,
                 textStyle: GoogleFonts.dmSans(fontWeight: FontWeight.w600),
               ),

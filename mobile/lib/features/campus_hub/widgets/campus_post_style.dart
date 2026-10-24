@@ -3,32 +3,35 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme/app_theme.dart';
 
-/// (accent color, tinted background, icon) for a post's category — shared by both list cards and
-/// the detail screen so a given category always reads the same everywhere, and so the mapping
-/// only exists once instead of being copy-pasted per screen.
+/// (accent color, tinted background, icon) for a post's category — shared by list cards and the
+/// detail screen so a category reads the same everywhere.
+///
+/// Every category shares one tint: brand blue on its soft wash. Categories used to each carry a
+/// colour (green Academic, purple Events, amber Safety…), and a page of them read as colours
+/// competing rather than as one list. Colour is kept for things that *mean* something — unread,
+/// a deadline closing — and categories are told apart by their icon and their label instead.
 typedef CampusCategoryStyle = (Color color, Color background, IconData icon);
 
-const announcementCategoryStyles = <String, CampusCategoryStyle>{
-  'general': (AppColors.textMuted, AppColors.border, Icons.campaign_outlined),
-  'academic': (AppColors.green, Color(0xFFDCFCE7), Icons.school_outlined),
-  'campus': (AppColors.primary, AppColors.primarySoft, Icons.account_balance_outlined),
-  'events': (Color(0xFF7C3AED), Color(0xFFF3E8FF), Icons.event_outlined),
-  'safety': (Color(0xFFD97706), Color(0xFFFEF3C7), Icons.warning_amber_rounded),
+const announcementCategoryIcons = <String, IconData>{
+  'general': Icons.campaign_outlined,
+  'academic': Icons.school_outlined,
+  'campus': Icons.account_balance_outlined,
+  'events': Icons.event_outlined,
+  'safety': Icons.health_and_safety_outlined,
 };
 
-const opportunityCategoryStyles = <String, CampusCategoryStyle>{
-  'internship': (Color(0xFF2563EB), Color(0xFFE0EDFF), Icons.school_outlined),
-  'job': (Color(0xFFD97706), Color(0xFFFEF3C7), Icons.work_outline_rounded),
-  'volunteer': (Color(0xFF16A34A), Color(0xFFDCFCE7), Icons.favorite_outline_rounded),
-  'leadership': (Color(0xFF7C3AED), Color(0xFFF3E8FF), Icons.emoji_events_outlined),
+const opportunityCategoryIcons = <String, IconData>{
+  'internship': Icons.school_outlined,
+  'job': Icons.work_outline_rounded,
+  'volunteer': Icons.favorite_outline_rounded,
+  'leadership': Icons.emoji_events_outlined,
 };
 
 CampusCategoryStyle campusCategoryStyle(String kind, String? category) {
-  if (kind == 'opportunity') {
-    return opportunityCategoryStyles[category] ??
-        (AppColors.primary, AppColors.primarySoft, Icons.work_outline_rounded);
-  }
-  return announcementCategoryStyles[category] ?? announcementCategoryStyles['general']!;
+  final icon = kind == 'opportunity'
+      ? opportunityCategoryIcons[category] ?? Icons.work_outline_rounded
+      : announcementCategoryIcons[category] ?? Icons.campaign_outlined;
+  return (AppColors.primaryText, AppColors.primarySoft, icon);
 }
 
 /// A small pill badge — used for category, source, and type labels across both list cards and

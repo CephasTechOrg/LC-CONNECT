@@ -35,13 +35,13 @@ class _LookingForBadge extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(_icon, size: 12, color: AppColors.primary),
+          Icon(_icon, size: 12, color: AppColors.primaryText),
           const SizedBox(width: 4),
           Text(
             label,
             style: AppTypography.caption.copyWith(
               fontWeight: FontWeight.w600,
-              color: AppColors.primary,
+              color: AppColors.primaryText,
             ),
           ),
         ],
