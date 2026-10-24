@@ -23,13 +23,7 @@ class _LatestUpdatesPanel extends StatelessWidget {
           AppSpacing.gutter,
           0,
         ),
-        child: Container(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(AppRadii.sheet),
-            border: Border.all(color: AppColors.border),
-          ),
+        child: AppCard(
           child: Row(
             children: [
               Container(

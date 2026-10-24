@@ -7,6 +7,7 @@ import 'package:lc_connect/features/activities/providers/activities_provider.dar
 import 'package:lc_connect/features/attendance/providers/attendance_provider.dart';
 import 'package:lc_connect/features/auth/providers/auth_provider.dart';
 import 'package:lc_connect/features/campus_hub/models/campus_post.dart';
+import 'package:lc_connect/features/scholars/providers/scholars_provider.dart';
 import 'package:lc_connect/features/campus_hub/providers/campus_hub_provider.dart';
 import 'package:lc_connect/features/campus_hub/providers/campus_publishing_provider.dart';
 import 'package:lc_connect/features/campus_hub/providers/opportunity_badge_provider.dart';
@@ -83,6 +84,33 @@ class _Notif extends NotificationCountNotifier {
   @override
   int build() => 3;
 }
+
+class _Scholar extends ScholarProfileNotifier {
+  @override
+  Future<ScholarProfile> build() async => const ScholarProfile(
+        id: 's1',
+        userId: 'user-1',
+        skills: [],
+        careerInterests: [],
+        employerVisibilityConsent: false,
+        hasHeadshot: false,
+        hasResume: false,
+        isComplete: false,
+        missingFields: ['summary'],
+      );
+}
+
+ActiveAttendanceState _openSession({required bool checkedIn}) => ActiveAttendanceState(
+      open: true,
+      studentStatus: checkedIn ? 'present' : null,
+      session: AttendanceSessionInfo(
+        id: 'session-1',
+        title: 'Honors Seminar',
+        status: 'open',
+        openedAt: DateTime.now(),
+        presentUntil: DateTime.now().add(const Duration(minutes: 10)),
+      ),
+    );
 
 class _Ann extends AnnouncementCountNotifier {
   @override
@@ -196,6 +224,8 @@ Future<void> _pumpHome(
   List<CampusPostSummary>? updates,
   List<CampusPostSummary> urgent = const [],
   bool publisher = false,
+  bool scholar = false,
+  bool? checkedIn,
 }) async {
   tester.view.physicalSize = Size(width * 2, 2400 * 2);
   tester.view.devicePixelRatio = 2;
@@ -216,8 +246,12 @@ Future<void> _pumpHome(
         announcementCountProvider.overrideWith(_Ann.new),
         opportunityNewCountProvider.overrideWith(_Opp.new),
         notificationCountProvider.overrideWith(_Notif.new),
-        scholarEligibilityProvider.overrideWithValue(Eligibility.no),
-        honorsAttendanceVisibleProvider.overrideWithValue(Eligibility.no),
+        scholarEligibilityProvider.overrideWithValue(scholar ? Eligibility.yes : Eligibility.no),
+        scholarProfileNotifierProvider.overrideWith(_Scholar.new),
+        honorsAttendanceVisibleProvider
+            .overrideWithValue(checkedIn == null ? Eligibility.no : Eligibility.yes),
+        activeAttendanceProvider
+            .overrideWith((ref) async => _openSession(checkedIn: checkedIn ?? false)),
         attendanceRealtimeSyncProvider.overrideWith((ref) {}),
         publishingCapabilitiesProvider.overrideWith((ref) async =>
             PublishingCapabilities(canPublish: publisher, staffPublishingEnabled: publisher)),
@@ -242,6 +276,8 @@ void main() {
         tester,
         width: width,
         publisher: true,
+        scholar: true,
+        checkedIn: false,
         urgent: [
           _post('u1', 'Campus closed today due to severe weather', null,
               const Duration(hours: 1), priority: 'urgent'),
@@ -250,6 +286,8 @@ void main() {
       expect(_layoutErrors, isEmpty, reason: _layoutErrors.join('\n'));
       expect(find.text('Urgent campus alert'), findsOneWidget);
       expect(find.text('Publish to campus'), findsOneWidget);
+      expect(find.text('Finish your Blueprint Bond profile'), findsOneWidget);
+      expect(find.text('Scan to Check In'), findsOneWidget);
       for (final title in ['Latest updates', 'Upcoming activities', 'Suggested connections']) {
         expect(find.text(title), findsOneWidget);
       }
@@ -295,6 +333,19 @@ void main() {
     await tester.pump(const Duration(seconds: 30));
     await tester.pump(const Duration(seconds: 1));
     expect(tester.widget<PageView>(find.byType(PageView)).controller!.page, before);
+  });
+
+  testWidgets('once checked in, attendance steps down to a calm card', (tester) async {
+    await _pumpHome(tester, checkedIn: true);
+    expect(find.text("You're checked in"), findsOneWidget);
+    expect(find.text('Scan to Check In'), findsNothing);
+    // One accent colour: the checked-in state used to be a solid green block.
+    final greens = find.byWidgetPredicate((w) =>
+        (w is Material && w.color == AppColors.green) ||
+        (w is DecoratedBox &&
+            w.decoration is BoxDecoration &&
+            (w.decoration as BoxDecoration).color == AppColors.green));
+    expect(greens, findsNothing);
   });
 
   testWidgets('a joined activity is marked as going', (tester) async {

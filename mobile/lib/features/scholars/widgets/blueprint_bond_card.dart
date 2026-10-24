@@ -3,10 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../../core/theme/app_radii.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../shared/widgets/app_card.dart';
 import '../../programs/providers/programs_provider.dart';
 import '../providers/scholars_provider.dart';
 
@@ -100,46 +100,29 @@ class _PromptCard extends StatelessWidget {
         AppSpacing.gutter,
         0,
       ),
-      child: Material(
-        color: AppColors.primarySoft,
-        borderRadius: BorderRadius.circular(AppRadii.card),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(AppRadii.card),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.md,
-              vertical: AppSpacing.sm,
+      // The same floating white card as every other Home row (AppCard), so the prompt reads as
+      // part of the page rather than a strip wedged between two cards.
+      child: AppCard(
+        onTap: onTap,
+        child: Row(
+          children: [
+            const AppIconTile(
+              icon: Icons.workspace_premium_rounded,
+              color: Colors.white,
+              background: _blueprintNavy,
             ),
-            child: Row(
-              children: [
-                Container(
-                  width: 28,
-                  height: 28,
-                  decoration: BoxDecoration(
-                    color: _blueprintNavy,
-                    borderRadius: BorderRadius.circular(AppRadii.md),
-                  ),
-                  child: const Icon(Icons.workspace_premium_rounded, color: Colors.white, size: 16),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: Text(
-                    'Finish your Blueprint Bond profile',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTypography.label.copyWith(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13,
-                      color: _blueprintNavy,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                const Icon(Icons.arrow_forward_rounded, color: _blueprintNavy, size: 15),
-              ],
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Text(
+                'Finish your Blueprint Bond profile',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: AppTypography.titleSmall.copyWith(color: AppColors.textDark),
+              ),
             ),
-          ),
+            const SizedBox(width: AppSpacing.sm),
+            const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
+          ],
         ),
       ),
     );

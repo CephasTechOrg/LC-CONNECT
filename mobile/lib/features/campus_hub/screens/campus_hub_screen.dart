@@ -127,7 +127,7 @@ class CampusHubScreen extends ConsumerWidget {
               const _QuickActionsRow(),
               const _PublisherCta(),
               ...overviewAsync.when(
-                loading: () => const [AppHubPanelSkeleton()],
+                loading: () => const [AppHomePanelSkeleton()],
                 error: (_, _) => [
                   // Inline, not the full-screen AppErrorState: one failed section must not
                   // swallow the rest of the dashboard.
