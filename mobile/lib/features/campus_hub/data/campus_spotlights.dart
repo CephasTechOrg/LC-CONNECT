@@ -48,7 +48,7 @@ const campusSpotlights = <CampusSpotlight>[
       [SpotlightWord('Blue Bear', highlighted: true)],
       [SpotlightWord('family.', highlighted: true)],
     ],
-    description: 'Join groups built\naround what you love.',
+    description: 'Join groups you love.',
     studentAsset: 'assets/images/lcbear.webp',
     studentLabel: 'Livingstone College Blue Bear mascot',
     dwell: Duration(seconds: 12),
