@@ -69,9 +69,8 @@ class _SectionEmpty extends StatelessWidget {
   }
 }
 
-/// The one heading every Home section uses — Latest updates, Upcoming activities, Suggested
-/// connections. They used to be three different things: a white 16px title inside a navy panel,
-/// a 16px title inside a bordered row when empty, and this 18px header. Same job, same look.
+/// The heading for the Home preview sections (Upcoming activities, Suggested connections).
+/// Latest updates keeps its own header inside the featured panel.
 ///
 /// Owns the gap *above* a section (24dp — wider than any gap inside one), so sections read as
 /// groups by proximity rather than needing boxes around them.
@@ -79,14 +78,7 @@ class _SectionHeader extends StatelessWidget {
   final String title;
   final VoidCallback onAction;
 
-  /// "New since you last looked" — shown as a pill after the action label.
-  final int newCount;
-
-  const _SectionHeader({
-    required this.title,
-    required this.onAction,
-    this.newCount = 0,
-  });
+  const _SectionHeader({required this.title, required this.onAction});
 
   @override
   Widget build(BuildContext context) {
@@ -115,12 +107,7 @@ class _SectionHeader extends StatelessWidget {
               ),
             ),
           ),
-          _SectionAction(
-            label: 'See all',
-            title: title,
-            newCount: newCount,
-            onTap: onAction,
-          ),
+          _SectionAction(label: 'See all', title: title, onTap: onAction),
         ],
       ),
     );
@@ -130,25 +117,20 @@ class _SectionHeader extends StatelessWidget {
 class _SectionAction extends StatelessWidget {
   final String label;
   final String title;
-  final int newCount;
   final VoidCallback onTap;
 
   const _SectionAction({
     required this.label,
     required this.title,
-    required this.newCount,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final semantics = newCount > 0
-        ? '$label ${title.toLowerCase()}, $newCount new'
-        : '$label ${title.toLowerCase()}';
     return Semantics(
       container: true,
       button: true,
-      label: semantics,
+      label: '$label ${title.toLowerCase()}',
       excludeSemantics: true,
       child: InkWell(
         onTap: onTap,
@@ -157,48 +139,17 @@ class _SectionAction extends StatelessWidget {
           constraints: const BoxConstraints(minHeight: kMinTouchTarget),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (newCount > 0) ...[
-                  _NewPill(count: newCount),
-                  const SizedBox(width: AppSpacing.sm),
-                ],
-                Text(
-                  label,
-                  style: AppTypography.bodySmall.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.primary,
-                  ),
+            child: Center(
+              widthFactor: 1,
+              child: Text(
+                label,
+                style: AppTypography.bodySmall.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.primary,
                 ),
-              ],
+              ),
             ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-/// "3 new" in a soft brand pill. Brand, not error red: unread announcements are news, not a
-/// problem — red is kept for the things that are (urgent alerts, failed sends).
-class _NewPill extends StatelessWidget {
-  final int count;
-  const _NewPill({required this.count});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 2),
-      decoration: BoxDecoration(
-        color: AppColors.primarySoft,
-        borderRadius: AppRadii.all(AppRadii.full),
-      ),
-      child: Text(
-        '${count > 99 ? '99+' : count} new',
-        style: AppTypography.caption.copyWith(
-          fontWeight: FontWeight.w700,
-          color: AppColors.primary,
         ),
       ),
     );

@@ -97,9 +97,6 @@ class _ActivityPreviewCard extends StatelessWidget {
   }
 }
 
-/// Darker than [AppColors.green], so the check stays visible on a white ring.
-const _goingGreen = Color(0xFF15803D);
-
 class _ActivityDateBlock extends StatelessWidget {
   final DateTime date;
 
@@ -154,7 +151,7 @@ class _ActivityDateBlock extends StatelessWidget {
               width: 20,
               height: 20,
               decoration: BoxDecoration(
-                color: _goingGreen,
+                color: AppColors.primary,
                 shape: BoxShape.circle,
                 border: Border.all(color: AppColors.surface, width: 2),
               ),

@@ -27,7 +27,6 @@ import '../models/campus_post.dart';
 import '../providers/campus_hub_provider.dart';
 import '../providers/campus_publishing_provider.dart';
 import '../providers/opportunity_badge_provider.dart';
-import '../widgets/campus_post_style.dart';
 import '../../../core/theme/app_radii.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
@@ -106,8 +105,7 @@ class CampusHubScreen extends ConsumerWidget {
               // Two bands. The top is *you, now*: the urgent alert (time-sensitive, so it
               // leads), the gated personal cards, the spotlight, and the shortcuts — including
               // the publisher's, which is an action like the others. The bottom is *campus*:
-              // three content sections under one shared header style, each owning a wider gap
-              // above it than anything inside it, so grouping reads by proximity alone.
+              // the featured update, then the activity and connection previews.
               // The urgent slot reads the same overview provider as Latest Updates below (a
               // second `when` on one provider is free) so an alert can lead without moving the
               // section's loading skeleton up.
@@ -129,9 +127,8 @@ class CampusHubScreen extends ConsumerWidget {
               const _SpotlightCarousel(),
               const _QuickActionsRow(),
               const _PublisherCta(),
-              const _LatestUpdatesHeader(),
               ...overviewAsync.when(
-                loading: () => const [AppHubPanelSkeleton(count: 1)],
+                loading: () => const [AppHubPanelSkeleton()],
                 error: (_, _) => [
                   // Inline, not the full-screen AppErrorState: one failed section must not
                   // swallow the rest of the dashboard.
@@ -145,7 +142,7 @@ class CampusHubScreen extends ConsumerWidget {
                   ),
                 ],
                 data: (overview) => [
-                  _LatestUpdatesList(updates: overview.latestUpdates),
+                  _LatestUpdatesPanel(updates: overview.latestUpdates),
                 ],
               ),
               if (isStudent) ...[

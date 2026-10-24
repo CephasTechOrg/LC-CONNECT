@@ -25,7 +25,7 @@ import 'package:lc_connect/features/connections/providers/connections_provider.d
 ///
 /// Pumps the whole dashboard with realistic data at the two widths that matter — 320dp (the
 /// smallest supported phone) and 393dp (a typical one) — and pins the presentation decisions:
-/// one section-header style, a light grouped updates list instead of the navy panel, three
+/// one featured update with its live count, a shared header for the preview sections, three
 /// suggestions side by side on a normal phone, and no layout overflow anywhere.
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -256,21 +256,18 @@ void main() {
     });
   }
 
-  testWidgets('lists the three newest updates, not just one', (tester) async {
-    await _pumpHome(tester, updates: [
-      ..._updates,
-      _post('p4', 'Fourth update', null, const Duration(days: 3)),
-    ]);
+  testWidgets('features only the newest update, with the live new count', (tester) async {
+    // Home is a teaser, not the list: one update, and the count tells you there is more.
+    final handle = tester.ensureSemantics();
+    await _pumpHome(tester);
     expect(find.text('Spring registration opens Monday'), findsOneWidget);
-    expect(find.text('Library extends hours for finals week'), findsOneWidget);
-    expect(find.text('Homecoming volunteers needed'), findsOneWidget);
-    expect(find.text('Fourth update'), findsNothing);
-    // Only the lead item carries its summary.
-    expect(find.text('Open until 2am Sunday–Thursday.'), findsNothing);
-    expect(find.text('2 new'), findsOneWidget);
+    expect(find.text('Library extends hours for finals week'), findsNothing);
+    expect(find.text('Homecoming volunteers needed'), findsNothing);
+    expect(find.bySemanticsLabel('See all updates, 2 new'), findsOneWidget);
+    handle.dispose();
   });
 
-  testWidgets('a quiet updates section is one line, not a feature panel', (tester) async {
+  testWidgets('a quiet updates section is one light row, not the feature panel', (tester) async {
     await _pumpHome(tester, updates: const []);
     expect(find.text('Latest updates'), findsOneWidget);
     expect(find.text('No campus announcements yet.'), findsOneWidget);
@@ -279,7 +276,7 @@ void main() {
   testWidgets('section actions announce what they open', (tester) async {
     final handle = tester.ensureSemantics();
     await _pumpHome(tester);
-    expect(find.bySemanticsLabel('See all latest updates, 2 new'), findsOneWidget);
+    expect(find.bySemanticsLabel('See all updates, 2 new'), findsOneWidget);
     expect(find.bySemanticsLabel('See all upcoming activities'), findsOneWidget);
     handle.dispose();
   });

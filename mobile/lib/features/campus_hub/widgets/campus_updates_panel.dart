@@ -1,216 +1,293 @@
 part of '../screens/campus_hub_screen.dart';
 
-/// How many announcements Home lists. The overview returns up to five; three keeps the section
-/// shorter than a screen while still showing "there is more than one thing going on".
-const _homeUpdateCount = 3;
+/// Announcements panel — the most recent campus update, kept high on the page so
+/// it is never pushed below the fold by the rest of the dashboard.
+class _LatestUpdatesPanel extends StatelessWidget {
+  final List<CampusPostSummary> updates;
 
-/// "Latest updates" heading, with the live new-announcement count on its action.
-class _LatestUpdatesHeader extends ConsumerWidget {
-  const _LatestUpdatesHeader();
+  const _LatestUpdatesPanel({required this.updates});
+
+  @override
+  Widget build(BuildContext context) {
+    final featured = updates.isEmpty ? null : updates.first;
+
+    // Empty gets a quiet light row, not the navy feature panel: a saturated
+    // gradient announcing "nothing yet" spends the page's strongest treatment
+    // on the absence of content. The featured treatment is earned by an
+    // actual update below.
+    if (featured == null) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.gutter,
+          AppSpacing.md,
+          AppSpacing.gutter,
+          0,
+        ),
+        child: Container(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(AppRadii.sheet),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: AppColors.primarySoft,
+                  borderRadius: BorderRadius.circular(AppRadii.lg),
+                ),
+                child: const Icon(
+                  Icons.campaign_outlined,
+                  color: AppColors.primary,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Latest updates',
+                      style: AppTypography.titleSmall.copyWith(
+                        color: AppColors.textDark,
+                      ),
+                    ),
+                    Text(
+                      'No campus announcements yet.',
+                      style: AppTypography.caption.copyWith(
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const _UpdatesSeeAll(onLight: true),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.gutter,
+        AppSpacing.md,
+        AppSpacing.gutter,
+        0,
+      ),
+      child: Container(
+        // Small top inset: the 48dp "See all" target already pads the header row.
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.lg,
+          AppSpacing.xs,
+          AppSpacing.sm,
+          AppSpacing.lg,
+        ),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(AppRadii.sheet),
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF264A6E), Color(0xFF1B3A5C)],
+          ),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x261B3A5C),
+              blurRadius: 12,
+              offset: Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(
+                  Icons.campaign_outlined,
+                  color: Colors.white,
+                  size: 20,
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Text(
+                    'Latest updates',
+                    style: AppTypography.titleSmall.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+                const _UpdatesSeeAll(),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Padding(
+              padding: const EdgeInsets.only(right: AppSpacing.sm),
+              child: _FeaturedUpdateCard(post: featured),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _UpdatesSeeAll extends ConsumerWidget {
+  /// On the light empty-state row the label is brand blue, not white.
+  final bool onLight;
+
+  const _UpdatesSeeAll({this.onLight = false});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // Live count of new announcements since the user last opened the list — ticks up in real time.
     final count = ref.watch(announcementCountProvider);
-    return _SectionHeader(
-      title: 'Latest updates',
-      newCount: count,
-      onAction: () => context.push('/home/updates'),
-    );
-  }
-}
-
-/// The newest announcements as one light, grouped list.
-///
-/// This used to be a navy gradient panel holding a single post. On a dashboard where the urgent
-/// alert is red and an open attendance session is solid brand blue, a third saturated block for
-/// routine news meant nothing on the page read as *more* important than anything else — the
-/// same "emphasis follows urgency" problem report #18 fixed for the Blueprint prompt. It also
-/// showed one post of the five the overview already returns.
-///
-/// Now: a white card, newest first, the lead item given a larger thumbnail and its summary. The
-/// row style mirrors the Announcements screen's cards (category icon, unread dot, read titles
-/// de-emphasised), so an update looks the same on Home as it does one tap later.
-class _LatestUpdatesList extends StatelessWidget {
-  final List<CampusPostSummary> updates;
-
-  const _LatestUpdatesList({required this.updates});
-
-  @override
-  Widget build(BuildContext context) {
-    if (updates.isEmpty) {
-      return const _SectionEmpty(
-        icon: Icons.campaign_outlined,
-        text: 'No campus announcements yet.',
-      );
-    }
-    final visible = updates.take(_homeUpdateCount).toList();
-    return Padding(
-      padding: AppSpacing.pagePadding,
-      child: AppCard(
-        padding: EdgeInsets.zero,
-        child: Column(
-          children: [
-            for (var i = 0; i < visible.length; i++) ...[
-              if (i > 0)
-                const Divider(
-                  height: 1,
-                  thickness: 1,
-                  indent: AppSpacing.md,
-                  endIndent: AppSpacing.md,
-                  color: AppColors.border,
+    // `container` + `excludeSemantics`: without them this merged into the panel's node, so a
+    // screen reader heard "Latest updates, See all, 2" as one run-on item.
+    return Semantics(
+      container: true,
+      button: true,
+      excludeSemantics: true,
+      label: count > 0 ? 'See all updates, $count new' : 'See all updates',
+      child: InkWell(
+        onTap: () => context.push('/home/updates'),
+        borderRadius: BorderRadius.circular(AppRadii.sm),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 48),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'See all',
+                style: AppTypography.bodySmall.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: onLight
+                      ? AppColors.primary
+                      : Colors.white.withValues(alpha: 0.9),
                 ),
-              _UpdateRow(post: visible[i], lead: i == 0),
+              ),
+              if (count > 0) ...[
+                const SizedBox(width: 7),
+                Container(
+                  constraints: const BoxConstraints(
+                    minWidth: 18,
+                    minHeight: 18,
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 5),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: AppColors.error,
+                    borderRadius: BorderRadius.circular(9),
+                  ),
+                  child: Text(
+                    count > 99 ? '99+' : '$count',
+                    style: AppTypography.caption.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                      height: 1,
+                    ),
+                  ),
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
   }
 }
 
-class _UpdateRow extends StatelessWidget {
+class _FeaturedUpdateCard extends StatelessWidget {
   final CampusPostSummary post;
-
-  /// The newest item: bigger thumbnail, two-line title, and its summary.
-  final bool lead;
-
-  const _UpdateRow({required this.post, required this.lead});
+  const _FeaturedUpdateCard({required this.post});
 
   @override
   Widget build(BuildContext context) {
-    final category = post.category ?? 'general';
-    final (color, background, icon) = campusCategoryStyle('announcement', category);
-    final categoryLabel = announcementCategoryLabels[category] ?? 'General';
-    final summary = post.summary?.trim() ?? '';
-
-    return InkWell(
-      onTap: () => context.push('/home/posts/${post.id}'),
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _UpdateThumb(
-              coverUrl: post.coverUrl,
-              icon: icon,
-              color: color,
-              background: background,
-              size: lead ? 64 : 44,
-            ),
-            const SizedBox(width: AppSpacing.md),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    post.title,
-                    maxLines: lead ? 2 : 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTypography.titleSmall.copyWith(
-                      // Read titles step back; unread stay bold + dark so new ones stand out.
-                      fontWeight: post.read ? FontWeight.w600 : FontWeight.w700,
-                      color: post.read ? AppColors.textMid : AppColors.textDark,
-                    ),
-                  ),
-                  if (lead && summary.isNotEmpty) ...[
-                    const SizedBox(height: 2),
+    return Material(
+      color: Colors.white.withValues(alpha: 0.09),
+      borderRadius: BorderRadius.circular(AppRadii.card),
+      child: InkWell(
+        onTap: () => context.push('/home/posts/${post.id}'),
+        borderRadius: BorderRadius.circular(AppRadii.card),
+        child: Container(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadii.card),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
+          ),
+          child: Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(AppRadii.md),
+                child: post.coverUrl != null
+                    ? CachedNetworkImage(
+                        key: const ValueKey('featured-update-cover'),
+                        imageUrl: post.coverUrl!,
+                        width: 58,
+                        height: 58,
+                        fit: BoxFit.cover,
+                        errorWidget: (_, _, _) => Image.asset(
+                          campusSpotlightBackground,
+                          width: 58,
+                          height: 58,
+                          fit: BoxFit.cover,
+                        ),
+                      )
+                    : Image.asset(
+                        campusSpotlightBackground,
+                        width: 58,
+                        height: 58,
+                        fit: BoxFit.cover,
+                      ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                     Text(
-                      summary,
-                      maxLines: 2,
+                      post.title,
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: AppTypography.bodySmall.copyWith(
-                        color: AppColors.textMid,
+                      style: AppTypography.bodyLarge.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                    if (post.summary != null && post.summary!.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        post.summary!,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.bodySmall.copyWith(
+                          color: Colors.white.withValues(alpha: 0.82),
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 4),
+                    Text(
+                      _postAge(post.publishAt),
+                      style: AppTypography.caption.copyWith(
+                        color: Colors.white.withValues(alpha: 0.6),
                       ),
                     ),
                   ],
-                  const SizedBox(height: AppSpacing.xs),
-                  _UpdateMeta(
-                    unread: !post.read,
-                    text: '$categoryLabel · ${_postAge(post.publishAt)}',
-                  ),
-                ],
+                ),
               ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _UpdateMeta extends StatelessWidget {
-  final bool unread;
-  final String text;
-
-  const _UpdateMeta({required this.unread, required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        if (unread) ...[
-          Semantics(
-            label: 'Unread',
-            child: Container(
-              width: 7,
-              height: 7,
-              decoration: const BoxDecoration(
-                color: AppColors.primary,
-                shape: BoxShape.circle,
+              const SizedBox(width: 8),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: Colors.white.withValues(alpha: 0.7),
               ),
-            ),
-          ),
-          const SizedBox(width: 6),
-        ],
-        Expanded(
-          child: Text(
-            text,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: AppTypography.caption.copyWith(color: AppColors.textMuted),
+            ],
           ),
         ),
-      ],
-    );
-  }
-}
-
-/// The post's cover photo, or its tinted category icon when it has none — never the generic
-/// campus photo, which made every photo-less update look identical.
-class _UpdateThumb extends StatelessWidget {
-  final String? coverUrl;
-  final IconData icon;
-  final Color color;
-  final Color background;
-  final double size;
-
-  const _UpdateThumb({
-    required this.coverUrl,
-    required this.icon,
-    required this.color,
-    required this.background,
-    required this.size,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final fallback = AppIconTile(
-      icon: icon,
-      color: color,
-      background: background,
-      size: size,
-    );
-    if (coverUrl == null) return fallback;
-    return ClipRRect(
-      borderRadius: AppRadii.all(AppRadii.lg),
-      child: CachedNetworkImage(
-        key: const ValueKey('home-update-cover'),
-        imageUrl: coverUrl!,
-        width: size,
-        height: size,
-        fit: BoxFit.cover,
-        errorWidget: (_, _, _) => fallback,
       ),
     );
   }
