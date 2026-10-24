@@ -125,14 +125,15 @@ class _PostBody extends StatelessWidget {
                   CampusBadge(label: categoryLabel, color: accent, background: accentBg),
                   if (isOpportunity)
                     CampusBadge(
-                      label: isPartner ? 'Employer Partner' : 'Campus Opportunity',
-                      color: isPartner ? AppColors.primary : AppColors.textMuted,
+                      label: isPartner ? 'Employer partner' : 'Campus opportunity',
+                      color: isPartner ? AppColors.primaryText : AppColors.textMuted,
                       background: isPartner ? AppColors.primarySoft : AppColors.background,
                     ),
                   if (post.isUrgent)
                     const CampusBadge(
                       label: 'Urgent',
-                      color: Color(0xFFDC2626),
+                      // Red because urgent *is* an alert; the deeper shade passes AA on the tint.
+                      color: Color(0xFFB91C1C),
                       background: Color(0xFFFEE2E2),
                       icon: Icons.priority_high_rounded,
                     ),
@@ -168,7 +169,8 @@ class _PostBody extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
             decoration: BoxDecoration(
-              color: closingSoon ? const Color(0xFFFEE2E2) : AppColors.primarySoft,
+              // Amber, as on the Opportunities list: a near deadline is a warning, not an error.
+              color: closingSoon ? _warningTint : AppColors.primarySoft,
               borderRadius: BorderRadius.circular(9),
             ),
             child: Row(
@@ -177,7 +179,7 @@ class _PostBody extends StatelessWidget {
                 Icon(
                   Icons.schedule_rounded,
                   size: 14,
-                  color: closingSoon ? const Color(0xFFDC2626) : AppColors.primary,
+                  color: closingSoon ? _warning : AppColors.primaryText,
                 ),
                 const SizedBox(width: 6),
                 Text(
@@ -191,7 +193,7 @@ class _PostBody extends StatelessWidget {
                   style: GoogleFonts.dmSans(
                     fontSize: 12.5,
                     fontWeight: FontWeight.w700,
-                    color: closingSoon ? const Color(0xFFDC2626) : AppColors.primary,
+                    color: closingSoon ? _warning : AppColors.primaryText,
                   ),
                 ),
               ],
@@ -253,3 +255,6 @@ bool _opportunityBodyRedundant(CampusPost post) {
   final body = post.body.trim();
   return summary.isNotEmpty && body == summary;
 }
+
+const _warning = Color(0xFFB45309);
+const _warningTint = Color(0xFFFEF3C7);
