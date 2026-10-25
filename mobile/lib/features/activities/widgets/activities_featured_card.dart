@@ -104,12 +104,12 @@ class _FeaturedCardState extends ConsumerState<_FeaturedCard> {
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
-                        'FEATURED',
+                        // Sentence case, not capitals — DESIGN_PRINCIPLES rule 2.
+                        'Featured',
                         // 10, not 9: the smallest size on the app's type scale.
                         style: AppTypography.micro.copyWith(
                           color: Colors.white,
                           fontWeight: FontWeight.w700,
-                          letterSpacing: 0.6,
                         ),
                       ),
                     ),

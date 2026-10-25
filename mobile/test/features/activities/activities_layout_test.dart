@@ -112,7 +112,7 @@ void main() {
       testWidgets('lays out without overflow at ${width.toInt()}dp', (tester) async {
         await _pump(tester, const ActivitiesScreen(), width: width);
         expect(tester.takeException(), isNull);
-        expect(find.text('FEATURED'), findsOneWidget);
+        expect(find.text('Featured'), findsOneWidget);
       });
     }
 

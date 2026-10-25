@@ -19,33 +19,36 @@ class _BannerPicker extends StatelessWidget {
     } else {
       content = _placeholder();
     }
+    final hasImage = picked != null || existingUrl != null;
     return GestureDetector(
       onTap: onTap,
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: AppRadii.all(AppRadii.sheet),
         child: AspectRatio(
           aspectRatio: 16 / 9,
           child: Stack(
             fit: StackFit.expand,
             children: [
               content,
-              Positioned(
-                right: 10,
-                bottom: 10,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(20)),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.camera_alt_rounded, size: 14, color: Colors.white),
-                      const SizedBox(width: 6),
-                      Text(picked != null || existingUrl != null ? 'Change' : 'Add banner',
-                          style: GoogleFonts.dmSans(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white)),
-                    ],
+              // The empty state says "add a cover photo" itself; the chip is for changing one.
+              if (hasImage)
+                Positioned(
+                  right: 10,
+                  bottom: 10,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(20)),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.camera_alt_rounded, size: 14, color: Colors.white),
+                        const SizedBox(width: 6),
+                        Text('Change',
+                            style: AppTypography.label.copyWith(color: Colors.white)),
+                      ],
+                    ),
                   ),
                 ),
-              ),
             ],
           ),
         ),
@@ -53,14 +56,204 @@ class _BannerPicker extends StatelessWidget {
     );
   }
 
-  Widget _placeholder() => Container(
-        color: AppColors.primarySoft,
-        alignment: Alignment.center,
-        child: Icon(Icons.image_outlined, size: 30, color: AppColors.primary.withValues(alpha: 0.6)),
+  /// The brand's sea-blue wash — the same gradient and soft circle as the Home spotlight — so the
+  /// first thing on the form is an invitation in the app's own colours, not a grey box.
+  Widget _placeholder() => DecoratedBox(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFFEAF2F9), Color(0xFFD7E6F2)],
+          ),
+        ),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Positioned(
+              top: -60,
+              right: -50,
+              child: Container(
+                width: 180,
+                height: 180,
+                decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0x293F7FB5)),
+              ),
+            ),
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: const BoxDecoration(color: AppColors.surface, shape: BoxShape.circle),
+                  child: const Icon(Icons.add_photo_alternate_outlined, size: 24, color: AppColors.primary),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Text(
+                  'Add a cover photo',
+                  style: AppTypography.titleSmall.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primaryText,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Optional · shows at the top of your activity',
+                  style: AppTypography.caption.copyWith(color: AppColors.textMid),
+                ),
+              ],
+            ),
+          ],
+        ),
       );
 }
 
 // ── Shared form widgets (used by create + edit) ───────────────────
+
+/// One white card per group of fields, with an optional heading — the Blueprint Bond form's
+/// section, so the two forms in the app look like one.
+class _FormSection extends StatelessWidget {
+  final String? title;
+
+  /// Shown in a small brand-tinted circle before the title, so the required sections read as
+  /// two short steps (DESIGN_PRINCIPLES: a numbered step is a tinted circle plus text).
+  final int? step;
+  final List<Widget> children;
+  const _FormSection({this.title, this.step, required this.children});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.md),
+      child: AppCard(
+        padding: AppSpacing.cardPadding,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (title != null) ...[
+              Row(
+                children: [
+                  if (step != null) ...[
+                    Container(
+                      width: 26,
+                      height: 26,
+                      alignment: Alignment.center,
+                      decoration: const BoxDecoration(
+                        color: AppColors.primarySoft,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Text(
+                        '$step',
+                        style: AppTypography.label.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primaryText,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                  ],
+                  Text(
+                    title!,
+                    style: AppTypography.titleSmall.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textDark,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.md),
+            ],
+            ...children,
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Splits the required sections from the rest — a heading and one muted line, no box.
+class _OptionalHeading extends StatelessWidget {
+  const _OptionalHeading();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(AppSpacing.xs, AppSpacing.xxl, AppSpacing.xs, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Optional', style: AppTypography.title.copyWith(color: AppColors.textDark)),
+          const SizedBox(height: 2),
+          Text(
+            'Not needed to post, but they help people decide to come.',
+            style: AppTypography.bodySmall.copyWith(color: AppColors.textMuted),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A category choice. Selected is the soft tint used by every filter chip in the app, not a
+/// solid blue fill — a solid fill made the chosen category louder than the Create button.
+class _CategoryChip extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _CategoryChip({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = selected ? AppColors.primaryText : AppColors.textMid;
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: label,
+      excludeSemantics: true,
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: kMinInteractiveDimension),
+          child: Align(
+            widthFactor: 1,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+              decoration: BoxDecoration(
+                color: selected ? AppColors.primarySoft : AppColors.surface,
+                borderRadius: AppRadii.all(AppRadii.full),
+                border: Border.all(
+                  color: selected ? AppColors.primary.withValues(alpha: 0.35) : AppColors.border,
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon, size: 15, color: color),
+                  const SizedBox(width: 7),
+                  Text(
+                    label,
+                    style: AppTypography.bodySmall.copyWith(
+                      fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                      color: color,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 class _Label extends StatelessWidget {
   final String text;
@@ -70,8 +263,7 @@ class _Label extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       text,
-      style: GoogleFonts.dmSans(
-        fontSize: 13,
+      style: AppTypography.bodySmall.copyWith(
         fontWeight: FontWeight.w600,
         color: AppColors.textDark,
       ),

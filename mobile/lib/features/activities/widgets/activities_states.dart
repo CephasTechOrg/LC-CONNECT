@@ -14,7 +14,7 @@ class _EmptyState extends StatelessWidget {
       title: hasFilter ? 'No activities in this category' : 'No upcoming activities',
       subtitle: hasFilter
           ? 'Try a different filter or check back soon'
-          : 'Be the first to create something!',
+          : 'Be the first to create one.',
       actionLabel: hasFilter ? 'Clear filter' : null,
       onAction: hasFilter ? onClear : null,
     );
