@@ -107,7 +107,8 @@ void main() {
         PolicySlug.terms,
         client: _clientServingRealDocs(failFor: {PolicySlug.terms}),
       );
-      expect(find.text('Try again'), findsOneWidget);
+      // The app's shared error state, so it reads like every other failed load.
+      expect(find.text('Retry'), findsOneWidget);
       expect(find.byType(Markdown), findsNothing);
     });
 
