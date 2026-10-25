@@ -60,7 +60,7 @@ class _YourGroupsSectionState extends ConsumerState<YourGroupsSection> {
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 14, 20, 8),
           child: Text(
-            'Your Groups',
+            'Your groups',
             style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textDark),
           ),
         ),

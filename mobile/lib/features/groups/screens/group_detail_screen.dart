@@ -5,7 +5,11 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../core/api/api_error.dart';
+import '../../../core/theme/app_radii.dart';
+import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_typography.dart';
+import '../../../shared/widgets/app_card.dart';
 import '../../../core/widgets/avatar_widget.dart';
 import '../../../shared/widgets/verified_badge.dart';
 import '../../messages/providers/messages_provider.dart';
@@ -273,7 +277,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
           ),
         if (group.isMember)
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
+            padding: const EdgeInsets.fromLTRB(AppSpacing.gutter, AppSpacing.md, AppSpacing.gutter, 0),
             child: _MuteRow(muted: group.myMuted, onChanged: (_) => _toggleMute(group)),
           ),
         if (group.iCanManage)
@@ -288,7 +292,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
           onBan: (m) => _remove(m, ban: true),
           onRetry: () => ref.invalidate(groupMembersProvider(_gid)),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.sm),
         _FooterActions(
           group: group,
           onReport: _report,

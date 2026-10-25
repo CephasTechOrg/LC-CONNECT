@@ -70,7 +70,8 @@ class _MemberTile extends StatelessWidget {
           ? () => context.push('/users/${member.profileId}', extra: member.displayName)
           : null,
       child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 7),
+      // Inside the members card, so the inset is the card's, not the page gutter.
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
       child: Row(
         children: [
           AvatarWidget(imageUrl: member.avatarUrl, size: 44, cacheScope: member.userId),

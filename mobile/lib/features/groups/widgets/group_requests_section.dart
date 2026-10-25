@@ -21,23 +21,16 @@ class _RequestsSection extends ConsumerWidget {
     final requests = async.asData?.value ?? const <GroupMember>[];
     if (requests.isEmpty) return const SizedBox.shrink();
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return _GroupSection(
+      title: 'Requests · ${requests.length}',
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-          child: Text(
-            'Requests (${requests.length})',
-            style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textDark),
-          ),
-        ),
         for (final r in requests)
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
             child: Row(
               children: [
-                AvatarWidget(imageUrl: r.avatarUrl, size: 40, cacheScope: r.userId),
-                const SizedBox(width: 12),
+                AvatarWidget(imageUrl: r.avatarUrl, size: 44, cacheScope: r.userId),
+                const SizedBox(width: AppSpacing.md),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -46,25 +39,28 @@ class _RequestsSection extends ConsumerWidget {
                         r.nameOrFallback,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textDark),
+                        style: AppTypography.body.copyWith(fontWeight: FontWeight.w600, color: AppColors.textDark),
                       ),
                       if (r.major != null)
-                        Text(r.major!, style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textMuted)),
+                        Text(r.major!, style: AppTypography.caption.copyWith(color: AppColors.textMuted)),
                     ],
                   ),
                 ),
                 if (busy.contains(r.userId))
                   const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
                 else ...[
+                  // Approve is the action — brand blue, filled — not green: for the admin it is a
+                  // decision to make, not a success to report.
                   _RequestIconButton(
                     icon: Icons.check_rounded,
-                    color: AppColors.green,
+                    filled: true,
+                    tooltip: 'Approve ${r.nameOrFallback}',
                     onTap: () => onApprove(r.userId),
                   ),
-                  const SizedBox(width: 6),
                   _RequestIconButton(
                     icon: Icons.close_rounded,
-                    color: AppColors.textMuted,
+                    filled: false,
+                    tooltip: 'Decline ${r.nameOrFallback}',
                     onTap: () => onReject(r.userId),
                   ),
                 ],
@@ -78,19 +74,44 @@ class _RequestsSection extends ConsumerWidget {
 
 class _RequestIconButton extends StatelessWidget {
   final IconData icon;
-  final Color color;
+  final bool filled;
+  final String tooltip;
   final VoidCallback onTap;
-  const _RequestIconButton({required this.icon, required this.color, required this.onTap});
+  const _RequestIconButton({
+    required this.icon,
+    required this.filled,
+    required this.tooltip,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: color.withAlpha(24),
-      shape: const CircleBorder(),
-      child: InkWell(
-        onTap: onTap,
-        customBorder: const CircleBorder(),
-        child: Padding(padding: const EdgeInsets.all(7), child: Icon(icon, size: 20, color: color)),
+    return Tooltip(
+      message: tooltip,
+      child: Semantics(
+        button: true,
+        label: tooltip,
+        excludeSemantics: true,
+        child: InkWell(
+          onTap: onTap,
+          customBorder: const CircleBorder(),
+          // 48dp target around a 36dp circle.
+          child: SizedBox(
+            width: kMinInteractiveDimension,
+            height: kMinInteractiveDimension,
+            child: Center(
+              child: Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: filled ? AppColors.primary : const Color(0xFFEEF2F6),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, size: 20, color: filled ? Colors.white : AppColors.textMid),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

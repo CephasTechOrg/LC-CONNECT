@@ -98,10 +98,10 @@ class _InviteCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
+      // Soft blue, no outline: an invite is waiting on you, so it is the one tinted card here.
       decoration: BoxDecoration(
         color: AppColors.primarySoft,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.primary.withAlpha(60)),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
         children: [
@@ -155,6 +155,8 @@ class _InviteCard extends StatelessWidget {
   }
 }
 
+/// Accept is the action (blue fill); Decline steps back to a flat grey pill — the same two
+/// treatments as every join control in the app, on a 48dp target.
 class _InviteBtn extends StatelessWidget {
   final String label;
   final bool filled;
@@ -163,24 +165,33 @@ class _InviteBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: filled ? AppColors.primary : AppColors.surface,
-      borderRadius: BorderRadius.circular(9),
-      child: InkWell(
+    return Semantics(
+      container: true,
+      button: true,
+      label: label,
+      excludeSemantics: true,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
         onTap: onTap,
-        borderRadius: BorderRadius.circular(9),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(9),
-            border: Border.all(color: filled ? AppColors.primary : AppColors.border, width: 1.5),
-          ),
-          child: Text(
-            label,
-            style: GoogleFonts.dmSans(
-              fontSize: 11.5,
-              fontWeight: FontWeight.w600,
-              color: filled ? Colors.white : AppColors.textMid,
+        child: SizedBox(
+          height: kMinInteractiveDimension,
+          child: Center(
+            child: Container(
+              height: 34,
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: filled ? AppColors.primary : AppColors.surface,
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                label,
+                style: GoogleFonts.dmSans(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: filled ? Colors.white : AppColors.textMid,
+                ),
+              ),
             ),
           ),
         ),

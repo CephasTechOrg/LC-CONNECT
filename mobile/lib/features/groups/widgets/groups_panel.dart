@@ -7,7 +7,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/api/api_error.dart';
+import '../../../core/theme/app_radii.dart';
+import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_typography.dart';
+import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/app_filter_chip.dart';
 import '../../../shared/widgets/app_skeleton.dart';
 import '../data/group_models.dart';
@@ -154,29 +158,28 @@ class _GroupsPanelState extends ConsumerState<GroupsPanel> {
           child: Row(
             children: [
               Text(
-                'All Groups',
-                style: GoogleFonts.dmSans(
-                  fontSize: 14,
+                'All groups',
+                style: AppTypography.titleSmall.copyWith(
                   fontWeight: FontWeight.w700,
                   color: AppColors.textDark,
                 ),
               ),
               const Spacer(),
+              // A full 48dp target: this was shrink-wrapped to the text, the smallest control on
+              // the page for the one action that starts something.
               TextButton.icon(
                 onPressed: _createGroup,
-                icon: const Icon(Icons.add, size: 14, color: AppColors.primary),
+                icon: const Icon(Icons.add_rounded, size: 18, color: AppColors.primaryText),
                 label: Text(
-                  'Create Group',
-                  style: GoogleFonts.dmSans(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.primary,
+                  'Create group',
+                  style: AppTypography.bodySmall.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primaryText,
                   ),
                 ),
                 style: TextButton.styleFrom(
-                  padding: EdgeInsets.zero,
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  minimumSize: const Size(kMinInteractiveDimension, kMinInteractiveDimension),
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
                 ),
               ),
             ],
@@ -194,7 +197,7 @@ class _GroupsPanelState extends ConsumerState<GroupsPanel> {
               ? AppInlineMessage(
                   message: _query.isNotEmpty
                       ? 'No groups match "$_query"'
-                      : 'No groups yet — create the first one!',
+                      : 'No groups yet. Create the first one.',
                 )
               : Padding(
                   padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
@@ -202,7 +205,7 @@ class _GroupsPanelState extends ConsumerState<GroupsPanel> {
                     children: [
                       for (final g in groups)
                         Padding(
-                          padding: const EdgeInsets.only(bottom: 9),
+                          padding: const EdgeInsets.only(bottom: AppSpacing.md),
                           child: _GroupListTile(
                             group: g,
                             busy: _busy.contains(g.id),
@@ -249,136 +252,145 @@ class _GroupListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.surface,
-      borderRadius: BorderRadius.circular(14),
-      child: InkWell(
-        onTap: group.isMember
-            ? onOpen
-            : null, // members tap to open the group chat
-        borderRadius: BorderRadius.circular(14),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppColors.border),
+    // The shared card surface (borderless, soft shadow), same as Home and Activities.
+    return AppCard(
+      onTap: group.isMember ? onOpen : null, // members tap to open the group chat
+      padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.sm, AppSpacing.sm),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: AppColors.primarySoft,
+              borderRadius: AppRadii.all(AppRadii.lg),
+            ),
+            alignment: Alignment.center,
+            clipBehavior: Clip.antiAlias,
+            child: group.avatarUrl != null
+                ? CachedNetworkImage(
+                    imageUrl: group.avatarUrl!,
+                    fit: BoxFit.cover,
+                    width: 44,
+                    height: 44,
+                    errorWidget: (_, _, _) =>
+                        Icon(_iconFor(group.category), size: 20, color: AppColors.primaryText),
+                  )
+                : Icon(_iconFor(group.category), size: 20, color: AppColors.primaryText),
           ),
-          child: Row(
-            children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: AppColors.primarySoft,
-                  borderRadius: BorderRadius.circular(12),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  group.name,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.titleSmall.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textDark,
+                  ),
                 ),
-                alignment: Alignment.center,
-                clipBehavior: Clip.antiAlias,
-                child: group.avatarUrl != null
-                    ? CachedNetworkImage(
-                        imageUrl: group.avatarUrl!,
-                        fit: BoxFit.cover,
-                        width: 42,
-                        height: 42,
-                        errorWidget: (_, _, _) => Icon(
-                          _iconFor(group.category),
-                          size: 18,
-                          color: AppColors.primary,
-                        ),
-                      )
-                    : Icon(
-                        _iconFor(group.category),
-                        size: 18,
-                        color: AppColors.primary,
-                      ),
-              ),
-              const SizedBox(width: 11),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      group.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.dmSans(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textDark,
-                      ),
-                    ),
-                    Text(
-                      '${_categoryLabel(group.category)} · ${group.memberCount} members',
-                      style: GoogleFonts.dmSans(
-                        fontSize: 11,
-                        color: AppColors.textMuted,
-                      ),
-                    ),
-                  ],
+                const SizedBox(height: 2),
+                Text(
+                  '${_categoryLabel(group.category)} · ${group.memberCount} members',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.caption.copyWith(color: AppColors.textMuted),
                 ),
-              ),
-              _GroupActionBtn(
-                label: group.actionLabel,
-                enabled: group.actionEnabled,
-                busy: busy,
-                onTap: onAction,
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
+          const SizedBox(width: AppSpacing.xs),
+          _GroupActionBtn(
+            label: group.actionLabel,
+            enabled: group.actionEnabled,
+            joined: group.isMember,
+            busy: busy,
+            groupName: group.name,
+            onTap: onAction,
+          ),
+        ],
       ),
     );
   }
 }
 
+/// The join control on a group row, on the same rule as the Activities RSVP pill: a blue fill
+/// when there is something to do (Join, Request), soft blue once you are in (Joined), flat grey
+/// when there is nothing to do (Pending, Invite only). It used to be five treatments — a filled
+/// button, a blue outline, and three grey outlines — for one control.
 class _GroupActionBtn extends StatelessWidget {
   final String label;
   final bool enabled;
+  final bool joined;
   final bool busy;
+  final String groupName;
   final VoidCallback onTap;
   const _GroupActionBtn({
     required this.label,
     required this.enabled,
+    required this.joined,
     required this.busy,
+    required this.groupName,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final (bg, border, color) = switch (label) {
-      'Join' ||
-      'Accept' => (AppColors.primary, AppColors.primary, Colors.white),
-      'Joined' => (AppColors.surface, AppColors.border, AppColors.textMid),
-      'Request' => (AppColors.surface, AppColors.primary, AppColors.primary),
-      _ => (AppColors.surface, AppColors.border, AppColors.textMuted),
-    };
+    final (background, foreground) = enabled
+        ? (AppColors.primary, Colors.white)
+        : joined
+            ? (AppColors.primarySoft, AppColors.primaryText)
+            : (const Color(0xFFEEF2F6), AppColors.textMuted);
 
-    return Material(
-      color: bg,
-      borderRadius: BorderRadius.circular(9),
-      child: InkWell(
+    return Semantics(
+      container: true,
+      button: enabled,
+      enabled: enabled,
+      label: enabled ? '$label $groupName' : '$groupName: $label',
+      excludeSemantics: true,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
         onTap: enabled && !busy ? onTap : null,
-        borderRadius: BorderRadius.circular(9),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 6),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(9),
-            border: Border.all(color: border, width: 1.5),
+        // 48dp tall target around a 34dp pill.
+        child: SizedBox(
+          height: kMinInteractiveDimension,
+          child: Center(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              height: 34,
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md + 2),
+              decoration: BoxDecoration(
+                color: background,
+                borderRadius: AppRadii.all(AppRadii.full),
+              ),
+              alignment: Alignment.center,
+              child: busy
+                  ? SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: foreground),
+                    )
+                  : Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (joined) ...[
+                          Icon(Icons.check_rounded, size: 15, color: foreground),
+                          const SizedBox(width: AppSpacing.xs),
+                        ],
+                        Text(
+                          label,
+                          style: AppTypography.bodySmall.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: foreground,
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
           ),
-          child: busy
-              ? const SizedBox(
-                  width: 13,
-                  height: 13,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : Text(
-                  label,
-                  style: GoogleFonts.dmSans(
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w600,
-                    color: color,
-                  ),
-                ),
         ),
       ),
     );
