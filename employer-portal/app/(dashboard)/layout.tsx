@@ -22,7 +22,7 @@ type NavItem = { href: string; label: string; Icon: NavIcon };
 
 const NAV: NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', Icon: IconDashboard },
-  { href: '/dashboard/scholars', label: 'Scholar Directory', Icon: IconScholars },
+  { href: '/dashboard/scholars', label: 'Scholar directory', Icon: IconScholars },
   { href: '/dashboard/opportunities', label: 'Opportunities', Icon: IconOpportunities },
   { href: '/dashboard/organization', label: 'Organization', Icon: IconOrganization },
 ];
@@ -134,7 +134,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                   aria-current={active ? 'page' : undefined}
                   className={`nav-link${active ? ' active' : ''}`}
                 >
-                  <item.Icon stroke={active ? '#6F42E8' : 'rgba(255,255,255,0.9)'} />
+                  <item.Icon stroke={active ? '#3772A4' : 'rgba(255,255,255,0.9)'} />
                 </Link>
               );
             })}
@@ -156,7 +156,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         <header className="appbar">
           <div className="appbar-search">
             <span className="appbar-search-icon" aria-hidden>
-              <IconSearch stroke="#9B95A8" />
+              <IconSearch stroke="#6B7280" />
             </span>
             {/* Visual chrome only — no global search API yet. */}
             <input
@@ -177,7 +177,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               <div className="appbar-avatar">{initials(employer.display_name, employer.email)}</div>
               <div className="appbar-user-meta">
                 <div className="appbar-user-name">{employer.display_name || employer.email}</div>
-                <div className="appbar-user-role">Employer Partner</div>
+                <div className="appbar-user-role">Employer partner</div>
               </div>
             </div>
           </div>

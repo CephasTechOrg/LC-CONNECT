@@ -81,19 +81,21 @@ export default function MfaPage() {
     <div className="auth-shell">
       <form className="auth-card" onSubmit={onSubmit}>
         <p className="eyebrow">Security</p>
-        <h1>{mode === 'enroll' ? 'Set up MFA' : 'Enter MFA code'}</h1>
+        <h1>{mode === 'enroll' ? 'Set up two-factor sign-in' : 'Enter your security code'}</h1>
         <p className="subtitle">
-          Admin APIs require authenticator assurance level 2 (TOTP).
+          {mode === 'enroll'
+            ? 'Scan the code with an authenticator app, then enter the 6-digit code it shows.'
+            : 'Enter the 6-digit code from your authenticator app.'}
         </p>
         {error ? <div className="error-banner">{error}</div> : null}
-        {mode === 'loading' ? <p className="status">Preparing MFA…</p> : null}
+        {mode === 'loading' ? <p className="status">Preparing two-factor sign-in…</p> : null}
         {mode === 'enroll' && qr ? (
           <div style={{ textAlign: 'center', marginBottom: 16 }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={qr} alt="MFA QR code" width={180} height={180} />
             {secret ? (
               <p className="hint">
-                Or enter secret manually: <code>{secret}</code>
+                Can’t scan it? Enter this key instead: <code>{secret}</code>
               </p>
             ) : null}
           </div>

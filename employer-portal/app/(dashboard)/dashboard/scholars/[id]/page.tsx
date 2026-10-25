@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { OpsEmpty, OpsLoading } from '@/components/ops-states';
 import { apiFetch, toUserMessage } from '@/lib/api/client';
 import { getAccessToken } from '@/lib/auth/session';
+import { formatMonth } from '@/lib/format';
 
 type ScholarInternship = {
   title: string;
@@ -51,8 +52,10 @@ function safeExternalHref(url: string | null | undefined): string | null {
 }
 
 function experienceRange(item: ScholarInternship): string | null {
-  const start = item.start_date?.trim();
-  const end = item.is_current ? 'Present' : item.end_date?.trim();
+  const startRaw = item.start_date?.trim();
+  const endRaw = item.end_date?.trim();
+  const start = startRaw ? formatMonth(startRaw) : undefined;
+  const end = item.is_current ? 'Present' : endRaw ? formatMonth(endRaw) : undefined;
   if (!start && !end) return null;
   if (!start) return end || null;
   if (!end) return start;
@@ -138,7 +141,7 @@ export default function ScholarDetailPage() {
       <header className="ops-top">
         <div>
           <Link href="/dashboard/scholars" style={{ fontSize: 13, fontWeight: 600 }}>
-            ← Scholar Directory
+            ← Scholar directory
           </Link>
           <h1 style={{ marginTop: 8 }}>{scholar.display_name || 'Presidential Scholar'}</h1>
           <p>Presidential Scholar • Blueprint Bond</p>

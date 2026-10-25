@@ -51,7 +51,7 @@ export default function ScholarDirectoryPage() {
     <>
       <header className="ops-top">
         <div>
-          <h1>Scholar Directory</h1>
+          <h1>Scholar directory</h1>
           <p>Presidential Scholars approved by Honors and opted in to employer visibility.</p>
         </div>
         <button className="ops-btn" type="button" disabled={loading} onClick={() => void load()}>

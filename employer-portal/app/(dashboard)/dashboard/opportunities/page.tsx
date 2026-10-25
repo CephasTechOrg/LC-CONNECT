@@ -4,6 +4,7 @@ import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { OpsEmpty, OpsLoading } from '@/components/ops-states';
 import { apiFetch, toUserMessage } from '@/lib/api/client';
 import { getAccessToken } from '@/lib/auth/session';
+import { formatDate } from '@/lib/format';
 
 const CATEGORIES = ['internship', 'job', 'volunteer', 'leadership'] as const;
 type Category = (typeof CATEGORIES)[number];
@@ -27,7 +28,7 @@ function statusChip(status: Submission['status']): string {
 
 function when(iso: string): string {
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString();
+  return Number.isNaN(d.getTime()) ? '—' : formatDate(iso);
 }
 
 export default function OpportunitiesPage() {
@@ -185,7 +186,7 @@ export default function OpportunitiesPage() {
               Use New opportunity to publish a role for Presidential Scholars.
             </OpsEmpty>
           ) : (
-            <table className="ops-table">
+            <table className="ops-table ops-cards-sm">
               <thead>
                 <tr>
                   <th>Opportunity</th>
@@ -203,8 +204,8 @@ export default function OpportunitiesPage() {
                       <div className="ops-cell-title">{s.title}</div>
                       <div className="ops-cell-sub">{s.description.slice(0, 90)}</div>
                     </td>
-                    <td style={{ textTransform: 'capitalize' }}>{s.category}</td>
-                    <td>
+                    <td data-label="Category" style={{ textTransform: 'capitalize' }}>{s.category}</td>
+                    <td data-label="Link">
                       {s.external_url ? (
                         <a href={s.external_url} target="_blank" rel="noopener noreferrer">
                           Link
@@ -213,9 +214,9 @@ export default function OpportunitiesPage() {
                         <span className="ops-cell-sub">—</span>
                       )}
                     </td>
-                    <td>{when(s.created_at)}</td>
-                    <td><span className={statusChip(s.status)}>{s.status}</span></td>
-                    <td>
+                    <td data-label="Submitted">{when(s.created_at)}</td>
+                    <td data-label="Status"><span className={statusChip(s.status)}>{s.status}</span></td>
+                    <td data-label="Review note">
                       {s.review_note ? (
                         <span className="ops-cell-sub">{s.review_note}</span>
                       ) : (
