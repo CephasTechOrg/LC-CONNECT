@@ -1,20 +1,28 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { RefreshIcon } from '@/components/admin-page';
 import { OpsEmpty, OpsLoading } from '@/components/ops-states';
+import RowMenu from '@/components/row-menu';
 import { apiFetch, toUserMessage } from '@/lib/api/client';
 import { getAccessToken } from '@/lib/auth/session';
-import PostComposeForm from './PostComposeForm';
 import { categoriesForKind, priorityChip, statusChip, type Post } from './post-shared';
 
-export default function PostsPanel() {
+export default function PostsPanel({
+  flash,
+  onEdit,
+  onCreate,
+}: {
+  /** A message from the compose view ("Published.") to show above the list. */
+  flash: string | null;
+  onEdit: (post: Post) => void;
+  onCreate: () => void;
+}) {
   const [items, setItems] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [status, setStatus] = useState('');
-  const [flash, setFlash] = useState<string | null>(null);
-  const [showForm, setShowForm] = useState(false);
-  const [editingPost, setEditingPost] = useState<Post | null>(null);
+  const [message, setMessage] = useState<string | null>(flash);
   const [busy, setBusy] = useState<string | null>(null);
   const [q, setQ] = useState('');
   const [filterKind, setFilterKind] = useState('all');
@@ -54,27 +62,6 @@ export default function PostsPanel() {
     });
   }, [items, q, filterKind, filterStatus]);
 
-  function openCreate() {
-    setEditingPost(null);
-    setShowForm(true);
-  }
-
-  function openEdit(item: Post) {
-    setEditingPost(item);
-    setShowForm(true);
-  }
-
-  function closeForm() {
-    setShowForm(false);
-    setEditingPost(null);
-  }
-
-  async function onSaved(message: string) {
-    closeForm();
-    setFlash(message);
-    await load();
-  }
-
   async function run(id: string, label: string, doIt: (token: string) => Promise<void>) {
     if (busy) return;
     setBusy(id);
@@ -83,8 +70,7 @@ export default function PostsPanel() {
       const token = await getAccessToken();
       if (!token) throw new Error('Not signed in');
       await doIt(token);
-      setFlash(label);
-      if (editingPost?.id === id) closeForm();
+      setMessage(label);
       await load();
     } catch (err) {
       setError(true);
@@ -124,170 +110,106 @@ export default function PostsPanel() {
 
   return (
     <>
-      <div className="ops-toolbar">
-        <div className="ops-search">
+      <div className="post-toolbar">
+        <div className="post-search">
+          <SearchIcon />
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search posts" aria-label="Search posts" />
         </div>
-        <select className="ops-select" value={filterKind} onChange={(e) => setFilterKind(e.target.value)} aria-label="Kind">
-          <option value="all">All kinds</option>
-          <option value="announcement">Announcement</option>
-          <option value="opportunity">Opportunity</option>
+        <select className="post-filter" value={filterKind} onChange={(e) => setFilterKind(e.target.value)} aria-label="Type">
+          <option value="all">All types</option>
+          <option value="announcement">Announcements</option>
+          <option value="opportunity">Opportunities</option>
         </select>
-        <select className="ops-select" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} aria-label="Status">
+        <select className="post-filter" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} aria-label="Status">
           <option value="all">All statuses</option>
-          <option value="draft">Draft</option>
+          <option value="draft">Drafts</option>
           <option value="published">Published</option>
           <option value="archived">Archived</option>
         </select>
-        <span className="ops-count">{loading ? '…' : `${filtered.length} of ${items.length} posts`}</span>
-        <button className="ops-btn" type="button" disabled={loading} onClick={() => void load()}>Refresh</button>
-        <button className="ops-btn primary" type="button" onClick={openCreate}>Create post</button>
+        <span className="post-count">{loading ? 'Loading…' : `${filtered.length} of ${items.length} posts`}</span>
+        <button className="btn-quiet" type="button" disabled={loading} onClick={() => void load()}>
+          <RefreshIcon spinning={loading} />
+          Refresh
+        </button>
       </div>
 
       {error ? <div className="error-banner">{status}</div> : null}
-      {flash ? <p className="ops-flash">{flash}</p> : null}
+      {message ? <p className="post-flash" role="status">{message}</p> : null}
 
-      {showForm ? (
-        <PostComposeForm
-          key={editingPost?.id ?? 'new'}
-          existing={editingPost}
-          onCancel={closeForm}
-          onSaved={onSaved}
-        />
-      ) : null}
-
-      <div className="ops-table-wrap table-scroll ops-responsive-desktop">
-        {loading ? (
-          <OpsLoading label="Loading posts…" />
-        ) : filtered.length === 0 ? (
-          <OpsEmpty title={items.length === 0 ? 'No posts' : 'No matches'}>{emptyBody}</OpsEmpty>
-        ) : (
-          <table className="ops-table">
-            <thead>
-              <tr>
-                <th>Title</th>
-                <th>Kind</th>
-                <th className="ops-col-hide-md">Category</th>
-                <th className="ops-col-hide-md">Audience</th>
-                <th>Priority</th>
-                <th>Status</th>
-                <th className="ops-col-actions">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((item) => (
-                <tr key={item.id}>
-                  <td>
-                    <div className="ops-cell-title">{item.title}</div>
-                    <div className="ops-cell-sub">{item.summary || item.body.slice(0, 80)}</div>
-                    {item.external_url ? (
-                      <div className="ops-cell-sub">
-                        <a className="ops-cell-link" href={item.external_url} target="_blank" rel="noopener noreferrer">
-                          {item.external_url}
-                        </a>
-                      </div>
-                    ) : null}
-                  </td>
-                  <td style={{ textTransform: 'capitalize' }}>{item.kind}</td>
-                  <td className="ops-col-hide-md">{categoriesForKind(item.kind)[item.category ?? ''] ?? '—'}</td>
-                  <td className="ops-col-hide-md" style={{ textTransform: 'capitalize' }}>{item.audience}</td>
-                  <td><span className={priorityChip(item.priority)}>{item.priority}</span></td>
-                  <td><span className={statusChip(item.status)}>{item.status}</span></td>
-                  <td className="ops-col-actions">
-                    <PostActions
-                      item={item}
-                      busy={busy === item.id}
-                      onPublish={() => publish(item)}
-                      onEdit={() => openEdit(item)}
-                      onArchive={() => archive(item)}
-                      onDelete={() => remove(item)}
-                    />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-
-      <div className="ops-card-list" aria-label="Posts">
-        {loading ? (
-          <OpsLoading label="Loading posts…" />
-        ) : filtered.length === 0 ? (
-          <OpsEmpty title={items.length === 0 ? 'No posts' : 'No matches'}>{emptyBody}</OpsEmpty>
-        ) : (
-          filtered.map((item) => (
-            <article key={item.id} className="ops-card">
-              <div className="ops-card-top">
-                <div style={{ minWidth: 0, flex: 1 }}>
-                  <h3 className="ops-card-title">{item.title}</h3>
-                  <p className="ops-card-sub">{item.summary || item.body.slice(0, 120)}</p>
-                  {item.external_url ? (
-                    <p className="ops-card-sub">
-                      <a href={item.external_url} target="_blank" rel="noopener noreferrer">
-                        Open link
-                      </a>
-                    </p>
+      {loading ? (
+        <OpsLoading label="Loading posts…" />
+      ) : filtered.length === 0 ? (
+        <OpsEmpty title={items.length === 0 ? 'No posts yet' : 'No matches'}>
+          {emptyBody}
+          {items.length === 0 ? (
+            <div style={{ marginTop: 16 }}>
+              <button className="btn-primary" type="button" onClick={onCreate}>New post</button>
+            </div>
+          ) : null}
+        </OpsEmpty>
+      ) : (
+        <ul className="ruled-list card post-list" aria-label="Posts">
+          {filtered.map((item) => (
+            <li key={item.id} className="post-row">
+              <div className="post-row-copy">
+                <span className="post-row-title">{item.title}</span>
+                <span className="post-row-sub">{item.summary || item.body.slice(0, 120)}</span>
+                <span className="post-row-meta">
+                  <span className={statusChip(item.status)}>{STATUS_LABEL[item.status] ?? item.status}</span>
+                  {item.priority !== 'normal' ? (
+                    <span className={priorityChip(item.priority)}>{PRIORITY_LABEL[item.priority] ?? item.priority}</span>
                   ) : null}
-                  <div className="ops-chip-row">
-                    <span className="ops-chip muted">{item.kind}</span>
-                    <span className={priorityChip(item.priority)}>{item.priority}</span>
-                    <span className={statusChip(item.status)}>{item.status}</span>
-                    {item.category ? (
-                      <span className="ops-chip cyan">
-                        {categoriesForKind(item.kind)[item.category] ?? item.category}
-                      </span>
-                    ) : null}
-                  </div>
-                </div>
+                  <span>{metaLine(item)}</span>
+                </span>
               </div>
-              <div className="ops-card-actions">
-                <PostActions
-                  item={item}
-                  busy={busy === item.id}
-                  onPublish={() => publish(item)}
-                  onEdit={() => openEdit(item)}
-                  onArchive={() => archive(item)}
-                  onDelete={() => remove(item)}
+              <div className="post-row-actions">
+                {/* One obvious next step per row: publish a draft, otherwise edit. */}
+                {item.status === 'draft' ? (
+                  <button className="btn-secondary" type="button" disabled={busy === item.id} onClick={() => publish(item)}>
+                    Publish
+                  </button>
+                ) : null}
+                {item.status !== 'archived' ? (
+                  <button className="btn-quiet" type="button" disabled={busy === item.id} onClick={() => onEdit(item)}>
+                    Edit
+                  </button>
+                ) : null}
+                <RowMenu
+                  label={`More actions for ${item.title}`}
+                  items={[
+                    { label: 'Archive', disabled: item.status === 'archived', onSelect: () => archive(item) },
+                    { label: 'Delete permanently', danger: true, onSelect: () => remove(item) },
+                  ]}
                 />
               </div>
-            </article>
-          ))
-        )}
-      </div>
+            </li>
+          ))}
+        </ul>
+      )}
     </>
   );
 }
 
-function PostActions({
-  item,
-  busy,
-  onPublish,
-  onEdit,
-  onArchive,
-  onDelete,
-}: {
-  item: Post;
-  busy: boolean;
-  onPublish: () => void;
-  onEdit: () => void;
-  onArchive: () => void;
-  onDelete: () => void;
-}) {
+const STATUS_LABEL: Record<string, string> = { draft: 'Draft', published: 'Published', archived: 'Archived' };
+const PRIORITY_LABEL: Record<string, string> = { important: 'Important', urgent: 'Urgent' };
+const AUDIENCE_LABEL: Record<string, string> = { all: 'Everyone', students: 'Students', staff: 'Staff' };
+
+/** "Opportunity · Internships · Students" — the facts that tell posts apart, on one line. */
+function metaLine(item: Post): string {
+  return [
+    item.kind === 'opportunity' ? 'Opportunity' : 'Announcement',
+    categoriesForKind(item.kind)[item.category ?? ''],
+    AUDIENCE_LABEL[item.audience] ?? item.audience,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+}
+
+function SearchIcon() {
   return (
-    <div className="ops-row-actions">
-      <button className="ops-btn primary" type="button" disabled={busy || item.status === 'published'} onClick={onPublish}>
-        Publish
-      </button>
-      <button className="ops-btn" type="button" disabled={busy || item.status === 'archived'} onClick={onEdit}>
-        Edit
-      </button>
-      <button className="ops-btn" type="button" disabled={busy || item.status === 'archived'} onClick={onArchive}>
-        Archive
-      </button>
-      <button className="ops-btn danger" type="button" disabled={busy} onClick={onDelete}>
-        Delete
-      </button>
-    </div>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <circle cx="11" cy="11" r="7" />
+      <path d="m20 20-3.5-3.5" />
+    </svg>
   );
 }

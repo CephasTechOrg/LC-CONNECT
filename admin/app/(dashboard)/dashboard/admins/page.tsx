@@ -180,7 +180,7 @@ export default function AdminsPage() {
         <div className="dash-kpi-grid" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', marginBottom: 18 }}>
           <div className="dash-kpi">
             <div className="dash-kpi-icon tone-purple-soft">
-              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#6F42E8" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#3F7FB5" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                 <circle cx="10" cy="8" r="3" />
                 <path d="M4 19.5c.5-3 2.9-4.8 6-4.8" />
               </svg>

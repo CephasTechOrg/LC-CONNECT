@@ -38,14 +38,16 @@ export default function PostImageStrip({
   }
 
   return (
-    <div className="field">
-      <label>Photos (optional)</label>
-      <p className="ops-cell-sub" style={{ marginBottom: 8 }}>
+    <div className="compose-field">
+      <span className="compose-label">
+        Photos<span className="compose-optional"> · optional</span>
+      </span>
+      <p className="compose-hint">
         {remaining <= 0
-          ? '4 photos attached — the first is the cover.'
-          : `${remaining} of 4 photos remaining. The first is the cover.`}
+          ? 'Four photos attached. The first is the cover.'
+          : `Up to ${remaining} more. The first is the cover.`}
       </p>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+      <div className="photo-strip">
         {uploaded.map((image, index) => (
           <Thumb
             key={image.id}
@@ -71,12 +73,16 @@ export default function PostImageStrip({
           );
         })}
         {remaining > 0 ? (
+          // A tile the size of a photo, so the strip reads as "slots", not as a stray button.
           <button
             type="button"
-            className="ops-btn"
+            className="photo-add"
             disabled={busy}
             onClick={() => inputRef.current?.click()}
           >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+              <path d="M12 5v14M5 12h14" />
+            </svg>
             Add photo
           </button>
         ) : null}
@@ -109,63 +115,15 @@ function Thumb({
   onRemove: () => void;
 }) {
   return (
-    <div style={{ position: 'relative', width: 72, height: 72 }}>
+    <div className="photo-thumb">
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={src}
-        alt={label}
-        style={{
-          width: 72,
-          height: 72,
-          objectFit: 'cover',
-          borderRadius: 8,
-          border: '1px solid var(--border, #e5e7eb)',
-          opacity: uploading ? 0.72 : 1,
-        }}
-      />
-      {isCover ? (
-        <span
-          style={{
-            position: 'absolute',
-            left: 4,
-            bottom: 4,
-            background: 'rgba(0,0,0,0.65)',
-            color: '#fff',
-            fontSize: 10,
-            fontWeight: 700,
-            padding: '1px 5px',
-            borderRadius: 4,
-          }}
-        >
-          Cover
-        </span>
-      ) : null}
-      {uploading ? (
-        <span
-          style={{
-            position: 'absolute',
-            right: 4,
-            bottom: 4,
-            background: 'rgba(0,0,0,0.6)',
-            color: '#fff',
-            fontSize: 9,
-            fontWeight: 700,
-            padding: '1px 5px',
-            borderRadius: 4,
-          }}
-        >
-          Not saved
-        </span>
-      ) : null}
-      <button
-        type="button"
-        className="ops-btn danger"
-        disabled={busy}
-        onClick={onRemove}
-        aria-label={`Remove ${label}`}
-        style={{ position: 'absolute', top: -6, right: -6, width: 'auto', padding: '2px 6px', fontSize: 12 }}
-      >
-        ×
+      <img src={src} alt={label} style={uploading ? { opacity: 0.72 } : undefined} />
+      {isCover ? <span className="photo-tag left">Cover</span> : null}
+      {uploading ? <span className="photo-tag right">Not saved</span> : null}
+      <button type="button" className="photo-remove" disabled={busy} onClick={onRemove} aria-label={`Remove ${label}`}>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden>
+          <path d="M6 6l12 12M18 6 6 18" />
+        </svg>
       </button>
     </div>
   );

@@ -227,12 +227,14 @@
   color: var(--primary);
 }
 
-.ops-chip.success { background: #e4f4ec; color: #1f9160; }
-.ops-chip.warn { background: #fcf3da; color: #b98a0c; }
-.ops-chip.danger { background: #fbe7ea; color: #c43d4a; }
-.ops-chip.muted { background: #f1eff6; color: #736e7d; }
-.ops-chip.cyan { background: #e1f2f6; color: #2f8ea3; }
-.ops-chip.orange { background: #fceee3; color: #d96b36; }
+/* Status chips: colour by meaning, AA text on its own tint. The old cyan and orange were
+   decorative and now read as the one soft accent. */
+.ops-chip.success { background: var(--success-soft); color: var(--success); }
+.ops-chip.warn { background: var(--warning-soft); color: var(--warning); }
+.ops-chip.danger { background: var(--danger-soft); color: var(--danger); }
+.ops-chip.muted { background: var(--inset); color: var(--text-mid); }
+.ops-chip.cyan,
+.ops-chip.orange { background: var(--primary-soft); color: var(--primary-text); }
 
 .ops-chip-row {
   display: flex;
