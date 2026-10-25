@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { OpsEmpty, OpsLoading } from '@/components/ops-states';
 import { apiFetch, toUserMessage } from '@/lib/api/client';
 import { getAccessToken } from '@/lib/auth/session';
+import { humanize } from '@/lib/format';
 
 type Position = {
   id: string;
@@ -117,7 +118,7 @@ export default function PositionsPage() {
     <>
       <header className="ops-top">
         <div>
-          <h1>Campus Positions</h1>
+          <h1>Campus positions</h1>
           <p>Review and manage verified campus roles for staff.</p>
         </div>
         <div className="seg-tabs">
@@ -212,8 +213,8 @@ export default function PositionsPage() {
                       </td>
                       <td data-label="Position">{item.official_title}</td>
                       <td className="ops-col-hide-md" data-label="Department">{item.department}</td>
-                      <td data-label="Category" style={{ textTransform: 'capitalize' }}>
-                        {item.category.replaceAll('_', ' ')}
+                      <td data-label="Category">
+                        {humanize(item.category)}
                       </td>
                       <td data-label={tab === 'pending' ? 'Contact' : 'Status'}>
                         {tab === 'pending' ? (
@@ -221,14 +222,14 @@ export default function PositionsPage() {
                             {item.contact_email || '—'}
                           </span>
                         ) : (
-                          <span className="ops-chip success">{item.status}</span>
+                          <span className="ops-chip success">{humanize(item.status)}</span>
                         )}
                       </td>
                       <td className="ops-col-actions ops-cell-actions">
                         <div className="ops-row-actions">
                           {tab === 'pending' ? (
                             <button
-                              className="ops-btn primary"
+                              className="ops-btn"
                               type="button"
                               onClick={() => {
                                 setDrawer(item);
@@ -283,11 +284,11 @@ export default function PositionsPage() {
             <div className="ops-drawer-grid">
               <div className="ops-drawer-field">
                 <label>User role</label>
-                <div style={{ textTransform: 'capitalize' }}>{drawer.user_role}</div>
+                <div>{humanize(drawer.user_role)}</div>
               </div>
               <div className="ops-drawer-field">
                 <label>Category</label>
-                <div style={{ textTransform: 'capitalize' }}>{drawer.category.replaceAll('_', ' ')}</div>
+                <div>{humanize(drawer.category)}</div>
               </div>
               <div className="ops-drawer-field">
                 <label>Official title</label>

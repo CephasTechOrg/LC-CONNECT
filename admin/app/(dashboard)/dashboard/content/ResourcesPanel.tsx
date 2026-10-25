@@ -4,6 +4,8 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { OpsEmpty, OpsLoading } from '@/components/ops-states';
 import { apiFetch, toUserMessage } from '@/lib/api/client';
 import { getAccessToken } from '@/lib/auth/session';
+import { humanize } from '@/lib/format';
+import RowMenu from '@/components/row-menu';
 
 type Resource = {
   id: string;
@@ -30,7 +32,7 @@ const CATEGORIES = [
 ];
 
 function labelCat(c: string): string {
-  return c.replaceAll('_', ' ');
+  return humanize(c);
 }
 
 export default function ResourcesPanel() {
@@ -304,7 +306,7 @@ export default function ResourcesPanel() {
                     <div className="ops-cell-title">{item.title}</div>
                     <div className="ops-cell-sub">{item.description.slice(0, 90)}</div>
                   </td>
-                  <td style={{ textTransform: 'capitalize' }}>{labelCat(item.category)}</td>
+                  <td>{labelCat(item.category)}</td>
                   <td className="ops-col-hide-md">{item.location || '—'}</td>
                   <td className="ops-col-hide-md">{item.contact_email || item.phone || '—'}</td>
                   <td>
@@ -388,18 +390,13 @@ function ResourceActions({
       <button className="ops-btn" type="button" disabled={busy} onClick={onEdit}>
         Edit
       </button>
-      {item.is_active ? (
-        <button className="ops-btn" type="button" disabled={busy} onClick={onToggle}>
-          Deactivate
-        </button>
-      ) : (
-        <button className="ops-btn primary" type="button" disabled={busy} onClick={onToggle}>
-          Restore
-        </button>
-      )}
-      <button className="ops-btn danger" type="button" disabled={busy} onClick={onDelete}>
-        Delete
-      </button>
+      <RowMenu
+        label={`More actions for ${item.title}`}
+        items={[
+          { label: item.is_active ? 'Deactivate' : 'Restore', disabled: busy, onSelect: onToggle },
+          { label: 'Delete permanently', danger: true, disabled: busy, onSelect: onDelete },
+        ]}
+      />
     </div>
   );
 }

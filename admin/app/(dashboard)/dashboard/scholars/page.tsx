@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { OpsEmpty, OpsLoading } from '@/components/ops-states';
 import { apiFetch, toUserMessage } from '@/lib/api/client';
 import { getAccessToken } from '@/lib/auth/session';
+import { humanize, formatDate } from '@/lib/format';
 
 type ProgramMembership = {
   id: string;
@@ -37,7 +38,7 @@ function initials(name: string | null, email: string): string {
 function when(iso: string | null): string {
   if (!iso) return '—';
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString();
+  return Number.isNaN(d.getTime()) ? '—' : formatDate(iso);
 }
 
 export default function ScholarsPage() {
@@ -192,7 +193,7 @@ export default function ScholarsPage() {
             </div>
             <div>
               <div className="dash-kpi-value">{loading ? '—' : activeCount}</div>
-              <div className="dash-kpi-title">Active Scholars</div>
+              <div className="dash-kpi-title">Active scholars</div>
               <div className="dash-kpi-sub">Verified memberships</div>
             </div>
           </div>
@@ -261,27 +262,30 @@ export default function ScholarsPage() {
                         </td>
                         <td data-label="Account">
                           <span className={s.status === 'active' ? 'ops-chip success' : 'ops-chip muted'}>
-                            {s.status}
+                            {humanize(s.status)}
                           </span>
                         </td>
                         <td data-label="Scholar">
                           {alreadyScholar ? (
-                            <span className="ops-chip success">Already a scholar</span>
+                            <span className="ops-chip success">Scholar</span>
                           ) : (
                             <span className="ops-chip muted">Not verified</span>
                           )}
                         </td>
                         <td className="ops-col-actions ops-cell-actions">
-                          <div className="ops-row-actions">
-                            <button
-                              className="ops-btn primary"
-                              type="button"
-                              disabled={alreadyScholar || verifying === s.id}
-                              onClick={() => void onVerify(s)}
-                            >
-                              {verifying === s.id ? 'Verifying…' : 'Verify'}
-                            </button>
-                          </div>
+                          {/* No dead buttons: a student already on the roster has nothing to do here. */}
+                          {alreadyScholar ? null : (
+                            <div className="ops-row-actions">
+                              <button
+                                className="ops-btn"
+                                type="button"
+                                disabled={verifying === s.id}
+                                onClick={() => void onVerify(s)}
+                              >
+                                {verifying === s.id ? 'Verifying…' : 'Verify'}
+                              </button>
+                            </div>
+                          )}
                         </td>
                       </tr>
                     );
@@ -344,7 +348,7 @@ export default function ScholarsPage() {
                       </td>
                       <td data-label="Status">
                         <span className={tab === 'active' ? 'ops-chip success' : 'ops-chip muted'}>
-                          {item.status}
+                          {humanize(item.status)}
                         </span>
                       </td>
                       <td className="ops-col-actions ops-cell-actions">

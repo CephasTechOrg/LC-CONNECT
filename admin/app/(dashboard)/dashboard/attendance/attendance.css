@@ -5,8 +5,8 @@
   gap: 12px;
   padding: 20px;
   border-radius: 20px;
-  border: 1px dashed #d8d2ea;
-  background: #faf9fd;
+  border: 1px dashed var(--border);
+  background: var(--bg);
 }
 
 .attendance-qr-canvas {
@@ -41,20 +41,20 @@
 }
 
 .attendance-live-dot.live {
-  color: #1f9160;
+  color: var(--success);
 }
 
 .attendance-live-dot.live::before {
-  background: #1f9160;
+  background: var(--success);
   box-shadow: 0 0 0 3px rgba(31, 145, 96, 0.16);
 }
 
 .attendance-live-dot.stale {
-  color: #b98a0c;
+  color: var(--warning);
 }
 
 .attendance-live-dot.stale::before {
-  background: #b98a0c;
+  background: var(--warning);
   box-shadow: 0 0 0 3px rgba(185, 138, 12, 0.16);
 }
 
@@ -75,7 +75,7 @@
 .attendance-stat {
   padding: 14px 16px;
   border-radius: 14px;
-  border: 1px solid #eeebf3;
+  border: 1px solid var(--border);
   background: #fff;
 }
 
@@ -87,8 +87,8 @@ button.attendance-stat {
 }
 
 button.attendance-stat:hover {
-  border-color: #d8d2ea;
-  background: #faf9fd;
+  border-color: var(--border);
+  background: var(--bg);
 }
 
 button.attendance-stat.is-active {
@@ -113,7 +113,7 @@ button.attendance-stat.is-active {
 .attendance-progress {
   height: 10px;
   border-radius: 999px;
-  background: #ece8f5;
+  background: var(--inset);
   overflow: hidden;
   margin: 8px 0 16px;
 }
@@ -143,7 +143,7 @@ button.attendance-stat.is-active {
   gap: 12px;
   padding: 10px 12px;
   border-radius: 12px;
-  background: #faf9fd;
+  background: var(--bg);
   font-size: 13px;
 }
 
@@ -168,8 +168,8 @@ button.attendance-stat.is-active {
   padding: 22px;
   border-radius: 20px;
   background: #fff;
-  border: 1px solid #eeebf3;
-  box-shadow: 0 24px 60px -28px rgba(52, 38, 104, 0.45);
+  border: 1px solid var(--border);
+  box-shadow: 0 24px 60px -28px rgba(27, 58, 92, 0.45);
 }
 
 .attendance-start-dialog-card h2 {
@@ -258,9 +258,9 @@ button.attendance-stat.is-active {
   margin-top: 14px;
   padding: 8px 18px 14px;
   background: #fff;
-  border: 1px solid #eeebf3;
+  border: 1px solid var(--border);
   border-radius: 20px;
-  box-shadow: 0 8px 22px -16px rgba(52, 38, 104, 0.35);
+  box-shadow: 0 8px 22px -16px rgba(27, 58, 92, 0.35);
 }
 
 .attendance-roster-group {
@@ -273,7 +273,7 @@ button.attendance-stat.is-active {
   justify-content: space-between;
   gap: 12px;
   padding: 10px 4px 8px;
-  border-bottom: 1px solid #efecf5;
+  border-bottom: 1px solid var(--border);
   font-size: 11.5px;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -293,7 +293,7 @@ button.attendance-stat.is-active {
   justify-content: space-between;
   gap: 12px;
   padding: 10px 4px;
-  border-bottom: 1px solid #f4f1f9;
+  border-bottom: 1px solid var(--border-soft);
 }
 
 .attendance-name-list li:last-child {
@@ -392,18 +392,18 @@ button.attendance-stat.is-active {
 }
 
 .attendance-chip.present {
-  background: #dff3e8;
-  color: #1d7a4f;
+  background: var(--success-soft);
+  color: var(--success);
 }
 
 .attendance-chip.late {
-  background: #fdf0d5;
-  color: #8a5a06;
+  background: var(--warning-soft);
+  color: var(--warning);
 }
 
 .attendance-chip.closed,
 .attendance-chip.muted {
-  background: #eeebf3;
+  background: var(--border);
   color: var(--muted-strong);
 }
 

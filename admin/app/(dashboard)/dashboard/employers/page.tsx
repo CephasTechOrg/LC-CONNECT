@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { OpsEmpty, OpsLoading } from '@/components/ops-states';
 import { apiFetch, toUserMessage } from '@/lib/api/client';
 import { getAccessToken } from '@/lib/auth/session';
+import { humanize } from '@/lib/format';
 
 type EmployerOrganization = {
   id: string;
@@ -192,7 +193,7 @@ export default function EmployersPage() {
     <>
       <header className="ops-top">
         <div>
-          <h1>Employer Partners</h1>
+          <h1>Employer partners</h1>
           <p>Review employer organizations and their opportunity submissions — Blueprint Bond.</p>
         </div>
         <div className="seg-tabs">
@@ -279,7 +280,7 @@ export default function EmployersPage() {
                         </div>
                       </td>
                       <td data-label="Status">
-                        <span className={statusChip(orgTab)}>{item.status}</span>
+                        <span className={statusChip(orgTab)}>{humanize(item.status)}</span>
                       </td>
                       <td className="ops-col-hide-md" data-label="Note">
                         <span className="ops-cell-sub" style={{ marginTop: 0 }}>
@@ -290,7 +291,7 @@ export default function EmployersPage() {
                         <div className="ops-row-actions">
                           {orgTab === 'pending' ? (
                             <button
-                              className="ops-btn primary"
+                              className="ops-btn"
                               type="button"
                               onClick={() => {
                                 setOrgDrawer(item);
@@ -352,7 +353,7 @@ export default function EmployersPage() {
                           </div>
                         </div>
                       </td>
-                      <td data-label="Category" style={{ textTransform: 'capitalize' }}>{item.category}</td>
+                      <td data-label="Category">{humanize(item.category)}</td>
                       <td className="ops-col-hide-md" data-label="Link">
                         {item.external_url ? (
                           <a
@@ -368,13 +369,13 @@ export default function EmployersPage() {
                         )}
                       </td>
                       <td data-label="Status">
-                        <span className={statusChip(oppTab)}>{item.status}</span>
+                        <span className={statusChip(oppTab)}>{humanize(item.status)}</span>
                       </td>
                       <td className="ops-col-actions ops-cell-actions">
                         <div className="ops-row-actions">
                           {oppTab === 'pending' ? (
                             <button
-                              className="ops-btn primary"
+                              className="ops-btn"
                               type="button"
                               onClick={() => {
                                 setOppDrawer(item);
@@ -475,7 +476,7 @@ export default function EmployersPage() {
               </div>
               <div className="ops-drawer-field">
                 <label>Category</label>
-                <div style={{ textTransform: 'capitalize' }}>{oppDrawer.category}</div>
+                <div>{humanize(oppDrawer.category)}</div>
               </div>
             </div>
             <div className="field">
