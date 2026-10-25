@@ -13,6 +13,8 @@ class BootstrapResponse(BaseModel):
     policies_accepted: bool
     profile_completed: bool
     auth_user_id: UUID
+    first_name: str | None = None
+    last_name: str | None = None
 
 
 class CurrentUserResponse(BaseModel):
@@ -24,6 +26,8 @@ class CurrentUserResponse(BaseModel):
     policies_accepted: bool
     profile_completed: bool = False
     auth_user_id: UUID | None = None
+    first_name: str | None = None
+    last_name: str | None = None
 
 
 class MessageResponse(BaseModel):

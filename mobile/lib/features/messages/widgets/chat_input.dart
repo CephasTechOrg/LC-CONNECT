@@ -138,7 +138,7 @@ void _showOutboxFullSnack(BuildContext context) {
     SnackBar(
       content: Text(
         'Send queue is full — wait to reconnect, then tap retry.',
-        style: GoogleFonts.dmSans(color: Colors.white),
+        style: TextStyle(color: Colors.white),
       ),
       backgroundColor: AppColors.error,
       behavior: SnackBarBehavior.floating,

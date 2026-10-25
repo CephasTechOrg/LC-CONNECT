@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/avatar_widget.dart';
+import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/app_states.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../messages/providers/messages_provider.dart';
 import '../../messages/providers/staff_messaging_provider.dart';
 import '../providers/campus_directory_provider.dart';
+import '../widgets/campus_subpage_header.dart';
 import '../../messages/utils/chat_routes.dart';
 import '../../../shared/widgets/app_skeleton.dart';
 
@@ -46,13 +49,8 @@ class _CampusPositionDetailScreenState extends ConsumerState<CampusPositionDetai
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            "Couldn't start that conversation",
-            style: GoogleFonts.dmSans(color: Colors.white),
-          ),
+          content: const Text("Couldn't start that conversation"),
           backgroundColor: AppColors.error,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       );
     } finally {
@@ -72,7 +70,7 @@ class _CampusPositionDetailScreenState extends ConsumerState<CampusPositionDetai
           loading: () => const AppProfileSkeleton(),
           error: (_, _) => Column(
             children: [
-              _DetailHeader(onBack: () => context.pop()),
+              CampusSubpageHeader(title: 'Contact', onBack: () => context.pop()),
               Expanded(
                 child: AppErrorState(
                   message: 'Could not load this directory entry.',
@@ -84,10 +82,15 @@ class _CampusPositionDetailScreenState extends ConsumerState<CampusPositionDetai
           data: (entry) => Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _DetailHeader(onBack: () => context.pop()),
+              CampusSubpageHeader(title: 'Contact', onBack: () => context.pop()),
               Expanded(
                 child: ListView(
-                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.gutter,
+                    AppSpacing.sm,
+                    AppSpacing.gutter,
+                    AppSpacing.xxl,
+                  ),
                   children: [
                     Row(
                       children: [
@@ -99,19 +102,18 @@ class _CampusPositionDetailScreenState extends ConsumerState<CampusPositionDetai
                             children: [
                               Text(
                                 entry.displayName ?? entry.officialTitle,
-                                style: GoogleFonts.dmSans(
-                                  fontSize: 18,
+                                style: AppTypography.title.copyWith(
                                   fontWeight: FontWeight.w700,
                                   color: AppColors.textDark,
                                 ),
                               ),
                               Text(
                                 entry.officialTitle,
-                                style: GoogleFonts.dmSans(fontSize: 14, color: AppColors.textMid),
+                                style: AppTypography.body.copyWith(color: AppColors.textMid),
                               ),
                               Text(
                                 entry.department,
-                                style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.textMuted),
+                                style: AppTypography.bodySmall.copyWith(color: AppColors.textMuted),
                               ),
                             ],
                           ),
@@ -120,15 +122,11 @@ class _CampusPositionDetailScreenState extends ConsumerState<CampusPositionDetai
                     ),
                     const SizedBox(height: 16),
                     if (myId != entry.userId)
+                      // The theme's pill, like every other primary action.
                       SizedBox(
                         width: double.infinity,
                         child: FilledButton.icon(
                           onPressed: _messaging ? null : () => _message(entry),
-                          style: FilledButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          ),
                           icon: _messaging
                               ? const SizedBox(
                                   width: 16,
@@ -143,45 +141,25 @@ class _CampusPositionDetailScreenState extends ConsumerState<CampusPositionDetai
                                   size: 18,
                                   color: Colors.white,
                                 ),
-                          label: Text(
-                            'Message',
-                            style: GoogleFonts.dmSans(
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
-                            ),
-                          ),
+                          label: const Text('Message'),
                         ),
                       ),
                     if (entry.bio != null && entry.bio!.isNotEmpty) ...[
-                      const SizedBox(height: 20),
-                      Text(
-                        'About',
-                        style: GoogleFonts.dmSans(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textDark,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: AppSpacing.xxl),
+                      const _SectionHeading('About'),
+                      const SizedBox(height: AppSpacing.sm),
                       Text(
                         entry.bio!,
-                        style: GoogleFonts.dmSans(
-                          fontSize: 14,
+                        style: AppTypography.body.copyWith(
                           height: 1.45,
                           color: AppColors.textMid,
                         ),
                       ),
                     ],
-                    const SizedBox(height: 20),
-                    Text(
-                      'Contact',
-                      style: GoogleFonts.dmSans(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textDark,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: AppSpacing.xxl),
+                    const _SectionHeading('Contact'),
+                    const SizedBox(height: AppSpacing.sm),
+                    _ContactCard(rows: [
                     _ContactAction(
                       icon: Icons.email_outlined,
                       label: 'Email',
@@ -207,12 +185,55 @@ class _CampusPositionDetailScreenState extends ConsumerState<CampusPositionDetai
                         label: 'Hours',
                         value: entry.availability!,
                       ),
+                    ]),
                   ],
                 ),
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _SectionHeading extends StatelessWidget {
+  final String text;
+  const _SectionHeading(this.text);
+
+  @override
+  Widget build(BuildContext context) => Text(
+        text,
+        style: AppTypography.titleSmall.copyWith(
+          fontWeight: FontWeight.w700,
+          color: AppColors.textDark,
+        ),
+      );
+}
+
+/// All the ways to reach this person in one card, split by hairlines — not one outlined box per
+/// row, which read as four separate buttons.
+class _ContactCard extends StatelessWidget {
+  final List<Widget> rows;
+  const _ContactCard({required this.rows});
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      padding: EdgeInsets.zero,
+      child: Column(
+        children: [
+          for (var i = 0; i < rows.length; i++) ...[
+            if (i > 0)
+              const Divider(
+                height: 1,
+                thickness: 1,
+                color: AppColors.border,
+                indent: AppSpacing.lg + 20 + AppSpacing.md,
+              ),
+            rows[i],
+          ],
+        ],
       ),
     );
   }
@@ -228,27 +249,26 @@ class _ContactAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final child = Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
-      ),
+    final row = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
       child: Row(
         children: [
-          Icon(icon, color: AppColors.primary, size: 20),
-          const SizedBox(width: 12),
+          Icon(icon, color: AppColors.primaryText, size: 20),
+          const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label, style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textMuted)),
+                Text(
+                  label,
+                  style: AppTypography.label.copyWith(
+                    fontWeight: FontWeight.w400,
+                    color: AppColors.textMuted,
+                  ),
+                ),
                 Text(
                   value,
-                  style: GoogleFonts.dmSans(
-                    fontSize: 14,
+                  style: AppTypography.body.copyWith(
                     fontWeight: FontWeight.w600,
                     color: AppColors.textDark,
                   ),
@@ -261,40 +281,7 @@ class _ContactAction extends StatelessWidget {
         ],
       ),
     );
-
-    if (onTap == null) return child;
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(onTap: onTap, borderRadius: BorderRadius.circular(12), child: child),
-    );
-  }
-}
-
-class _DetailHeader extends StatelessWidget {
-  final VoidCallback onBack;
-
-  const _DetailHeader({required this.onBack});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 8, 20, 0),
-      child: Row(
-        children: [
-          IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
-            onPressed: onBack,
-          ),
-          Text(
-            'Contact',
-            style: GoogleFonts.dmSans(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textDark,
-            ),
-          ),
-        ],
-      ),
-    );
+    final tap = onTap;
+    return tap == null ? row : InkWell(onTap: tap, child: row);
   }
 }

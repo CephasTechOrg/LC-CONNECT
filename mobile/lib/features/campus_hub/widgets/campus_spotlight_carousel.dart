@@ -13,6 +13,12 @@ double _spotlightHeightFor(BuildContext context) {
 
 const _spotlightRadius = 20.0;
 
+/// The brand spotlight. Swipe-only — it does not advance on its own.
+///
+/// It used to rotate every 10–12 seconds. Auto-advancing carousels are one of the most studied
+/// usability failures (NN/g): content moves away from someone still reading it, slow readers
+/// never finish a slide, and the motion itself reads as an ad and gets ignored. A student opens
+/// Home many times a day; the slide should be where they left it.
 class _SpotlightCarousel extends StatefulWidget {
   const _SpotlightCarousel();
 
@@ -25,58 +31,19 @@ class _SpotlightCarouselState extends State<_SpotlightCarousel> {
 
   final _controller = PageController();
   int _index = 0;
-  Timer? _timer;
-
-  @override
-  void initState() {
-    super.initState();
-    _restartTimer();
-  }
 
   @override
   void dispose() {
-    _timer?.cancel();
     _controller.dispose();
     super.dispose();
   }
 
-  Duration get _dwell => campusSpotlights[_index].dwell;
-
-  void _restartTimer() {
-    _timer?.cancel();
-    if (campusSpotlights.length < 2) return;
-    _timer = Timer(_dwell, _onDwell);
-  }
-
-  void _onDwell() {
-    if (!mounted) return;
-    _advance();
-  }
-
-  void _advance() {
-    if (!mounted || !_controller.hasClients) return;
-    _controller.animateToPage(
-      (_index + 1) % campusSpotlights.length,
-      duration: _slide,
-      curve: Curves.easeOutCubic,
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    // An auto-advancing carousel is a known accessibility problem — it moves content out from
-    // under someone still reading it. Honour the OS "reduce motion" setting by holding on the
-    // first slide and letting them swipe at their own pace.
-    if (MediaQuery.disableAnimationsOf(context)) {
-      _timer?.cancel();
-      _timer = null;
-    } else if (_timer == null && campusSpotlights.length > 1) {
-      _restartTimer();
-    }
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.gutter,
-        AppSpacing.xs,
+        AppSpacing.md,
         AppSpacing.gutter,
         0,
       ),
@@ -84,25 +51,12 @@ class _SpotlightCarouselState extends State<_SpotlightCarousel> {
         children: [
           SizedBox(
             height: _spotlightHeightFor(context),
-            child: NotificationListener<ScrollNotification>(
-              // A deliberate swipe wins: reset the dwell so the slide the student chose gets a
-              // full turn instead of sliding away a moment later.
-              onNotification: (n) {
-                if (n is ScrollStartNotification && n.dragDetails != null) {
-                  _timer?.cancel();
-                }
-                return false;
-              },
-              child: PageView.builder(
-                controller: _controller,
-                itemCount: campusSpotlights.length,
-                onPageChanged: (i) {
-                  setState(() => _index = i);
-                  _restartTimer();
-                },
-                itemBuilder: (_, i) =>
-                    _SpotlightCard(spotlight: campusSpotlights[i]),
-              ),
+            child: PageView.builder(
+              controller: _controller,
+              itemCount: campusSpotlights.length,
+              onPageChanged: (i) => setState(() => _index = i),
+              itemBuilder: (_, i) =>
+                  _SpotlightCard(spotlight: campusSpotlights[i]),
             ),
           ),
           // The dots' 32dp hit boxes already add ~12dp of air around them.
@@ -111,6 +65,11 @@ class _SpotlightCarouselState extends State<_SpotlightCarousel> {
             count: campusSpotlights.length,
             active: _index,
             onTap: (i) {
+              // Respect the OS "reduce motion" setting for the one remaining animation.
+              if (MediaQuery.disableAnimationsOf(context)) {
+                _controller.jumpToPage(i);
+                return;
+              }
               _controller.animateToPage(
                 i,
                 duration: _slide,
@@ -162,7 +121,9 @@ class _SpotlightDots extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: i == active
                           ? AppColors.primary
-                          : const Color(0xFFC4D3E0),
+                          // 3.2:1 on the page — a control needs 3:1 to be seen.
+                          // The old #C4D3E0 was 1.5:1.
+                          : const Color(0xFF768EA5),
                       borderRadius: BorderRadius.circular(4),
                     ),
                   ),
@@ -184,7 +145,6 @@ class _SpotlightCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(_spotlightRadius),
-        border: Border.all(color: AppColors.border),
         boxShadow: const [
           BoxShadow(
             color: Color(0x1F245F91),
@@ -193,75 +153,100 @@ class _SpotlightCard extends StatelessWidget {
           ),
         ],
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(_spotlightRadius),
-        child: DecoratedBox(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Color(0xFFEAF2F9), Color(0xFFD7E6F2)],
+      // The largest thing on Home used to do nothing when tapped — only the dots responded — so it
+      // looked interactive and wasn't. Each slide now opens the feature it advertises.
+      child: _SpotlightTapTarget(
+        spotlight: spotlight,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(_spotlightRadius),
+          child: DecoratedBox(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFFEAF2F9), Color(0xFFD7E6F2)],
+              ),
             ),
-          ),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              Image.asset(
-                campusSpotlightBackground,
-                fit: BoxFit.cover,
-                alignment: const Alignment(0, 0.1),
-              ),
-              const DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment(-1, -0.25),
-                    end: Alignment(1, 0.25),
-                    stops: [0, 0.4, 0.64, 0.82],
-                    colors: [
-                      Color(0xF7EEF5FB),
-                      Color(0xD1EEF5FB),
-                      Color(0x40EEF5FB),
-                      Color(0x00EEF5FB),
-                    ],
-                  ),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                Image.asset(
+                  campusSpotlightBackground,
+                  fit: BoxFit.cover,
+                  alignment: const Alignment(0, 0.1),
                 ),
-              ),
-              Positioned(
-                top: -70,
-                right: -70,
-                child: Container(
-                  width: 230,
-                  height: 230,
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Color(0x293F7FB5),
-                  ),
-                ),
-              ),
-              if (spotlight.studentAsset != null)
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: FractionallySizedBox(
-                    widthFactor: 0.56,
-                    heightFactor: 1,
-                    child: _FeatheredStudent(
-                      asset: spotlight.studentAsset!,
-                      label: spotlight.studentLabel,
+                const DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment(-1, -0.25),
+                      end: Alignment(1, 0.25),
+                      stops: [0, 0.4, 0.64, 0.82],
+                      colors: [
+                        Color(0xF7EEF5FB),
+                        Color(0xD1EEF5FB),
+                        Color(0x40EEF5FB),
+                        Color(0x00EEF5FB),
+                      ],
                     ),
                   ),
                 ),
-              const Align(
-                alignment: Alignment.bottomLeft,
-                child: SizedBox(
-                  width: 200,
-                  height: 66,
-                  child: CustomPaint(painter: _SpotlightCurvePainter()),
+                Positioned(
+                  top: -70,
+                  right: -70,
+                  child: Container(
+                    width: 230,
+                    height: 230,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Color(0x293F7FB5),
+                    ),
+                  ),
                 ),
-              ),
-              _SpotlightContent(spotlight: spotlight),
-            ],
+                if (spotlight.studentAsset != null)
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: FractionallySizedBox(
+                      widthFactor: 0.56,
+                      heightFactor: 1,
+                      child: _FeatheredStudent(
+                        asset: spotlight.studentAsset!,
+                        label: spotlight.studentLabel,
+                      ),
+                    ),
+                  ),
+                const Align(
+                  alignment: Alignment.bottomLeft,
+                  child: SizedBox(
+                    width: 200,
+                    height: 66,
+                    child: CustomPaint(painter: _SpotlightCurvePainter()),
+                  ),
+                ),
+                _SpotlightContent(spotlight: spotlight),
+              ],
+            ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _SpotlightTapTarget extends StatelessWidget {
+  final CampusSpotlight spotlight;
+  final Widget child;
+
+  const _SpotlightTapTarget({required this.spotlight, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: spotlight.actionLabel,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => context.go(spotlight.route),
+        child: child,
       ),
     );
   }

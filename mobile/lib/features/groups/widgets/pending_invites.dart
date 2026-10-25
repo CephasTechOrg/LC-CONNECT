@@ -1,9 +1,9 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_typography.dart';
 import '../../messages/providers/messages_provider.dart';
 import '../data/group_models.dart';
 import '../providers/groups_provider.dart';
@@ -25,7 +25,7 @@ class _PendingInvitesSectionState extends ConsumerState<PendingInvitesSection> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message, style: GoogleFonts.dmSans(color: Colors.white)),
+        content: Text(message, style: TextStyle(color: Colors.white)),
         backgroundColor: error ? AppColors.error : AppColors.primary,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -69,7 +69,10 @@ class _PendingInvitesSectionState extends ConsumerState<PendingInvitesSection> {
           padding: const EdgeInsets.fromLTRB(20, 14, 20, 6),
           child: Text(
             'Pending invites',
-            style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textDark),
+            style: AppTypography.body.copyWith(
+              fontWeight: FontWeight.w700,
+              color: AppColors.textDark,
+            ),
           ),
         ),
         for (final g in invites)
@@ -98,10 +101,10 @@ class _InviteCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
+      // Soft blue, no outline: an invite is waiting on you, so it is the one tinted card here.
       decoration: BoxDecoration(
         color: AppColors.primarySoft,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.primary.withAlpha(60)),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
         children: [
@@ -130,11 +133,17 @@ class _InviteCard extends StatelessWidget {
                   group.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textDark),
+                  style: AppTypography.bodySmall.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textDark,
+                  ),
                 ),
                 Text(
                   'Invited you to join',
-                  style: GoogleFonts.dmSans(fontSize: 11, color: AppColors.textMuted),
+                  style: AppTypography.caption.copyWith(
+                    fontWeight: FontWeight.w400,
+                    color: AppColors.textMuted,
+                  ),
                 ),
               ],
             ),
@@ -155,6 +164,8 @@ class _InviteCard extends StatelessWidget {
   }
 }
 
+/// Accept is the action (blue fill); Decline steps back to a flat grey pill — the same two
+/// treatments as every join control in the app, on a 48dp target.
 class _InviteBtn extends StatelessWidget {
   final String label;
   final bool filled;
@@ -163,24 +174,32 @@ class _InviteBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: filled ? AppColors.primary : AppColors.surface,
-      borderRadius: BorderRadius.circular(9),
-      child: InkWell(
+    return Semantics(
+      container: true,
+      button: true,
+      label: label,
+      excludeSemantics: true,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
         onTap: onTap,
-        borderRadius: BorderRadius.circular(9),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(9),
-            border: Border.all(color: filled ? AppColors.primary : AppColors.border, width: 1.5),
-          ),
-          child: Text(
-            label,
-            style: GoogleFonts.dmSans(
-              fontSize: 11.5,
-              fontWeight: FontWeight.w600,
-              color: filled ? Colors.white : AppColors.textMid,
+        child: SizedBox(
+          height: kMinInteractiveDimension,
+          child: Center(
+            child: Container(
+              height: 34,
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: filled ? AppColors.primary : AppColors.surface,
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                label,
+                style: AppTypography.bodySmall.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: filled ? Colors.white : AppColors.textMid,
+                ),
+              ),
             ),
           ),
         ),

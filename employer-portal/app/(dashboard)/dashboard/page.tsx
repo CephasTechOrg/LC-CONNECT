@@ -110,7 +110,7 @@ export default function DashboardHomePage() {
         </div>
         <div className="dash-kpi">
           <div className="dash-kpi-icon tone-green">
-            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#2DAA72" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#15803D" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
               <path d="M20 6 9 17l-5-5" />
             </svg>
           </div>
@@ -122,7 +122,7 @@ export default function DashboardHomePage() {
         </div>
         <div className="dash-kpi">
           <div className="dash-kpi-icon tone-orange">
-            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#D96B36" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#B45309" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
               <circle cx="12" cy="12" r="9" />
               <path d="M12 7v5l3 2" />
             </svg>
@@ -135,7 +135,7 @@ export default function DashboardHomePage() {
         </div>
         <div className="dash-kpi">
           <div className="dash-kpi-icon tone-cyan">
-            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#2F8EA3" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#3772A4" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
               <rect x="3" y="7.5" width="18" height="12.5" rx="2.5" />
               <path d="M8.5 7.5V6a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v1.5" />
             </svg>
@@ -207,7 +207,7 @@ export default function DashboardHomePage() {
           <div className="dash-actions">
             <Link className="dash-action" href="/dashboard/opportunities">
               <div className="dash-action-icon">
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6F42E8" strokeWidth="2" strokeLinecap="round" aria-hidden>
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#3772A4" strokeWidth="2" strokeLinecap="round" aria-hidden>
                   <path d="M12 5v14M5 12h14" />
                 </svg>
               </div>
@@ -219,7 +219,7 @@ export default function DashboardHomePage() {
             </Link>
             <Link className="dash-action" href="/dashboard/scholars">
               <div className="dash-action-icon">
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6F42E8" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#3772A4" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                   <circle cx="12" cy="9" r="5" />
                   <path d="M8.5 13.2 7 21l5-2.6L17 21l-1.5-7.8" />
                 </svg>
@@ -232,7 +232,7 @@ export default function DashboardHomePage() {
             </Link>
             <Link className="dash-action" href="/dashboard/organization">
               <div className="dash-action-icon">
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6F42E8" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#3772A4" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                   <rect x="4" y="8" width="16" height="12" rx="2" />
                   <path d="M9 8V5.5a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 5.5V8" />
                 </svg>

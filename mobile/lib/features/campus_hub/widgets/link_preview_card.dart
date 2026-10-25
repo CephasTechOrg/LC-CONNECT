@@ -1,8 +1,8 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_typography.dart';
 import '../models/campus_post.dart';
 
 /// Compact (list) or expanded (detail) preview for an opportunity `externalUrl`.
@@ -83,8 +83,7 @@ class LinkPreviewCard extends StatelessWidget {
                   _domain,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.dmSans(
-                    fontSize: 11,
+                  style: AppTypography.caption.copyWith(
                     fontWeight: FontWeight.w600,
                     color: AppColors.textMuted,
                   ),
@@ -94,8 +93,7 @@ class LinkPreviewCard extends StatelessWidget {
                   _title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.dmSans(
-                    fontSize: 13,
+                  style: AppTypography.bodySmall.copyWith(
                     fontWeight: FontWeight.w700,
                     color: AppColors.textDark,
                   ),
@@ -145,8 +143,7 @@ class LinkPreviewCard extends StatelessWidget {
                         _domain.toUpperCase(),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.dmSans(
-                          fontSize: 11,
+                        style: AppTypography.caption.copyWith(
                           fontWeight: FontWeight.w700,
                           letterSpacing: 0.4,
                           color: AppColors.textMuted,
@@ -161,8 +158,7 @@ class LinkPreviewCard extends StatelessWidget {
                   _title,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.dmSans(
-                    fontSize: 16,
+                  style: AppTypography.titleSmall.copyWith(
                     fontWeight: FontWeight.w700,
                     color: AppColors.textDark,
                     height: 1.25,
@@ -174,7 +170,7 @@ class LinkPreviewCard extends StatelessWidget {
                     _description!,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.dmSans(fontSize: 13, height: 1.35, color: AppColors.textMid),
+                    style: AppTypography.bodySmall.copyWith(height: 1.35, color: AppColors.textMid),
                   ),
                 ],
               ],

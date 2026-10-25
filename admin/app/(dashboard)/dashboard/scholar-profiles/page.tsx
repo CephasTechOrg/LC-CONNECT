@@ -8,6 +8,7 @@ import {
 import { OpsEmpty, OpsLoading } from '@/components/ops-states';
 import { apiFetch, toUserMessage } from '@/lib/api/client';
 import { getAccessToken } from '@/lib/auth/session';
+import { humanize, formatDate } from '@/lib/format';
 
 type StatusTab = 'pending_review' | 'approved' | 'changes_requested' | 'revoked';
 
@@ -26,13 +27,13 @@ function statusChip(status: string): string {
 }
 
 function statusLabel(status: string): string {
-  return status.replace(/_/g, ' ');
+  return humanize(status);
 }
 
 function when(iso: string | null): string {
   if (!iso) return '—';
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleString();
+  return Number.isNaN(d.getTime()) ? '—' : formatDate(iso);
 }
 
 function initials(name: string | null, email: string): string {

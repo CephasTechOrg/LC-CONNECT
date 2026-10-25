@@ -191,11 +191,12 @@ class AppActivityListSkeleton extends StatelessWidget {
         shrinkWrap: true,
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
         children: const [
-          AppSkeletonBox(width: double.infinity, height: 180, borderRadius: 16),
+          // Shaped like the cards they stand in for (radius 20, as on Home), so nothing jumps.
+          AppSkeletonBox(width: double.infinity, height: 250, borderRadius: 20),
           SizedBox(height: 16),
-          AppSkeletonBox(width: double.infinity, height: 88, borderRadius: 14),
+          AppSkeletonBox(width: double.infinity, height: 82, borderRadius: 20),
           SizedBox(height: 10),
-          AppSkeletonBox(width: double.infinity, height: 88, borderRadius: 14),
+          AppSkeletonBox(width: double.infinity, height: 82, borderRadius: 20),
         ],
       ),
     );
@@ -308,6 +309,23 @@ class AppHubPanelSkeleton extends StatelessWidget {
   }
 }
 
+/// Home's Latest updates panel while it loads — one block the size and shape of the real panel,
+/// rather than two list rows that then collapse into it.
+class AppHomePanelSkeleton extends StatelessWidget {
+  const AppHomePanelSkeleton({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return AppSkeletonSemantics(
+      label: 'Loading',
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+        child: AppSkeletonBox(width: double.infinity, height: 164, borderRadius: 20),
+      ),
+    );
+  }
+}
+
 /// Hub section preview cards (activities / connections).
 class AppPreviewCardSkeleton extends StatelessWidget {
   const AppPreviewCardSkeleton({super.key});
@@ -318,7 +336,8 @@ class AppPreviewCardSkeleton extends StatelessWidget {
       label: 'Loading',
       child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
-        child: AppSkeletonBox(width: double.infinity, height: 76, borderRadius: 16),
+        // 20: the radius of the AppCard it stands in for, so nothing changes shape on load.
+        child: AppSkeletonBox(width: double.infinity, height: 76, borderRadius: 20),
       ),
     );
   }

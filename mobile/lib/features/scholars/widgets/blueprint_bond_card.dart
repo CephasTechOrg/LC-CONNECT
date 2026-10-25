@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 
-import '../../../core/theme/app_radii.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../shared/widgets/app_card.dart';
 import '../../programs/providers/programs_provider.dart';
 import '../providers/scholars_provider.dart';
 
@@ -92,52 +91,37 @@ class _PromptCard extends StatelessWidget {
     // invitation — still branded by its navy icon and title, no longer competing for the same
     // signal. Copy stays a single line; field-level “still needed” detail lives in the editor.
     return Padding(
+      // Top gap only, like every Home block above the sections: whether this card shows or
+      // hides, the cards around it keep the same rhythm.
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.gutter,
         AppSpacing.sm,
         AppSpacing.gutter,
-        AppSpacing.xs,
+        0,
       ),
-      child: Material(
-        color: AppColors.primarySoft,
-        borderRadius: BorderRadius.circular(AppRadii.card),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(AppRadii.card),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.md,
-              vertical: AppSpacing.sm,
+      // The same floating white card as every other Home row (AppCard), so the prompt reads as
+      // part of the page rather than a strip wedged between two cards.
+      child: AppCard(
+        onTap: onTap,
+        child: Row(
+          children: [
+            const AppIconTile(
+              icon: Icons.workspace_premium_rounded,
+              color: Colors.white,
+              background: _blueprintNavy,
             ),
-            child: Row(
-              children: [
-                Container(
-                  width: 28,
-                  height: 28,
-                  decoration: BoxDecoration(
-                    color: _blueprintNavy,
-                    borderRadius: BorderRadius.circular(AppRadii.md),
-                  ),
-                  child: const Icon(Icons.workspace_premium_rounded, color: Colors.white, size: 16),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: Text(
-                    'Finish your Blueprint Bond profile',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTypography.label.copyWith(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13,
-                      color: _blueprintNavy,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                const Icon(Icons.arrow_forward_rounded, color: _blueprintNavy, size: 15),
-              ],
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Text(
+                'Finish your Blueprint Bond profile',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: AppTypography.titleSmall.copyWith(color: AppColors.textDark),
+              ),
             ),
-          ),
+            const SizedBox(width: AppSpacing.sm),
+            const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
+          ],
         ),
       ),
     );
@@ -198,8 +182,7 @@ class _EntryRow extends StatelessWidget {
                     // row only renders for verified scholars, so the label is always true.
                     Text(
                       'Honors Student',
-                      style: GoogleFonts.dmSans(
-                        fontSize: 14.5,
+                      style: AppTypography.body.copyWith(
                         fontWeight: FontWeight.w700,
                         color: AppColors.textDark,
                       ),
@@ -217,7 +200,10 @@ class _EntryRow extends StatelessWidget {
                           child: Text(
                             statusLabel,
                             overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.dmSans(fontSize: 12.5, color: AppColors.textMuted),
+                            style: AppTypography.label.copyWith(
+                              fontWeight: FontWeight.w400,
+                              color: AppColors.textMuted,
+                            ),
                           ),
                         ),
                       ],

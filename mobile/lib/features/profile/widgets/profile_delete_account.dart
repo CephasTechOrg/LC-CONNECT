@@ -19,7 +19,6 @@ Future<void> _showDeleteAccountFlow(BuildContext context, WidgetRef ref) async {
     SnackBar(
       content: Text(
         'Your account has been deleted.',
-        style: GoogleFonts.dmSans(),
       ),
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -61,7 +60,7 @@ class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       title: Text(
         'Delete your account?',
-        style: GoogleFonts.dmSans(fontWeight: FontWeight.w700),
+        style: TextStyle(fontWeight: FontWeight.w700),
       ),
       content: Column(
         mainAxisSize: MainAxisSize.min,
@@ -70,13 +69,12 @@ class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
           Text(
             'This is permanent. Your profile will be removed, you will be signed out, '
             'and you will not be able to sign back in with this account.',
-            style: GoogleFonts.dmSans(color: AppColors.textMid, height: 1.4),
+            style: TextStyle(color: AppColors.textMid, height: 1.4),
           ),
           const SizedBox(height: 16),
           Text(
             'Type your email to confirm:',
-            style: GoogleFonts.dmSans(
-              fontSize: 13,
+            style: AppTypography.bodySmall.copyWith(
               fontWeight: FontWeight.w600,
               color: AppColors.textDark,
             ),
@@ -94,8 +92,7 @@ class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
           const SizedBox(height: 14),
           Text(
             'Enter your password to continue:',
-            style: GoogleFonts.dmSans(
-              fontSize: 13,
+            style: AppTypography.bodySmall.copyWith(
               fontWeight: FontWeight.w600,
               color: AppColors.textDark,
             ),
@@ -131,7 +128,7 @@ class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
       actions: [
         TextButton(
           onPressed: _busy ? null : () => Navigator.of(context).pop(false),
-          child: Text('Cancel', style: GoogleFonts.dmSans(color: AppColors.textMuted)),
+          child: Text('Cancel', style: TextStyle(color: AppColors.textMuted)),
         ),
         TextButton(
           onPressed: _canSubmit ? _submit : null,
@@ -143,7 +140,7 @@ class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
                 )
               : Text(
                   'Delete account',
-                  style: GoogleFonts.dmSans(
+                  style: TextStyle(
                     color: AppColors.error,
                     fontWeight: FontWeight.w700,
                   ),
@@ -156,7 +153,7 @@ class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
   InputDecoration _fieldDecoration({required String hint}) {
     return InputDecoration(
       hintText: hint,
-      hintStyle: GoogleFonts.dmSans(color: AppColors.textMuted),
+      hintStyle: TextStyle(color: AppColors.textMuted),
       filled: true,
       fillColor: AppColors.background,
       border: OutlineInputBorder(
@@ -190,7 +187,6 @@ class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
         SnackBar(
           content: Text(
             apiErrorMessage(e, fallback: 'Could not delete your account. Try again.'),
-            style: GoogleFonts.dmSans(),
           ),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,

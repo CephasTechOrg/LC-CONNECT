@@ -42,8 +42,7 @@ class _Header extends StatelessWidget {
               const SizedBox(height: 16),
               Text(
                 'Settings',
-                style: GoogleFonts.dmSans(
-                  fontSize: 16,
+                style: AppTypography.titleSmall.copyWith(
                   fontWeight: FontWeight.w700,
                   color: AppColors.textDark,
                 ),
@@ -51,7 +50,7 @@ class _Header extends StatelessWidget {
               const SizedBox(height: 8),
               ListTile(
                 leading: const Icon(Icons.edit_outlined, color: AppColors.textMid),
-                title: Text('Edit Profile', style: GoogleFonts.dmSans(color: AppColors.textDark, fontWeight: FontWeight.w500)),
+                title: Text('Edit profile', style: TextStyle(color: AppColors.textDark, fontWeight: FontWeight.w500)),
                 trailing: const Icon(Icons.chevron_right_rounded, size: 18, color: AppColors.border),
                 onTap: () {
                   Navigator.of(context).pop();
@@ -60,7 +59,7 @@ class _Header extends StatelessWidget {
               ),
               ListTile(
                 leading: const Icon(Icons.lock_reset_rounded, color: AppColors.textMid),
-                title: Text('Reset Password', style: GoogleFonts.dmSans(color: AppColors.textDark, fontWeight: FontWeight.w500)),
+                title: Text('Reset password', style: TextStyle(color: AppColors.textDark, fontWeight: FontWeight.w500)),
                 trailing: const Icon(Icons.chevron_right_rounded, size: 18, color: AppColors.border),
                 onTap: () {
                   Navigator.of(context).pop();
@@ -69,7 +68,7 @@ class _Header extends StatelessWidget {
               ),
               ListTile(
                 leading: const Icon(Icons.notifications_outlined, color: AppColors.textMid),
-                title: Text('Notifications', style: GoogleFonts.dmSans(color: AppColors.textDark, fontWeight: FontWeight.w500)),
+                title: Text('Notifications', style: TextStyle(color: AppColors.textDark, fontWeight: FontWeight.w500)),
                 trailing: const Icon(Icons.chevron_right_rounded, size: 18, color: AppColors.border),
                 onTap: () {
                   Navigator.of(context).pop();
@@ -94,7 +93,7 @@ class _Header extends StatelessWidget {
                 leading: const Icon(Icons.download_outlined, color: AppColors.textMid),
                 title: Text(
                   'Download my data',
-                  style: GoogleFonts.dmSans(color: AppColors.textDark, fontWeight: FontWeight.w500),
+                  style: TextStyle(color: AppColors.textDark, fontWeight: FontWeight.w500),
                 ),
                 trailing: const Icon(Icons.chevron_right_rounded, size: 18, color: AppColors.border),
                 onTap: () async {
@@ -106,7 +105,7 @@ class _Header extends StatelessWidget {
                 leading: const Icon(Icons.delete_forever_outlined, color: AppColors.error),
                 title: Text(
                   'Delete account',
-                  style: GoogleFonts.dmSans(
+                  style: TextStyle(
                     color: AppColors.error,
                     fontWeight: FontWeight.w600,
                   ),
@@ -121,7 +120,7 @@ class _Header extends StatelessWidget {
                 leading: const Icon(Icons.logout_rounded, color: AppColors.error),
                 title: Text(
                   'Sign out',
-                  style: GoogleFonts.dmSans(
+                  style: TextStyle(
                     color: AppColors.error,
                     fontWeight: FontWeight.w600,
                   ),
@@ -156,7 +155,7 @@ Widget _policyTile(
     leading: Icon(icon, color: AppColors.textMid),
     title: Text(
       label,
-      style: GoogleFonts.dmSans(color: AppColors.textDark, fontWeight: FontWeight.w500),
+      style: TextStyle(color: AppColors.textDark, fontWeight: FontWeight.w500),
     ),
     trailing: const Icon(Icons.chevron_right_rounded, size: 18, color: AppColors.border),
     onTap: () {

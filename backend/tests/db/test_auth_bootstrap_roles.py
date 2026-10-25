@@ -144,3 +144,55 @@ async def test_role_backfill_leaves_admin_untouched(db, factory):
 
     role = (await db.execute(select(User.role).where(User.id == user_id))).scalar_one()
     assert role == 'admin'
+
+
+# ── first and last name from signup ─────────────────────────────────────────────
+
+
+def _named_claims(email: str, first: object, last: object, *, sub=None) -> SupabaseClaims:
+    return SupabaseClaims(
+        sub=sub or uuid4(),
+        email=email,
+        role='authenticated',
+        aal='aal1',
+        email_verified=True,
+        raw={'user_metadata': {'first_name': first, 'last_name': last}},
+    )
+
+
+async def test_bootstrap_stores_signup_names_and_seeds_the_display_name(db):
+    user = await bootstrap_user(
+        db, _named_claims('ama.mensah@students.livingstone.edu', '  Ama ', 'Mensah')
+    )
+    assert (user.first_name, user.last_name) == ('Ama', 'Mensah')
+    # Not the email's local part ("ama.mensah") — the name they typed.
+    assert user.profile.display_name == 'Ama Mensah'
+
+
+async def test_bootstrap_ignores_names_that_fail_validation(db):
+    user = await bootstrap_user(db, _named_claims('x.y@students.livingstone.edu', 'R2D2', 'Mensah'))
+    assert user.first_name is None and user.last_name is None
+    assert user.profile.display_name == 'x.y'
+
+
+async def test_bootstrap_never_overwrites_stored_names(db):
+    sub = uuid4()
+    email = 'kept.name@students.livingstone.edu'
+    await bootstrap_user(db, _named_claims(email, 'Ama', 'Mensah', sub=sub))
+
+    # A later sign-in replays whatever the token's metadata says; it must not win.
+    user = await bootstrap_user(db, _named_claims(email, 'Someone', 'Else', sub=sub))
+    assert (user.first_name, user.last_name) == ('Ama', 'Mensah')
+
+
+async def test_bootstrap_fills_names_for_an_account_that_had_none(db):
+    sub = uuid4()
+    email = 'late.name@students.livingstone.edu'
+    nameless = SupabaseClaims(
+        sub=sub, email=email, role='authenticated', aal='aal1', email_verified=True, raw={}
+    )
+    user = await bootstrap_user(db, nameless)
+    assert user.first_name is None
+
+    user = await bootstrap_user(db, _named_claims(email, 'Kwame', 'Asante', sub=sub))
+    assert (user.first_name, user.last_name) == ('Kwame', 'Asante')

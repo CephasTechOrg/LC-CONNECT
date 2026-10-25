@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_typography.dart';
+import 'attendance_result.dart';
 
 class ScannerOverlay extends StatelessWidget {
   const ScannerOverlay({super.key});
@@ -45,8 +45,7 @@ class ScannerOverlay extends StatelessWidget {
           bottom: 36,
           child: Text(
             'Point your camera at the classroom QR code',
-            style: GoogleFonts.dmSans(
-              fontSize: 15,
+            style: AppTypography.bodyLarge.copyWith(
               fontWeight: FontWeight.w600,
               color: Colors.white,
             ),
@@ -65,27 +64,17 @@ class ScannerPermissionPrompt extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.camera_alt_outlined, size: 56, color: AppColors.textMuted),
-          const SizedBox(height: 18),
-          Text(
-            'Camera access is required to scan the attendance QR.',
-            style: GoogleFonts.dmSans(
-              fontSize: 17,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textDark,
-              height: 1.35,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 24),
-          FilledButton(onPressed: onOpenSettings, child: const Text('Open Settings')),
-        ],
+    return AttendanceMessageLayout(
+      badge: const AttendanceBadge(
+        icon: Icons.photo_camera_outlined,
+        color: AppColors.primaryText,
+        tint: AppColors.primarySoft,
       ),
+      title: 'Allow camera access',
+      message: 'LC Connect uses the camera only to scan the attendance code in class. '
+          'Turn it on in Settings, then come back.',
+      actionLabel: 'Open settings',
+      onAction: onOpenSettings,
     );
   }
 }

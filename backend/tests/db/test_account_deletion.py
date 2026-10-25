@@ -32,6 +32,7 @@ from app.models import (
 async def test_delete_anonymizes_user_and_profile(db, factory):
     user = await factory.user(display_name='Jordan')
     user.auth_user_id = None  # no Supabase config in tests
+    user.first_name, user.last_name = 'Jordan', 'Ellis'
     await db.commit()
 
     await delete_account(db, user)
@@ -43,6 +44,8 @@ async def test_delete_anonymizes_user_and_profile(db, factory):
     assert refreshed.deleted_at is not None
     assert refreshed.email == f'deleted+{user.id}@deleted.invalid'  # real email freed
     assert refreshed.auth_user_id is None
+    assert refreshed.first_name is None  # the signup name goes with the account
+    assert refreshed.last_name is None
 
     profile = (await db.execute(select(Profile).where(Profile.user_id == user.id))).scalar_one()
     assert profile.display_name == 'Deleted user'

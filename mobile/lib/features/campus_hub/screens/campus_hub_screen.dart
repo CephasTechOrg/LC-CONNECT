@@ -1,10 +1,7 @@
-import 'dart:async';
-
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_theme.dart';
@@ -12,6 +9,9 @@ import '../../../core/widgets/avatar_widget.dart';
 import '../../../shared/widgets/app_states.dart';
 import '../../../shared/widgets/app_skeleton.dart';
 import '../../../shared/widgets/a11y.dart';
+import '../../../shared/widgets/app_card.dart';
+import '../../../shared/util/app_date_format.dart';
+import '../../../shared/widgets/app_date_block.dart';
 import '../../activities/providers/activities_provider.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../discovery/providers/discovery_provider.dart';
@@ -28,6 +28,7 @@ import '../providers/campus_hub_provider.dart';
 import '../providers/campus_publishing_provider.dart';
 import '../providers/opportunity_badge_provider.dart';
 import '../../../core/theme/app_radii.dart';
+import '../../../core/theme/app_shadows.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
 
@@ -46,7 +47,12 @@ String _greeting() {
   return 'Good evening';
 }
 
-String _greetingName({String? displayName, String? email}) {
+/// The name the greeting uses: the first name given at signup, else the first word of the
+/// profile's display name, else the campus address. The display name may be a nickname or
+/// abbreviated, and older accounts have no signup name, hence the order.
+String _greetingName({String? firstName, String? displayName, String? email}) {
+  final fromSignup = firstName?.trim();
+  if (fromSignup != null && fromSignup.isNotEmpty) return fromSignup;
   final fromProfile = displayName?.trim();
   if (fromProfile != null && fromProfile.isNotEmpty) {
     return fromProfile.split(RegExp(r'\s+')).first;
@@ -66,6 +72,7 @@ class CampusHubScreen extends ConsumerWidget {
     final profile = ref.watch(myProfileNotifierProvider).asData?.value;
     final isStudent = (user?.role ?? 'student') == 'student';
     final firstName = _greetingName(
+      firstName: user?.firstName,
       displayName: profile?.displayName,
       email: user?.email,
     );
@@ -102,55 +109,57 @@ class CampusHubScreen extends ConsumerWidget {
           child: ListView(
             children: [
               _HomeGreetingHeader(timeOfDay: timeOfDay, name: firstName),
-              // Only the urgent alert outranks the original layout: it is
-              // time-sensitive, so it leads. Everything else keeps its
-              // established order — greeting, gated personal cards, spotlight,
-              // quick actions, latest updates, then previews.
-              // The urgent slot reads the same overview provider as Latest
-              // Updates below (a second `when` on one provider is free) so an
-              // alert can lead without moving the panel's loading skeleton up.
+              // Two bands. The top is *you, now*: the urgent alert (time-sensitive, so it
+              // leads), the gated personal cards, the spotlight, and the shortcuts — including
+              // the publisher's, which is an action like the others. The bottom is *campus*:
+              // the featured update, then the activity and connection previews.
+              // The urgent slot reads the same overview provider as Latest Updates below (a
+              // second `when` on one provider is free) so an alert can lead without moving the
+              // section's loading skeleton up.
               ...overviewAsync.when(
                 loading: () => const <Widget>[],
                 error: (_, _) => const <Widget>[],
                 data: (overview) => [
-                  if (overview.urgentPosts.isNotEmpty) ...[
-                    const SizedBox(height: AppSpacing.sm),
+                  if (overview.urgentPosts.isNotEmpty)
                     UrgentUpdateBanner(
                       post: overview.urgentPosts.first,
                       onTap: () => context.push(
                         '/home/posts/${overview.urgentPosts.first.id}',
                       ),
                     ),
-                  ],
                 ],
               ),
               const BlueprintBondCard(style: BlueprintBondStyle.prompt),
               const AttendanceOpenCard(),
               const _SpotlightCarousel(),
               const _QuickActionsRow(),
+              const _PublisherCta(),
               ...overviewAsync.when(
-                loading: () => const [AppHubPanelSkeleton()],
+                loading: () => const [AppHomePanelSkeleton()],
                 error: (_, _) => [
-                  AppErrorState(
+                  // Inline, not the full-screen AppErrorState: one failed section must not
+                  // swallow the rest of the dashboard.
+                  AppInlineMessage(
                     message: 'Could not load campus updates.',
                     onRetry: () => ref.invalidate(campusHubOverviewProvider),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.gutter,
+                      vertical: AppSpacing.lg,
+                    ),
                   ),
                 ],
                 data: (overview) => [
                   _LatestUpdatesPanel(updates: overview.latestUpdates),
                 ],
               ),
-              const _PublisherCta(),
               if (isStudent) ...[
                 _SectionHeader(
                   title: 'Upcoming activities',
-                  action: 'See all',
                   onAction: () => context.go('/activities'),
                 ),
                 const _ActivitiesPreview(),
                 _SectionHeader(
                   title: 'Suggested connections',
-                  action: 'See all',
                   onAction: () => context.go('/discover'),
                 ),
                 const _SuggestedConnectionsPreview(),

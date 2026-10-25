@@ -70,22 +70,13 @@ class _RegisterConfirmSheet extends StatelessWidget {
               const SizedBox(height: 22),
               Text(
                 'Check your details',
-                style: GoogleFonts.dmSans(
-                  fontSize: 21,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.textDark,
-                  letterSpacing: -0.4,
-                ),
+                style: AppTypography.titleLarge.copyWith(color: AppColors.textDark),
               ),
               const SizedBox(height: 6),
               Text(
                 'A typo in your campus email is easy to miss. Your code still arrives, but '
                 'the account is created under the wrong address.',
-                style: GoogleFonts.dmSans(
-                  fontSize: 13.5,
-                  color: AppColors.textMuted,
-                  height: 1.5,
-                ),
+                style: AppTypography.bodySmall.copyWith(color: AppColors.textMuted, height: 1.5),
               ),
               const SizedBox(height: 22),
               _ConfirmRow(
@@ -110,27 +101,26 @@ class _RegisterConfirmSheet extends StatelessWidget {
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.textDark,
                         side: const BorderSide(color: AppColors.border, width: 1.5),
-                        minimumSize: const Size(0, 48),
+                        minimumSize: const Size.fromHeight(52),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: AppRadii.all(AppRadii.full),
                         ),
                       ),
                       child: Text(
                         'Edit',
-                        style: GoogleFonts.dmSans(
-                          fontSize: 14.5,
+                        style: AppTypography.bodyLarge.copyWith(
                           fontWeight: FontWeight.w600,
                           color: AppColors.textDark,
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: AppSpacing.md),
                   Expanded(
                     flex: 2,
-                    child: _ActionButton(
+                    child: AuthPrimaryButton(
                       label: 'Create account',
-                      isLoading: false,
+                      loading: false,
                       onTap: () => Navigator.of(context).pop(true),
                     ),
                   ),
@@ -181,11 +171,9 @@ class _ConfirmRow extends StatelessWidget {
               children: [
                 Text(
                   label,
-                  style: GoogleFonts.dmSans(
-                    fontSize: 11.5,
+                  style: AppTypography.caption.copyWith(
                     fontWeight: FontWeight.w600,
                     color: AppColors.textMuted,
-                    letterSpacing: 0.2,
                   ),
                 ),
                 const SizedBox(height: 3),
@@ -193,8 +181,7 @@ class _ConfirmRow extends StatelessWidget {
                 Text(
                   email,
                   softWrap: true,
-                  style: GoogleFonts.dmSans(
-                    fontSize: 14.5,
+                  style: AppTypography.bodyLarge.copyWith(
                     fontWeight: emphasized ? FontWeight.w700 : FontWeight.w500,
                     color: AppColors.textDark,
                     height: 1.3,

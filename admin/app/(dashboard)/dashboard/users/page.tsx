@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { OpsEmpty, OpsLoading } from '@/components/ops-states';
 import { apiFetch, toUserMessage } from '@/lib/api/client';
 import { getAccessToken } from '@/lib/auth/session';
+import { humanize } from '@/lib/format';
+import RowMenu from '@/components/row-menu';
 
 type AdminUser = {
   id: string;
@@ -226,18 +228,20 @@ export default function UsersPage() {
                           {u.contact_email || '—'}
                         </span>
                       </td>
-                      <td data-label="Role" style={{ textTransform: 'capitalize' }}>
-                        {u.role}
+                      <td data-label="Role">
+                        {humanize(u.role)}
                       </td>
                       <td data-label="Verification">
-                        <div className="ops-chip-stack">
-                          <span className={u.is_verified ? 'ops-chip success' : 'ops-chip muted'}>
-                            {u.is_verified ? 'Email confirmed' : 'Email pending'}
-                          </span>
-                          <span className={u.campus_verified ? 'ops-chip success' : 'ops-chip muted'}>
-                            {u.campus_verified ? 'Campus verified' : 'No campus badge'}
-                          </span>
-                        </div>
+                        {/* Chips only for what needs noticing: a campus badge, or an email
+                            still unconfirmed. The ordinary case is one muted line. */}
+                        {u.campus_verified || !u.is_verified ? (
+                          <div className="ops-chip-stack">
+                            {u.campus_verified ? <span className="ops-chip success">Campus verified</span> : null}
+                            {!u.is_verified ? <span className="ops-chip warn">Email pending</span> : null}
+                          </div>
+                        ) : (
+                          <span className="ops-cell-sub" style={{ marginTop: 0 }}>Email confirmed</span>
+                        )}
                       </td>
                       <td data-label="Account">
                         <span
@@ -249,43 +253,20 @@ export default function UsersPage() {
                                 : 'ops-chip muted'
                           }
                         >
-                          {u.status}
+                          {humanize(u.status)}
                         </span>
                       </td>
                       <td className="ops-col-actions ops-cell-actions">
                         <div className="ops-row-actions">
                           {u.role === 'admin' ? (
                             <span className="ops-cell-sub" style={{ fontStyle: 'italic', marginTop: 0 }}>
-                              Managed in Admins &amp; Roles
+                              Managed in Admins and roles
                             </span>
                           ) : (
                             <>
-                              {canCampusVerify ? (
-                                <button
-                                  className="ops-btn"
-                                  type="button"
-                                  onClick={() => void campusVerify(u.id, label)}
-                                >
-                                  Verify campus
-                                </button>
-                              ) : u.campus_verified ? (
-                                <button
-                                  className="ops-btn"
-                                  type="button"
-                                  onClick={() => void revokeCampusVerify(u.id, label)}
-                                >
-                                  Revoke badge
-                                </button>
-                              ) : null}
-                              {u.status === 'active' ? (
-                                <button
-                                  className="ops-btn danger"
-                                  type="button"
-                                  onClick={() => void suspend(u.id, label)}
-                                >
-                                  Suspend
-                                </button>
-                              ) : u.status === 'suspended' ? (
+                              {/* The likely next step stays a button; revoking and suspending,
+                                  rarer and harder to undo, sit behind the row's ⋯ menu. */}
+                              {u.status === 'suspended' ? (
                                 <button
                                   className="ops-btn"
                                   type="button"
@@ -293,6 +274,27 @@ export default function UsersPage() {
                                 >
                                   Reactivate
                                 </button>
+                              ) : canCampusVerify ? (
+                                <button
+                                  className="ops-btn"
+                                  type="button"
+                                  onClick={() => void campusVerify(u.id, label)}
+                                >
+                                  Verify campus
+                                </button>
+                              ) : null}
+                              {u.campus_verified || u.status === 'active' ? (
+                                <RowMenu
+                                  label={`More actions for ${label}`}
+                                  items={[
+                                    ...(u.campus_verified
+                                      ? [{ label: 'Revoke campus badge', onSelect: () => void revokeCampusVerify(u.id, label) }]
+                                      : []),
+                                    ...(u.status === 'active'
+                                      ? [{ label: 'Suspend account', danger: true, onSelect: () => void suspend(u.id, label) }]
+                                      : []),
+                                  ]}
+                                />
                               ) : null}
                             </>
                           )}

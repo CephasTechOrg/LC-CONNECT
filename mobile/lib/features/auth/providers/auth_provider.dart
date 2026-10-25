@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/api/api_client.dart';
 import '../data/duplicate_signup.dart';
+import '../data/person_name.dart';
 import 'suspension_provider.dart';
 import '../../messages/data/chat_draft_store.dart';
 import '../../messages/data/chat_message_cache.dart';
@@ -21,6 +22,10 @@ class AuthUser {
   final bool policiesAccepted;
   final bool profileCompleted;
 
+  /// From signup. Null for accounts created before signup asked for a name.
+  final String? firstName;
+  final String? lastName;
+
   const AuthUser({
     required this.id,
     required this.email,
@@ -28,6 +33,8 @@ class AuthUser {
     this.isVerified = false,
     this.policiesAccepted = false,
     this.profileCompleted = false,
+    this.firstName,
+    this.lastName,
   });
 
   factory AuthUser.fromBootstrap(Map<String, dynamic> json) => AuthUser(
@@ -39,6 +46,8 @@ class AuthUser {
         // the failure mode is "asked again" rather than "silently let through".
         policiesAccepted: json['policies_accepted'] as bool? ?? false,
         profileCompleted: json['profile_completed'] as bool? ?? false,
+        firstName: json['first_name'] as String?,
+        lastName: json['last_name'] as String?,
       );
 
   AuthUser copyWith({bool? isVerified, bool? policiesAccepted, bool? profileCompleted}) =>
@@ -49,6 +58,8 @@ class AuthUser {
         isVerified: isVerified ?? this.isVerified,
         policiesAccepted: policiesAccepted ?? this.policiesAccepted,
         profileCompleted: profileCompleted ?? this.profileCompleted,
+        firstName: firstName,
+        lastName: lastName,
       );
 }
 
@@ -230,6 +241,8 @@ class AuthNotifier extends AsyncNotifier<AuthUser?> {
   Future<void> register(
     String email,
     String password, {
+    required String firstName,
+    required String lastName,
     required String contactEmail,
     required int policiesAcceptedVersion,
   }) async {
@@ -245,6 +258,10 @@ class AuthNotifier extends AsyncNotifier<AuthUser?> {
         // The backend reads it from the JWT claims on first bootstrap and writes it to the user
         // row — clamped to its own current version, since metadata is client-writable.
         data: {
+          // Required: the backend's Send Email hook refuses a new signup without both, and
+          // bootstrap stores them on the user row. Keys match `app/shared/person_names.py`.
+          'first_name': normalizePersonName(firstName),
+          'last_name': normalizePersonName(lastName),
           'contact_email': normalizedContact,
           'policies_accepted_version': policiesAcceptedVersion,
         },

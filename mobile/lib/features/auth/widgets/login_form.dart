@@ -44,22 +44,16 @@ class _SignInFields extends StatelessWidget {
                 children: [
                   Text(
                     'LC Connect',
-                    style: GoogleFonts.dmSans(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w700,
+                    style: AppTypography.display.copyWith(
                       color: AppColors.textDark,
-                      letterSpacing: -0.75,
+                      letterSpacing: -0.5,
                       height: 1.1,
                     ),
                   ),
                   const SizedBox(height: 3),
                   Text(
                     'Campus life, connected',
-                    style: GoogleFonts.dmSans(
-                      fontSize: 13,
-                      color: AppColors.textMuted,
-                      height: 1.2,
-                    ),
+                    style: AppTypography.bodySmall.copyWith(color: AppColors.textMuted, height: 1.2),
                   ),
                 ],
               ),
@@ -69,24 +63,14 @@ class _SignInFields extends StatelessWidget {
         const SizedBox(height: 26),
         Text(
           'Welcome back',
-          style: GoogleFonts.dmSans(
-            fontSize: 21,
-            fontWeight: FontWeight.w700,
-            color: AppColors.textDark,
-            letterSpacing: -0.4,
-            height: 1.15,
-          ),
+          style: AppTypography.titleLarge.copyWith(color: AppColors.textDark),
         ),
         const SizedBox(height: 5),
         // The campus-email rule reads as an instruction here, before the field. It used to sit
         // wedged between the two inputs, where it broke the rhythm and looked like an error.
         Text(
           'Use your campus email, not your personal one.',
-          style: GoogleFonts.dmSans(
-            fontSize: 13,
-            color: AppColors.textMuted,
-            height: 1.35,
-          ),
+          style: AppTypography.bodySmall.copyWith(color: AppColors.textMuted, height: 1.35),
         ),
         const SizedBox(height: 20),
         AuthTextField(
@@ -125,7 +109,7 @@ class _SignInFields extends StatelessWidget {
               v != null && v.isNotEmpty ? null : 'Enter your password',
         ),
         const SizedBox(height: 22),
-        _SignInButton(isLoading: isLoading, onTap: onSubmit),
+        AuthPrimaryButton(label: 'Sign in', loading: isLoading, onTap: onSubmit),
         const SizedBox(height: 4),
         Align(
           alignment: Alignment.centerRight,
@@ -138,9 +122,8 @@ class _SignInFields extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
               child: Text(
                 'Forgot password?',
-                style: GoogleFonts.dmSans(
-                  fontSize: 13,
-                  color: AppColors.primary,
+                style: AppTypography.bodySmall.copyWith(
+                  color: AppColors.primaryText,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -177,12 +160,8 @@ class _CreateAccountFooter extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 14),
                 child: Text(
-                  'OR',
-                  style: GoogleFonts.dmSans(
-                    fontSize: 11,
-                    color: AppColors.textMuted,
-                    letterSpacing: 0.5,
-                  ),
+                  'or',
+                  style: AppTypography.label.copyWith(color: AppColors.textMuted),
                 ),
               ),
               const Expanded(
@@ -196,11 +175,7 @@ class _CreateAccountFooter extends StatelessWidget {
           Text(
             'For Livingstone College students & staff',
             textAlign: TextAlign.center,
-            style: GoogleFonts.dmSans(
-              fontSize: 12,
-              color: AppColors.textMuted,
-              height: 1.3,
-            ),
+            style: AppTypography.label.copyWith(color: AppColors.textMuted, height: 1.3),
           ),
         ],
       ),

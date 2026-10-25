@@ -67,8 +67,7 @@ class _HeroSection extends StatelessWidget {
                         Flexible(
                           child: Text(
                             profile.displayName ?? 'LC Student',
-                            style: GoogleFonts.dmSans(
-                              fontSize: 20,
+                            style: AppTypography.titleLarge.copyWith(
                               fontWeight: FontWeight.w800,
                               color: AppColors.textDark,
                             ),
@@ -98,11 +97,8 @@ class _HeroSection extends StatelessWidget {
                         profile.bio!,
                         maxLines: 3,
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.dmSans(
-                          fontSize: 12,
-                          color: AppColors.textMuted,
-                          height: 1.4,
-                        ),
+                        style: AppTypography.label.copyWith(fontWeight: FontWeight.w400, color: AppColors.textMuted,
+                          height: 1.4,),
                       ),
                     ],
                   ],
@@ -161,8 +157,8 @@ class _MetaRow extends StatelessWidget {
         const SizedBox(width: 7),
         Text(
           text,
-          style: GoogleFonts.dmSans(
-              fontSize: 13, color: AppColors.textMid),
+          style: AppTypography.bodySmall.copyWith(
+              color: AppColors.textMid),
         ),
       ],
     );

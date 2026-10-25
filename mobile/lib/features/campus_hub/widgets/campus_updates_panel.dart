@@ -23,13 +23,7 @@ class _LatestUpdatesPanel extends StatelessWidget {
           AppSpacing.gutter,
           0,
         ),
-        child: Container(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(AppRadii.sheet),
-            border: Border.all(color: AppColors.border),
-          ),
+        child: AppCard(
           child: Row(
             children: [
               Container(
@@ -147,8 +141,12 @@ class _UpdatesSeeAll extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     // Live count of new announcements since the user last opened the list — ticks up in real time.
     final count = ref.watch(announcementCountProvider);
+    // `container` + `excludeSemantics`: without them this merged into the panel's node, so a
+    // screen reader heard "Latest updates, See all, 2" as one run-on item.
     return Semantics(
+      container: true,
       button: true,
+      excludeSemantics: true,
       label: count > 0 ? 'See all updates, $count new' : 'See all updates',
       child: InkWell(
         onTap: () => context.push('/home/updates'),
@@ -163,7 +161,7 @@ class _UpdatesSeeAll extends ConsumerWidget {
                 style: AppTypography.bodySmall.copyWith(
                   fontWeight: FontWeight.w600,
                   color: onLight
-                      ? AppColors.primary
+                      ? AppColors.primaryText
                       : Colors.white.withValues(alpha: 0.9),
                 ),
               ),
@@ -182,8 +180,7 @@ class _UpdatesSeeAll extends ConsumerWidget {
                   ),
                   child: Text(
                     count > 99 ? '99+' : '$count',
-                    style: GoogleFonts.dmSans(
-                      fontSize: 11,
+                    style: AppTypography.caption.copyWith(
                       fontWeight: FontWeight.w700,
                       color: Colors.white,
                       height: 1,
@@ -270,8 +267,9 @@ class _FeaturedUpdateCard extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       _postAge(post.publishAt),
+                      // 0.75, not 0.6: at 0.6 this 11px timestamp was 3.8:1 on the panel.
                       style: AppTypography.caption.copyWith(
-                        color: Colors.white.withValues(alpha: 0.6),
+                        color: Colors.white.withValues(alpha: 0.75),
                       ),
                     ),
                   ],

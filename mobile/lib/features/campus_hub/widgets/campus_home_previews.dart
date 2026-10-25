@@ -53,94 +53,43 @@ class _ActivityPreviewCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final start = activity.startTime.toLocal();
 
-    return Material(
-      color: AppColors.surface,
-      borderRadius: BorderRadius.circular(AppRadii.card),
-      child: InkWell(
-        onTap: () =>
-            context.push('/activities/${activity.id}', extra: activity),
-        borderRadius: BorderRadius.circular(AppRadii.card),
-        child: Container(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(AppRadii.card),
-            border: Border.all(color: AppColors.border),
-          ),
-          child: Row(
-            children: [
-              _ActivityDateBlock(date: start),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      activity.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTypography.titleSmall.copyWith(
-                        color: AppColors.textDark,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    _ActivityMetaRow(
-                      icon: Icons.place_outlined,
-                      text:
-                          '${DateFormat('EEE, MMM d').format(start)} · ${activity.location}',
-                    ),
-                    const SizedBox(height: 3),
-                    _ActivityMetaRow(
-                      icon: Icons.people_outline_rounded,
-                      text: _going,
-                    ),
-                  ],
-                ),
-              ),
-              // No trailing calendar box: the date block on the left already
-              // says it, and on a 320dp phone that box cost ~46dp of title width.
-              const SizedBox(width: AppSpacing.sm),
-              const Icon(
-                Icons.chevron_right_rounded,
-                color: AppColors.textMuted,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ActivityDateBlock extends StatelessWidget {
-  final DateTime date;
-  const _ActivityDateBlock({required this.date});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 54,
-      height: 54,
-      decoration: BoxDecoration(
-        color: AppColors.primarySoft,
-        borderRadius: BorderRadius.circular(AppRadii.lg),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+    return AppCard(
+      onTap: () => context.push('/activities/${activity.id}', extra: activity),
+      child: Row(
         children: [
-          Text(
-            DateFormat('MMM').format(date).toUpperCase(),
-            style: AppTypography.micro.copyWith(
-              fontWeight: FontWeight.w700,
-              color: AppColors.primary,
+          AppDateBlock(date: start, going: activity.hasJoined),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  activity.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.titleSmall.copyWith(
+                    color: AppColors.textDark,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                // The date block already says the day, so this line says *when* on it and
+                // how full it is — it used to repeat the date and push the place off the end.
+                _ActivityMetaRow(
+                  icon: Icons.schedule_rounded,
+                  text: '${AppDateFormat.weekdayTime(start)} · $_going',
+                ),
+                const SizedBox(height: 2),
+                _ActivityMetaRow(
+                  icon: Icons.place_outlined,
+                  text: activity.location,
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 2),
-          Text(
-            DateFormat('d').format(date),
-            style: AppTypography.titleLarge.copyWith(
-              fontWeight: FontWeight.w800,
-              color: AppColors.textDark,
-            ),
+          const SizedBox(width: AppSpacing.sm),
+          const Icon(
+            Icons.chevron_right_rounded,
+            color: AppColors.textMuted,
           ),
         ],
       ),
@@ -158,8 +107,8 @@ class _ActivityMetaRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(icon, size: 13, color: AppColors.textMuted),
-        const SizedBox(width: 5),
+        Icon(icon, size: 14, color: AppColors.textMuted),
+        const SizedBox(width: AppSpacing.xs),
         Expanded(
           child: Text(
             text,
@@ -195,31 +144,31 @@ class _SuggestedConnectionsPreview extends ConsumerWidget {
           );
         }
         final visible = cards.take(3).toList();
-        // Three-across only works while each card stays readable. Below ~360dp
-        // a card is under 95dp wide and names/majors ellipsize to fragments, so
-        // switch to a horizontal strip of fixed-width cards the student can
-        // swipe — same three suggestions, no squeeze.
+        // Three-across only while each card stays readable; below that, a strip of fixed-width
+        // cards the student can swipe — same three suggestions, no squeeze.
+        //
+        // The test is the *card* width, not the row's. It used to be `maxWidth < 360`, but the
+        // row is the screen minus two gutters, so a standard 393dp phone (353dp of row) got the
+        // strip too — with the third card cut off at the edge, on most of the phones students
+        // actually carry.
         // Do not use CrossAxisAlignment.stretch here — this Row lives inside a
         // ListView, which gives unbounded height and stretch would force infinite height.
         return Padding(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.gutter,
-            0,
-            AppSpacing.gutter,
-            AppSpacing.xs,
-          ),
+          padding: AppSpacing.pagePadding,
           child: LayoutBuilder(
             builder: (context, constraints) {
-              if (constraints.maxWidth < 360) {
+              final cardWidth =
+                  (constraints.maxWidth - AppSpacing.md * 2) / 3;
+              if (cardWidth < _minConnectionCardWidth) {
                 return SizedBox(
-                  height: 138,
+                  height: _connectionStripHeight(context),
                   child: ListView.separated(
                     scrollDirection: Axis.horizontal,
                     itemCount: visible.length,
                     separatorBuilder: (_, _) =>
                         const SizedBox(width: AppSpacing.md),
                     itemBuilder: (_, i) => SizedBox(
-                      width: 132,
+                      width: 124,
                       child: _SuggestedConnectionCard(card: visible[i]),
                     ),
                   ),
@@ -247,92 +196,60 @@ class _SuggestedConnectionsPreview extends ConsumerWidget {
   }
 }
 
-/// Compact preview aligned with Connect discovery density (radius 14, avatar 52, no shadow).
+/// Under this a name like "Kwame Asante" ellipsizes to a fragment.
+const _minConnectionCardWidth = 96.0;
+
+/// The horizontal strip needs a fixed height; grow it with the text so large type is not clipped.
+double _connectionStripHeight(BuildContext context) =>
+    136 * MediaQuery.textScalerOf(context).scale(1.0).clamp(1.0, 1.6);
+
+/// A person, centred: avatar over name over major — how every directory and contact surface
+/// presents someone, and it gives a narrow card a clear axis instead of a ragged left edge.
+///
+/// There used to be a small "add person" badge on the avatar. Tapping the card opens the profile;
+/// it never sent a request, so the badge promised an action that was not there.
 class _SuggestedConnectionCard extends StatelessWidget {
   final DiscoveryCard card;
   const _SuggestedConnectionCard({required this.card});
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.surface,
-      borderRadius: BorderRadius.circular(AppRadii.card),
-      child: InkWell(
-        onTap: () =>
-            context.push('/users/${card.profileId}', extra: card.displayName),
-        borderRadius: BorderRadius.circular(AppRadii.card),
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(AppRadii.card),
-            border: Border.all(color: AppColors.border),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _ConnectionAvatar(card: card),
-              const SizedBox(height: AppSpacing.sm),
-              Text(
-                card.displayName ?? 'LC Student',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: AppTypography.bodySmall.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textDark,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                card.major ?? 'Student',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: AppTypography.caption.copyWith(
-                  color: AppColors.textMuted,
-                ),
-              ),
-            ],
-          ),
-        ),
+    return AppCard(
+      onTap: () =>
+          context.push('/users/${card.profileId}', extra: card.displayName),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.sm,
+        AppSpacing.lg,
+        AppSpacing.sm,
+        AppSpacing.md,
       ),
-    );
-  }
-}
-
-class _ConnectionAvatar extends StatelessWidget {
-  final DiscoveryCard card;
-  const _ConnectionAvatar({required this.card});
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 52,
-      height: 52,
-      child: Stack(
-        clipBehavior: Clip.none,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           AvatarWidget(
             imageUrl: card.avatarUrl,
             size: 52,
             cacheScope: card.userId,
           ),
-          Positioned(
-            bottom: -2,
-            left: -2,
-            child: Container(
-              width: 22,
-              height: 22,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: AppColors.primarySoft,
-                shape: BoxShape.circle,
-                border: Border.all(color: AppColors.surface, width: 2),
-              ),
-              child: const Icon(
-                Icons.person_add_alt_1_rounded,
-                size: 12,
-                color: AppColors.primary,
-              ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            card.displayName ?? 'LC Student',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: AppTypography.bodySmall.copyWith(
+              fontWeight: FontWeight.w700,
+              color: AppColors.textDark,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            card.major ?? 'Student',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: AppTypography.caption.copyWith(
+              color: AppColors.textMuted,
             ),
           ),
         ],

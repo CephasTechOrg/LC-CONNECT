@@ -51,19 +51,22 @@ class _GroupHeader extends StatelessWidget {
           Text(
             group.name,
             textAlign: TextAlign.center,
-            style: GoogleFonts.dmSans(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.textDark),
+            style: AppTypography.titleLarge.copyWith(
+              fontWeight: FontWeight.w700,
+              color: AppColors.textDark,
+            ),
           ),
           const SizedBox(height: 4),
           Text(
             '${_categoryLabel(group.category)} · ${group.memberCount} member${group.memberCount == 1 ? '' : 's'}',
-            style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.textMuted),
+            style: AppTypography.bodySmall.copyWith(color: AppColors.textMuted),
           ),
           if (group.description != null && group.description!.isNotEmpty) ...[
             const SizedBox(height: 12),
             Text(
               group.description!,
               textAlign: TextAlign.center,
-              style: GoogleFonts.dmSans(fontSize: 14, color: AppColors.textMid, height: 1.4),
+              style: AppTypography.body.copyWith(color: AppColors.textMid, height: 1.4),
             ),
           ],
         ],
@@ -103,16 +106,11 @@ class _MembersList extends ConsumerWidget {
       error: (_, _) => AppInlineMessage(message: "Couldn't load this", onRetry: onRetry),
       data: (members) {
         final sorted = [...members]..sort((a, b) => roleRank(b.role).compareTo(roleRank(a.role)));
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        // One card, rows split by hairlines — the members used to float on the page background
+        // while the mute switch above them sat in a box.
+        return _GroupSection(
+          title: 'Members · ${members.length}',
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
-              child: Text(
-                'Members (${members.length})',
-                style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textDark),
-              ),
-            ),
             for (final m in sorted)
               _MemberTile(
                 member: m,
@@ -130,6 +128,59 @@ class _MembersList extends ConsumerWidget {
   }
 }
 
+/// A titled group of rows in one card, hairlines between them — members, requests, and the
+/// leave/report actions all share it, so the page reads as a few clear blocks.
+class _GroupSection extends StatelessWidget {
+  final String? title;
+  final List<Widget> children;
+  const _GroupSection({this.title, required this.children});
+
+  @override
+  Widget build(BuildContext context) {
+    if (children.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(AppSpacing.gutter, AppSpacing.lg, AppSpacing.gutter, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (title != null)
+            Padding(
+              padding: const EdgeInsets.only(left: AppSpacing.xs, bottom: AppSpacing.sm),
+              child: Text(
+                title!,
+                style: AppTypography.titleSmall.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textDark,
+                ),
+              ),
+            ),
+          AppCard(
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+            child: Column(
+              children: [
+                for (var i = 0; i < children.length; i++) ...[
+                  if (i > 0)
+                    const Divider(
+                      height: 1,
+                      indent: AppSpacing.md,
+                      endIndent: AppSpacing.md,
+                      color: AppColors.border,
+                    ),
+                  children[i],
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Red that passes AA on white (the brand error red is 3.5:1) — kept for the actions that remove
+/// you or the group.
+const _dangerRed = AppColors.errorText;
+
 // ── Footer (leave / delete) ──────────────────────────────────────────────────
 
 class _FooterActions extends StatelessWidget {
@@ -146,19 +197,18 @@ class _FooterActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Column(
-        children: [
-          // The owner manages the group rather than reporting it.
-          if (!group.iAmOwner)
-            _DangerRow(icon: Icons.flag_outlined, label: 'Report group', onTap: onReport),
-          if (!group.iAmOwner && group.isMember)
-            _DangerRow(icon: Icons.logout_rounded, label: 'Leave group', onTap: onLeave),
-          if (group.iAmOwner)
-            _DangerRow(icon: Icons.delete_outline_rounded, label: 'Delete group', onTap: onDelete),
-        ],
-      ),
+    // Quiet rows in one card, not a stack of red-outlined boxes: each opens a confirmation, and
+    // that dialog is where the action turns red and solid (DESIGN_PRINCIPLES rule 7).
+    return _GroupSection(
+      children: [
+        // The owner manages the group rather than reporting it.
+        if (!group.iAmOwner)
+          _DangerRow(icon: Icons.flag_outlined, label: 'Report group', onTap: onReport),
+        if (!group.iAmOwner && group.isMember)
+          _DangerRow(icon: Icons.logout_rounded, label: 'Leave group', onTap: onLeave),
+        if (group.iAmOwner)
+          _DangerRow(icon: Icons.delete_outline_rounded, label: 'Delete group', onTap: onDelete),
+      ],
     );
   }
 }
@@ -171,9 +221,8 @@ class _MuteRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.border)),
+    return AppCard(
+      padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.xs, AppSpacing.sm, AppSpacing.xs),
       child: Row(
         children: [
           Icon(muted ? Icons.notifications_off_outlined : Icons.notifications_outlined,
@@ -181,7 +230,7 @@ class _MuteRow extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(
             child: Text('Mute notifications',
-                style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textDark)),
+                style: AppTypography.body.copyWith(fontWeight: FontWeight.w600, color: AppColors.textDark)),
           ),
           Switch(
             value: muted,
@@ -202,22 +251,19 @@ class _DangerRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.surface,
-      borderRadius: BorderRadius.circular(12),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.border)),
-          child: Row(
-            children: [
-              Icon(icon, size: 20, color: AppColors.error),
-              const SizedBox(width: 12),
-              Text(label, style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.error)),
-            ],
-          ),
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: 14),
+        child: Row(
+          children: [
+            Icon(icon, size: 20, color: _dangerRed),
+            const SizedBox(width: AppSpacing.md),
+            Text(
+              label,
+              style: AppTypography.body.copyWith(fontWeight: FontWeight.w600, color: _dangerRed),
+            ),
+          ],
         ),
       ),
     );
@@ -234,18 +280,24 @@ class _ActionButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: AppColors.primarySoft,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: AppRadii.all(AppRadii.full),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 12),
+        borderRadius: AppRadii.all(AppRadii.full),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: kMinInteractiveDimension),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, size: 18, color: AppColors.primary),
-              const SizedBox(width: 8),
-              Text(label, style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.primary)),
+              Icon(icon, size: 18, color: AppColors.primaryText),
+              const SizedBox(width: AppSpacing.sm),
+              Text(
+                label,
+                style: AppTypography.bodySmall.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.primaryText,
+                ),
+              ),
             ],
           ),
         ),

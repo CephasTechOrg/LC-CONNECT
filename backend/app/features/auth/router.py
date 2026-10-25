@@ -88,6 +88,8 @@ async def accept_policies(
         policies_accepted=_policies_accepted(current_user),
         profile_completed=profile_completed,
         auth_user_id=current_user.auth_user_id,
+        first_name=current_user.first_name,
+        last_name=current_user.last_name,
     )
 
 
@@ -108,6 +110,8 @@ async def bootstrap(
         policies_accepted=_policies_accepted(user),
         profile_completed=profile_completed,
         auth_user_id=user.auth_user_id,
+        first_name=user.first_name,
+        last_name=user.last_name,
     )
 
 
@@ -123,4 +127,6 @@ async def me(current_user: User = Depends(get_current_user)) -> CurrentUserRespo
         policies_accepted=_policies_accepted(current_user),
         profile_completed=profile_completed,
         auth_user_id=current_user.auth_user_id,
+        first_name=current_user.first_name,
+        last_name=current_user.last_name,
     )

@@ -78,6 +78,26 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
   }
 
+  testWidgets('required sections come first, then the optional group', (tester) async {
+    // Employer visibility is required — it is what shares the profile — and used to sit last,
+    // after three optional sections.
+    useTallViewport(tester);
+    await tester.pumpWidget(_scope(_profile()));
+    await tester.pumpAndSettle();
+    double y(String text) => tester.getTopLeft(find.text(text)).dy;
+    const optionalGroup = 'Not needed to submit, but they make your profile stronger.';
+    expect(y('Employer visibility'), lessThan(y(optionalGroup)));
+    expect(y(optionalGroup), lessThan(y('Experience')));
+    expect(y(optionalGroup), lessThan(y('Links')));
+  });
+
+  testWidgets('Save is a pinned button, not corner text', (tester) async {
+    useTallViewport(tester);
+    await tester.pumpWidget(_scope(_profile()));
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(FilledButton, 'Save'), findsOneWidget);
+  });
+
   testWidgets('BlueprintBondScreen shows the professional-profile form', (tester) async {
     useTallViewport(tester);
     await tester.pumpWidget(_scope(_profile()));

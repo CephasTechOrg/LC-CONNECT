@@ -26,18 +26,21 @@ import {
 } from '@/components/nav-icons';
 import './dashboard/ops.css';
 import './dashboard/dashboard.css';
+import './shell.css';
 
 type NavIcon = ComponentType<{ stroke?: string; size?: number }>;
 type NavItem = { href: string; label: string; Icon: NavIcon };
 type NavSection = { honorsOnly?: boolean; dividerBefore?: boolean; items: NavItem[] };
 
+// Sentence case, except names: "Campus Hub" is the app's section and "Presidential Scholars" is
+// the program's name.
 const NAV_SECTIONS: NavSection[] = [
   {
     items: [
       { href: '/dashboard', label: 'Dashboard', Icon: IconDashboard },
       { href: '/dashboard/content', label: 'Campus Hub', Icon: IconCampusHub },
       { href: '/dashboard/users', label: 'Users', Icon: IconUsers },
-      { href: '/dashboard/positions', label: 'Campus Positions', Icon: IconPositions },
+      { href: '/dashboard/positions', label: 'Campus positions', Icon: IconPositions },
       { href: '/dashboard/moderation', label: 'Moderation', Icon: IconModeration },
     ],
   },
@@ -47,30 +50,34 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { href: '/dashboard/scholars', label: 'Presidential Scholars', Icon: IconScholars },
       { href: '/dashboard/scholar-profiles', label: 'Blueprint profiles', Icon: IconScholars },
-      { href: '/dashboard/employers', label: 'Employer Partners', Icon: IconEmployers },
+      { href: '/dashboard/employers', label: 'Employer partners', Icon: IconEmployers },
       { href: '/dashboard/attendance', label: 'Attendance', Icon: IconAttendance },
     ],
   },
   {
     dividerBefore: true,
     items: [
-      { href: '/dashboard/admins', label: 'Admins & Roles', Icon: IconAdmins },
+      { href: '/dashboard/admins', label: 'Admins and roles', Icon: IconAdmins },
       { href: '/dashboard/settings', label: 'Settings', Icon: IconSettings },
-      { href: '/dashboard/audit-logs', label: 'Audit Logs', Icon: IconAudit },
+      { href: '/dashboard/audit-logs', label: 'Audit logs', Icon: IconAudit },
     ],
   },
 ];
 
-function initials(email: string): string {
-  const name = email.split('@')[0].replace(/[._-]+/g, ' ').trim();
+/** Two initials from a name (or, failing that, an address's local part). */
+function initials(label: string): string {
+  const name = label.split('@')[0].replace(/[._-]+/g, ' ').trim();
   const parts = name.split(/\s+/).filter(Boolean);
   if (parts.length === 0) return '?';
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
   return (parts[0][0] + parts[1][0]).toUpperCase();
 }
 
-function displayName(email: string): string {
-  const raw = email.split('@')[0].replace(/[._-]+/g, ' ').trim();
+/** The admin's name: from signup when the account has one, else a guess from the address. */
+function displayName(user: BootstrapUser): string {
+  const fromSignup = [user.first_name, user.last_name].filter(Boolean).join(' ').trim();
+  if (fromSignup) return fromSignup;
+  const raw = user.email.split('@')[0].replace(/[._-]+/g, ' ').trim();
   if (!raw) return 'Admin';
   return raw
     .split(/\s+/)
@@ -79,10 +86,10 @@ function displayName(email: string): string {
 }
 
 function roleLabel(scopes: string[]): string {
-  if (scopes.includes('super_admin')) return 'Super Administrator';
-  if (scopes.includes('school_admin')) return 'School Administrator';
-  if (scopes.includes('honors_admin')) return 'Honors Administrator';
-  if (scopes.includes('content_admin')) return 'Content Administrator';
+  if (scopes.includes('super_admin')) return 'Super administrator';
+  if (scopes.includes('school_admin')) return 'School administrator';
+  if (scopes.includes('honors_admin')) return 'Honors administrator';
+  if (scopes.includes('content_admin')) return 'Content administrator';
   if (scopes.includes('auditor')) return 'Auditor';
   return 'Administrator';
 }
@@ -171,6 +178,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     );
   }
 
+  const name = displayName(user);
   return (
     <div className="app-shell">
       <aside className="sidebar" aria-label="Admin navigation">
@@ -180,7 +188,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           </div>
           <div className="sidebar-brand-text">
             <div className="sidebar-brand-title">LC Connect</div>
-            <div className="sidebar-brand-subtitle">Admin Portal</div>
+            <div className="sidebar-brand-subtitle">Admin portal</div>
           </div>
         </div>
 
@@ -190,18 +198,16 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               {section.dividerBefore ? <div className="nav-divider" aria-hidden /> : null}
               {section.items.map((item) => {
                 const active = isActive(item.href, pathname);
-                const stroke = active ? '#6F42E8' : 'rgba(255,255,255,0.9)';
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
                     title={item.label}
-                    aria-label={item.label}
                     aria-current={active ? 'page' : undefined}
                     className={`nav-link${active ? ' active' : ''}`}
                   >
                     <span className="nav-link-icon" aria-hidden>
-                      <item.Icon stroke={stroke} />
+                      <item.Icon size={20} />
                     </span>
                     <span className="nav-link-label">{item.label}</span>
                   </Link>
@@ -214,12 +220,11 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         <button
           className="nav-link nav-signout"
           type="button"
-          title="Sign Out"
-          aria-label="Sign out"
+          title="Sign out"
           onClick={() => void onLogout()}
         >
           <span className="nav-link-icon" aria-hidden>
-            <IconSignOut stroke="rgba(255,255,255,0.9)" />
+            <IconSignOut size={20} />
           </span>
           <span className="nav-link-label">Sign out</span>
         </button>
@@ -229,7 +234,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         <header className="appbar">
           <div className="appbar-search">
             <span className="appbar-search-icon" aria-hidden>
-              <IconSearch stroke="#9B95A8" />
+              <IconSearch size={18} />
             </span>
             {/* Visual chrome only — no global search API yet. */}
             <input type="search" placeholder="Search across LC Connect" aria-label="Search across LC Connect" disabled />
@@ -241,27 +246,22 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               <span>Livingstone College</span>
             </div>
 
-            <Link
-              href="/dashboard/settings"
-              className="icon-btn"
-              title="Settings"
-              aria-label="Settings"
-            >
-              <IconSettings stroke="#5A5464" size={19} />
+            <Link href="/dashboard/settings" className="icon-btn" title="Settings" aria-label="Settings">
+              <IconSettings size={19} />
             </Link>
 
             {/* Bell is chrome only — no admin notification feed yet. */}
             <button className="icon-btn" type="button" title="Notifications" aria-label="Notifications" disabled>
-              <IconBell stroke="#5A5464" />
+              <IconBell size={19} />
             </button>
 
             <div className="appbar-user">
-              <div className="appbar-avatar">{initials(user.email)}</div>
+              <div className="appbar-avatar" aria-hidden>{initials(name)}</div>
               <div className="appbar-user-meta">
-                <div className="appbar-user-name">{displayName(user.email)}</div>
+                <div className="appbar-user-name">{name}</div>
                 <div className="appbar-user-role">{roleLabel(scopes)}</div>
               </div>
-              <IconChevronDown stroke="#8E8899" />
+              <IconChevronDown />
             </div>
           </div>
         </header>

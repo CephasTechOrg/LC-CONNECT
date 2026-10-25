@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/avatar_widget.dart';
 import '../../../shared/widgets/app_filter_chip.dart';
+import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/app_states.dart';
 import '../../messages/providers/staff_messaging_provider.dart';
 import '../providers/campus_directory_provider.dart';
@@ -59,15 +60,17 @@ class _CampusDirectoryScreenState extends ConsumerState<CampusDirectoryScreen> {
                       children: [
                         Text(
                           'Campus Directory',
-                          style: GoogleFonts.dmSans(
-                            fontSize: 18,
+                          style: AppTypography.title.copyWith(
                             fontWeight: FontWeight.w700,
                             color: AppColors.textDark,
                           ),
                         ),
                         Text(
                           'Verified staff contacts at Livingstone',
-                          style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textMuted),
+                          style: AppTypography.label.copyWith(
+                            fontWeight: FontWeight.w400,
+                            color: AppColors.textMuted,
+                          ),
                         ),
                       ],
                     ),
@@ -100,16 +103,15 @@ class _CampusDirectoryScreenState extends ConsumerState<CampusDirectoryScreen> {
                               children: [
                                 Text(
                                   'Looking for a student?',
-                                  style: GoogleFonts.dmSans(
-                                    fontSize: 13.5,
+                                  style: AppTypography.bodySmall.copyWith(
                                     fontWeight: FontWeight.w700,
                                     color: AppColors.textDark,
                                   ),
                                 ),
                                 Text(
                                   'Search and message students from Messages — Directory is staff only.',
-                                  style: GoogleFonts.dmSans(
-                                    fontSize: 11.5,
+                                  style: AppTypography.caption.copyWith(
+                                    fontWeight: FontWeight.w400,
                                     color: AppColors.textMuted,
                                   ),
                                 ),
@@ -213,50 +215,45 @@ class _DirectoryTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.surface,
-      borderRadius: BorderRadius.circular(14),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
-        child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppColors.border),
-          ),
-          child: Row(
+    // The shared card surface (borderless, soft shadow), same as Home and Activities.
+    return AppCard(
+      onTap: onTap,
+      padding: const EdgeInsets.all(14),
+      child: Row(
+      children: [
+        AvatarWidget(imageUrl: entry.avatarUrl, size: 44, cacheScope: entry.userId),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              AvatarWidget(imageUrl: entry.avatarUrl, size: 44, cacheScope: entry.userId),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      entry.displayName ?? entry.officialTitle,
-                      style: GoogleFonts.dmSans(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textDark,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      entry.officialTitle,
-                      style: GoogleFonts.dmSans(fontSize: 12.5, color: AppColors.textMid),
-                    ),
-                    Text(
-                      entry.department,
-                      style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textMuted),
-                    ),
-                  ],
+              Text(
+                entry.displayName ?? entry.officialTitle,
+                style: AppTypography.body.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textDark,
                 ),
               ),
-              const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
+              const SizedBox(height: 2),
+              Text(
+                entry.officialTitle,
+                style: AppTypography.label.copyWith(
+                  fontWeight: FontWeight.w400,
+                  color: AppColors.textMid,
+                ),
+              ),
+              Text(
+                entry.department,
+                style: AppTypography.label.copyWith(
+                  fontWeight: FontWeight.w400,
+                  color: AppColors.textMuted,
+                ),
+              ),
             ],
           ),
         ),
+        const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
+        ],
       ),
     );
   }

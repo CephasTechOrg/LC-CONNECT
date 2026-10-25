@@ -3,11 +3,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 
+import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_theme.dart';
 import '../data/auth_error_messages.dart';
 import '../providers/auth_provider.dart';
+import '../widgets/auth_page_parts.dart';
 import '../widgets/auth_text_field.dart';
 
 class ForgotPasswordScreen extends ConsumerStatefulWidget {
@@ -72,11 +73,9 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
       await ref.read(authNotifierProvider.notifier).sendPasswordReset(email);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(
-          'If that account exists, we sent a code to your personal email.',
-          style: GoogleFonts.dmSans(),
-        ),
-        backgroundColor: const Color(0xFF059669),
+        content: const Text('If that account exists, we sent a code to your personal email.'),
+        // The AA success green; white on the old #059669 was ~3.8:1.
+        backgroundColor: AppColors.green,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ));
@@ -91,7 +90,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(authErrorMessage(e), style: GoogleFonts.dmSans()),
+        content: Text(authErrorMessage(e)),
         backgroundColor: AppColors.error,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -118,40 +117,18 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
       body: SafeArea(
         child: SingleChildScrollView(
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-          padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
+          padding: const EdgeInsets.fromLTRB(AppSpacing.xxl, AppSpacing.sm, AppSpacing.xxl, AppSpacing.xxxl),
           child: Form(
             key: _formKey,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Container(
-                  width: 64,
-                  height: 64,
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryPale,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: const Icon(Icons.lock_reset_rounded,
-                      size: 32, color: AppColors.primary),
-                ),
-                const SizedBox(height: 20),
-                Text(
-                  'Forgot password?',
-                  style: GoogleFonts.dmSans(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.textDark,
-                    letterSpacing: -0.5,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Enter your campus email. We send the code to your personal inbox.',
-                  style: GoogleFonts.dmSans(
-                    fontSize: 14,
-                    color: AppColors.textMuted,
-                    height: 1.5,
-                  ),
+                const AuthHeading(
+                  icon: Icons.lock_reset_rounded,
+                  title: 'Forgot password?',
+                  subtitle: [
+                    TextSpan(text: 'Enter your campus email. We send the code to your personal inbox.'),
+                  ],
                 ),
                 const SizedBox(height: 28),
                 AuthTextField(
@@ -172,33 +149,15 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                   loading: _loading,
                   onTap: _submit,
                 ),
-                const SizedBox(height: 16),
-                Center(
-                  child: GestureDetector(
-                    onTap: _loading ? null : () => context.push('/reset-password'),
-                    child: Text(
-                      'I already have a code',
-                      style: GoogleFonts.dmSans(
-                        fontSize: 14,
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
+                const SizedBox(height: AppSpacing.sm),
+                AuthTextLink(
+                  label: 'I already have a code',
+                  onTap: _loading ? null : () => context.push('/reset-password'),
                 ),
-                const SizedBox(height: 14),
-                Center(
-                  child: GestureDetector(
-                    onTap: _loading ? null : () => context.pop(),
-                    child: Text(
-                      'Back to sign in',
-                      style: GoogleFonts.dmSans(
-                        fontSize: 14,
-                        color: AppColors.textMuted,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
+                AuthTextLink(
+                  label: 'Back to sign in',
+                  muted: true,
+                  onTap: _loading ? null : () => context.pop(),
                 ),
               ],
             ),

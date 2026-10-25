@@ -271,7 +271,7 @@ void main() {
       await _pump(tester);
 
       expect(find.textContaining('Please read the Terms of Service'), findsOneWidget);
-      expect(find.text('READ IN FULL'), findsOneWidget);
+      expect(find.text('Read in full'), findsOneWidget);
       for (final label in ['Terms of Service', 'Privacy Policy', 'Community Guidelines']) {
         expect(find.text(label), findsOneWidget, reason: label);
       }

@@ -1,0 +1,239 @@
+/* ── Sign-in screens: a brand panel beside the form ─────────────────────────────────────────
+   The panel wears the sidebar's skin (rounded, LC blue gradient, white logo tile) so signing in
+   already looks like the portal you are entering. The form gets the room and the type sizes of
+   the pages behind it. Shared verbatim by the admin and employer portals. */
+
+.auth-split {
+  display: flex;
+  gap: 16px;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: 16px;
+  background: var(--bg);
+}
+
+.auth-brand {
+  flex: 0 0 min(460px, 40%);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 32px;
+  padding: 36px 40px;
+  border-radius: 26px;
+  background: linear-gradient(
+    180deg,
+    var(--primary-grad-start) 0%,
+    var(--primary-grad-mid) 60%,
+    var(--primary-grad-end) 100%
+  );
+  box-shadow: var(--shadow-rail);
+  color: #fff;
+}
+
+.auth-brand-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.auth-brand-mark {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  overflow: hidden;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 6px 16px rgba(17, 40, 64, 0.22);
+}
+
+.auth-brand-mark img {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+}
+
+.auth-brand-name {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.auth-brand-portal {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.auth-brand-copy h2 {
+  margin: 0;
+  max-width: 340px;
+  font-size: 32px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.auth-brand-copy p {
+  margin: 14px 0 0;
+  max-width: 340px;
+  font-size: 16px;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.86);
+}
+
+.auth-brand-foot {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.auth-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+}
+
+/* The form column: centred, unboxed, sized like the pages inside the portal. */
+.auth-split .auth-shell {
+  flex: 1;
+  min-height: 0;
+  padding: 32px 24px;
+  background: none;
+}
+
+.auth-split .auth-card {
+  max-width: 420px;
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
+
+/* The brand panel already names the product; the small label above each title would repeat it. */
+.auth-split .auth-card .eyebrow {
+  display: none;
+}
+
+.auth-split .auth-card h1 {
+  margin: 0 0 8px;
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.auth-split .auth-card .subtitle {
+  margin: 0 0 28px;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--text-mid);
+}
+
+.auth-split .field {
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.auth-split .field label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.auth-split .field input,
+.auth-split .field textarea,
+.auth-split .field select {
+  min-height: 46px;
+  padding: 11px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 15px;
+}
+
+.auth-split .field input:focus,
+.auth-split .field textarea:focus,
+.auth-split .field select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-soft);
+}
+
+.auth-split .auth-card .btn {
+  min-height: 48px;
+  margin-top: 6px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.auth-split .auth-card .btn:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.auth-split .hint {
+  margin-top: 18px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-mid);
+}
+
+.auth-split .hint a {
+  color: var(--primary-text);
+  font-weight: 500;
+}
+
+.auth-split .hint a:hover {
+  text-decoration: underline;
+}
+
+.auth-split .error-banner,
+.auth-split .success-banner {
+  margin-bottom: 18px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* Tablets and phones: the panel shrinks to a rounded bar with the logo and portal name. */
+@media (max-width: 900px) {
+  .auth-split {
+    flex-direction: column;
+    padding: 12px;
+    gap: 0;
+  }
+
+  .auth-brand {
+    flex: none;
+    padding: 14px 16px;
+    border-radius: 20px;
+  }
+
+  .auth-brand-mark {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+  }
+
+  .auth-brand-mark img {
+    width: 32px;
+    height: 32px;
+  }
+
+  .auth-brand-copy,
+  .auth-brand-foot {
+    display: none;
+  }
+
+  .auth-split .auth-shell {
+    align-items: start;
+    padding: 32px 8px 40px;
+  }
+
+  .auth-split .auth-card h1 {
+    font-size: 26px;
+  }
+}

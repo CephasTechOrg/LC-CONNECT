@@ -47,15 +47,25 @@ void main() {
       }
     });
 
-    test('Blue Bear leads, then volleyball, then the cap, and holds 12s', () {
+    test('Blue Bear leads, then volleyball, then the cap', () {
       expect(campusSpotlights.map((s) => s.studentAsset).toList(), [
         'assets/images/lcbear.webp',
         'assets/images/spotlight_student.webp',
         'assets/images/lcgrad.webp',
       ]);
-      expect(campusSpotlights.first.dwell, const Duration(seconds: 12));
-      expect(campusSpotlights[1].dwell, const Duration(seconds: 10));
-      expect(campusSpotlights[2].dwell, const Duration(seconds: 10));
+    });
+
+    test('every slide opens the feature it advertises', () {
+      // The banner is the largest thing on Home; a slide that does nothing when tapped looks
+      // interactive and isn't.
+      expect(campusSpotlights.map((s) => s.route).toList(), [
+        '/messages/groups',
+        '/activities',
+        '/home/resources',
+      ]);
+      for (final s in campusSpotlights) {
+        expect(s.actionLabel, startsWith('Open '));
+      }
     });
   });
 }

@@ -3,15 +3,17 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 
+import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/avatar_widget.dart';
 import '../../../shared/widgets/app_search_field.dart';
 import '../../../shared/widgets/app_states.dart';
 import '../providers/messages_provider.dart';
 import '../providers/staff_messaging_provider.dart';
 import '../utils/chat_routes.dart';
+import '../widgets/staff_tag.dart';
 import '../../../shared/widgets/app_skeleton.dart';
 
 /// Search students + staff and start a brand-new conversation — no connection required.
@@ -96,7 +98,7 @@ class _NewMessageScreenState extends ConsumerState<NewMessageScreen> {
       setState(() => _starting = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text("Couldn't start that conversation", style: GoogleFonts.dmSans(color: Colors.white)),
+          content: const Text("Couldn't start that conversation"),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -113,16 +115,18 @@ class _NewMessageScreenState extends ConsumerState<NewMessageScreen> {
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(8, 8, 20, 0),
+              padding: const EdgeInsets.fromLTRB(AppSpacing.xs, AppSpacing.sm, AppSpacing.gutter, 0),
               child: Row(
                 children: [
                   IconButton(
+                    tooltip: 'Back',
                     icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: AppColors.textDark),
                     onPressed: () => context.pop(),
                   ),
+                  const SizedBox(width: AppSpacing.xs),
                   Text(
-                    'New Message',
-                    style: GoogleFonts.dmSans(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textDark),
+                    'New message',
+                    style: AppTypography.title.copyWith(color: AppColors.textDark),
                   ),
                 ],
               ),
@@ -165,9 +169,15 @@ class _NewMessageScreenState extends ConsumerState<NewMessageScreen> {
     return AbsorbPointer(
       absorbing: _starting,
       child: ListView.separated(
-        padding: const EdgeInsets.symmetric(vertical: 8),
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
         itemCount: _results.length,
-        separatorBuilder: (_, _) => const Divider(height: 1, indent: 84, endIndent: 20, color: AppColors.border),
+        // Starts under the text, not the avatar — the same rule as the inbox.
+        separatorBuilder: (_, _) => const Divider(
+          height: 1,
+          indent: AppSpacing.gutter + 48 + AppSpacing.md,
+          endIndent: AppSpacing.gutter,
+          color: AppColors.border,
+        ),
         itemBuilder: (_, i) => _RecipientTile(
           recipient: _results[i],
           onTap: () => _startConversation(_results[i]),
@@ -184,36 +194,49 @@ class _RecipientTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isStaff = recipient.role == 'staff';
+    // No chevron: tapping opens the conversation, the same as an inbox row, which has none.
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.gutter, vertical: AppSpacing.md),
         child: Row(
           children: [
             AvatarWidget(imageUrl: recipient.avatarUrl, size: 48, cacheScope: recipient.userId),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSpacing.md),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    recipient.displayName ?? 'LC Member',
-                    style: GoogleFonts.dmSans(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textDark),
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          recipient.displayName ?? 'LC Member',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTypography.titleSmall.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textDark,
+                          ),
+                        ),
+                      ),
+                      if (isStaff) ...[
+                        const SizedBox(width: 6),
+                        const StaffTag(),
+                      ],
+                    ],
                   ),
-                  if (recipient.subtitle != null)
-                    Text(
-                      recipient.subtitle!,
-                      style: GoogleFonts.dmSans(fontSize: 12.5, color: AppColors.textMuted),
-                    )
-                  else
-                    Text(
-                      recipient.role == 'staff' ? 'Staff' : 'Student',
-                      style: GoogleFonts.dmSans(fontSize: 12.5, color: AppColors.textMuted),
-                    ),
+                  const SizedBox(height: 2),
+                  Text(
+                    recipient.subtitle ?? (isStaff ? 'Campus staff' : 'Student'),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.bodySmall.copyWith(color: AppColors.textMuted),
+                  ),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
           ],
         ),
       ),

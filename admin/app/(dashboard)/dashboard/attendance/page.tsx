@@ -103,7 +103,7 @@ export default function AttendanceLandingPage() {
       <div>
         <div className="ops-top">
           <div>
-            <h1>Honors Attendance</h1>
+            <h1>Honors attendance</h1>
             <p>Start a session, display the classroom QR, and review Honors student check-ins.</p>
           </div>
         </div>
@@ -119,7 +119,7 @@ export default function AttendanceLandingPage() {
     <div>
       <div className="ops-top">
         <div>
-          <h1>Honors Attendance</h1>
+          <h1>Honors attendance</h1>
           <p>
             {dashboard?.honors_student_count
               ? `${dashboard.honors_student_count} Presidential Scholars on the roster.`
@@ -128,7 +128,7 @@ export default function AttendanceLandingPage() {
         </div>
         {liveSession ? null : (
           <button className="ops-btn primary" type="button" onClick={() => setDialogOpen(true)}>
-            Start Attendance
+            Start attendance
           </button>
         )}
       </div>
@@ -282,7 +282,7 @@ export default function AttendanceLandingPage() {
                 Cancel
               </button>
               <button className="ops-btn primary" type="submit" disabled={busy}>
-                {busy ? 'Starting…' : 'Start Attendance'}
+                {busy ? 'Starting…' : 'Start attendance'}
               </button>
             </div>
           </form>

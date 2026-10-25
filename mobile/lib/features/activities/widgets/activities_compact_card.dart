@@ -45,23 +45,12 @@ class _CompactCardState extends ConsumerState<_CompactCard> {
         a.participantCount >= a.maxParticipants! &&
         !joined;
 
-    return GestureDetector(
+    // The layout is unchanged; only the surface matches Home now (borderless, soft shadow, and a
+    // ripple on tap, which the bare GestureDetector did not give).
+    return AppCard(
       onTap: () =>
           context.push('/activities/${a.id}', extra: widget.activity),
-      child: Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x0A000000),
-            blurRadius: 6,
-            offset: Offset(0, 1),
-          ),
-        ],
-      ),
       child: Row(
         children: [
           // Thumbnail
@@ -86,8 +75,7 @@ class _CompactCardState extends ConsumerState<_CompactCard> {
                   a.title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.dmSans(
-                    fontSize: 14,
+                  style: AppTypography.body.copyWith(
                     fontWeight: FontWeight.w600,
                     color: AppColors.textDark,
                   ),
@@ -95,8 +83,10 @@ class _CompactCardState extends ConsumerState<_CompactCard> {
                 const SizedBox(height: 3),
                 Text(
                   AppDateFormat.date(a.startTime),
-                  style: GoogleFonts.dmSans(
-                      fontSize: 11, color: AppColors.textMuted),
+                  style: AppTypography.caption.copyWith(
+                    fontWeight: FontWeight.w400,
+                    color: AppColors.textMuted,
+                  ),
                 ),
                 const SizedBox(height: 2),
                 Row(
@@ -109,8 +99,10 @@ class _CompactCardState extends ConsumerState<_CompactCard> {
                         a.location,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.dmSans(
-                            fontSize: 11, color: AppColors.textMuted),
+                        style: AppTypography.caption.copyWith(
+                          fontWeight: FontWeight.w400,
+                          color: AppColors.textMuted,
+                        ),
                       ),
                     ),
                   ],
@@ -130,22 +122,23 @@ class _CompactCardState extends ConsumerState<_CompactCard> {
                   const SizedBox(width: 3),
                   Text(
                     '${a.participantCount}',
-                    style: GoogleFonts.dmSans(
-                        fontSize: 11, color: AppColors.textMuted),
+                    style: AppTypography.caption.copyWith(
+                      fontWeight: FontWeight.w400,
+                      color: AppColors.textMuted,
+                    ),
                   ),
                 ],
               ),
-              const SizedBox(height: 6),
               _CompactJoinButton(
                 joined: joined,
                 loading: _loading,
                 full: isFull,
                 onTap: _toggle,
+                title: a.title,
               ),
             ],
           ),
         ],
-      ),
       ),
     );
   }

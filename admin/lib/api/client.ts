@@ -6,6 +6,9 @@ export type BootstrapUser = {
   is_verified: boolean;
   profile_completed: boolean;
   auth_user_id: string;
+  /** From signup. Null for accounts created before signup asked for a name. */
+  first_name?: string | null;
+  last_name?: string | null;
 };
 
 function apiBase(): string {

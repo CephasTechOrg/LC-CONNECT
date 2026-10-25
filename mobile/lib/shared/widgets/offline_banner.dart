@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/api/health_provider.dart';
 import '../../core/notifications/in_app_banner.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/theme/app_typography.dart';
 
 /// App-wide chrome: offline strip (when needed) + floating in-app message banners.
 ///
@@ -97,8 +97,7 @@ class _OfflineStrip extends ConsumerWidget {
                     children: [
                       Text(
                         'You\'re offline',
-                        style: GoogleFonts.dmSans(
-                          fontSize: 13,
+                        style: AppTypography.bodySmall.copyWith(
                           fontWeight: FontWeight.w600,
                           color: Colors.white,
                           height: 1.2,
@@ -107,8 +106,7 @@ class _OfflineStrip extends ConsumerWidget {
                       const SizedBox(height: 1),
                       Text(
                         'Changes will sync when you\'re back online',
-                        style: GoogleFonts.dmSans(
-                          fontSize: 11.5,
+                        style: AppTypography.caption.copyWith(
                           fontWeight: FontWeight.w400,
                           color: const Color(0xFFD1D5DB),
                           height: 1.25,
@@ -120,8 +118,7 @@ class _OfflineStrip extends ConsumerWidget {
                 const SizedBox(width: 8),
                 Text(
                   'Retry',
-                  style: GoogleFonts.dmSans(
-                    fontSize: 12,
+                  style: AppTypography.label.copyWith(
                     fontWeight: FontWeight.w600,
                     color: AppColors.primaryLight,
                   ),

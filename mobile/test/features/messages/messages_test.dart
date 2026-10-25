@@ -359,7 +359,24 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Maya Chen'), findsOneWidget);
-      expect(find.text('Biology'), findsOneWidget);
+      // The major lives in the chat header, not beside the name in the row.
+      expect(find.text('Biology'), findsNothing);
+    });
+
+    testWidgets('a staff thread is marked Staff in place of the full position', (tester) async {
+      final staff = MessageThread(
+        conversationId: 'conv-003',
+        kind: 'staff_dm',
+        partner: _samplePartner,
+        partnerPositionTitle: 'Campus Safety Officer',
+        partnerDepartment: 'Campus Security',
+        latestMessage: _sampleMessage,
+      );
+      await tester.pumpWidget(_threadScope(threads: [staff, _sampleThread]));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Staff'), findsOneWidget, reason: 'only the staff thread carries the tag');
+      expect(find.textContaining('Campus Safety'), findsNothing);
     });
 
     testWidgets('shows last message preview', (tester) async {
@@ -376,7 +393,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(
-        find.text('No messages yet — say hello!'),
+        find.text('No messages yet — say hello'),
         findsOneWidget,
       );
     });

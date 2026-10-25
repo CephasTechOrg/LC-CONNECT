@@ -1,21 +1,23 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import { DM_Sans } from 'next/font/google';
 import './globals.css';
 
-const inter = Inter({
+// DM Sans, as in the student app and the admin portal: one product, one typeface.
+const dmSans = DM_Sans({
   subsets: ['latin'],
-  weight: ['400', '500', '600', '700', '800'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-dm-sans',
 });
 
 export const metadata: Metadata = {
-  title: 'Employer Partner Portal — Blueprint Bond',
+  title: 'Employer partner portal — Blueprint Bond',
   description: 'Blueprint Bond employer partner portal, powered by LC Connect',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className={inter.className}>{children}</body>
+      <body className={`${dmSans.className} ${dmSans.variable}`}>{children}</body>
     </html>
   );
 }

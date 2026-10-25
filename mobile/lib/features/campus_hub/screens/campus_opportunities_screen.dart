@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/app_filter_chip.dart';
 import '../../../shared/widgets/app_states.dart';
 import '../../programs/providers/programs_provider.dart';
@@ -236,8 +236,7 @@ class _Seg extends StatelessWidget {
               textAlign: TextAlign.center,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.dmSans(
-                fontSize: 12.5,
+              style: AppTypography.label.copyWith(
                 fontWeight: FontWeight.w700,
                 color: selected ? AppColors.textDark : AppColors.textMuted,
               ),

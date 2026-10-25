@@ -81,8 +81,7 @@ class _ConnectBar extends StatelessWidget {
               : Icon(display.icon, size: 18),
           label: Text(
             display.label,
-            style: GoogleFonts.dmSans(
-              fontSize: 15,
+            style: AppTypography.bodyLarge.copyWith(
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -106,7 +105,7 @@ class _ConnectBar extends StatelessWidget {
               style: TextButton.styleFrom(foregroundColor: AppColors.textMuted),
               child: Text(
                 'Disconnect',
-                style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w600),
+                style: AppTypography.bodySmall.copyWith(fontWeight: FontWeight.w600),
               ),
             ),
         ],

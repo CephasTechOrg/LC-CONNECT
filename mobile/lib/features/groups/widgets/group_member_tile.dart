@@ -70,7 +70,8 @@ class _MemberTile extends StatelessWidget {
           ? () => context.push('/users/${member.profileId}', extra: member.displayName)
           : null,
       child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 7),
+      // Inside the members card, so the inset is the card's, not the page gutter.
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
       child: Row(
         children: [
           AvatarWidget(imageUrl: member.avatarUrl, size: 44, cacheScope: member.userId),
@@ -87,7 +88,10 @@ class _MemberTile extends StatelessWidget {
                         member.nameOrFallback,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textDark),
+                        style: AppTypography.body.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textDark,
+                        ),
                       ),
                     ),
                     if (member.campusVerified) ...[
@@ -96,7 +100,7 @@ class _MemberTile extends StatelessWidget {
                     ],
                   ],
                 ),
-                Text(_subtitle, style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textMuted)),
+                Text(_subtitle, style: AppTypography.label.copyWith(fontWeight: FontWeight.w400, color: AppColors.textMuted)),
               ],
             ),
           ),
@@ -116,7 +120,7 @@ class _MemberTile extends StatelessWidget {
                         const SizedBox(width: 10),
                         Text(
                           a.label,
-                          style: GoogleFonts.dmSans(color: a.destructive ? AppColors.error : AppColors.textDark),
+                          style: TextStyle(color: a.destructive ? AppColors.error : AppColors.textDark),
                         ),
                       ],
                     ),

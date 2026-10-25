@@ -3,10 +3,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 
+import '../../../core/theme/app_radii.dart';
+import '../../../core/theme/app_shadows.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_typography.dart';
+import '../../../shared/widgets/app_card.dart';
 import '../providers/attendance_provider.dart';
 
 /// Campus Hub card — visible to active Honors students while a session is open.
@@ -100,15 +103,16 @@ class _AttendanceOpenCardState extends ConsumerState<AttendanceOpenCard> {
 
     // Already checked in: the card stays, because the session is still open and the countdown is
     // still meaningful, but it must stop telling the student to scan. It used to read
-    // "Scan to Check In" right through a successful check-in until the session closed.
+    // "Scan to check in" right through a successful check-in until the session closed.
     final checkedIn = active.isCheckedIn;
 
     return Padding(
+      // Top gap only — matches the other Home blocks, so hiding this card leaves no seam.
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.gutter,
-        AppSpacing.xs,
-        AppSpacing.gutter,
         AppSpacing.sm,
+        AppSpacing.gutter,
+        0,
       ),
       child: Semantics(
         container: true,
@@ -117,79 +121,17 @@ class _AttendanceOpenCardState extends ConsumerState<AttendanceOpenCard> {
             : 'Attendance is open. ${session.title}. $_remaining. Scan to check in',
         button: !checkedIn,
         excludeSemantics: true,
-        child: Material(
-          color: checkedIn ? AppColors.green : AppColors.primary,
-          borderRadius: BorderRadius.circular(14),
-          child: InkWell(
-            // Nothing left to do once checked in, and an action that cannot change anything is a
-            // dead affordance — so the card stops being tappable.
-            onTap: checkedIn ? null : () => context.push('/attendance/scan'),
-            borderRadius: BorderRadius.circular(14),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      if (checkedIn) ...[
-                        const Icon(Icons.check_circle_rounded, size: 15, color: Colors.white),
-                        const SizedBox(width: 5),
-                      ],
-                      Expanded(
-                        child: Text(
-                          checkedIn ? _statusLabel(active.studentStatus) : 'Attendance is open',
-                          style: GoogleFonts.dmSans(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white.withValues(alpha: 0.9),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    session.title,
-                    style: GoogleFonts.dmSans(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    _remaining,
-                    style: GoogleFonts.dmSans(
-                      fontSize: 13,
-                      color: Colors.white.withValues(alpha: 0.85),
-                    ),
-                  ),
-                  if (!checkedIn) ...[
-                    const SizedBox(height: 14),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        'Scan to Check In',
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.dmSans(
-                          fontSize: 14.5,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
+        child: checkedIn
+            ? _CheckedInCard(
+                status: _statusLabel(active.studentStatus),
+                title: session.title,
+                remaining: _remaining,
+              )
+            : _OpenCard(
+                title: session.title,
+                remaining: _remaining,
+                onTap: () => context.push('/attendance/scan'),
               ),
-            ),
-          ),
-        ),
       ),
     );
   }
@@ -198,4 +140,125 @@ class _AttendanceOpenCardState extends ConsumerState<AttendanceOpenCard> {
   /// roster.
   static String _statusLabel(String? studentStatus) =>
       studentStatus == 'late' ? "You're checked in — marked late" : "You're checked in";
+}
+
+/// Session open, not yet checked in: the one saturated card on Home, because it is the one thing
+/// with a deadline that cannot be undone.
+class _OpenCard extends StatelessWidget {
+  final String title;
+  final String remaining;
+  final VoidCallback onTap;
+
+  const _OpenCard({required this.title, required this.remaining, required this.onTap});
+
+  static final _radius = AppRadii.all(AppRadii.sheet);
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.primary,
+        borderRadius: _radius,
+        boxShadow: AppShadows.tinted(AppColors.primary),
+      ),
+      child: Material(
+        type: MaterialType.transparency,
+        borderRadius: _radius,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: AppSpacing.cardPadding,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Attendance is open',
+                  style: AppTypography.bodySmall.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white.withValues(alpha: 0.9),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  title,
+                  style: AppTypography.title.copyWith(color: Colors.white),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  remaining,
+                  style: AppTypography.bodySmall.copyWith(
+                    color: Colors.white.withValues(alpha: 0.9),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: AppRadii.all(AppRadii.full),
+                  ),
+                  child: Text(
+                    'Scan to check in',
+                    textAlign: TextAlign.center,
+                    style: AppTypography.body.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primaryText,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Checked in: done, nothing left to do — so it steps down to a calm white card instead of a
+/// second saturated block. It used to turn solid green with white text: 2.5:1 contrast, and a
+/// second accent colour on a page that otherwise has one. Not tappable — an action that cannot
+/// change anything is a dead affordance.
+class _CheckedInCard extends StatelessWidget {
+  final String status;
+  final String title;
+  final String remaining;
+
+  const _CheckedInCard({required this.status, required this.title, required this.remaining});
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      child: Row(
+        children: [
+          const AppIconTile(icon: Icons.check_circle_rounded),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  status,
+                  style: AppTypography.label.copyWith(color: AppColors.primaryText),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.titleSmall.copyWith(color: AppColors.textDark),
+                ),
+                Text(
+                  remaining,
+                  style: AppTypography.bodySmall.copyWith(color: AppColors.textMuted),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

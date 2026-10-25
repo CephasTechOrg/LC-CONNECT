@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../../core/api/api_error.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_typography.dart';
 import '../providers/safety_provider.dart';
 
 const _reportReasons = [
@@ -111,15 +111,17 @@ class _OptionsSheet extends StatelessWidget {
                   color: AppColors.textMid),
               title: Text(
                 'Report $targetName',
-                style: GoogleFonts.dmSans(
+                style: TextStyle(
                   fontWeight: FontWeight.w500,
                   color: AppColors.textDark,
                 ),
               ),
               subtitle: Text(
                 'Flag inappropriate behavior anonymously',
-                style: GoogleFonts.dmSans(
-                    fontSize: 12, color: AppColors.textMuted),
+                style: AppTypography.label.copyWith(
+                  fontWeight: FontWeight.w400,
+                  color: AppColors.textMuted,
+                ),
               ),
               onTap: () => Navigator.of(context).pop('report'),
             ),
@@ -128,15 +130,17 @@ class _OptionsSheet extends StatelessWidget {
                   color: AppColors.error),
               title: Text(
                 'Block $targetName',
-                style: GoogleFonts.dmSans(
+                style: TextStyle(
                   fontWeight: FontWeight.w500,
                   color: AppColors.error,
                 ),
               ),
               subtitle: Text(
                 "They won't see your profile or be able to message you",
-                style: GoogleFonts.dmSans(
-                    fontSize: 12, color: AppColors.textMuted),
+                style: AppTypography.label.copyWith(
+                  fontWeight: FontWeight.w400,
+                  color: AppColors.textMuted,
+                ),
               ),
               onTap: () => Navigator.of(context).pop('block'),
             ),
@@ -161,22 +165,22 @@ Future<void> _confirmBlock(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       title: Text(
         'Block $name?',
-        style: GoogleFonts.dmSans(fontWeight: FontWeight.w700),
+        style: TextStyle(fontWeight: FontWeight.w700),
       ),
       content: Text(
         "They won't appear in Connect and won't be able to contact you.",
-        style: GoogleFonts.dmSans(color: AppColors.textMid),
+        style: TextStyle(color: AppColors.textMid),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(ctx).pop(false),
-          child: Text('Cancel', style: GoogleFonts.dmSans()),
+          child: Text('Cancel'),
         ),
         TextButton(
           onPressed: () => Navigator.of(ctx).pop(true),
           child: Text(
             'Block',
-            style: GoogleFonts.dmSans(
+            style: TextStyle(
               color: AppColors.error,
               fontWeight: FontWeight.w600,
             ),
@@ -192,8 +196,7 @@ Future<void> _confirmBlock(
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('$name has been blocked.',
-              style: GoogleFonts.dmSans()),
+          content: Text('$name has been blocked.'),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(10)),
@@ -204,8 +207,7 @@ Future<void> _confirmBlock(
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Could not block. Please try again.',
-              style: GoogleFonts.dmSans()),
+          content: Text('Could not block. Please try again.'),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
@@ -242,7 +244,6 @@ class _ReportSheetState extends State<_ReportSheet> {
         SnackBar(
           content: Text(
             'Report submitted. Thank you for keeping LC Connect safe.',
-            style: GoogleFonts.dmSans(),
           ),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
@@ -254,8 +255,7 @@ class _ReportSheetState extends State<_ReportSheet> {
       setState(() => _submitting = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(apiErrorMessage(e, fallback: 'Could not submit report. Please try again.'),
-              style: GoogleFonts.dmSans()),
+          content: Text(apiErrorMessage(e, fallback: 'Could not submit report. Please try again.')),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
@@ -284,8 +284,7 @@ class _ReportSheetState extends State<_ReportSheet> {
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Text(
                   widget.title,
-                  style: GoogleFonts.dmSans(
-                    fontSize: 16,
+                  style: AppTypography.titleSmall.copyWith(
                     fontWeight: FontWeight.w700,
                     color: AppColors.textDark,
                   ),
@@ -296,8 +295,8 @@ class _ReportSheetState extends State<_ReportSheet> {
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Text(
                   'Your report is anonymous and reviewed by our team.',
-                  style: GoogleFonts.dmSans(
-                    fontSize: 12.5,
+                  style: AppTypography.label.copyWith(
+                    fontWeight: FontWeight.w400,
                     color: AppColors.textMuted,
                   ),
                 ),
@@ -313,8 +312,8 @@ class _ReportSheetState extends State<_ReportSheet> {
                           value: reason,
                           title: Text(
                             reason,
-                            style: GoogleFonts.dmSans(
-                                fontSize: 14, color: AppColors.textDark),
+                            style: AppTypography.body.copyWith(
+                                color: AppColors.textDark),
                           ),
                           activeColor: AppColors.primary,
                           dense: true,
@@ -342,7 +341,7 @@ class _ReportSheetState extends State<_ReportSheet> {
                           )
                         : Text(
                             'Submit Report',
-                            style: GoogleFonts.dmSans(
+                            style: TextStyle(
                                 fontWeight: FontWeight.w600),
                           ),
                   ),

@@ -25,10 +25,8 @@ void main() {
   /// `AppDateFormat` instead.
   const migrationBacklog = <String>{
     'lib/features/activities/widgets/activity_form_fields.dart',
-    'lib/features/attendance/widgets/attendance_result.dart',
     'lib/features/campus_hub/screens/campus_post_detail_screen.dart',
     'lib/features/campus_hub/screens/compose_campus_post_screen.dart',
-    'lib/features/campus_hub/widgets/campus_home_previews.dart',
     'lib/features/campus_hub/widgets/campus_post_card.dart',
     'lib/features/campus_hub/widgets/campus_updates_panel.dart',
     'lib/features/campus_hub/widgets/opportunity_card.dart',

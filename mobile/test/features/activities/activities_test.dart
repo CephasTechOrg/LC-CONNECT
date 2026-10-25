@@ -341,7 +341,7 @@ void main() {
       await tester.pumpWidget(_createScope());
       await tester.pumpAndSettle();
       // AppBar title + bottom button both say "Create Activity"
-      expect(find.text('Create Activity'), findsAtLeastNWidgets(1));
+      expect(find.text('Create activity'), findsAtLeastNWidgets(1));
     });
 
     testWidgets('description and max participants fields present', (tester) async {

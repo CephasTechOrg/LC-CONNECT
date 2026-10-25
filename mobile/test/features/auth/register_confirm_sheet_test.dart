@@ -17,14 +17,20 @@ class _RecordingAuth extends AuthNotifier {
   Future<void> register(
     String email,
     String password, {
+    required String firstName,
+    required String lastName,
     required String contactEmail,
     required int policiesAcceptedVersion,
   }) async {
-    calls.add('$email|$contactEmail|v$policiesAcceptedVersion');
+    calls.add('$firstName $lastName|$email|$contactEmail|v$policiesAcceptedVersion');
   }
 }
 
 Future<void> _pumpRegister(WidgetTester tester) async {
+  // A phone, not the default 800x600 test window, which the form (with its name fields) outgrows.
+  tester.view.physicalSize = const Size(1179, 2556);
+  tester.view.devicePixelRatio = 3;
+  addTearDown(tester.view.reset);
   await tester.pumpWidget(
     ProviderScope(
       overrides: [authNotifierProvider.overrideWith(_RecordingAuth.new)],
@@ -41,18 +47,23 @@ Future<void> _acceptPolicies(WidgetTester tester) async {
   await tester.pump();
 }
 
-/// Fills the four fields with values that pass the screen's own validators.
+/// Fills the six fields with values that pass the screen's own validators.
 Future<void> _fillValidForm(WidgetTester tester) async {
   final fields = find.byType(TextFormField);
-  await tester.enterText(fields.at(0), 'John.Doe@students.livingstone.edu');
-  await tester.enterText(fields.at(1), 'John.Doe@gmail.com');
-  await tester.enterText(fields.at(2), 'hunter2pass');
-  await tester.enterText(fields.at(3), 'hunter2pass');
+  await tester.enterText(fields.at(0), 'John');
+  await tester.enterText(fields.at(1), 'Doe');
+  await tester.enterText(fields.at(2), 'John.Doe@students.livingstone.edu');
+  await tester.enterText(fields.at(3), 'John.Doe@gmail.com');
+  await tester.enterText(fields.at(4), 'hunter2pass');
+  await tester.enterText(fields.at(5), 'hunter2pass');
   await tester.pump();
 }
 
 Future<void> _tapCreateAccount(WidgetTester tester) async {
-  await tester.tap(find.text('Create Account'));
+  final button = find.text('Create account').first; // the form's button
+  await tester.ensureVisible(button);
+  await tester.pumpAndSettle();
+  await tester.tap(button);
   await tester.pumpAndSettle();
 }
 
@@ -64,6 +75,21 @@ void main() {
   });
 
   setUp(_RecordingAuth.calls.clear);
+
+  testWidgets('first and last name are required before anything is sent', (tester) async {
+    await _pumpRegister(tester);
+    await _acceptPolicies(tester);
+    await _fillValidForm(tester);
+    final fields = find.byType(TextFormField);
+    await tester.enterText(fields.at(0), '  ');
+    await tester.enterText(fields.at(1), '');
+    await _tapCreateAccount(tester);
+
+    expect(find.text('Enter your first name'), findsOneWidget);
+    expect(find.text('Enter your last name'), findsOneWidget);
+    expect(find.text('Check your details'), findsNothing, reason: 'no confirm step for an invalid form');
+    expect(_RecordingAuth.calls, isEmpty);
+  });
 
   group('register confirm step', () {
     testWidgets('submitting opens the review sheet instead of registering', (tester) async {
@@ -111,12 +137,12 @@ void main() {
       await _acceptPolicies(tester);
       await _tapCreateAccount(tester);
 
-      await tester.tap(find.text('Create account')); // sheet's confirm, not the form's button
+      await tester.tap(find.text('Create account').last); // sheet's confirm, drawn over the form
       await tester.pumpAndSettle();
 
       expect(
         _RecordingAuth.calls,
-        ['John.Doe@students.livingstone.edu|John.Doe@gmail.com|v$kPolicyVersion'],
+        ['John Doe|John.Doe@students.livingstone.edu|John.Doe@gmail.com|v$kPolicyVersion'],
       );
     });
 

@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react
 import { OpsEmpty, OpsLoading } from '@/components/ops-states';
 import { apiFetch, toUserMessage } from '@/lib/api/client';
 import { getAccessToken } from '@/lib/auth/session';
+import { humanize, formatDate } from '@/lib/format';
+import RowMenu from '@/components/row-menu';
 
 type AdminMembership = {
   id: string;
@@ -17,10 +19,10 @@ type AdminMembership = {
 };
 
 const ROLE_LABELS: Record<string, string> = {
-  super_admin: 'Super Admin',
-  school_admin: 'School Admin',
-  honors_admin: 'Honors Admin',
-  content_admin: 'Content Admin',
+  super_admin: 'Super admin',
+  school_admin: 'School admin',
+  honors_admin: 'Honors admin',
+  content_admin: 'Content admin',
   auditor: 'Auditor',
 };
 
@@ -47,7 +49,7 @@ function initials(name: string | null, email: string): string {
 
 function when(iso: string): string {
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString();
+  return Number.isNaN(d.getTime()) ? '—' : formatDate(iso);
 }
 
 export default function AdminsPage() {
@@ -160,7 +162,7 @@ export default function AdminsPage() {
     <>
       <header className="ops-top">
         <div>
-          <h1>Admins &amp; Roles</h1>
+          <h1>Admins and roles</h1>
           <p>Invite administrators and manage scoped access.</p>
         </div>
         {invitableRoles.length > 0 ? (
@@ -180,7 +182,7 @@ export default function AdminsPage() {
         <div className="dash-kpi-grid" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', marginBottom: 18 }}>
           <div className="dash-kpi">
             <div className="dash-kpi-icon tone-purple-soft">
-              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#6F42E8" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#3F7FB5" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                 <circle cx="10" cy="8" r="3" />
                 <path d="M4 19.5c.5-3 2.9-4.8 6-4.8" />
               </svg>
@@ -242,7 +244,7 @@ export default function AdminsPage() {
         ) : null}
 
         <div className="ops-toolbar" style={{ marginTop: 0 }}>
-          <span className="ops-count" style={{ marginLeft: 0 }}>Admin roster</span>
+          <span className="ops-count">{loading ? '' : `${items.length} ${items.length === 1 ? 'administrator' : 'administrators'}`}</span>
           <button className="ops-btn" type="button" disabled={loading} onClick={() => void load()}>Refresh</button>
         </div>
         {flash ? <p className="ops-flash">{flash}</p> : null}
@@ -286,7 +288,7 @@ export default function AdminsPage() {
                       <td data-label="Role">
                         <span className="ops-chip">{ROLE_LABELS[item.role] ?? item.role}</span>
                       </td>
-                      <td data-label="Status"><span className={statusClass}>{item.status}</span></td>
+                      <td data-label="Status"><span className={statusClass}>{humanize(item.status)}</span></td>
                       <td className="ops-col-hide-md meta" data-label="Invited">{when(item.invited_at)}</td>
                       <td className="ops-col-actions ops-cell-actions">
                         {canManage ? (
@@ -301,14 +303,12 @@ export default function AdminsPage() {
                                 Resend
                               </button>
                             ) : null}
-                            <button
-                              className="ops-btn danger"
-                              type="button"
-                              disabled={busy === item.id}
-                              onClick={() => void onRevoke(item)}
-                            >
-                              Revoke
-                            </button>
+                            <RowMenu
+                              label={`More actions for ${label}`}
+                              items={[
+                                { label: 'Revoke access', danger: true, disabled: busy === item.id, onSelect: () => void onRevoke(item) },
+                              ]}
+                            />
                           </div>
                         ) : (
                           <span className="ops-cell-sub" style={{ marginTop: 0 }}>

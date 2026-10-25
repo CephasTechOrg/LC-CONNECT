@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/theme/app_typography.dart';
 
 /// Selected/unselected pill used on Connect, Activities, Groups filters.
 class AppFilterChip extends StatelessWidget {
@@ -30,6 +30,9 @@ class AppFilterChip extends StatelessWidget {
             constraints: const BoxConstraints(minHeight: 48),
             child: Align(
               alignment: Alignment.center,
+              // Shrink to the pill. Without it the Align took the full width wherever the chip
+              // got a bounded width — in a Wrap every chip sat alone on its own line.
+              widthFactor: 1,
               // Soft selected state (tint + accent text), matching the Messages
               // Chats/Groups track, rather than a solid fill competing with the
               // screen's primary buttons.
@@ -48,10 +51,10 @@ class AppFilterChip extends StatelessWidget {
                 child: ExcludeSemantics(
                   child: Text(
                     label,
-                    style: GoogleFonts.dmSans(
-                      fontSize: 13,
+                    style: AppTypography.bodySmall.copyWith(
                       fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                      color: selected ? AppColors.primary : AppColors.textMid,
+                      // primaryText, not primary: brand blue on the soft tint is under AA.
+                      color: selected ? AppColors.primaryText : AppColors.textMid,
                     ),
                   ),
                 ),

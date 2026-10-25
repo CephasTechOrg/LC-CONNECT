@@ -142,8 +142,7 @@ class _ScrollToBottomFab extends StatelessWidget {
                     ),
                     child: Text(
                       newCount > 99 ? '99+' : '$newCount',
-                      style: GoogleFonts.dmSans(
-                        fontSize: 10,
+                      style: AppTypography.micro.copyWith(
                         fontWeight: FontWeight.w700,
                         color: Colors.white,
                       ),

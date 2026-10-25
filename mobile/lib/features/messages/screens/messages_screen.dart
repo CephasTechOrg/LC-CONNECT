@@ -21,6 +21,7 @@ import '../../auth/providers/auth_provider.dart';
 import '../../groups/data/group_models.dart';
 import '../utils/chat_routes.dart';
 import '../widgets/messages_segments.dart';
+import '../widgets/staff_tag.dart';
 
 class MessagesScreen extends ConsumerStatefulWidget {
   const MessagesScreen({super.key});
@@ -68,7 +69,10 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
       floatingActionButton: canMessageAnyone
           ? FloatingActionButton(
               onPressed: () => context.push(newMessagePath),
+              tooltip: 'New message',
               backgroundColor: AppColors.primary,
+              // Round, like the Activities create button: one shape for "make something new".
+              shape: const CircleBorder(),
               child: const Icon(Icons.edit_outlined, color: Colors.white),
             )
           : null,
@@ -201,17 +205,19 @@ class _ThreadCard extends ConsumerWidget {
     );
   }
 
-  /// Name (+ verified, + role/major for DMs) on the left, time on the right.
+  /// Name (+ verified, + a Staff tag) on the left, time on the right.
+  ///
+  /// The major or position used to follow the name here and was cut off on most rows
+  /// ("Computer Scien…", "Campus Safety …") — half a label beside every name. The chat header
+  /// shows it in full; the row keeps only what tells conversations apart, and the Staff tag so
+  /// a message from an officer or advisor still stands out from a classmate's.
   Widget _titleRow(ChatMessage? latest, {required bool hasUnread}) {
-    final subtitle = thread.isGroup ? null : (thread.partnerSubtitle ?? thread.partner?.major);
     return Row(
       children: [
         Expanded(
           child: Row(
             children: [
-              // The name wins the space; the role/major yields first.
               Flexible(
-                flex: 3,
                 child: Text(
                   thread.title,
                   maxLines: 1,
@@ -226,17 +232,9 @@ class _ThreadCard extends ConsumerWidget {
                 const SizedBox(width: AppSpacing.xs),
                 const VerifiedBadge(size: 14),
               ],
-              if (subtitle != null) ...[
+              if (thread.isStaffThread && thread.partnerSubtitle != null) ...[
                 const SizedBox(width: 6),
-                Flexible(
-                  flex: 2,
-                  child: Text(
-                    subtitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTypography.caption.copyWith(color: AppColors.textMuted),
-                  ),
-                ),
+                const StaffTag(),
               ],
             ],
           ),
@@ -246,7 +244,7 @@ class _ThreadCard extends ConsumerWidget {
           Text(
             _formatThreadTime(latest.createdAt),
             style: AppTypography.caption.copyWith(
-              color: hasUnread ? AppColors.primary : AppColors.textMuted,
+              color: hasUnread ? AppColors.primaryText : AppColors.textMuted,
               fontWeight: hasUnread ? FontWeight.w700 : FontWeight.w400,
             ),
           ),
@@ -260,14 +258,14 @@ class _ThreadCard extends ConsumerWidget {
       return Text(
         'typing…',
         style: AppTypography.bodySmall.copyWith(
-          color: AppColors.primary,
+          color: AppColors.primaryText,
           fontWeight: FontWeight.w600,
           fontStyle: FontStyle.italic,
         ),
       );
     }
     return Text(
-      latest?.body ?? 'No messages yet — say hello!',
+      latest?.body ?? 'No messages yet — say hello',
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
       style: AppTypography.bodySmall.copyWith(

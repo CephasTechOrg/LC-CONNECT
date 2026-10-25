@@ -3,7 +3,7 @@ export default function AuditLogsPage() {
     <>
       <header className="ops-top">
         <div>
-          <h1>Audit Logs</h1>
+          <h1>Audit logs</h1>
           <p>A record of sensitive admin actions across LC Connect.</p>
         </div>
       </header>

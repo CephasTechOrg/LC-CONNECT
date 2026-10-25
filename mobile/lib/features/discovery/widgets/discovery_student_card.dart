@@ -40,7 +40,6 @@ class _StudentCardState extends State<_StudentCard> {
               e,
               fallback: 'Something went wrong. Please try again.',
             ),
-            style: GoogleFonts.dmSans(),
           ),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
@@ -72,10 +71,11 @@ class _StudentCardState extends State<_StudentCard> {
       label: c.displayName ?? 'Student profile',
       child: Container(
         margin: const EdgeInsets.only(bottom: AppSpacing.md),
+        // The shared card surface (borderless, soft shadow), same as Home and Activities.
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(AppRadii.card),
-          border: Border.all(color: AppColors.border),
+          borderRadius: AppRadii.all(AppRadii.sheet),
+          boxShadow: AppShadows.soft,
         ),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(
@@ -196,7 +196,7 @@ class _StudentCardState extends State<_StudentCard> {
                 const SizedBox(height: AppSpacing.xs),
                 Row(
                   children: [
-                    const Icon(Icons.auto_awesome_rounded, size: 12, color: AppColors.primary),
+                    const Icon(Icons.auto_awesome_rounded, size: 12, color: AppColors.primaryText),
                     const SizedBox(width: AppSpacing.xs),
                     Expanded(
                       child: Text(
@@ -204,7 +204,7 @@ class _StudentCardState extends State<_StudentCard> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: AppTypography.caption.copyWith(
-                          color: AppColors.primary,
+                          color: AppColors.primaryText,
                           fontWeight: FontWeight.w600,
                         ),
                       ),

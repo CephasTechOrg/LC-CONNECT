@@ -4,10 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../core/api/api_error.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/avatar_widget.dart';
 import '../../../shared/widgets/app_shell_header.dart';
 import '../../../shared/widgets/app_skeleton.dart';
@@ -24,7 +24,6 @@ part '../widgets/profile_delete_account.dart';
 part '../widgets/profile_export_account.dart';
 part '../widgets/profile_hero.dart';
 part '../widgets/profile_info_rows.dart';
-part '../widgets/profile_looking_for.dart';
 part '../widgets/profile_preferences.dart';
 part '../widgets/profile_stats.dart';
 part '../widgets/profile_footer.dart';
@@ -83,8 +82,7 @@ class _ProfileBodyState extends ConsumerState<_ProfileBody> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(apiErrorMessage(e, fallback: 'Failed to upload photo. Try again.'),
-                style: GoogleFonts.dmSans()),
+            content: Text(apiErrorMessage(e, fallback: 'Failed to upload photo. Try again.')),
             backgroundColor: AppColors.error,
             behavior: SnackBarBehavior.floating,
             shape:
@@ -126,8 +124,6 @@ class _ProfileBodyState extends ConsumerState<_ProfileBody> {
           ),
           const SizedBox(height: 8),
           _InfoRows(profile: profile),
-          const SizedBox(height: 8),
-          _LookingForSection(lookingFor: profile.lookingFor),
           const SizedBox(height: 8),
           _PreferencesCard(profile: profile),
           const SizedBox(height: 8),

@@ -15,6 +15,7 @@ what you can ask us to do. This describes the app as it actually works.
 |---|---|
 | **Campus email address** | Your identity. It is what you sign in with, and its domain decides whether you are a student or staff. |
 | **Personal email address** | Where we send confirmation codes, password resets and security notices. |
+| **First and last name** | Your real name. LC Connect is for the real campus community, so this is how other students and staff recognise you: it becomes your profile's display name, and it is how the app greets you. |
 | **Password** | Handled entirely by our sign-in provider. **We never see or store your password.** |
 | Display name, pronouns, major, class year, location, bio, profile photo | Your profile |
 | Interests, languages you speak and are learning, what you are looking for | Discovery and matching |
@@ -168,7 +169,7 @@ since the evidence only matters while a case is live.
 
 ### Download your data
 
-You can export your data from the app at any time. The bundle includes your profile, languages and
+You can export your data from the app at any time. The bundle includes your first and last name, your profile, languages and
 interests, connection requests and matches, messages you sent, conversation memberships, groups you
 own, activities, program memberships, your scholar profile, device tokens, blocks, notification
 counts, **and both the reports you filed and the reports filed about you**.
@@ -178,7 +179,7 @@ counts, **and both the reports you filed and the reports filed about you**.
 You can delete your account from the app. It asks you to confirm who you are first, because it
 cannot be undone.
 
-Deleting removes your profile details and photo, deletes your résumé and headshot, anonymises your
+Deleting removes your name, profile details and photo, deletes your résumé and headshot, anonymises your
 account record, revokes any administrator access, and transfers or removes groups you owned. Your
 campus email address is released, so it can be used again.
 

@@ -115,7 +115,7 @@ class _BubbleTile extends StatelessWidget {
                       sender!.name,
                       style: AppTypography.caption.copyWith(
                         fontWeight: FontWeight.w700,
-                        color: AppColors.primary,
+                        color: AppColors.primaryText,
                       ),
                     ),
                   ),
@@ -195,7 +195,9 @@ class _BubbleTile extends StatelessWidget {
     return BoxDecoration(
       color: message.deleted
           ? AppColors.background
-          : (isMine ? AppColors.primary : AppColors.surface),
+          // primaryText, not primary, behind the white text of my own messages: the brand blue is
+          // 4.3:1 with white, under AA for 14px body text; this shade is 5.1:1.
+          : (isMine ? AppColors.primaryText : AppColors.surface),
       borderRadius: BorderRadius.only(
         topLeft: _bubbleRadius,
         topRight: _bubbleRadius,

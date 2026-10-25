@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/avatar_widget.dart';
 import '../../../shared/widgets/verified_badge.dart';
 import '../providers/activities_provider.dart';
@@ -43,10 +43,10 @@ class _ParticipantsSheet extends ConsumerWidget {
             padding: const EdgeInsets.fromLTRB(20, 14, 20, 8),
             child: Row(
               children: [
-                Text('Going', style: GoogleFonts.dmSans(fontSize: 17, fontWeight: FontWeight.w700, color: AppColors.textDark)),
+                Text('Going', style: AppTypography.title.copyWith(color: AppColors.textDark)),
                 const SizedBox(width: 6),
                 async.maybeWhen(
-                  data: (p) => Text('· ${p.length}', style: GoogleFonts.dmSans(fontSize: 15, color: AppColors.textMuted)),
+                  data: (p) => Text('· ${p.length}', style: AppTypography.bodyLarge.copyWith(color: AppColors.textMuted)),
                   orElse: () => const SizedBox.shrink(),
                 ),
               ],
@@ -57,10 +57,10 @@ class _ParticipantsSheet extends ConsumerWidget {
             child: async.when(
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (_, _) => Center(
-                child: Text("Couldn't load the list", style: GoogleFonts.dmSans(color: AppColors.textMuted)),
+                child: Text("Couldn't load the list", style: AppTypography.body.copyWith(color: AppColors.textMuted)),
               ),
               data: (people) => people.isEmpty
-                  ? Center(child: Text('No one yet', style: GoogleFonts.dmSans(color: AppColors.textMuted)))
+                  ? Center(child: Text('No one yet', style: AppTypography.body.copyWith(color: AppColors.textMuted)))
                   : ListView.builder(
                       controller: controller,
                       itemCount: people.length,
@@ -90,7 +90,7 @@ class _ParticipantTile extends StatelessWidget {
           Flexible(
             child: Text(participant.name,
                 overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textDark)),
+                style: AppTypography.body.copyWith(fontWeight: FontWeight.w600, color: AppColors.textDark)),
           ),
           if (participant.campusVerified) ...[
             const SizedBox(width: 4),
@@ -103,7 +103,7 @@ class _ParticipantTile extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
               decoration: BoxDecoration(color: AppColors.primarySoft, borderRadius: BorderRadius.circular(20)),
               child: Text('Organizer',
-                  style: GoogleFonts.dmSans(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.primary)),
+                  style: AppTypography.caption.copyWith(fontWeight: FontWeight.w600, color: AppColors.primaryText)),
             )
           : (pid != null ? const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted) : null),
     );

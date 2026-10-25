@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/api/api_error.dart';
+import '../../../core/theme/app_radii.dart';
+import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_typography.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../widgets/policy_links.dart';
 
@@ -47,7 +49,6 @@ class _PolicyGateScreenState extends ConsumerState<PolicyGateScreen> {
               error,
               fallback: "We couldn't save that. Check your connection and try again.",
             ),
-            style: GoogleFonts.dmSans(),
           ),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
@@ -70,7 +71,12 @@ class _PolicyGateScreenState extends ConsumerState<PolicyGateScreen> {
           children: [
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.xxl,
+                  AppSpacing.xxxl,
+                  AppSpacing.xxl,
+                  AppSpacing.xxl,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -88,41 +94,30 @@ class _PolicyGateScreenState extends ConsumerState<PolicyGateScreen> {
                           child: Text(
                             'LC Connect',
                             overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.dmSans(
-                              fontSize: 17,
+                            style: AppTypography.titleSmall.copyWith(
                               fontWeight: FontWeight.w700,
                               color: AppColors.textDark,
-                              letterSpacing: -0.3,
                             ),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 26),
+                    const SizedBox(height: AppSpacing.xxl),
                     Text(
                       'Before you continue',
-                      style: GoogleFonts.dmSans(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.textDark,
-                        letterSpacing: -0.5,
-                      ),
+                      style: AppTypography.display.copyWith(color: AppColors.textDark),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: AppSpacing.sm),
                     Text(
                       'Please read the Terms of Service and Privacy Policy, then accept to '
                       'continue.',
-                      style: GoogleFonts.dmSans(
-                        fontSize: 14.5,
-                        color: AppColors.textMuted,
-                        height: 1.55,
-                      ),
+                      style: AppTypography.body.copyWith(color: AppColors.textMuted, height: 1.5),
                     ),
-                    const SizedBox(height: 22),
+                    const SizedBox(height: AppSpacing.xl),
                     const _GateSummary(),
-                    const SizedBox(height: 26),
-                    const _Eyebrow('Read in full'),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: AppSpacing.xxl),
+                    const _SectionLabel('Read in full'),
+                    const SizedBox(height: AppSpacing.sm),
                     const PolicyLinkList(),
                   ],
                 ),
@@ -142,21 +137,17 @@ class _PolicyGateScreenState extends ConsumerState<PolicyGateScreen> {
   }
 }
 
-/// Small uppercase section label.
-class _Eyebrow extends StatelessWidget {
+/// Section label in sentence case, like the day labels and group headings elsewhere — not the
+/// spaced capitals it used to be.
+class _SectionLabel extends StatelessWidget {
   final String text;
-  const _Eyebrow(this.text);
+  const _SectionLabel(this.text);
 
   @override
   Widget build(BuildContext context) {
     return Text(
-      text.toUpperCase(),
-      style: GoogleFonts.dmSans(
-        fontSize: 11,
-        fontWeight: FontWeight.w700,
-        letterSpacing: 0.8,
-        color: AppColors.textMuted,
-      ),
+      text,
+      style: AppTypography.label.copyWith(fontWeight: FontWeight.w700, color: AppColors.textMuted),
     );
   }
 }
@@ -182,31 +173,27 @@ class _GateSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // A soft brand tint, no outline: it is reassurance, not a form to fill in.
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: AppSpacing.cardPadding,
       decoration: BoxDecoration(
-        color: AppColors.background,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
+        color: AppColors.primarySoft,
+        borderRadius: AppRadii.all(AppRadii.sheet),
       ),
       child: Column(
         children: [
           for (final (index, (icon, text)) in _points.indexed)
             Padding(
-              padding: EdgeInsets.only(bottom: index == _points.length - 1 ? 0 : 14),
+              padding: EdgeInsets.only(bottom: index == _points.length - 1 ? 0 : AppSpacing.md),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(icon, size: 18, color: AppColors.primary),
-                  const SizedBox(width: 12),
+                  Icon(icon, size: 18, color: AppColors.primaryText),
+                  const SizedBox(width: AppSpacing.md),
                   Expanded(
                     child: Text(
                       text,
-                      style: GoogleFonts.dmSans(
-                        fontSize: 13.5,
-                        color: AppColors.textMid,
-                        height: 1.45,
-                      ),
+                      style: AppTypography.body.copyWith(color: AppColors.textMid, height: 1.45),
                     ),
                   ),
                 ],
@@ -237,98 +224,99 @@ class _GateActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final active = accepted && !saving;
     return Container(
-      padding: const EdgeInsets.fromLTRB(24, 14, 24, 18),
+      padding: EdgeInsets.fromLTRB(
+        AppSpacing.xxl,
+        AppSpacing.sm,
+        AppSpacing.xxl,
+        AppSpacing.md + MediaQuery.of(context).viewPadding.bottom,
+      ),
       decoration: const BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         border: Border(top: BorderSide(color: AppColors.border)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(
-                width: 26,
-                height: 26,
-                child: Checkbox(
-                  value: accepted,
-                  onChanged: saving ? null : (value) => onChanged(value ?? false),
-                  activeColor: AppColors.primary,
-                  visualDensity: VisualDensity.compact,
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                  side: const BorderSide(color: AppColors.border, width: 1.5),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 3),
-                  child: RichText(
-                    text: TextSpan(
-                      style: GoogleFonts.dmSans(
-                        fontSize: 13,
-                        height: 1.45,
-                        color: AppColors.textMid,
-                      ),
-                      children: [
-                        const TextSpan(text: 'I agree to the '),
-                        ...policyPairSpans(context),
-                        const TextSpan(text: '.'),
-                      ],
+          // The whole line toggles, not only the 18dp box. The policy names inside it stay their
+          // own links: their recognizers win the tap they sit under.
+          InkWell(
+            onTap: saving ? null : () => onChanged(!accepted),
+            borderRadius: AppRadii.all(AppRadii.lg),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: 26,
+                    height: 26,
+                    child: Checkbox(
+                      value: accepted,
+                      onChanged: saving ? null : (value) => onChanged(value ?? false),
+                      activeColor: AppColors.primary,
+                      visualDensity: VisualDensity.compact,
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                      side: const BorderSide(color: AppColors.border, width: 1.5),
                     ),
                   ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Opacity(
-            opacity: active ? 1 : 0.45,
-            child: GestureDetector(
-              onTap: active ? onAccept : null,
-              child: Container(
-                height: 48,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [Color(0xFF5A94C2), Color(0xFF3E7EB4)],
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                alignment: Alignment.center,
-                child: saving
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white),
-                      )
-                    : Text(
-                        'Accept and continue',
-                        style: GoogleFonts.dmSans(
-                          color: Colors.white,
-                          fontSize: 15.5,
-                          fontWeight: FontWeight.w700,
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 3),
+                      child: Text.rich(
+                        TextSpan(
+                          style: AppTypography.bodySmall.copyWith(
+                            height: 1.45,
+                            color: AppColors.textMid,
+                          ),
+                          children: [
+                            const TextSpan(text: 'I agree to the '),
+                            ...policyPairSpans(context),
+                            const TextSpan(text: '.'),
+                          ],
                         ),
                       ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: AppSpacing.sm),
+          // The same solid pill as every primary action. Disabled until ticked — visibly not ready,
+          // rather than a faded gradient that still looked pressable.
+          FilledButton(
+            onPressed: (accepted && !saving) ? onAccept : null,
+            style: FilledButton.styleFrom(
+              minimumSize: const Size.fromHeight(52),
+              shape: RoundedRectangleBorder(borderRadius: AppRadii.all(AppRadii.full)),
+              disabledBackgroundColor: saving ? AppColors.primary : null,
+            ),
+            child: saving
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                  )
+                : Text(
+                    'Accept and continue',
+                    style: AppTypography.bodyLarge.copyWith(fontWeight: FontWeight.w700),
+                  ),
+          ),
           // The way out. The router will not let a user leave this screen any other way, and the
           // onboarding lock taught us what a forced screen with no exit costs.
           Center(
             child: TextButton(
               onPressed: onSignOut,
-              style: TextButton.styleFrom(foregroundColor: AppColors.textMuted),
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.textMuted,
+                minimumSize: const Size(48, 48),
+              ),
               child: Text(
                 'Sign out',
-                style: GoogleFonts.dmSans(fontSize: 13.5, fontWeight: FontWeight.w600),
+                style: AppTypography.body.copyWith(fontWeight: FontWeight.w600),
               ),
             ),
           ),

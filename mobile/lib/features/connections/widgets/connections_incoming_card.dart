@@ -23,9 +23,9 @@ class _IncomingCardState extends ConsumerState<_IncomingCard> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              '🎉 You matched with ${widget.request.partnerProfile?.displayName ?? 'them'}!',
+              "You're now connected with ${widget.request.partnerProfile?.displayName ?? 'them'}",
             ),
-            backgroundColor: AppColors.green,
+            backgroundColor: _successGreen,
           ),
         );
       }
@@ -64,123 +64,71 @@ class _IncomingCardState extends ConsumerState<_IncomingCard> {
     }
   }
 
+  /// AA for white text; the brand [AppColors.green] is ~2.5:1 under a white label.
+  static const _successGreen = AppColors.green;
+
   @override
   Widget build(BuildContext context) {
     final r = widget.request;
     final p = r.partnerProfile;
+    final intent = _intentLabel(r.intent);
+    final note = r.note?.trim() ?? '';
 
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-        boxShadow: const [
-          BoxShadow(
-              color: Color(0x0A000000), blurRadius: 8, offset: Offset(0, 2)),
-        ],
+    return AppCard(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.lg,
+        AppSpacing.lg,
+        AppSpacing.sm,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Avatar + name row
-          GestureDetector(
-            onTap: p != null
-                ? () => context.push(
-                      '/users/${p.profileId}',
-                      extra: p.displayName,
-                    )
-                : null,
-            child: Row(
-            children: [
-              _Avatar(avatarUrl: p?.avatarUrl),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Flexible(
-                          child: Text(
-                            p?.displayName ?? 'LC Student',
-                            overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.dmSans(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.textDark,
-                            ),
-                          ),
-                        ),
-                        if (p?.campusVerified ?? false) ...[
-                          const SizedBox(width: 4),
-                          const VerifiedBadge(size: 14),
-                        ],
-                      ],
-                    ),
-                    if (p?.major != null)
-                      Text(
-                        p!.major!,
-                        style: GoogleFonts.dmSans(
-                            fontSize: 12, color: AppColors.textMuted),
-                      ),
-                  ],
-                ),
-              ),
-              Text(
-                _timeAgo(r.createdAt),
-                style: GoogleFonts.dmSans(
-                    fontSize: 11, color: AppColors.textMuted),
-              ),
-            ],
-            ),
-          ),
-          // Intent badge
-          if (r.intent != null) ...[
-            const SizedBox(height: 10),
-            _IntentBadge(intent: r.intent!),
+          _PersonRow(profile: p, meta: _metaLine(p, _timeAgo(r.createdAt))),
+          if (intent != null) ...[
+            const SizedBox(height: AppSpacing.md),
+            _IntentChip(intent: r.intent!, label: intent),
           ],
-          // Note
-          if (r.note != null && r.note!.isNotEmpty) ...[
-            const SizedBox(height: 8),
+          if (note.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.md),
+            // A quiet block, not a bordered italic box: the note is the sender's own words, so
+            // it reads as a message rather than as another piece of card chrome.
             Container(
               width: double.infinity,
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.md,
+                vertical: 10,
+              ),
               decoration: BoxDecoration(
                 color: AppColors.background,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppColors.border),
+                borderRadius: AppRadii.all(AppRadii.lg),
               ),
               child: Text(
-                '"${r.note}"',
-                style: GoogleFonts.dmSans(
-                  fontSize: 12,
+                '"$note"',
+                style: AppTypography.bodySmall.copyWith(
                   color: AppColors.textMid,
-                  fontStyle: FontStyle.italic,
+                  height: 1.45,
                 ),
               ),
             ),
           ],
-          const SizedBox(height: 12),
-          // Accept / Decline buttons
+          const SizedBox(height: AppSpacing.sm),
           Row(
             children: [
               Expanded(
                 child: _ActionButton(
                   label: 'Decline',
                   loading: _declining,
-                  outlined: true,
+                  filled: false,
                   onTap: _decline,
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: _ActionButton(
                   label: 'Accept',
                   loading: _accepting,
-                  outlined: false,
+                  filled: true,
                   onTap: _accept,
                 ),
               ),

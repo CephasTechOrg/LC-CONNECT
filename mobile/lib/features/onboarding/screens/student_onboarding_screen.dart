@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../../core/api/api_error.dart';
+import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_typography.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../data/suggested_name.dart';
 import '../providers/onboarding_provider.dart';
+import '../widgets/onboarding_header.dart';
 import '../widgets/onboarding_shared_widgets.dart';
 
 class StudentOnboardingScreen extends ConsumerStatefulWidget {
@@ -42,15 +45,7 @@ class _StudentOnboardingScreenState extends ConsumerState<StudentOnboardingScree
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final user = ref.read(authNotifierProvider).asData?.value;
       if (user != null && _nameCtrl.text.isEmpty) {
-        final prefix = user.email.split('@').first;
-        _nameCtrl.text = prefix
-            .replaceAll(RegExp(r'[._\-]'), ' ')
-            .split(' ')
-            .map((w) => w.isEmpty
-                ? ''
-                : w[0].toUpperCase() + w.substring(1).toLowerCase())
-            .join(' ')
-            .trim();
+        _nameCtrl.text = suggestedDisplayName(user);
       }
     });
   }
@@ -116,7 +111,6 @@ class _StudentOnboardingScreenState extends ConsumerState<StudentOnboardingScree
         SnackBar(
           content: Text(
             apiErrorMessage(error, fallback: 'Something went wrong. Please try again.'),
-            style: GoogleFonts.dmSans(),
           ),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
@@ -144,7 +138,6 @@ class _StudentOnboardingScreenState extends ConsumerState<StudentOnboardingScree
           content: Text(
             'Your profile was saved, but we could not finish setting up. '
             'Check your connection and retry.',
-            style: GoogleFonts.dmSans(),
           ),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
@@ -166,7 +159,7 @@ class _StudentOnboardingScreenState extends ConsumerState<StudentOnboardingScree
     final lookups = ref.watch(lookupDataProvider);
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.surface,
       body: SafeArea(
         child: Column(
           children: [
@@ -182,9 +175,8 @@ class _StudentOnboardingScreenState extends ConsumerState<StudentOnboardingScree
                       const Icon(Icons.wifi_off_rounded,
                           size: 48, color: AppColors.textMuted),
                       const SizedBox(height: 12),
-                      Text('Failed to load options',
-                          style: GoogleFonts.dmSans(
-                              color: AppColors.textMuted)),
+                      Text("Couldn't load the options",
+                          style: AppTypography.body.copyWith(color: AppColors.textMuted)),
                       const SizedBox(height: 12),
                       TextButton(
                         onPressed: () => ref.invalidate(lookupDataProvider),
@@ -194,7 +186,8 @@ class _StudentOnboardingScreenState extends ConsumerState<StudentOnboardingScree
                   ),
                 ),
                 data: (data) => SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(22, 4, 22, 32),
+                  padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.gutter, AppSpacing.xs, AppSpacing.gutter, AppSpacing.xxxl),
                   child: _buildStepContent(data),
                 ),
               ),
@@ -214,77 +207,24 @@ class _StudentOnboardingScreenState extends ConsumerState<StudentOnboardingScree
   }
 
   // ── Header ────────────────────────────────────────────────────────
-  Widget _buildHeader() {
-    final titles = ['About You', 'Your Vibe', 'Connect'];
-    final subtitles = [
-      'Help others find you on campus',
-      'Share what makes you unique',
-      'Who are you looking to meet?',
-    ];
+  static const _stepTitles = ['About you', 'Your vibe', 'Connect'];
+  static const _stepSubtitles = [
+    'Help others find you on campus',
+    'Share what makes you unique',
+    'Who are you looking to meet?',
+  ];
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(22, 20, 22, 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
-                  color: AppColors.primary,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  'LC',
-                  style: GoogleFonts.dmSans(
-                    color: Colors.white,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  'Set Up Your Profile',
-                  style: GoogleFonts.dmSans(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textDark,
-                  ),
-                ),
-              ),
-              // The only way out of onboarding — see [OnboardingSignOutButton].
-              const OnboardingSignOutButton(),
-            ],
-          ),
-          const SizedBox(height: 20),
-          OnboardingStepIndicator(currentStep: _step, totalSteps: _totalSteps),
-          const SizedBox(height: 18),
-          Text(
-            titles[_step],
-            style: GoogleFonts.dmSans(
-              fontSize: 22,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textDark,
-              letterSpacing: -0.5,
-            ),
-          ),
-          const SizedBox(height: 3),
-          Text(
-            subtitles[_step],
-            style: GoogleFonts.dmSans(
-                fontSize: 13.5, color: AppColors.textMuted),
-          ),
-          const SizedBox(height: 18),
-          const Divider(color: AppColors.border, height: 1),
-        ],
-      ),
-    );
-  }
+  Widget _buildHeader() => OnboardingHeader(
+        // The first screen after signup, so it greets them by the name they just gave.
+        flowTitle: onboardingWelcome(
+          ref.watch(authNotifierProvider).asData?.value,
+          fallback: 'Set up your profile',
+        ),
+        step: _step,
+        totalSteps: _totalSteps,
+        stepTitle: _stepTitles[_step],
+        stepSubtitle: _stepSubtitles[_step],
+      );
 
   // ── Step content router ────────────────────────────────────────────
   Widget _buildStepContent(LookupData data) {
@@ -306,13 +246,11 @@ class _StudentOnboardingScreenState extends ConsumerState<StudentOnboardingScree
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 20),
-        OnboardingLabel('Full Name'),
+        OnboardingLabel('Full name'),
         TextFormField(
           controller: _nameCtrl,
           onChanged: (_) => setState(() {}),
           textCapitalization: TextCapitalization.words,
-          style:
-              GoogleFonts.dmSans(fontSize: 14, color: AppColors.textDark),
           decoration: const InputDecoration(
             hintText: 'Your display name',
             prefixIcon: Icon(Icons.person_outline_rounded,
@@ -323,8 +261,6 @@ class _StudentOnboardingScreenState extends ConsumerState<StudentOnboardingScree
         OnboardingLabel('Pronouns', optional: true),
         TextFormField(
           controller: _pronounsCtrl,
-          style:
-              GoogleFonts.dmSans(fontSize: 14, color: AppColors.textDark),
           decoration: const InputDecoration(
             hintText: 'e.g., she/her, he/him, they/them',
             prefixIcon: Icon(Icons.tag_rounded,
@@ -337,8 +273,6 @@ class _StudentOnboardingScreenState extends ConsumerState<StudentOnboardingScree
           controller: _majorCtrl,
           onChanged: (_) => setState(() {}),
           textCapitalization: TextCapitalization.words,
-          style:
-              GoogleFonts.dmSans(fontSize: 14, color: AppColors.textDark),
           decoration: const InputDecoration(
             hintText: 'e.g., Business Administration',
             prefixIcon: Icon(Icons.school_outlined,
@@ -346,12 +280,13 @@ class _StudentOnboardingScreenState extends ConsumerState<StudentOnboardingScree
           ),
         ),
         const SizedBox(height: 16),
-        OnboardingLabel('Class Year'),
+        OnboardingLabel('Class year'),
         DropdownButtonFormField<int>(
           initialValue: _classYear,
           onChanged: (v) => setState(() => _classYear = v),
-          style:
-              GoogleFonts.dmSans(fontSize: 14, color: AppColors.textDark),
+          // A dropdown styles its hint from `style`; without it the hint rendered bold, unlike the
+          // text fields above.
+          style: AppTypography.body.copyWith(color: AppColors.textDark),
           decoration: const InputDecoration(
             hintText: 'Select graduation year',
             prefixIcon: Icon(Icons.calendar_today_outlined,
@@ -372,13 +307,11 @@ class _StudentOnboardingScreenState extends ConsumerState<StudentOnboardingScree
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 20),
-        OnboardingLabel('Short Bio', optional: true),
+        OnboardingLabel('Short bio', optional: true),
         TextFormField(
           controller: _bioCtrl,
           maxLines: 4,
           maxLength: 500,
-          style:
-              GoogleFonts.dmSans(fontSize: 14, color: AppColors.textDark),
           decoration: const InputDecoration(
             hintText: 'Tell people about yourself...',
             alignLabelWithHint: true,
@@ -388,8 +321,6 @@ class _StudentOnboardingScreenState extends ConsumerState<StudentOnboardingScree
         OnboardingLabel('Where are you from?', optional: true),
         TextFormField(
           controller: _locationCtrl,
-          style:
-              GoogleFonts.dmSans(fontSize: 14, color: AppColors.textDark),
           decoration: const InputDecoration(
             hintText: 'e.g., Atlanta, GA',
             prefixIcon: Icon(Icons.location_on_outlined,
@@ -398,7 +329,6 @@ class _StudentOnboardingScreenState extends ConsumerState<StudentOnboardingScree
         ),
         const SizedBox(height: 22),
         OnboardingLabel('Interests', optional: true),
-        const SizedBox(height: 10),
         OnboardingChipGrid(
           options: [...data.interests, ..._customInterests],
           selected: _interests,
@@ -423,25 +353,14 @@ class _StudentOnboardingScreenState extends ConsumerState<StudentOnboardingScree
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 20),
-        Row(
-          children: [
-            Text(
-              "I'm open to",
-              style: GoogleFonts.dmSans(
-                fontSize: 13.5,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textDark,
-              ),
-            ),
-            const SizedBox(width: 6),
-            Text(
-              '(pick at least one)',
-              style: GoogleFonts.dmSans(
-                  fontSize: 12, color: AppColors.primary),
-            ),
-          ],
+        // The one required group on this step says so in the label's own muted words — it used
+        // to be blue, colour that meant nothing the rest of the form did not also mean.
+        const OnboardingLabel("I'm open to"),
+        Text(
+          'Pick at least one',
+          style: AppTypography.label.copyWith(color: AppColors.textMuted),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: AppSpacing.xs),
         OnboardingChipGrid(
           options: data.lookingFor.map((l) => l['name']!).toList(),
           optionKeys: data.lookingFor.map((l) => l['code']!).toList(),
@@ -451,11 +370,9 @@ class _StudentOnboardingScreenState extends ConsumerState<StudentOnboardingScree
                 ? _lookingFor.remove(v)
                 : _lookingFor.add(v);
           }),
-          highlight: true,
         ),
         const SizedBox(height: 24),
         OnboardingLabel('Languages I speak', optional: true),
-        const SizedBox(height: 10),
         OnboardingChipGrid(
           options: [...data.languages, ..._customLanguages],
           selected: _langSpoken,
@@ -472,7 +389,6 @@ class _StudentOnboardingScreenState extends ConsumerState<StudentOnboardingScree
         ),
         const SizedBox(height: 24),
         OnboardingLabel("Languages I'm learning", optional: true),
-        const SizedBox(height: 10),
         OnboardingChipGrid(
           options: [...data.languages, ..._customLanguages],
           selected: _langLearning,

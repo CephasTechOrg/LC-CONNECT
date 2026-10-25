@@ -17,6 +17,13 @@ class AppShadows {
     BoxShadow(color: Color(0x0A111827), blurRadius: 3, offset: Offset(0, 1)),
   ];
 
+  /// A floating surface on the page background: wide, faint, slightly blue — reads as lift
+  /// without an outline. The default for borderless cards and pills.
+  static const soft = <BoxShadow>[
+    BoxShadow(color: Color(0x0F1B3A5C), blurRadius: 24, offset: Offset(0, 8)),
+    BoxShadow(color: Color(0x0A1B3A5C), blurRadius: 3, offset: Offset(0, 1)),
+  ];
+
   /// Something genuinely above the page: a sheet, a menu, a floating action.
   static const raised = <BoxShadow>[
     BoxShadow(color: Color(0x14111827), blurRadius: 16, offset: Offset(0, 4)),

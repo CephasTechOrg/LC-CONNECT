@@ -36,6 +36,11 @@ class User(Base):
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     # Personal inbox for auth OTP (signup/recovery). Campus identity stays in `email`.
     contact_email: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
+    # Legal-style first and last name, entered at signup (Supabase metadata, validated by
+    # app/shared/person_names.py). Nullable: accounts created before signup asked for them have
+    # none. Distinct from `Profile.display_name`, which the user may shorten or change.
+    first_name: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    last_name: Mapped[str | None] = mapped_column(String(50), nullable=True)
     # Admin-granted LC community badge — distinct from `is_verified` (email OTP done).
     campus_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, index=True)
     campus_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

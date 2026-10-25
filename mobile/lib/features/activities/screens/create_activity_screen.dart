@@ -4,11 +4,14 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import '../../../core/api/api_error.dart';
+import '../../../core/theme/app_radii.dart';
+import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_typography.dart';
+import '../../../shared/widgets/app_form_section.dart';
 import '../providers/activities_provider.dart';
 
 part '../widgets/activity_form_fields.dart';
@@ -171,7 +174,7 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
       }
       if (!mounted) return;
       Navigator.of(context).pop();
-      _snack(_isEdit ? 'Activity updated' : 'Activity created!');
+      _snack(_isEdit ? 'Activity updated' : 'Activity created');
     } catch (e) {
       if (!mounted) return;
       setState(() => _submitting = false);
@@ -181,7 +184,7 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
 
   void _snack(String message, {bool error = false}) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(message, style: GoogleFonts.dmSans()),
+      content: Text(message),
       backgroundColor: error ? AppColors.error : null,
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -193,23 +196,23 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: Text(_isEdit ? 'Edit Activity' : 'Create Activity'),
+        title: Text(_isEdit ? 'Edit activity' : 'Create activity'),
         leading: IconButton(
           icon: const Icon(Icons.close_rounded),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
-      bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
-          color: AppColors.surface,
-          border: Border(top: BorderSide(color: AppColors.border)),
-        ),
-        padding: EdgeInsets.fromLTRB(
-            20, 12, 20, 12 + MediaQuery.of(context).viewPadding.bottom),
+      bottomNavigationBar: AppFormActionBar(
         child: ListenableBuilder(
           listenable: Listenable.merge([_titleCtrl, _locationCtrl]),
           builder: (_, _) => FilledButton(
             onPressed: _canSubmit ? _submit : null,
+            // The same full pill as Join and the Blueprint Bond Save, so the primary action looks
+            // the same on every page.
+            style: FilledButton.styleFrom(
+              minimumSize: const Size.fromHeight(52),
+              shape: RoundedRectangleBorder(borderRadius: AppRadii.all(AppRadii.full)),
+            ),
             child: _submitting
                 ? const SizedBox(
                     width: 20,
@@ -218,141 +221,116 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
                         strokeWidth: 2, color: Colors.white),
                   )
                 : Text(
-                    _isEdit ? 'Save changes' : 'Create Activity',
-                    style: GoogleFonts.dmSans(fontWeight: FontWeight.w700),
+                    _isEdit ? 'Save changes' : 'Create activity',
+                    style: AppTypography.bodyLarge.copyWith(fontWeight: FontWeight.w700),
                   ),
           ),
         ),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.gutter,
+          AppSpacing.lg,
+          AppSpacing.gutter,
+          AppSpacing.xxxl,
+        ),
+        // Grouped like the Blueprint Bond form: what you must fill first, in two short sections,
+        // then an "Optional" group. The required and optional fields used to alternate down one
+        // long column, each with "(optional)" in its label.
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Banner (optional) ─────────────────────────────
             _BannerPicker(
               picked: _banner,
               existingUrl: widget.existing?.bannerUrl,
               onTap: _submitting ? null : _pickBanner,
             ),
-            const SizedBox(height: 20),
-
-            // ── Title ─────────────────────────────────────────
-            _Label('Title'),
-            const SizedBox(height: 8),
-            _Field(
-              controller: _titleCtrl,
-              hint: "What's happening?",
-              maxLength: 120,
-            ),
-            const SizedBox(height: 20),
-
-            // ── Category ──────────────────────────────────────
-            _Label('Category'),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: _categories.map((c) {
-                final (code, label, icon) = c;
-                final selected = _category == code;
-                return GestureDetector(
-                  onTap: () => setState(() => _category = code),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 150),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 9),
-                    decoration: BoxDecoration(
-                      color: selected
-                          ? AppColors.primary
-                          : AppColors.surface,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: selected
-                            ? AppColors.primary
-                            : AppColors.border,
-                        width: 1.5,
+            AppFormSection(
+              step: 1,
+              title: 'What',
+              children: [
+                const _Label('Title'),
+                const SizedBox(height: AppSpacing.sm),
+                _Field(
+                  controller: _titleCtrl,
+                  hint: "What's happening?",
+                  maxLength: 120,
+                ),
+                const SizedBox(height: AppSpacing.md),
+                const _Label('Category'),
+                const SizedBox(height: AppSpacing.sm),
+                Wrap(
+                  spacing: AppSpacing.sm,
+                  runSpacing: AppSpacing.sm,
+                  children: [
+                    for (final (code, label, icon) in _categories)
+                      _CategoryChip(
+                        label: label,
+                        icon: icon,
+                        selected: _category == code,
+                        onTap: () => setState(() => _category = code),
                       ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(icon,
-                            size: 15,
-                            color: selected
-                                ? Colors.white
-                                : AppColors.textMuted),
-                        const SizedBox(width: 7),
-                        Text(
-                          label,
-                          style: GoogleFonts.dmSans(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: selected
-                                ? Colors.white
-                                : AppColors.textMid,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }).toList(),
+                  ],
+                ),
+              ],
             ),
-            const SizedBox(height: 20),
-
-            // ── Location ──────────────────────────────────────
-            _Label('Location'),
-            const SizedBox(height: 8),
-            _Field(
-              controller: _locationCtrl,
-              hint: 'Where is it?',
-              prefixIcon: Icons.location_on_outlined,
-              maxLength: 160,
+            AppFormSection(
+              step: 2,
+              title: 'Where and when',
+              children: [
+                const _Label('Location'),
+                const SizedBox(height: AppSpacing.sm),
+                _Field(
+                  controller: _locationCtrl,
+                  hint: 'Where is it?',
+                  prefixIcon: Icons.location_on_outlined,
+                  maxLength: 160,
+                ),
+                const SizedBox(height: AppSpacing.md),
+                const _Label('Starts'),
+                const SizedBox(height: AppSpacing.sm),
+                _DateTimeRow(
+                  date: _startDate,
+                  time: _startTime,
+                  onTapDate: () => _pickDate(isStart: true),
+                  onTapTime: () => _pickTime(isStart: true),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                // End belongs beside Start, so it stays here rather than in the optional group.
+                const _Label('Ends (optional)'),
+                const SizedBox(height: AppSpacing.sm),
+                _DateTimeRow(
+                  date: _endDate,
+                  time: _endTime,
+                  onTapDate: () => _pickDate(isStart: false),
+                  onTapTime: () => _pickTime(isStart: false),
+                ),
+              ],
             ),
-            const SizedBox(height: 20),
-
-            // ── Start date & time ─────────────────────────────
-            _Label('Start'),
-            const SizedBox(height: 8),
-            _DateTimeRow(
-              date: _startDate,
-              time: _startTime,
-              onTapDate: () => _pickDate(isStart: true),
-              onTapTime: () => _pickTime(isStart: true),
+            const AppFormGroupHeading(
+              title: 'Optional',
+              subtitle: 'Not needed to post, but they help people decide to come.',
             ),
-            const SizedBox(height: 16),
-
-            // ── End date & time (optional) ────────────────────
-            _Label('End (optional)'),
-            const SizedBox(height: 8),
-            _DateTimeRow(
-              date: _endDate,
-              time: _endTime,
-              onTapDate: () => _pickDate(isStart: false),
-              onTapTime: () => _pickTime(isStart: false),
-            ),
-            const SizedBox(height: 20),
-
-            // ── Description ───────────────────────────────────
-            _Label('Description (optional)'),
-            const SizedBox(height: 8),
-            _Field(
-              controller: _descCtrl,
-              hint: 'Tell people more about this activity…',
-              maxLines: 4,
-              maxLength: 1000,
-            ),
-            const SizedBox(height: 20),
-
-            // ── Max participants ──────────────────────────────
-            _Label('Max participants (optional)'),
-            const SizedBox(height: 8),
-            _Field(
-              controller: _maxCtrl,
-              hint: 'e.g. 20',
-              keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            AppFormSection(
+              children: [
+                const _Label('Description'),
+                const SizedBox(height: AppSpacing.sm),
+                _Field(
+                  controller: _descCtrl,
+                  hint: 'Tell people more about this activity…',
+                  maxLines: 4,
+                  maxLength: 1000,
+                ),
+                const SizedBox(height: AppSpacing.md),
+                const _Label('Max participants'),
+                const SizedBox(height: AppSpacing.sm),
+                _Field(
+                  controller: _maxCtrl,
+                  hint: 'Leave empty for no limit',
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                ),
+              ],
             ),
           ],
         ),

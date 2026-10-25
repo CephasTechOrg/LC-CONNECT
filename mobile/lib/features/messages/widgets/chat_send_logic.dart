@@ -178,7 +178,7 @@ mixin _ChatSendLogic on _ChatScreenStateBase, _ChatDraftLogic {
     if (disposed || !mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(text, style: GoogleFonts.dmSans(color: Colors.white)),
+        content: Text(text, style: TextStyle(color: Colors.white)),
         backgroundColor: AppColors.error,
         behavior: SnackBarBehavior.floating,
       ),

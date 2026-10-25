@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../core/api/api_error.dart';
+import '../../../core/theme/app_radii.dart';
+import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_typography.dart';
+import '../../../shared/widgets/app_card.dart';
 import '../../../core/widgets/avatar_widget.dart';
 import '../../../shared/widgets/verified_badge.dart';
 import '../../messages/providers/messages_provider.dart';
@@ -49,7 +52,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message, style: GoogleFonts.dmSans(color: Colors.white)),
+        content: Text(message, style: TextStyle(color: Colors.white)),
         backgroundColor: error ? AppColors.error : AppColors.primary,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -76,18 +79,18 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(title, style: GoogleFonts.dmSans(fontWeight: FontWeight.w700)),
-        content: Text(message, style: GoogleFonts.dmSans(color: AppColors.textMid)),
+        title: Text(title, style: TextStyle(fontWeight: FontWeight.w700)),
+        content: Text(message, style: TextStyle(color: AppColors.textMid)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: Text('Cancel', style: GoogleFonts.dmSans(color: AppColors.textMuted)),
+            child: Text('Cancel', style: TextStyle(color: AppColors.textMuted)),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             child: Text(
               confirmLabel,
-              style: GoogleFonts.dmSans(
+              style: TextStyle(
                 fontWeight: FontWeight.w700,
                 color: destructive ? AppColors.error : AppColors.primary,
               ),
@@ -236,7 +239,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
       appBar: AppBar(
         backgroundColor: AppColors.surface,
         elevation: 0,
-        title: Text('Group info', style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, color: AppColors.textDark)),
+        title: Text('Group info', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.textDark)),
         iconTheme: const IconThemeData(color: AppColors.textDark),
       ),
       body: async.when(
@@ -273,7 +276,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
           ),
         if (group.isMember)
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
+            padding: const EdgeInsets.fromLTRB(AppSpacing.gutter, AppSpacing.md, AppSpacing.gutter, 0),
             child: _MuteRow(muted: group.myMuted, onChanged: (_) => _toggleMute(group)),
           ),
         if (group.iCanManage)
@@ -288,7 +291,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
           onBan: (m) => _remove(m, ban: true),
           onRetry: () => ref.invalidate(groupMembersProvider(_gid)),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.sm),
         _FooterActions(
           group: group,
           onReport: _report,

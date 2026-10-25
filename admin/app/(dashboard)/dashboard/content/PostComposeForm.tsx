@@ -234,132 +234,246 @@ export default function PostComposeForm({
     void submit(false);
   }
 
+  const priorityNote =
+    priority === 'urgent'
+      ? 'Urgent posts can send a push notification to everyone in the audience.'
+      : priority === 'important'
+        ? 'Important posts may send a push notification.'
+        : null;
+
   return (
-    <form className="ops-form" onSubmit={onSubmitForm}>
-      <h2>{isNew ? 'New post' : 'Edit post'}</h2>
+    <form className="compose" onSubmit={onSubmitForm} aria-labelledby="compose-title">
+      <button
+        type="button"
+        className="compose-back"
+        onClick={() => {
+          if (isNew) void clearComposeDraft();
+          onCancel();
+        }}
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <path d="m15 6-6 6 6 6" />
+        </svg>
+        All posts
+      </button>
 
-      <div className="grid-2">
-        <div className="field">
-          <label htmlFor="kind">Kind</label>
-          <select id="kind" value={kind} onChange={(e) => onKindChange(e.target.value)} disabled={!isNew}>
-            <option value="announcement">Announcement</option>
-            <option value="opportunity">Opportunity</option>
-          </select>
+      <header className="page-header">
+        <div className="page-header-copy">
+          <h1 id="compose-title">{isNew ? 'New post' : 'Edit post'}</h1>
+          <p>
+            {isNew
+              ? 'Write it, choose who sees it, then publish or keep it as a draft.'
+              : isPublished
+                ? 'This post is live. Changes show on Campus Hub as soon as you save.'
+                : 'This draft is only visible to admins until you publish it.'}
+          </p>
         </div>
-        <div className="field">
-          <label htmlFor="category">Category</label>
-          <select id="category" value={category} onChange={(e) => setCategory(e.target.value)}>
-            {Object.entries(categoriesForKind(kind)).map(([value, label]) => (
-              <option key={value} value={value}>{label}</option>
-            ))}
-          </select>
-        </div>
-        <div className="field">
-          <label htmlFor="priority">Priority</label>
-          <select id="priority" value={priority} onChange={(e) => setPriority(e.target.value)}>
-            <option value="normal">Normal</option>
-            <option value="important">Important</option>
-            <option value="urgent">Urgent</option>
-          </select>
-        </div>
-        <div className="field">
-          <label htmlFor="audience">Audience</label>
-          <select id="audience" value={audience} onChange={(e) => setAudience(e.target.value)}>
-            <option value="all">All</option>
-            <option value="students">Students</option>
-            <option value="staff">Staff</option>
-          </select>
-        </div>
-        <div className="field">
-          <label htmlFor="title">Title</label>
-          <input id="title" value={title} onChange={(e) => setTitle(e.target.value)} required maxLength={200} />
-        </div>
+      </header>
+
+      <div className="compose-grid">
+        {/* What the post says */}
+        <section className="compose-card" aria-label="Content">
+          <div className="compose-field">
+            <label htmlFor="title">Title</label>
+            <input
+              id="title"
+              className="compose-title-input"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              required
+              maxLength={200}
+              placeholder="A short, clear headline"
+              autoFocus={isNew}
+            />
+          </div>
+
+          <div className="compose-field">
+            <label htmlFor="summary">
+              {isOpportunity ? 'Brief summary' : 'Summary'}
+              {isOpportunity ? null : <span className="compose-optional"> · optional</span>}
+            </label>
+            <input
+              id="summary"
+              value={summary}
+              onChange={(e) => setSummary(e.target.value)}
+              maxLength={400}
+              required={isOpportunity}
+              placeholder={isOpportunity ? 'One or two lines students see on the card' : 'One line shown in the feed'}
+            />
+          </div>
+
+          {!isOpportunity ? (
+            <div className="compose-field">
+              <label htmlFor="body">Details</label>
+              <textarea
+                id="body"
+                rows={8}
+                value={body}
+                onChange={(e) => setBody(e.target.value)}
+                required
+                placeholder="Write the full message…"
+              />
+            </div>
+          ) : null}
+
+          {!isOpportunity ? (
+            <PostImageStrip
+              uploaded={uploaded}
+              pending={pending.map((p) => ({ localId: p.localId, previewUrl: p.previewUrl }))}
+              busy={saving}
+              onAddFiles={addFiles}
+              onRemoveUploaded={(imageId) => void removeUploaded(imageId)}
+              onRemovePending={removePending}
+            />
+          ) : null}
+        </section>
+
+        {/* Who sees it, and how */}
+        <aside className="compose-card" aria-label="Settings">
+          <h2>Settings</h2>
+
+          <div className="compose-field">
+            <span className="compose-label" id="kind-label">Type</span>
+            <Segmented
+              labelledBy="kind-label"
+              value={kind}
+              options={[
+                ['announcement', 'Announcement'],
+                ['opportunity', 'Opportunity'],
+              ]}
+              onChange={onKindChange}
+              disabled={!isNew}
+            />
+            {!isNew ? <p className="compose-hint">The type is fixed once a post exists.</p> : null}
+          </div>
+
+          <div className="compose-field">
+            <label htmlFor="category">Category</label>
+            <select id="category" value={category} onChange={(e) => setCategory(e.target.value)}>
+              {Object.entries(categoriesForKind(kind)).map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="compose-field">
+            <span className="compose-label" id="audience-label">Audience</span>
+            <Segmented
+              labelledBy="audience-label"
+              value={audience}
+              options={[
+                ['all', 'Everyone'],
+                ['students', 'Students'],
+                ['staff', 'Staff'],
+              ]}
+              onChange={setAudience}
+            />
+          </div>
+
+          <div className="compose-field">
+            <span className="compose-label" id="priority-label">Priority</span>
+            <Segmented
+              labelledBy="priority-label"
+              value={priority}
+              options={[
+                ['normal', 'Normal'],
+                ['important', 'Important'],
+                ['urgent', 'Urgent'],
+              ]}
+              onChange={setPriority}
+            />
+            {/* Said here, while choosing — not only in a confirm box at the last moment. */}
+            {priorityNote ? <p className="compose-hint warn">{priorityNote}</p> : null}
+          </div>
+
+          <div className="compose-field">
+            <label htmlFor="external_url">
+              {isOpportunity ? 'Application or details link' : 'Link'}
+              <span className="compose-optional"> · optional</span>
+            </label>
+            <input
+              id="external_url"
+              type="url"
+              value={externalUrl}
+              onChange={(e) => setExternalUrl(e.target.value)}
+              placeholder="https://…"
+            />
+          </div>
+
+          <div className="compose-field">
+            <label htmlFor="expires_at">
+              Closes on<span className="compose-optional"> · optional</span>
+            </label>
+            <input id="expires_at" type="date" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} />
+          </div>
+        </aside>
       </div>
 
-      <div className="field">
-        <label htmlFor="summary">{isOpportunity ? 'Brief summary' : 'Summary (optional)'}</label>
-        <input
-          id="summary"
-          value={summary}
-          onChange={(e) => setSummary(e.target.value)}
-          maxLength={400}
-          required={isOpportunity}
-          placeholder={isOpportunity ? 'One or two lines students see on the card' : undefined}
-        />
-      </div>
+      {errorMsg ? <p className="error-banner" role="alert">{errorMsg}</p> : null}
 
-      {!isOpportunity ? (
-        <div className="field">
-          <label htmlFor="body">Body</label>
-          <textarea id="body" rows={4} value={body} onChange={(e) => setBody(e.target.value)} required />
-        </div>
-      ) : null}
-
-      {!isOpportunity ? (
-        <PostImageStrip
-          uploaded={uploaded}
-          pending={pending.map((p) => ({ localId: p.localId, previewUrl: p.previewUrl }))}
-          busy={saving}
-          onAddFiles={addFiles}
-          onRemoveUploaded={(imageId) => void removeUploaded(imageId)}
-          onRemovePending={removePending}
-        />
-      ) : null}
-
-      <div className="grid-2">
-        <div className="field">
-          <label htmlFor="external_url">
-            {isOpportunity ? 'Application / details link' : 'External link (optional)'}
-          </label>
-          <input
-            id="external_url"
-            type="url"
-            value={externalUrl}
-            onChange={(e) => setExternalUrl(e.target.value)}
-            placeholder="https://…"
-          />
-        </div>
-        <div className="field">
-          <label htmlFor="expires_at">Closes on (optional)</label>
-          <input id="expires_at" type="date" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} />
-        </div>
-      </div>
-
-      {errorMsg ? <p className="error-banner">{errorMsg}</p> : null}
-
-      <div className="actions">
-        {isPublished ? (
-          <button className="btn" type="submit" disabled={saving} style={{ width: 'auto' }}>
-            {saving ? 'Saving…' : 'Save changes'}
-          </button>
-        ) : (
-          <>
-            <button className="btn" type="submit" disabled={saving} style={{ width: 'auto' }}>
-              {saving ? 'Saving…' : 'Save draft'}
-            </button>
-            <button
-              className="btn"
-              type="button"
-              disabled={saving}
-              onClick={() => void submit(true)}
-              style={{ width: 'auto' }}
-            >
-              {saving ? 'Working…' : 'Publish'}
-            </button>
-          </>
-        )}
+      {/* Pinned, so publishing never means scrolling back down a long post. One primary action. */}
+      <div className="compose-actions">
+        <span className="compose-status">
+          {isNew && !postId ? 'Your draft is kept on this device until you save it.' : null}
+        </span>
         <button
-          className="btn ghost"
+          className="btn-quiet"
           type="button"
           onClick={() => {
             if (isNew) void clearComposeDraft();
             onCancel();
           }}
-          style={{ width: 'auto' }}
         >
           Cancel
         </button>
+        {isPublished ? (
+          <button className="btn-primary" type="submit" disabled={saving}>
+            {saving ? 'Saving…' : 'Save changes'}
+          </button>
+        ) : (
+          <>
+            <button className="btn-secondary" type="submit" disabled={saving}>
+              {saving ? 'Saving…' : 'Save draft'}
+            </button>
+            <button className="btn-primary" type="button" disabled={saving} onClick={() => void submit(true)}>
+              {saving ? 'Working…' : 'Publish'}
+            </button>
+          </>
+        )}
       </div>
     </form>
+  );
+}
+
+/** A choice of two or three, shown all at once — a tinted track with the selected option raised. */
+function Segmented({
+  value,
+  options,
+  onChange,
+  labelledBy,
+  disabled = false,
+}: {
+  value: string;
+  options: [string, string][];
+  onChange: (value: string) => void;
+  labelledBy: string;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="seg-tabs" role="radiogroup" aria-labelledby={labelledBy}>
+      {options.map(([optionValue, label]) => (
+        <button
+          key={optionValue}
+          type="button"
+          role="radio"
+          aria-checked={value === optionValue}
+          disabled={disabled}
+          className={`seg-tab${value === optionValue ? ' active' : ''}`}
+          onClick={() => onChange(optionValue)}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
   );
 }

@@ -1,15 +1,17 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../models/campus_post.dart';
 import 'campus_post_style.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../core/theme/app_typography.dart';
+import '../../../shared/widgets/app_card.dart';
 
-/// One row on the Announcements list. A 56dp cover thumbnail when the post has photos;
-/// otherwise the tinted category icon. An unread dot marks announcements not yet opened.
+/// One row on the Announcements list. A 56dp cover thumbnail when the post has photos (real
+/// content first); otherwise the category icon on the shared blue tint. An unread dot marks
+/// announcements not yet opened.
 class CampusPostCard extends StatelessWidget {
   final CampusPostSummary post;
   final VoidCallback onTap;
@@ -25,93 +27,82 @@ class CampusPostCard extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(AppSpacing.gutter, 0, AppSpacing.gutter, AppSpacing.sm),
-      child: Material(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(14),
-          child: Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppColors.border),
-              boxShadow: const [
-                BoxShadow(color: Color(0x0A111827), blurRadius: 3, offset: Offset(0, 1)),
-              ],
+      // The shared card surface (borderless, soft shadow), same as Home and Activities.
+      child: AppCard(
+        onTap: onTap,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _CoverThumb(
+              coverUrl: post.coverUrl,
+              badgeBg: badgeBg,
+              badgeColor: badgeColor,
+              icon: icon,
             ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _CoverThumb(
-                  coverUrl: post.coverUrl,
-                  badgeBg: badgeBg,
-                  badgeColor: badgeColor,
-                  icon: icon,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // The title leads, on two lines: a one-line title cut most announcements mid-phrase
+                  // ("Spring registration opens Mon…"), and the title is the whole point of a row.
+                  Text(
+                    post.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.titleSmall.copyWith(
+                      // Read titles de-emphasize; unread stay bold + dark so new ones stand out.
+                      fontWeight: post.read ? FontWeight.w600 : FontWeight.w700,
+                      color: post.read ? AppColors.textMid : AppColors.textDark,
+                    ),
+                  ),
+                  if (post.summary != null && post.summary!.isNotEmpty) ...[
+                    const SizedBox(height: 3),
+                    Text(
+                      post.summary!,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTypography.bodySmall.copyWith(color: AppColors.textMid),
+                    ),
+                  ],
+                  const SizedBox(height: AppSpacing.sm),
+                  // Category and date as one quiet line — hierarchy by position and weight, not by
+                  // a coloured pill per category. The dot is the one colour, and it means "unread".
+                  Row(
                     children: [
-                      Row(
-                        children: [
-                          // Unread dot — cleared once the user opens this announcement.
-                          if (!post.read) ...[
-                            Container(
-                              width: 7,
-                              height: 7,
-                              decoration: const BoxDecoration(
-                                color: AppColors.primary,
-                                shape: BoxShape.circle,
-                              ),
+                      if (!post.read) ...[
+                        Semantics(
+                          label: 'Unread',
+                          child: Container(
+                            width: 7,
+                            height: 7,
+                            decoration: const BoxDecoration(
+                              color: AppColors.primary,
+                              shape: BoxShape.circle,
                             ),
-                            const SizedBox(width: 6),
-                          ],
-                          CampusBadge(label: categoryLabel, color: badgeColor, background: badgeBg),
-                          const Spacer(),
-                          Text(
-                            dateLabel,
-                            style: GoogleFonts.dmSans(fontSize: 11.5, color: AppColors.textMuted),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        post.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.dmSans(
-                          fontSize: 14.5,
-                          // Read titles de-emphasize; unread stay bold + dark so new ones stand out.
-                          fontWeight: post.read ? FontWeight.w600 : FontWeight.w700,
-                          color: post.read ? AppColors.textMid : AppColors.textDark,
-                        ),
-                      ),
-                      if (post.summary != null && post.summary!.isNotEmpty) ...[
-                        const SizedBox(height: 3),
-                        Text(
-                          post.summary!,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.dmSans(
-                            fontSize: 13,
-                            color: AppColors.textMid,
-                            height: 1.35,
                           ),
                         ),
+                        const SizedBox(width: 6),
                       ],
+                      Expanded(
+                        child: Text(
+                          '$categoryLabel · $dateLabel',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTypography.caption.copyWith(color: AppColors.textMuted),
+                        ),
+                      ),
                     ],
                   ),
-                ),
-                const SizedBox(width: 4),
-                const Padding(
-                  padding: EdgeInsets.only(top: 16),
-                  child: Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
+            const SizedBox(width: 4),
+            const Padding(
+              padding: EdgeInsets.only(top: 16),
+              child: Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
+            ),
+          ],
         ),
       ),
     );

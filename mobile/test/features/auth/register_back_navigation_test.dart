@@ -20,7 +20,7 @@ Future<void> _pumpApp(WidgetTester tester, {required String initial}) async {
         body: Center(
           child: TextButton(
             onPressed: () => c.push('/register'),
-            child: const Text('Create account'),
+            child: const Text('Stub login: open register'),
           ),
         ),
       ),
@@ -39,7 +39,9 @@ Future<void> _pumpApp(WidgetTester tester, {required String initial}) async {
 /// says `/login` while RegisterScreen is the visible page.
 void _expectOnRegister(WidgetTester tester, {required bool onRegister}) {
   expect(find.byType(RegisterScreen), onRegister ? findsOneWidget : findsNothing);
-  expect(find.text('Create account'), onRegister ? findsNothing : findsOneWidget);
+  // The stub's own label: register's button also says "Create account", so that text no longer
+  // tells the two pages apart.
+  expect(find.text('Stub login: open register'), onRegister ? findsNothing : findsOneWidget);
 }
 
 void main() {
@@ -51,7 +53,7 @@ void main() {
       // Login used to `go` here, which replaces rather than pushes — so there was nothing to go
       // back to, and Android's back gesture left the app entirely.
       await _pumpApp(tester, initial: '/login');
-      await tester.tap(find.text('Create account'));
+      await tester.tap(find.text('Stub login: open register'));
       await tester.pumpAndSettle();
       _expectOnRegister(tester, onRegister: true);
 
@@ -72,7 +74,7 @@ void main() {
 
     testWidgets('the system back gesture also returns to login', (tester) async {
       await _pumpApp(tester, initial: '/login');
-      await tester.tap(find.text('Create account'));
+      await tester.tap(find.text('Stub login: open register'));
       await tester.pumpAndSettle();
       _expectOnRegister(tester, onRegister: true); // guards against passing vacuously
 

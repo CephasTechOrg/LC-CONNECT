@@ -227,7 +227,10 @@ Future<ScholarInternship?> showInternshipEditor(
                 children: [
                   Text(
                     initial == null ? 'Add internship' : 'Edit internship',
-                    style: AppTypography.title.copyWith(fontWeight: FontWeight.w700, color: AppColors.textDark),
+                    style: AppTypography.title.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textDark,
+                    ),
                   ),
                   const SizedBox(height: 14),
                   _Field(label: 'Role / title', controller: titleCtrl),
@@ -270,7 +273,7 @@ Future<ScholarInternship?> showInternshipEditor(
                       minimumSize: const Size.fromHeight(kMinTouchTarget),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.lg)),
                     ),
-                    child: Text('Save', style: GoogleFonts.dmSans(fontWeight: FontWeight.w700)),
+                    child: Text('Save', style: TextStyle(fontWeight: FontWeight.w700)),
                   ),
                 ],
               ),
@@ -319,7 +322,10 @@ Future<ScholarProject?> showProjectEditor(
             children: [
               Text(
                 initial == null ? 'Add project' : 'Edit project',
-                style: AppTypography.title.copyWith(fontWeight: FontWeight.w700, color: AppColors.textDark),
+                style: AppTypography.title.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textDark,
+                ),
               ),
               const SizedBox(height: 14),
               _Field(label: 'Project name', controller: nameCtrl),
@@ -346,7 +352,7 @@ Future<ScholarProject?> showProjectEditor(
                       minimumSize: const Size.fromHeight(kMinTouchTarget),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.lg)),
                     ),
-                child: Text('Save', style: GoogleFonts.dmSans(fontWeight: FontWeight.w700)),
+                child: Text('Save', style: TextStyle(fontWeight: FontWeight.w700)),
               ),
             ],
           ),

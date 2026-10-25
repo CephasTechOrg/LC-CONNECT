@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { OpsEmpty, OpsLoading } from '@/components/ops-states';
 import { apiFetch, toUserMessage } from '@/lib/api/client';
 import { getAccessToken } from '@/lib/auth/session';
+import { humanize, formatDate } from '@/lib/format';
 
 type Report = {
   id: string;
@@ -67,7 +68,7 @@ function relativeWhen(iso: string): string {
   if (hours < 24) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
   if (days < 7) return `${days}d ago`;
-  return d.toLocaleDateString();
+  return formatDate(iso);
 }
 
 export default function ModerationPage() {
@@ -374,12 +375,12 @@ export default function ModerationPage() {
                       </td>
                       <td data-label="Status">
                         <span className={r.status === 'open' ? 'ops-chip warn' : 'ops-chip muted'}>
-                          {r.status}
+                          {humanize(r.status)}
                         </span>
                       </td>
                       <td className="ops-col-actions ops-cell-actions">
                         <div className="ops-row-actions">
-                          <button className="ops-btn primary" type="button" onClick={() => void openReport(r)}>
+                          <button className="ops-btn" type="button" onClick={() => void openReport(r)}>
                             Review
                           </button>
                         </div>
@@ -427,7 +428,7 @@ export default function ModerationPage() {
                     </div>
                     <div className="ops-drawer-field">
                       <label>Reason</label>
-                      <div style={{ textTransform: 'capitalize' }}>{selected.reason.replaceAll('_', ' ')}</div>
+                      <div>{humanize(selected.reason)}</div>
                     </div>
                     <div className="ops-drawer-field">
                       <label>Submitted</label>

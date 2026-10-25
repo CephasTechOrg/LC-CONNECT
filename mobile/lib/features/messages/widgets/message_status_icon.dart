@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_typography.dart';
 import '../../../shared/util/app_date_format.dart';
 import '../providers/messages_provider.dart';
 
@@ -106,8 +106,7 @@ class MessageStatusIcon extends StatelessWidget {
           const SizedBox(width: 3),
           Text(
             'Retry',
-            style: GoogleFonts.dmSans(
-              fontSize: 11,
+            style: AppTypography.caption.copyWith(
               color: AppColors.error,
               fontWeight: FontWeight.w600,
             ),

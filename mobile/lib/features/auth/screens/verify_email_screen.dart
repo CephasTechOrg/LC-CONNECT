@@ -5,12 +5,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../data/auth_error_messages.dart';
 import '../data/otp_config.dart';
+import '../widgets/auth_page_parts.dart';
 import '../widgets/auth_text_field.dart';
+import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_typography.dart';
 import '../providers/auth_provider.dart';
 
 class VerifyEmailScreen extends ConsumerStatefulWidget {
@@ -104,8 +106,8 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
   }
 
   SnackBar _snackBar(String msg, {required bool isError}) => SnackBar(
-        content: Text(msg, style: GoogleFonts.dmSans()),
-        backgroundColor: isError ? AppColors.error : const Color(0xFF10B981),
+        content: Text(msg),
+        backgroundColor: isError ? AppColors.error : AppColors.green,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       );
@@ -125,74 +127,32 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded,
-              size: 18, color: Color(0xFF111827)),
+              size: 18, color: AppColors.textDark),
           onPressed: _backToLogin,
-          tooltip: 'Back to login',
+          tooltip: 'Back to sign in',
         ),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
+          padding: const EdgeInsets.fromLTRB(AppSpacing.xxl, AppSpacing.sm, AppSpacing.xxl, AppSpacing.xxxl),
           child: Form(
             key: _formKey,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Icon
-                Center(
-                  child: Container(
-                    width: 72,
-                    height: 72,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEFF6FF),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: const Icon(
-                      Icons.mark_email_unread_outlined,
-                      size: 36,
-                      color: Color(0xFF4F8FC2),
-                    ),
-                  ),
+                AuthHeading(
+                  icon: Icons.mark_email_unread_outlined,
+                  title: 'Check your email',
+                  subtitle: [
+                    // No article before the number: "a" read wrong before eight, and "an" would
+                    // read wrong before six if the code length ever changes.
+                    const TextSpan(text: 'We sent a code to '),
+                    authEmphasis(displayEmail.isEmpty ? 'your personal email' : displayEmail),
+                    // Non-breaking space: the count and its noun stay on one line.
+                    TextSpan(text: '. Enter the $kOtpLength\u00A0digits below to verify your account.'),
+                  ],
                 ),
-                const SizedBox(height: 28),
-
-                // Title
-                Text(
-                  'Check your email',
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.dmSans(
-                    fontSize: 26,
-                    fontWeight: FontWeight.w800,
-                    color: const Color(0xFF111827),
-                    letterSpacing: -0.5,
-                  ),
-                ),
-                const SizedBox(height: 10),
-
-                // Subtitle
-                RichText(
-                  textAlign: TextAlign.center,
-                  text: TextSpan(
-                    style: GoogleFonts.dmSans(
-                      fontSize: 14,
-                      color: const Color(0xFF6B7280),
-                      height: 1.6,
-                    ),
-                    children: [
-                      TextSpan(text: 'We sent a $kOtpLength-digit verification code to\n'),
-                      TextSpan(
-                        text: displayEmail.isEmpty ? 'your personal email' : displayEmail,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF111827),
-                        ),
-                      ),
-                      const TextSpan(text: '\nEnter it below to verify your account.'),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 36),
-
+                const SizedBox(height: AppSpacing.xxl),
                 // OTP field
                 AuthTextField(
                   controller: _otpCtrl,
@@ -204,9 +164,7 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
                   textInputAction: TextInputAction.done,
                   onFieldSubmitted: (_) => _verify(),
                   textAlign: TextAlign.center,
-                  textStyle: GoogleFonts.dmSans(
-                    fontSize: 26,
-                    fontWeight: FontWeight.w700,
+                  textStyle: AppTypography.display.copyWith(
                     letterSpacing: 8,
                     color: AppColors.textDark,
                   ),
@@ -216,64 +174,29 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
                 ),
                 const SizedBox(height: 20),
 
-                // Verify button
                 AuthPrimaryButton(
                   label: 'Verify email',
                   loading: _loading,
                   onTap: _verify,
-                  height: 50,
                 ),
-                const SizedBox(height: 28),
-
-                // Resend row
-                Center(
-                  child: _resendCooldown > 0
-                      ? Text(
-                          'Resend code in ${_resendCooldown}s',
-                          style: GoogleFonts.dmSans(
-                            fontSize: 14,
-                            color: const Color(0xFF9CA3AF),
-                          ),
-                        )
-                      : GestureDetector(
-                          onTap: _resending ? null : _resend,
-                          child: RichText(
-                            text: TextSpan(
-                              style: GoogleFonts.dmSans(
-                                fontSize: 14,
-                                color: const Color(0xFF6B7280),
-                              ),
-                              children: [
-                                const TextSpan(text: "Didn't receive it? "),
-                                TextSpan(
-                                  text: _resending ? 'Sending…' : 'Resend code',
-                                  style: GoogleFonts.dmSans(
-                                    color: const Color(0xFF4F8FC2),
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                ),
-                const SizedBox(height: 48),
-
-                // Back to login
-                Center(
-                  child: GestureDetector(
-                    onTap: _backToLogin,
-                    child: Text(
-                      'Back to login',
-                      style: GoogleFonts.dmSans(
-                        fontSize: 13,
-                        color: const Color(0xFF9CA3AF),
-                        decoration: TextDecoration.underline,
-                        decorationColor: const Color(0xFF9CA3AF),
+                const SizedBox(height: AppSpacing.sm),
+                if (_resendCooldown > 0)
+                  SizedBox(
+                    height: kMinInteractiveDimension,
+                    child: Center(
+                      child: Text(
+                        'Resend code in ${_resendCooldown}s',
+                        style: AppTypography.body.copyWith(color: AppColors.textMuted),
                       ),
                     ),
+                  )
+                else
+                  AuthTextLink(
+                    label: _resending ? 'Sending…' : 'Resend code',
+                    onTap: _resending ? null : _resend,
                   ),
-                ),
+                // Same words as every other auth screen: "sign in", never "login".
+                AuthTextLink(label: 'Back to sign in', muted: true, onTap: _backToLogin),
               ],
             ),
           ),

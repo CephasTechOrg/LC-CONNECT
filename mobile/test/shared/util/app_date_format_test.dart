@@ -28,6 +28,20 @@ void main() {
         AppDateFormat.timeRange(instantUtc, null),
         AppDateFormat.timeRange(instantLocal, null),
       );
+      // The date-block helpers: near midnight UTC a missing `.toLocal()` shows the wrong *day*.
+      expect(AppDateFormat.month(instantUtc), AppDateFormat.month(instantLocal));
+      expect(AppDateFormat.dayOfMonth(instantUtc), AppDateFormat.dayOfMonth(instantLocal));
+      expect(AppDateFormat.weekdayTime(instantUtc), AppDateFormat.weekdayTime(instantLocal));
+    });
+
+    test('date-block helpers read the local calendar', () {
+      final local = instantUtc.toLocal();
+      expect(AppDateFormat.month(instantUtc), DateFormat('MMM').format(local));
+      expect(AppDateFormat.dayOfMonth(instantUtc), DateFormat('d').format(local));
+      expect(
+        AppDateFormat.weekdayTime(instantUtc),
+        '${DateFormat('EEE').format(local)} · ${DateFormat('h:mm a').format(local)}',
+      );
     });
 
     test('formats the local wall clock, not the UTC one', () {
@@ -54,6 +68,22 @@ void main() {
       if (offset == Duration.zero) return;
       final rawUtcRendering = DateFormat('h:mm a').format(instantUtc);
       expect(AppDateFormat.time(instantUtc), isNot(rawUtcRendering));
+    });
+  });
+
+  group('compactTimeRange', () {
+    test('says AM/PM once when both ends share it', () {
+      final start = DateTime(2026, 9, 16, 15);
+      expect(AppDateFormat.compactTimeRange(start, DateTime(2026, 9, 16, 17)), '3:00 – 5:00 PM');
+    });
+
+    test('keeps both periods when they differ', () {
+      final start = DateTime(2026, 9, 16, 11);
+      expect(AppDateFormat.compactTimeRange(start, DateTime(2026, 9, 16, 13)), '11:00 AM – 1:00 PM');
+    });
+
+    test('just the start without an end', () {
+      expect(AppDateFormat.compactTimeRange(DateTime(2026, 9, 16, 15), null), '3:00 PM');
     });
   });
 

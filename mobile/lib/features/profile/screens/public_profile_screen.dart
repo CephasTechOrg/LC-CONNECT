@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/avatar_widget.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../../core/api/api_error.dart';
@@ -41,8 +41,7 @@ class PublicProfileScreen extends ConsumerWidget {
         elevation: 0,
         title: Text(
           async.asData?.value.displayName ?? preloadedName ?? 'Profile',
-          style: GoogleFonts.dmSans(
-            fontSize: 16,
+          style: AppTypography.titleSmall.copyWith(
             fontWeight: FontWeight.w700,
             color: AppColors.textDark,
           ),
@@ -98,7 +97,7 @@ class _PublicBodyState extends ConsumerState<_PublicBody> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text("Couldn't start that conversation", style: GoogleFonts.dmSans()),
+          content: Text("Couldn't start that conversation"),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -116,21 +115,21 @@ class _PublicBodyState extends ConsumerState<_PublicBody> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Disconnect?', style: GoogleFonts.dmSans(fontWeight: FontWeight.w700)),
+        title: Text('Disconnect?', style: TextStyle(fontWeight: FontWeight.w700)),
         content: Text(
           "You and $name will no longer be connected, and you won't be able to message each "
           "other. They are not told. Your conversation stays, and you can connect again later.",
-          style: GoogleFonts.dmSans(height: 1.45),
+          style: TextStyle(height: 1.45),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: Text('Cancel', style: GoogleFonts.dmSans()),
+            child: Text('Cancel'),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
             child: Text('Disconnect',
-                style: GoogleFonts.dmSans(
+                style: TextStyle(
                     color: AppColors.error, fontWeight: FontWeight.w700)),
           ),
         ],
@@ -148,7 +147,6 @@ class _PublicBodyState extends ConsumerState<_PublicBody> {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(
           apiErrorMessage(error, fallback: "Couldn't disconnect. Please try again."),
-          style: GoogleFonts.dmSans(),
         ),
         backgroundColor: AppColors.error,
         behavior: SnackBarBehavior.floating,
@@ -175,7 +173,6 @@ class _PublicBodyState extends ConsumerState<_PublicBody> {
         SnackBar(
           content: Text(
             'Connection request sent',
-            style: GoogleFonts.dmSans(),
           ),
           behavior: SnackBarBehavior.floating,
           shape:
@@ -189,7 +186,6 @@ class _PublicBodyState extends ConsumerState<_PublicBody> {
         SnackBar(
           content: Text(
             'Could not send request — please try again',
-            style: GoogleFonts.dmSans(),
           ),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
@@ -222,13 +218,11 @@ class _PublicBodyState extends ConsumerState<_PublicBody> {
               ],
               if (profile.languagesSpoken.isNotEmpty ||
                   profile.languagesLearning.isNotEmpty ||
-                  profile.interests.isNotEmpty) ...[
-                _InfoRows(profile: profile),
-                const SizedBox(height: 8),
-              ],
-              // "Looking for" is student↔student matching intent — hidden when either side is staff.
-              if (!canMessage && profile.lookingFor.isNotEmpty) ...[
-                _LookingForSection(lookingFor: profile.lookingFor),
+                  profile.interests.isNotEmpty ||
+                  (!canMessage && profile.lookingFor.isNotEmpty)) ...[
+                // "Looking for" is student↔student matching intent — hidden when either side is
+                // staff.
+                _InfoRows(profile: profile, showLookingFor: !canMessage),
                 const SizedBox(height: 8),
               ],
               const SizedBox(height: 16),
@@ -286,8 +280,7 @@ class _HeroCard extends StatelessWidget {
                         Flexible(
                           child: Text(
                             profile.displayName ?? 'LC Student',
-                            style: GoogleFonts.dmSans(
-                              fontSize: 20,
+                            style: AppTypography.titleLarge.copyWith(
                               fontWeight: FontWeight.w800,
                               color: AppColors.textDark,
                             ),
@@ -304,8 +297,10 @@ class _HeroCard extends StatelessWidget {
                       const SizedBox(height: 2),
                       Text(
                         profile.pronouns!,
-                        style: GoogleFonts.dmSans(
-                            fontSize: 12, color: AppColors.textMuted),
+                        style: AppTypography.label.copyWith(
+                          fontWeight: FontWeight.w400,
+                          color: AppColors.textMuted,
+                        ),
                       ),
                     ],
                     if (profile.bio != null && profile.bio!.isNotEmpty) ...[
@@ -314,11 +309,8 @@ class _HeroCard extends StatelessWidget {
                         profile.bio!,
                         maxLines: 4,
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.dmSans(
-                          fontSize: 12,
-                          color: AppColors.textMuted,
-                          height: 1.4,
-                        ),
+                        style: AppTypography.label.copyWith(fontWeight: FontWeight.w400, color: AppColors.textMuted,
+                          height: 1.4,),
                       ),
                     ],
                   ],
@@ -374,7 +366,7 @@ class _MetaRow extends StatelessWidget {
         const SizedBox(width: 7),
         Text(
           text,
-          style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.textMid),
+          style: AppTypography.bodySmall.copyWith(color: AppColors.textMid),
         ),
       ],
     );
@@ -385,7 +377,8 @@ class _MetaRow extends StatelessWidget {
 
 class _InfoRows extends StatelessWidget {
   final PublicProfile profile;
-  const _InfoRows({required this.profile});
+  final bool showLookingFor;
+  const _InfoRows({required this.profile, required this.showLookingFor});
 
   @override
   Widget build(BuildContext context) {
@@ -396,7 +389,7 @@ class _InfoRows extends StatelessWidget {
           if (profile.languagesSpoken.isNotEmpty) ...[
             _InfoRow(
               icon: Icons.chat_bubble_outline_rounded,
-              title: 'Languages Spoken',
+              title: 'Languages spoken',
               subtitle: profile.languagesSpoken.join(', '),
             ),
             _divider(),
@@ -415,6 +408,15 @@ class _InfoRows extends StatelessWidget {
               title: 'Interests',
               subtitle: profile.interests.join(', '),
             ),
+          // A row like the others, not a separate block of solid blue pills.
+          if (showLookingFor && profile.lookingFor.isNotEmpty) ...[
+            if (profile.interests.isNotEmpty || profile.languagesLearning.isNotEmpty) _divider(),
+            _InfoRow(
+              icon: Icons.people_outline_rounded,
+              title: 'Looking for',
+              subtitle: profile.lookingFor.join(', '),
+            ),
+          ],
         ],
       ),
     );
@@ -449,8 +451,7 @@ class _InfoRow extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: GoogleFonts.dmSans(
-                    fontSize: 14,
+                  style: AppTypography.body.copyWith(
                     fontWeight: FontWeight.w600,
                     color: AppColors.textDark,
                   ),
@@ -460,79 +461,13 @@ class _InfoRow extends StatelessWidget {
                   subtitle,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.dmSans(
-                      fontSize: 12, color: AppColors.textMuted),
+                  style: AppTypography.label.copyWith(
+                    fontWeight: FontWeight.w400,
+                    color: AppColors.textMuted,
+                  ),
                 ),
               ],
             ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Looking For section ───────────────────────────────────────────
-
-class _LookingForSection extends StatelessWidget {
-  final List<String> lookingFor;
-  const _LookingForSection({required this.lookingFor});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: AppColors.surface,
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.people_outline_rounded,
-                  size: 20, color: AppColors.textMuted),
-              const SizedBox(width: 14),
-              Text(
-                'Looking For',
-                style: GoogleFonts.dmSans(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textDark,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: lookingFor
-                .map(
-                  (label) => Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.check_rounded,
-                            color: Colors.white, size: 13),
-                        const SizedBox(width: 5),
-                        Text(
-                          label,
-                          style: GoogleFonts.dmSans(
-                            fontSize: 12,
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-                .toList(),
           ),
         ],
       ),
@@ -557,15 +492,15 @@ class _ErrorBody extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             'Could not load profile',
-            style: GoogleFonts.dmSans(
-                fontSize: 15, color: AppColors.textMuted),
+            style: AppTypography.bodyLarge.copyWith(
+                color: AppColors.textMuted),
           ),
           const SizedBox(height: 16),
           TextButton(
             onPressed: onRetry,
             child: Text('Retry',
                 style:
-                    GoogleFonts.dmSans(color: AppColors.primary)),
+                    TextStyle(color: AppColors.primaryText)),
           ),
         ],
       ),

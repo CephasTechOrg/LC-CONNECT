@@ -21,7 +21,7 @@ class _UnavailableChat extends StatelessWidget {
         backgroundColor: AppColors.surface,
         foregroundColor: AppColors.textDark,
         elevation: 0,
-        title: Text('Conversation', style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 16)),
+        title: Text('Conversation', style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.w700, )),
       ),
       body: Center(
         child: Padding(
@@ -34,19 +34,22 @@ class _UnavailableChat extends StatelessWidget {
               Text(
                 "This conversation isn't available",
                 textAlign: TextAlign.center,
-                style: GoogleFonts.dmSans(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textDark),
+                style: AppTypography.titleSmall.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textDark,
+                ),
               ),
               const SizedBox(height: 6),
               Text(
                 'It may have been closed or the link was incomplete.',
                 textAlign: TextAlign.center,
-                style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.textMuted),
+                style: AppTypography.bodySmall.copyWith(color: AppColors.textMuted),
               ),
               const SizedBox(height: 20),
               FilledButton(
                 onPressed: () => context.canPop() ? context.pop() : context.go('/messages'),
                 style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
-                child: Text('Back to messages', style: GoogleFonts.dmSans(fontWeight: FontWeight.w700)),
+                child: Text('Back to messages', style: TextStyle(fontWeight: FontWeight.w700)),
               ),
             ],
           ),

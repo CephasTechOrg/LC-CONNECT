@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:permission_handler/permission_handler.dart';
 
@@ -248,6 +247,15 @@ class _AttendanceScannerScreenState extends ConsumerState<AttendanceScannerScree
         _ScannerError.closed || _ScannerError.ineligible || null => null,
       };
 
+  /// How the result screen presents the error — its title, colour and button label.
+  AttendanceIssue get _issue => switch (_error) {
+        _ScannerError.eligibilityUnknown => AttendanceIssue.connection,
+        _ScannerError.ineligible => AttendanceIssue.notAvailable,
+        _ScannerError.closed => AttendanceIssue.closed,
+        _ScannerError.badCode => AttendanceIssue.badCode,
+        _ScannerError.checkInFailed || null => AttendanceIssue.failed,
+      };
+
   VoidCallback? get _dismissAction => switch (_error) {
         _ScannerError.closed || _ScannerError.ineligible => () => context.pop(),
         _ => null,
@@ -259,10 +267,7 @@ class _AttendanceScannerScreenState extends ConsumerState<AttendanceScannerScree
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: Text(
-          'Honors Attendance',
-          style: GoogleFonts.dmSans(fontWeight: FontWeight.w700),
-        ),
+        title: const Text('Honors attendance'),
       ),
       body: switch (_phase) {
         _ScannerPhase.loading || _ScannerPhase.submitting =>
@@ -276,6 +281,7 @@ class _AttendanceScannerScreenState extends ConsumerState<AttendanceScannerScree
           ),
         _ScannerPhase.error => AttendanceResultView(
             errorMessage: _errorMessage ?? 'Something went wrong.',
+            issue: _issue,
             onScanAgain: _primaryAction,
             onDone: _dismissAction,
           ),

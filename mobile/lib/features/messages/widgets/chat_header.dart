@@ -88,7 +88,7 @@ class _ChatHeader extends StatelessWidget {
                               'typing…',
                               maxLines: 1,
                               style: AppTypography.caption.copyWith(
-                                color: AppColors.primary,
+                                color: AppColors.primaryText,
                                 fontWeight: FontWeight.w600,
                               ),
                             )

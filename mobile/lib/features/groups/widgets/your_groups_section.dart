@@ -2,9 +2,9 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_typography.dart';
 import '../data/group_models.dart';
 import '../providers/groups_provider.dart';
 import '../../messages/utils/chat_routes.dart';
@@ -36,7 +36,7 @@ class _YourGroupsSectionState extends ConsumerState<YourGroupsSection> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Could not open the group', style: GoogleFonts.dmSans(color: Colors.white)),
+            content: Text('Could not open the group', style: TextStyle(color: Colors.white)),
             backgroundColor: AppColors.error,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -60,8 +60,11 @@ class _YourGroupsSectionState extends ConsumerState<YourGroupsSection> {
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 14, 20, 8),
           child: Text(
-            'Your Groups',
-            style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textDark),
+            'Your groups',
+            style: AppTypography.body.copyWith(
+              fontWeight: FontWeight.w700,
+              color: AppColors.textDark,
+            ),
           ),
         ),
         SizedBox(
@@ -114,7 +117,11 @@ class _GroupBubble extends StatelessWidget {
               maxLines: 2,
               textAlign: TextAlign.center,
               overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.dmSans(fontSize: 11, fontWeight: FontWeight.w500, color: AppColors.textMid, height: 1.1),
+              style: AppTypography.caption.copyWith(
+                fontWeight: FontWeight.w500,
+                color: AppColors.textMid,
+                height: 1.1,
+              ),
             ),
           ],
         ),
