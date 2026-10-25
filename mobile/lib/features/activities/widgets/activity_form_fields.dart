@@ -217,10 +217,10 @@ class _Field extends StatelessWidget {
       // no explicit FocusNode chain is needed. Multiline fields keep the newline key.
       textInputAction: maxLines == 1 ? TextInputAction.next : null,
       textCapitalization: TextCapitalization.sentences,
-      style: GoogleFonts.dmSans(fontSize: 14, color: AppColors.textDark),
+      style: AppTypography.body.copyWith(color: AppColors.textDark),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: GoogleFonts.dmSans(fontSize: 14, color: AppColors.textMuted),
+        hintStyle: AppTypography.body.copyWith(color: AppColors.textMuted),
         prefixIcon: prefixIcon != null
             ? Icon(prefixIcon, size: 18, color: AppColors.textMuted)
             : null,
@@ -318,8 +318,7 @@ class _PickerTile extends StatelessWidget {
             Expanded(
               child: Text(
                 label,
-                style: GoogleFonts.dmSans(
-                  fontSize: 13,
+                style: AppTypography.bodySmall.copyWith(
                   color: hasValue ? AppColors.textDark : AppColors.textMuted,
                   fontWeight: hasValue ? FontWeight.w500 : FontWeight.w400,
                 ),

@@ -248,7 +248,10 @@ class _AuthorPostTile extends StatelessWidget {
                     summary,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: AppTypography.bodySmall.copyWith(color: AppColors.textMuted, height: 1.4),
+                    style: AppTypography.bodySmall.copyWith(
+                      color: AppColors.textMuted,
+                      height: 1.4,
+                    ),
                   ),
                 ],
               ],
@@ -319,9 +322,9 @@ class _StatusPill extends StatelessWidget {
 
   // Colour only where it means something: green for live, the soft brand tint for a draft,
   // grey for archived. Text shades are the AA ones; the old green label was ~2.4:1.
-  static const _liveText = Color(0xFF15803D);
-  static const _liveTint = Color(0xFFDCFCE7);
-  static const _quietTint = Color(0xFFEEF2F6);
+  static const _liveText = AppColors.green;
+  static const _liveTint = AppColors.greenSoft;
+  static const _quietTint = AppColors.quiet;
 
   @override
   Widget build(BuildContext context) {

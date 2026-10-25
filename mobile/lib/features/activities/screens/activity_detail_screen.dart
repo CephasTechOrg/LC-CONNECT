@@ -1,7 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme/app_radii.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -63,15 +62,15 @@ class _ActivityDetailScreenState extends ConsumerState<ActivityDetailScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Cancel activity?', style: GoogleFonts.dmSans(fontWeight: FontWeight.w700)),
+        title: Text('Cancel activity?', style: TextStyle(fontWeight: FontWeight.w700)),
         content: Text('This removes "${activity.title}" for everyone. This cannot be undone.',
-            style: GoogleFonts.dmSans(color: AppColors.textMid)),
+            style: TextStyle(color: AppColors.textMid)),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false),
-              child: Text('Keep', style: GoogleFonts.dmSans(color: AppColors.textMuted))),
+              child: Text('Keep', style: TextStyle(color: AppColors.textMuted))),
           TextButton(onPressed: () => Navigator.pop(ctx, true),
               child: Text('Cancel activity',
-                  style: GoogleFonts.dmSans(color: AppColors.error, fontWeight: FontWeight.w700))),
+                  style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w700))),
         ],
       ),
     );
@@ -82,7 +81,7 @@ class _ActivityDetailScreenState extends ConsumerState<ActivityDetailScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(apiErrorMessage(e, fallback: 'Could not cancel — try again'), style: GoogleFonts.dmSans()),
+        content: Text(apiErrorMessage(e, fallback: 'Could not cancel — try again')),
         backgroundColor: AppColors.error,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -106,7 +105,6 @@ class _ActivityDetailScreenState extends ConsumerState<ActivityDetailScreen> {
         SnackBar(
           content: Text(
             apiErrorMessage(e, fallback: 'Could not update your RSVP — try again.'),
-            style: GoogleFonts.dmSans(),
           ),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,

@@ -32,13 +32,13 @@ enum AttendanceIssue {
 
 // Colour only where it means something: green done, amber late or "try that again", red only
 // for a real failure, grey for a plain fact like "closed". All AA as text on their tints.
-const _successText = Color(0xFF15803D);
-const _successTint = Color(0xFFDCFCE7);
-const _amberText = Color(0xFFB45309);
-const _amberTint = Color(0xFFFEF3C7);
-const _dangerText = Color(0xFFB91C1C);
-const _dangerTint = Color(0xFFFEE2E2);
-const _quietTint = Color(0xFFEEF2F6);
+const _successText = AppColors.green;
+const _successTint = AppColors.greenSoft;
+const _amberText = AppColors.warning;
+const _amberTint = AppColors.warningSoft;
+const _dangerText = AppColors.errorText;
+const _dangerTint = AppColors.errorSoft;
+const _quietTint = AppColors.quiet;
 
 class AttendanceResultView extends StatelessWidget {
   final AttendanceSessionInfo? session;
@@ -245,7 +245,10 @@ class AttendanceMessageLayout extends StatelessWidget {
                         child: Text(
                           message,
                           textAlign: TextAlign.center,
-                          style: AppTypography.body.copyWith(color: AppColors.textMuted, height: 1.5),
+                          style: AppTypography.body.copyWith(
+                            color: AppColors.textMuted,
+                            height: 1.5,
+                          ),
                         ),
                       ),
                     ],

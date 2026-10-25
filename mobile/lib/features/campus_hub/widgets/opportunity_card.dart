@@ -159,4 +159,4 @@ class OpportunityCard extends StatelessWidget {
 
 /// "Closes Oct 28" when three days or fewer are left: amber, because a deadline is a warning, not
 /// an error. Red is kept for errors. 5.0:1 on white.
-const _closingAmber = Color(0xFFB45309);
+const _closingAmber = AppColors.warning;

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../core/theme/app_typography.dart';
 
 /// Minimum touch target per Material / WCAG (48 logical pixels).
 const double kMinTouchTarget = 48;
@@ -75,8 +75,7 @@ class AppAccessibleTextAction extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 4),
               child: Text(
                 label,
-                style: GoogleFonts.dmSans(
-                  fontSize: 13,
+                style: AppTypography.bodySmall.copyWith(
                   color: AppColors.primaryText,
                   fontWeight: FontWeight.w600,
                 ),

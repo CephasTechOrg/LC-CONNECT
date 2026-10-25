@@ -107,7 +107,7 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
 
   SnackBar _snackBar(String msg, {required bool isError}) => SnackBar(
         content: Text(msg),
-        backgroundColor: isError ? AppColors.error : const Color(0xFF15803D),
+        backgroundColor: isError ? AppColors.error : AppColors.green,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       );

@@ -234,7 +234,7 @@ class _FileRow extends StatelessWidget {
           ),
         TextButton(
           onPressed: uploading ? null : onUpload,
-          style: TextButton.styleFrom(foregroundColor: AppColors.primary),
+          style: TextButton.styleFrom(foregroundColor: AppColors.primaryText),
           child: uploading
               ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
               : Text(hasFile ? 'Replace' : 'Upload', style: _fileActionStyle),
@@ -326,7 +326,7 @@ class _TagInput extends StatelessWidget {
                 InputChip(
                   label: Text(t),
                   labelStyle: AppTypography.bodySmall.copyWith(
-                    color: AppColors.primary,
+                    color: AppColors.primaryText,
                     fontWeight: FontWeight.w600,
                   ),
                   onDeleted: () => onRemove(t),

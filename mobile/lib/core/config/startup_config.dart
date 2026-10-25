@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../theme/app_theme.dart';
+import '../theme/app_typography.dart';
 
 /// The environment values the app cannot start without.
 ///
@@ -86,8 +86,7 @@ class StartupConfigErrorApp extends StatelessWidget {
                   const SizedBox(height: 18),
                   Text(
                     'This build is not configured',
-                    style: GoogleFonts.dmSans(
-                      fontSize: 21,
+                    style: AppTypography.titleLarge.copyWith(
                       fontWeight: FontWeight.w800,
                       color: AppColors.textDark,
                       letterSpacing: -0.4,
@@ -96,8 +95,7 @@ class StartupConfigErrorApp extends StatelessWidget {
                   const SizedBox(height: 10),
                   Text(
                     'LC Connect cannot start. Send this screen to whoever gave you the build:',
-                    style: GoogleFonts.dmSans(
-                      fontSize: 14,
+                    style: AppTypography.body.copyWith(
                       color: AppColors.textMuted,
                       height: 1.5,
                     ),
@@ -108,8 +106,7 @@ class StartupConfigErrorApp extends StatelessWidget {
                       padding: const EdgeInsets.only(bottom: 6),
                       child: Text(
                         '• $problem',
-                        style: GoogleFonts.dmSans(
-                          fontSize: 14,
+                        style: AppTypography.body.copyWith(
                           fontWeight: FontWeight.w600,
                           color: AppColors.error,
                           height: 1.45,

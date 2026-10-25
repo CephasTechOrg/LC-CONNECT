@@ -14,8 +14,7 @@ class _EditProfileButton extends StatelessWidget {
           icon: const Icon(Icons.edit_outlined, size: 18),
           label: Text(
             'Edit profile',
-            style: GoogleFonts.dmSans(
-              fontSize: 15,
+            style: AppTypography.bodyLarge.copyWith(
               fontWeight: FontWeight.w700,
             ),
           ),

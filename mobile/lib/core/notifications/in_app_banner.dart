@@ -2,12 +2,12 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../router/app_router.dart';
 import '../../features/messages/providers/messages_provider.dart';
 import '../../features/messages/utils/message_navigation.dart';
 import '../theme/app_theme.dart';
+import '../theme/app_typography.dart';
 import '../widgets/avatar_widget.dart';
 
 /// One in-app banner's content.
@@ -127,8 +127,7 @@ class _BannerCard extends ConsumerWidget {
                             data.title,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.dmSans(
-                              fontSize: 14,
+                            style: AppTypography.body.copyWith(
                               fontWeight: FontWeight.w700,
                               color: AppColors.textDark,
                             ),
@@ -138,8 +137,7 @@ class _BannerCard extends ConsumerWidget {
                             data.body,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.dmSans(
-                              fontSize: 13,
+                            style: AppTypography.bodySmall.copyWith(
                               color: AppColors.textMid,
                             ),
                           ),

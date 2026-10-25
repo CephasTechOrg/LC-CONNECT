@@ -27,7 +27,7 @@ class _OutgoingCard extends ConsumerWidget {
               'Withdraw',
               // Darker than [AppColors.error], which is ~3.8:1 on white.
               style: AppTypography.body.copyWith(
-                color: const Color(0xFFB91C1C),
+                color: AppColors.errorText,
                 fontWeight: FontWeight.w700,
               ),
             ),

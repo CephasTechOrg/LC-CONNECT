@@ -40,7 +40,6 @@ class _StudentCardState extends State<_StudentCard> {
               e,
               fallback: 'Something went wrong. Please try again.',
             ),
-            style: GoogleFonts.dmSans(),
           ),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,

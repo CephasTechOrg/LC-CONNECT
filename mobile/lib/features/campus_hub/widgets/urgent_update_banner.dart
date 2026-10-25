@@ -16,7 +16,7 @@ class UrgentUpdateBanner extends StatelessWidget {
   static const _edge = Color(0xFFFECACA);
 
   /// Darker than [AppColors.error]: that red on this tint is ~3.5:1, under AA for 11px text.
-  static const _alertText = Color(0xFFB91C1C);
+  static const _alertText = AppColors.errorText;
 
   @override
   Widget build(BuildContext context) {

@@ -75,7 +75,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: const Text('If that account exists, we sent a code to your personal email.'),
         // The AA success green; white on the old #059669 was ~3.8:1.
-        backgroundColor: const Color(0xFF15803D),
+        backgroundColor: AppColors.green,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ));

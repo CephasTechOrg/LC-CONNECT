@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/avatar_widget.dart';
+import '../../../shared/widgets/app_card.dart';
+import '../../../shared/widgets/app_search_field.dart';
 import '../../../shared/widgets/app_shell_header.dart';
 import '../../../shared/widgets/app_skeleton.dart';
 import '../../../shared/widgets/app_states.dart';
@@ -41,32 +43,16 @@ class _StaffStudentDirectoryState extends ConsumerState<StaffStudentDirectory> {
           title: 'Students',
           subtitle: 'Find and message any student at Livingstone',
         ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.gutter,
-            AppSpacing.xs,
-            AppSpacing.gutter,
-            AppSpacing.sm,
-          ),
-          child: TextField(
-            controller: _searchCtrl,
-            onChanged: (v) => setState(() => _query = v.trim()),
-            decoration: InputDecoration(
-              hintText: 'Search by name or major',
-              prefixIcon: const Icon(Icons.search_rounded, size: 20),
-              filled: true,
-              fillColor: AppColors.surface,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: AppColors.border),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: AppColors.border),
-              ),
-              contentPadding: const EdgeInsets.symmetric(vertical: 0),
-            ),
-          ),
+        // The shared search field, so it matches Messages and New message.
+        AppSearchField(
+          controller: _searchCtrl,
+          hasText: _query.isNotEmpty,
+          hint: 'Search by name or major',
+          onChanged: (v) => setState(() => _query = v.trim()),
+          onClear: () {
+            _searchCtrl.clear();
+            setState(() => _query = '');
+          },
         ),
         Expanded(
           child: studentsAsync.when(
@@ -102,7 +88,7 @@ class _StaffStudentDirectoryState extends ConsumerState<StaffStudentDirectory> {
                           AppSpacing.xxl,
                         ),
                         itemCount: students.length,
-                        separatorBuilder: (_, _) => const SizedBox(height: 10),
+                        separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.md),
                         itemBuilder: (_, i) => _StudentTile(
                           student: students[i],
                           onTap: () => context.push(
@@ -132,48 +118,39 @@ class _StudentTile extends StatelessWidget {
       if (student.classYear != null) 'Class of ${student.classYear}',
     ].join(' · ');
 
-    return Material(
-      color: AppColors.surface,
-      borderRadius: BorderRadius.circular(14),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
-        child: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppColors.border),
-          ),
-          child: Row(
-            children: [
-              AvatarWidget(imageUrl: student.avatarUrl, size: 44, cacheScope: student.userId),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      student.name,
-                      style: GoogleFonts.dmSans(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textDark,
-                      ),
-                    ),
-                    if (subtitle.isNotEmpty) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        subtitle,
-                        style: GoogleFonts.dmSans(fontSize: 12.5, color: AppColors.textMuted),
-                      ),
-                    ],
-                  ],
+    return AppCard(
+      onTap: onTap,
+      child: Row(
+        children: [
+          AvatarWidget(imageUrl: student.avatarUrl, size: 44, cacheScope: student.userId),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  student.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.bodyLarge.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textDark,
+                  ),
                 ),
-              ),
-              const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
-            ],
+                if (subtitle.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.bodySmall.copyWith(color: AppColors.textMuted),
+                  ),
+                ],
+              ],
+            ),
           ),
-        ),
+          const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
+        ],
       ),
     );
   }

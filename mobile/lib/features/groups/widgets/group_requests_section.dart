@@ -39,7 +39,10 @@ class _RequestsSection extends ConsumerWidget {
                         r.nameOrFallback,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: AppTypography.body.copyWith(fontWeight: FontWeight.w600, color: AppColors.textDark),
+                        style: AppTypography.body.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textDark,
+                        ),
                       ),
                       if (r.major != null)
                         Text(r.major!, style: AppTypography.caption.copyWith(color: AppColors.textMuted)),
@@ -104,7 +107,7 @@ class _RequestIconButton extends StatelessWidget {
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  color: filled ? AppColors.primary : const Color(0xFFEEF2F6),
+                  color: filled ? AppColors.primary : AppColors.quiet,
                   shape: BoxShape.circle,
                 ),
                 child: Icon(icon, size: 20, color: filled ? Colors.white : AppColors.textMid),

@@ -6,7 +6,6 @@ import 'package:go_router/go_router.dart';
 import '../../../core/api/api_error.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/app_states.dart';
 import '../providers/policies_provider.dart';
 import '../widgets/policy_markdown_theme.dart';
@@ -45,13 +44,7 @@ class PolicyDocumentScreen extends ConsumerWidget {
           onPressed: () => _back(context),
           tooltip: 'Back',
         ),
-        title: Text(
-          document.value?.title ?? 'Loading…',
-          style: AppTypography.titleSmall.copyWith(
-            fontWeight: FontWeight.w700,
-            color: AppColors.textDark,
-          ),
-        ),
+        title: Text(document.value?.title ?? 'Loading…'),
       ),
       body: SafeArea(
         child: document.when(

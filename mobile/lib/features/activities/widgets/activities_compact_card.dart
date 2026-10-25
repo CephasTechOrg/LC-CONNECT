@@ -75,8 +75,7 @@ class _CompactCardState extends ConsumerState<_CompactCard> {
                   a.title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.dmSans(
-                    fontSize: 14,
+                  style: AppTypography.body.copyWith(
                     fontWeight: FontWeight.w600,
                     color: AppColors.textDark,
                   ),
@@ -84,8 +83,10 @@ class _CompactCardState extends ConsumerState<_CompactCard> {
                 const SizedBox(height: 3),
                 Text(
                   AppDateFormat.date(a.startTime),
-                  style: GoogleFonts.dmSans(
-                      fontSize: 11, color: AppColors.textMuted),
+                  style: AppTypography.caption.copyWith(
+                    fontWeight: FontWeight.w400,
+                    color: AppColors.textMuted,
+                  ),
                 ),
                 const SizedBox(height: 2),
                 Row(
@@ -98,8 +99,10 @@ class _CompactCardState extends ConsumerState<_CompactCard> {
                         a.location,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.dmSans(
-                            fontSize: 11, color: AppColors.textMuted),
+                        style: AppTypography.caption.copyWith(
+                          fontWeight: FontWeight.w400,
+                          color: AppColors.textMuted,
+                        ),
                       ),
                     ),
                   ],
@@ -119,8 +122,10 @@ class _CompactCardState extends ConsumerState<_CompactCard> {
                   const SizedBox(width: 3),
                   Text(
                     '${a.participantCount}',
-                    style: GoogleFonts.dmSans(
-                        fontSize: 11, color: AppColors.textMuted),
+                    style: AppTypography.caption.copyWith(
+                      fontWeight: FontWeight.w400,
+                      color: AppColors.textMuted,
+                    ),
                   ),
                 ],
               ),

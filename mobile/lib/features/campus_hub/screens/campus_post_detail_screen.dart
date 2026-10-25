@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/app_states.dart';
 import '../models/campus_post.dart';
 import '../providers/campus_hub_provider.dart';
@@ -133,8 +133,8 @@ class _PostBody extends StatelessWidget {
                     const CampusBadge(
                       label: 'Urgent',
                       // Red because urgent *is* an alert; the deeper shade passes AA on the tint.
-                      color: Color(0xFFB91C1C),
-                      background: Color(0xFFFEE2E2),
+                      color: AppColors.errorText,
+                      background: AppColors.errorSoft,
                       icon: Icons.priority_high_rounded,
                     ),
                 ],
@@ -145,8 +145,7 @@ class _PostBody extends StatelessWidget {
         const SizedBox(height: 16),
         Text(
           post.title,
-          style: GoogleFonts.dmSans(
-            fontSize: 22,
+          style: AppTypography.titleLarge.copyWith(
             fontWeight: FontWeight.w700,
             color: AppColors.textDark,
             letterSpacing: -0.3,
@@ -160,7 +159,10 @@ class _PostBody extends StatelessWidget {
             const SizedBox(width: 5),
             Text(
               DateFormat('EEEE, MMM d').format(post.publishAt.toLocal()),
-              style: GoogleFonts.dmSans(fontSize: 12.5, color: AppColors.textMuted),
+              style: AppTypography.label.copyWith(
+                fontWeight: FontWeight.w400,
+                color: AppColors.textMuted,
+              ),
             ),
           ],
         ),
@@ -190,8 +192,7 @@ class _PostBody extends StatelessWidget {
                             ? '1 day left'
                             : '$daysLeft days left'}'
                       : 'Deadline: ${DateFormat('MMM d, y').format(deadline)}',
-                  style: GoogleFonts.dmSans(
-                    fontSize: 12.5,
+                  style: AppTypography.label.copyWith(
                     fontWeight: FontWeight.w700,
                     color: closingSoon ? _warning : AppColors.primaryText,
                   ),
@@ -208,12 +209,12 @@ class _PostBody extends StatelessWidget {
         if (_opportunityBodyRedundant(post))
           Text(
             post.summary!,
-            style: GoogleFonts.dmSans(fontSize: 15, height: 1.55, color: AppColors.textMid),
+            style: AppTypography.bodyLarge.copyWith(height: 1.55, color: AppColors.textMid),
           )
         else
           Text(
             post.body,
-            style: GoogleFonts.dmSans(fontSize: 15, height: 1.55, color: AppColors.textMid),
+            style: AppTypography.bodyLarge.copyWith(height: 1.55, color: AppColors.textMid),
           ),
         if (post.externalUrl != null && post.externalUrl!.isNotEmpty) ...[
           const SizedBox(height: 24),
@@ -239,7 +240,7 @@ class _PostBody extends StatelessWidget {
               ),
               label: Text(
                 isOpportunity ? 'Apply now' : 'Open link',
-                style: GoogleFonts.dmSans(fontSize: 15, fontWeight: FontWeight.w700),
+                style: AppTypography.bodyLarge.copyWith(fontWeight: FontWeight.w700),
               ),
             ),
           ),
@@ -256,5 +257,5 @@ bool _opportunityBodyRedundant(CampusPost post) {
   return summary.isNotEmpty && body == summary;
 }
 
-const _warning = Color(0xFFB45309);
-const _warningTint = Color(0xFFFEF3C7);
+const _warning = AppColors.warning;
+const _warningTint = AppColors.warningSoft;

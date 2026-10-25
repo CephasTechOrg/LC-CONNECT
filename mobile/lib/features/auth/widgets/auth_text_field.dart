@@ -106,7 +106,7 @@ class AuthTextField extends StatelessWidget {
         errorBorder: _border(AppColors.error),
         focusedErrorBorder: _border(AppColors.error, width: 1.5),
         // Darker than the border's red: [AppColors.error] is ~3.8:1 as 12px text on white.
-        errorStyle: AppTypography.label.copyWith(color: const Color(0xFFB91C1C), height: 1.3),
+        errorStyle: AppTypography.label.copyWith(color: AppColors.errorText, height: 1.3),
         errorMaxLines: 2,
       ),
     );

@@ -22,7 +22,7 @@ class _JoinButton extends StatelessWidget {
     final (background, foreground) = joined
         ? (AppColors.primarySoft, AppColors.primaryText)
         : full
-            ? (const Color(0xFFEEF2F6), AppColors.textMuted)
+            ? (AppColors.quiet, AppColors.textMuted)
             : (AppColors.primary, Colors.white);
 
     return Semantics(
@@ -58,8 +58,7 @@ class _JoinButton extends StatelessWidget {
                           : full
                               ? 'Full'
                               : 'Join',
-                      style: GoogleFonts.dmSans(
-                        fontSize: 13,
+                      style: AppTypography.bodySmall.copyWith(
                         fontWeight: FontWeight.w600,
                         color: foreground,
                       ),
@@ -96,7 +95,7 @@ class _CompactJoinButton extends StatelessWidget {
     final (fill, icon, iconColor) = joined
         ? (AppColors.primarySoft, Icons.check_rounded, AppColors.primaryText)
         : full
-            ? (const Color(0xFFEEF2F6), Icons.block_rounded, AppColors.textMuted)
+            ? (AppColors.quiet, Icons.block_rounded, AppColors.textMuted)
             : (AppColors.primary, Icons.add_rounded, Colors.white);
 
     return Semantics(

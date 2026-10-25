@@ -1,9 +1,9 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_typography.dart';
 import '../../messages/providers/messages_provider.dart';
 import '../data/group_models.dart';
 import '../providers/groups_provider.dart';
@@ -25,7 +25,7 @@ class _PendingInvitesSectionState extends ConsumerState<PendingInvitesSection> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message, style: GoogleFonts.dmSans(color: Colors.white)),
+        content: Text(message, style: TextStyle(color: Colors.white)),
         backgroundColor: error ? AppColors.error : AppColors.primary,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -69,7 +69,10 @@ class _PendingInvitesSectionState extends ConsumerState<PendingInvitesSection> {
           padding: const EdgeInsets.fromLTRB(20, 14, 20, 6),
           child: Text(
             'Pending invites',
-            style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textDark),
+            style: AppTypography.body.copyWith(
+              fontWeight: FontWeight.w700,
+              color: AppColors.textDark,
+            ),
           ),
         ),
         for (final g in invites)
@@ -130,11 +133,17 @@ class _InviteCard extends StatelessWidget {
                   group.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textDark),
+                  style: AppTypography.bodySmall.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textDark,
+                  ),
                 ),
                 Text(
                   'Invited you to join',
-                  style: GoogleFonts.dmSans(fontSize: 11, color: AppColors.textMuted),
+                  style: AppTypography.caption.copyWith(
+                    fontWeight: FontWeight.w400,
+                    color: AppColors.textMuted,
+                  ),
                 ),
               ],
             ),
@@ -186,8 +195,7 @@ class _InviteBtn extends StatelessWidget {
               ),
               child: Text(
                 label,
-                style: GoogleFonts.dmSans(
-                  fontSize: 13,
+                style: AppTypography.bodySmall.copyWith(
                   fontWeight: FontWeight.w700,
                   color: filled ? Colors.white : AppColors.textMid,
                 ),

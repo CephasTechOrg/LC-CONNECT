@@ -49,7 +49,7 @@ class AppErrorState extends StatelessWidget {
               child: Text(
                 'Retry',
                 style: AppTypography.body.copyWith(
-                  color: AppColors.primary,
+                  color: AppColors.primaryText,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -109,7 +109,7 @@ class AppEmptyState extends StatelessWidget {
                 child: Text(
                   actionLabel!,
                   style: AppTypography.body.copyWith(
-                    color: AppColors.primary,
+                    color: AppColors.primaryText,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -250,7 +250,7 @@ class AppInlineMessage extends StatelessWidget {
               child: Text(
                 'Retry',
                 style: AppTypography.bodySmall.copyWith(
-                  color: AppColors.primary,
+                  color: AppColors.primaryText,
                   fontWeight: FontWeight.w600,
                 ),
               ),

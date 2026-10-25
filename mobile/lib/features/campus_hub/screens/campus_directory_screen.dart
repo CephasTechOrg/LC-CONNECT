@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/avatar_widget.dart';
 import '../../../shared/widgets/app_filter_chip.dart';
 import '../../../shared/widgets/app_card.dart';
@@ -60,15 +60,17 @@ class _CampusDirectoryScreenState extends ConsumerState<CampusDirectoryScreen> {
                       children: [
                         Text(
                           'Campus Directory',
-                          style: GoogleFonts.dmSans(
-                            fontSize: 18,
+                          style: AppTypography.title.copyWith(
                             fontWeight: FontWeight.w700,
                             color: AppColors.textDark,
                           ),
                         ),
                         Text(
                           'Verified staff contacts at Livingstone',
-                          style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textMuted),
+                          style: AppTypography.label.copyWith(
+                            fontWeight: FontWeight.w400,
+                            color: AppColors.textMuted,
+                          ),
                         ),
                       ],
                     ),
@@ -101,16 +103,15 @@ class _CampusDirectoryScreenState extends ConsumerState<CampusDirectoryScreen> {
                               children: [
                                 Text(
                                   'Looking for a student?',
-                                  style: GoogleFonts.dmSans(
-                                    fontSize: 13.5,
+                                  style: AppTypography.bodySmall.copyWith(
                                     fontWeight: FontWeight.w700,
                                     color: AppColors.textDark,
                                   ),
                                 ),
                                 Text(
                                   'Search and message students from Messages — Directory is staff only.',
-                                  style: GoogleFonts.dmSans(
-                                    fontSize: 11.5,
+                                  style: AppTypography.caption.copyWith(
+                                    fontWeight: FontWeight.w400,
                                     color: AppColors.textMuted,
                                   ),
                                 ),
@@ -228,8 +229,7 @@ class _DirectoryTile extends StatelessWidget {
             children: [
               Text(
                 entry.displayName ?? entry.officialTitle,
-                style: GoogleFonts.dmSans(
-                  fontSize: 14,
+                style: AppTypography.body.copyWith(
                   fontWeight: FontWeight.w700,
                   color: AppColors.textDark,
                 ),
@@ -237,11 +237,17 @@ class _DirectoryTile extends StatelessWidget {
               const SizedBox(height: 2),
               Text(
                 entry.officialTitle,
-                style: GoogleFonts.dmSans(fontSize: 12.5, color: AppColors.textMid),
+                style: AppTypography.label.copyWith(
+                  fontWeight: FontWeight.w400,
+                  color: AppColors.textMid,
+                ),
               ),
               Text(
                 entry.department,
-                style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textMuted),
+                style: AppTypography.label.copyWith(
+                  fontWeight: FontWeight.w400,
+                  color: AppColors.textMuted,
+                ),
               ),
             ],
           ),

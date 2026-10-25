@@ -51,18 +51,14 @@ class _PendingPositionBanner extends StatelessWidget {
                     children: [
                       Text(
                         message,
-                        style: GoogleFonts.dmSans(
-                          fontSize: 12.5,
-                          color: AppColors.textMid,
-                          height: 1.35,
-                        ),
+                        style: AppTypography.label.copyWith(fontWeight: FontWeight.w400, color: AppColors.textMid,
+                          height: 1.35,),
                       ),
                       if (needsResubmit) ...[
                         const SizedBox(height: 6),
                         Text(
                           'Tap to update and resubmit',
-                          style: GoogleFonts.dmSans(
-                            fontSize: 12,
+                          style: AppTypography.label.copyWith(
                             fontWeight: FontWeight.w700,
                             color: color,
                           ),

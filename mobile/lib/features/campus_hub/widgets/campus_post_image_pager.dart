@@ -1,8 +1,8 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/avatar_preview.dart';
 import '../models/campus_post.dart';
 
@@ -49,7 +49,10 @@ class _CampusPostImagePagerState extends State<CampusPostImagePager> {
           Text(
             '${_page + 1} of ${images.length}',
             key: const ValueKey('campus-post-image-pager'),
-            style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textMuted),
+            style: AppTypography.label.copyWith(
+              fontWeight: FontWeight.w400,
+              color: AppColors.textMuted,
+            ),
           ),
         ],
       ],

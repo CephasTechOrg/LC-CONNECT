@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_spacing.dart';
@@ -174,15 +173,17 @@ class _Header extends StatelessWidget {
               children: [
                 Text(
                   'Campus resources',
-                  style: GoogleFonts.dmSans(
-                    fontSize: 18,
+                  style: AppTypography.title.copyWith(
                     fontWeight: FontWeight.w700,
                     color: AppColors.textDark,
                   ),
                 ),
                 Text(
                   'Services, offices, and support',
-                  style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textMuted),
+                  style: AppTypography.label.copyWith(
+                    fontWeight: FontWeight.w400,
+                    color: AppColors.textMuted,
+                  ),
                 ),
               ],
             ),
@@ -267,8 +268,7 @@ class _StaticCategoryCard extends StatelessWidget {
         const SizedBox(height: 14),
         Text(
           cat.title,
-          style: GoogleFonts.dmSans(
-            fontSize: 14.5,
+          style: AppTypography.body.copyWith(
             fontWeight: FontWeight.w700,
             color: AppColors.textDark,
             height: 1.25,
@@ -278,15 +278,18 @@ class _StaticCategoryCard extends StatelessWidget {
         Expanded(
           child: Text(
             cat.description,
-            style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textMid, height: 1.4),
+            style: AppTypography.label.copyWith(
+              fontWeight: FontWeight.w400,
+              color: AppColors.textMid,
+              height: 1.4,
+            ),
           ),
         ),
         Row(
           children: [
             Text(
               'View resources',
-              style: GoogleFonts.dmSans(
-                fontSize: 12.5,
+              style: AppTypography.label.copyWith(
                 fontWeight: FontWeight.w600,
                 color: AppColors.primaryText,
               ),
@@ -336,8 +339,7 @@ class _ComingSoon extends StatelessWidget {
             Text(
               label,
               textAlign: TextAlign.center,
-              style: GoogleFonts.dmSans(
-                fontSize: 16,
+              style: AppTypography.titleSmall.copyWith(
                 fontWeight: FontWeight.w700,
                 color: AppColors.textDark,
               ),
@@ -345,8 +347,7 @@ class _ComingSoon extends StatelessWidget {
             const SizedBox(height: 6),
             Text(
               'Coming soon',
-              style: GoogleFonts.dmSans(
-                fontSize: 13,
+              style: AppTypography.bodySmall.copyWith(
                 fontWeight: FontWeight.w600,
                 color: AppColors.primaryText,
               ),
@@ -355,7 +356,7 @@ class _ComingSoon extends StatelessWidget {
             Text(
               "We're still adding ${label.toLowerCase()} resources. Check back soon.",
               textAlign: TextAlign.center,
-              style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.textMuted, height: 1.4),
+              style: AppTypography.bodySmall.copyWith(color: AppColors.textMuted, height: 1.4),
             ),
             const SizedBox(height: 20),
             TextButton.icon(

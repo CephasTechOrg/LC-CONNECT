@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../core/theme/app_typography.dart';
 
 /// A clean, reusable search box. Shows a clear button once there's text; debouncing is the
 /// caller's job (so each screen can tune it).
@@ -34,11 +34,11 @@ class AppSearchField extends StatelessWidget {
         controller: controller,
         onChanged: onChanged,
         textInputAction: TextInputAction.search,
-        style: GoogleFonts.dmSans(fontSize: 14, color: AppColors.textDark),
+        style: AppTypography.body.copyWith(color: AppColors.textDark),
         decoration: InputDecoration(
           isDense: true,
           hintText: hint,
-          hintStyle: GoogleFonts.dmSans(fontSize: 14, color: AppColors.textMuted),
+          hintStyle: AppTypography.body.copyWith(color: AppColors.textMuted),
           prefixIcon: const Icon(Icons.search_rounded, size: 20, color: AppColors.textMuted),
           suffixIcon: hasText
               ? IconButton(

@@ -2,9 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_typography.dart';
 import '../providers/auth_provider.dart';
 
 /// The first screen the app shows, held until the stored session has been restored.
@@ -114,8 +114,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                 Text(
                   status,
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.dmSans(
-                    fontSize: 14,
+                  style: AppTypography.body.copyWith(
                     fontWeight: FontWeight.w500,
                     color: AppColors.textMid,
                   ),
@@ -125,7 +124,11 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                   Text(
                     'Your session is still saved — check your connection and try again.',
                     textAlign: TextAlign.center,
-                    style: GoogleFonts.dmSans(fontSize: 12.5, color: AppColors.textMuted, height: 1.4),
+                    style: AppTypography.label.copyWith(
+                      fontWeight: FontWeight.w400,
+                      color: AppColors.textMuted,
+                      height: 1.4,
+                    ),
                   ),
                   const SizedBox(height: 20),
                   OutlinedButton(
@@ -138,7 +141,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                     ),
                     child: Text(
                       'Try again',
-                      style: GoogleFonts.dmSans(fontWeight: FontWeight.w600, fontSize: 14),
+                      style: AppTypography.body.copyWith(fontWeight: FontWeight.w600, ),
                     ),
                   ),
                 ],

@@ -88,7 +88,10 @@ class _MemberTile extends StatelessWidget {
                         member.nameOrFallback,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textDark),
+                        style: AppTypography.body.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textDark,
+                        ),
                       ),
                     ),
                     if (member.campusVerified) ...[
@@ -97,7 +100,7 @@ class _MemberTile extends StatelessWidget {
                     ],
                   ],
                 ),
-                Text(_subtitle, style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textMuted)),
+                Text(_subtitle, style: AppTypography.label.copyWith(fontWeight: FontWeight.w400, color: AppColors.textMuted)),
               ],
             ),
           ),
@@ -117,7 +120,7 @@ class _MemberTile extends StatelessWidget {
                         const SizedBox(width: 10),
                         Text(
                           a.label,
-                          style: GoogleFonts.dmSans(color: a.destructive ? AppColors.error : AppColors.textDark),
+                          style: TextStyle(color: a.destructive ? AppColors.error : AppColors.textDark),
                         ),
                       ],
                     ),

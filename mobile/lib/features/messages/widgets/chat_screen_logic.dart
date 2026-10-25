@@ -218,7 +218,7 @@ mixin _ChatScreenLogic on _ChatScreenStateBase, _ChatDraftLogic, _ChatReactionLo
       if (idx != -1) setState(() => messages[idx] = messages[idx].copyWith(deleted: false));
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Could not delete the message', style: GoogleFonts.dmSans(color: Colors.white)),
+          content: Text('Could not delete the message', style: TextStyle(color: Colors.white)),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/theme/app_typography.dart';
 
 /// Selected/unselected pill used on Connect, Activities, Groups filters.
 class AppFilterChip extends StatelessWidget {
@@ -51,8 +51,7 @@ class AppFilterChip extends StatelessWidget {
                 child: ExcludeSemantics(
                   child: Text(
                     label,
-                    style: GoogleFonts.dmSans(
-                      fontSize: 13,
+                    style: AppTypography.bodySmall.copyWith(
                       fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                       // primaryText, not primary: brand blue on the soft tint is under AA.
                       color: selected ? AppColors.primaryText : AppColors.textMid,

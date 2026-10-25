@@ -17,17 +17,15 @@ class _PreferencesCard extends ConsumerWidget {
             children: [
               Text(
                 'Preferences',
-                style: GoogleFonts.dmSans(
-                  fontSize: 15,
+                style: AppTypography.bodyLarge.copyWith(
                   fontWeight: FontWeight.w700,
                   color: AppColors.textDark,
                 ),
               ),
               Text(
                 'Edit',
-                style: GoogleFonts.dmSans(
-                  fontSize: 13,
-                  color: AppColors.primary,
+                style: AppTypography.bodySmall.copyWith(
+                  color: AppColors.primaryText,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -78,8 +76,8 @@ class _PrefToggle extends StatelessWidget {
         Expanded(
           child: Text(
             label,
-            style: GoogleFonts.dmSans(
-                fontSize: 13, color: AppColors.textMid),
+            style: AppTypography.bodySmall.copyWith(
+                color: AppColors.textMid),
           ),
         ),
         Switch(

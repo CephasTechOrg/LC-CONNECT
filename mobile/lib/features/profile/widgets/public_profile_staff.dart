@@ -32,8 +32,7 @@ class _StaffContactSection extends StatelessWidget {
         children: [
           Text(
             'Contact',
-            style: GoogleFonts.dmSans(
-              fontSize: 12,
+            style: AppTypography.label.copyWith(
               fontWeight: FontWeight.w700,
               color: AppColors.textMuted,
               letterSpacing: 0.4,
@@ -74,8 +73,7 @@ class _ContactRow extends StatelessWidget {
               children: [
                 Text(
                   label,
-                  style: GoogleFonts.dmSans(
-                    fontSize: 11,
+                  style: AppTypography.caption.copyWith(
                     fontWeight: FontWeight.w600,
                     color: AppColors.textMuted,
                     letterSpacing: 0.4,
@@ -84,8 +82,7 @@ class _ContactRow extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   value,
-                  style: GoogleFonts.dmSans(
-                    fontSize: 14,
+                  style: AppTypography.body.copyWith(
                     fontWeight: FontWeight.w500,
                     color: tappable ? AppColors.primary : AppColors.textDark,
                   ),
@@ -128,7 +125,7 @@ class _StaffMessageBar extends StatelessWidget {
               : const Icon(Icons.chat_bubble_outline_rounded, size: 18),
           label: Text(
             'Message',
-            style: GoogleFonts.dmSans(fontSize: 15, fontWeight: FontWeight.w700),
+            style: AppTypography.bodyLarge.copyWith(fontWeight: FontWeight.w700),
           ),
           style: FilledButton.styleFrom(
             backgroundColor: AppColors.primary,

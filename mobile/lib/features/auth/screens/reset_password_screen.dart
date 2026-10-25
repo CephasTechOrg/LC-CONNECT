@@ -85,7 +85,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
 
   SnackBar _snack(String msg, {required bool isError}) => SnackBar(
         content: Text(msg),
-        backgroundColor: isError ? AppColors.error : const Color(0xFF15803D),
+        backgroundColor: isError ? AppColors.error : AppColors.green,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       );
@@ -308,8 +308,8 @@ class _SuccessView extends StatelessWidget {
   const _SuccessView({required this.onLogin});
 
   // The AA success green, on its own tint: the old #10B981 icon was ~2.4:1 against its tile.
-  static const _success = Color(0xFF15803D);
-  static const _successTint = Color(0xFFDCFCE7);
+  static const _success = AppColors.green;
+  static const _successTint = AppColors.greenSoft;
 
   @override
   Widget build(BuildContext context) {

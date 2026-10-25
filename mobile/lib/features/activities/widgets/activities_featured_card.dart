@@ -122,8 +122,7 @@ class _FeaturedCardState extends ConsumerState<_FeaturedCard> {
                       a.title,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.dmSans(
-                        fontSize: 19,
+                      style: AppTypography.title.copyWith(
                         fontWeight: FontWeight.w700,
                         color: hasBanner ? Colors.white : AppColors.textDark,
                         height: 1.25,
@@ -157,8 +156,7 @@ class _FeaturedCardState extends ConsumerState<_FeaturedCard> {
                       a.description!,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.dmSans(
-                        fontSize: 13,
+                      style: AppTypography.bodySmall.copyWith(
                         color: AppColors.textMuted,
                         height: 1.55,
                       ),
@@ -209,8 +207,7 @@ class _MetaRow extends StatelessWidget {
               text,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.dmSans(
-                fontSize: 13,
+              style: AppTypography.bodySmall.copyWith(
                 color: AppColors.textMid,
               ),
             ),

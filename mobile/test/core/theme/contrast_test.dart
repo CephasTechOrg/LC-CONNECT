@@ -1,6 +1,6 @@
 import 'dart:math' as math;
-import 'dart:ui';
 
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lc_connect/core/theme/app_theme.dart';
 
@@ -85,42 +85,37 @@ void main() {
     });
   });
 
-  group('known contrast exceptions — recorded, not hidden', () {
-    // These fail AA for normal text today. Changing them is a brand decision, so the failures are
-    // pinned here rather than silently tolerated: the numbers may not get *worse* without a test
-    // going red and someone deciding deliberately.
-    //
-    // Candidate replacements that pass 4.5:1 on both grounds, if the palette is revisited:
-    //   primary #3F7FB5 → #3B77AA   error #EF4444 → #CD3A3A   green #10B981 → #0B815A
-    const exceptions = {
-      'primary': (AppColors.primary, 4.0),
-      'error': (AppColors.error, 3.5),
-      'green': (AppColors.green, 2.35),
-    };
-
-    for (final entry in exceptions.entries) {
-      test('${entry.key} is no worse than its recorded ratio', () {
-        final (color, floor) = entry.value;
-        expect(
-          contrast(color, AppColors.background),
-          greaterThanOrEqualTo(floor),
-          reason: '${entry.key} contrast regressed below its recorded value',
-        );
+  group('status colours pass AA as text and under white text', () {
+    // They were the recorded exceptions here: error #EF4444 at 3.5:1 and green #10B981 at 2.4:1,
+    // and screens had begun defining their own darker copies one by one. The tokens themselves now
+    // pass, so a plain `AppColors.error` or `AppColors.green` is safe wherever it lands.
+    for (final entry in {
+      'error': AppColors.error,
+      'errorText': AppColors.errorText,
+      'green': AppColors.green,
+      'warning': AppColors.warning,
+    }.entries) {
+      test('${entry.key} on the page, on white, and with white text on it', () {
+        expect(contrast(entry.value, AppColors.background), greaterThanOrEqualTo(4.5));
+        expect(contrast(entry.value, AppColors.surface), greaterThanOrEqualTo(4.5));
+        expect(contrast(Colors.white, entry.value), greaterThanOrEqualTo(4.5));
       });
     }
 
-    test('primary and error clear AA for large text at least', () {
-      // Both are used on titles and buttons as well as inline, so 3:1 is the floor that keeps
-      // those uses defensible while the palette question is open.
-      expect(contrast(AppColors.primary, AppColors.background), greaterThanOrEqualTo(3.0));
-      expect(contrast(AppColors.error, AppColors.background), greaterThanOrEqualTo(3.0));
+    test('each status text shade passes on its own tint', () {
+      expect(contrast(AppColors.errorText, AppColors.errorSoft), greaterThanOrEqualTo(4.5));
+      expect(contrast(AppColors.green, AppColors.greenSoft), greaterThanOrEqualTo(4.5));
+      expect(contrast(AppColors.warning, AppColors.warningSoft), greaterThanOrEqualTo(4.5));
     });
+  });
 
-    test('green fails even the large-text floor — the one genuine finding here', () {
-      // 2.40:1. It marks "checked in" for attendance and "Published" for a campus post, so it
-      // carries state, not decoration. Documented as failing so it reads as a known debt with a
-      // ready fix (#0B815A) rather than as an oversight.
-      expect(contrast(AppColors.green, AppColors.background), lessThan(3.0));
+  group('known contrast exceptions — recorded, not hidden', () {
+    // The brand blue fails AA for normal text. It stays for fills, icons and large headings —
+    // a brand decision — and text uses [AppColors.primaryText]. Pinned so it cannot get worse
+    // without a test going red.
+    test('primary is no worse than its recorded ratio, and clears the large-text floor', () {
+      expect(contrast(AppColors.primary, AppColors.background), greaterThanOrEqualTo(4.0));
+      expect(contrast(AppColors.primary, AppColors.background), greaterThanOrEqualTo(3.0));
     });
   });
 

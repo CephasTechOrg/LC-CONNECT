@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/app_typography.dart';
@@ -105,9 +104,8 @@ class AppBellIcon extends StatelessWidget {
               ),
               child: Text(
                 badgeCount > 99 ? '99+' : '$badgeCount',
-                style: GoogleFonts.dmSans(
+                style: AppTypography.micro.copyWith(
                   color: Colors.white,
-                  fontSize: 9.5,
                   fontWeight: FontWeight.w700,
                   height: 1,
                 ),

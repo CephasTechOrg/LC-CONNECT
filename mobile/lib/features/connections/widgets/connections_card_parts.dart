@@ -155,7 +155,7 @@ class _ActionButton extends StatelessWidget {
     required this.onTap,
   });
 
-  static const _quietFill = Color(0xFFEEF2F6);
+  static const _quietFill = AppColors.quiet;
 
   @override
   Widget build(BuildContext context) {

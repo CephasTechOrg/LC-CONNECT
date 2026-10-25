@@ -80,7 +80,7 @@ class _GroupEditSheetState extends ConsumerState<_GroupEditSheet> {
   void _snack(String message, {bool error = false}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message, style: GoogleFonts.dmSans(color: Colors.white)),
+        content: Text(message, style: TextStyle(color: Colors.white)),
         backgroundColor: error ? AppColors.error : AppColors.primary,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -105,7 +105,7 @@ class _GroupEditSheetState extends ConsumerState<_GroupEditSheet> {
               ),
             ),
             const SizedBox(height: 16),
-            Text('Edit group', style: GoogleFonts.dmSans(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textDark)),
+            Text('Edit group', style: AppTypography.title.copyWith(fontWeight: FontWeight.w700, color: AppColors.textDark)),
             const SizedBox(height: 16),
             _label('Name'),
             TextField(controller: _name, decoration: _dec('Group name')),
@@ -135,7 +135,7 @@ class _GroupEditSheetState extends ConsumerState<_GroupEditSheet> {
                 ),
                 child: _saving
                     ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : Text('Save changes', style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, color: Colors.white)),
+                    : Text('Save changes', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.white)),
               ),
             ),
           ],
@@ -146,12 +146,12 @@ class _GroupEditSheetState extends ConsumerState<_GroupEditSheet> {
 
   Widget _label(String text) => Padding(
         padding: const EdgeInsets.only(bottom: 6),
-        child: Text(text, style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textMid)),
+        child: Text(text, style: AppTypography.bodySmall.copyWith(fontWeight: FontWeight.w600, color: AppColors.textMid)),
       );
 
   InputDecoration _dec(String hint) => InputDecoration(
         hintText: hint,
-        hintStyle: GoogleFonts.dmSans(color: AppColors.textMuted),
+        hintStyle: TextStyle(color: AppColors.textMuted),
         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.border)),
         enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.border)),
@@ -165,7 +165,7 @@ class _GroupEditSheetState extends ConsumerState<_GroupEditSheet> {
         child: DropdownButton<String>(
           value: value,
           isExpanded: true,
-          style: GoogleFonts.dmSans(color: AppColors.textDark, fontSize: 14),
+          style: AppTypography.body.copyWith(color: AppColors.textDark, ),
           items: [for (final e in options.entries) DropdownMenuItem(value: e.key, child: Text(e.value))],
           onChanged: (v) => v != null ? onChanged(v) : null,
         ),
@@ -212,7 +212,7 @@ class _InviteSheetState extends ConsumerState<_InviteSheet> {
           SnackBar(
             content: Text(
                 apiErrorMessage(e, fallback: 'Could not invite — they may already be in the group'),
-                style: GoogleFonts.dmSans(color: Colors.white)),
+                style: TextStyle(color: Colors.white)),
             backgroundColor: AppColors.error,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -244,15 +244,15 @@ class _InviteSheetState extends ConsumerState<_InviteSheet> {
             ),
           ),
           const SizedBox(height: 16),
-          Text('Invite people', style: GoogleFonts.dmSans(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textDark)),
+          Text('Invite people', style: AppTypography.title.copyWith(fontWeight: FontWeight.w700, color: AppColors.textDark)),
           const SizedBox(height: 4),
-          Text('People you message', style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.textMuted)),
+          Text('People you message', style: AppTypography.bodySmall.copyWith(color: AppColors.textMuted)),
           const SizedBox(height: 12),
           async.when(
             loading: () => const Padding(padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator())),
             error: (_, _) => Padding(
               padding: const EdgeInsets.all(24),
-              child: Text('Could not load your contacts', style: GoogleFonts.dmSans(color: AppColors.textMuted)),
+              child: Text('Could not load your contacts', style: TextStyle(color: AppColors.textMuted)),
             ),
             data: (threads) {
               final connections = threads.where((t) => !t.isGroup && t.partner != null).toList();
@@ -265,7 +265,7 @@ class _InviteSheetState extends ConsumerState<_InviteSheet> {
                     : 'Everyone you know is already in this group.';
                 return Padding(
                   padding: const EdgeInsets.all(24),
-                  child: Text(message, style: GoogleFonts.dmSans(color: AppColors.textMuted)),
+                  child: Text(message, style: TextStyle(color: AppColors.textMuted)),
                 );
               }
               return Flexible(
@@ -278,16 +278,16 @@ class _InviteSheetState extends ConsumerState<_InviteSheet> {
                     return ListTile(
                       contentPadding: EdgeInsets.zero,
                       leading: AvatarWidget(imageUrl: p.avatarUrl, size: 40, cacheScope: p.userId),
-                      title: Text(name, style: GoogleFonts.dmSans(fontWeight: FontWeight.w600, color: AppColors.textDark)),
+                      title: Text(name, style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.textDark)),
                       subtitle: p.major != null
-                          ? Text(p.major!, style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textMuted))
+                          ? Text(p.major!, style: AppTypography.label.copyWith(fontWeight: FontWeight.w400, color: AppColors.textMuted))
                           : null,
                       trailing: _inviting.contains(p.userId)
                           ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
                           : TextButton(
                               onPressed: () => _invite(p.userId, name),
                               child: Text('Invite',
-                                  style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, color: AppColors.primary)),
+                                  style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.primaryText)),
                             ),
                     );
                   },

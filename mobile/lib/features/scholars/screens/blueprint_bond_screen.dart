@@ -1,7 +1,6 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -79,7 +78,7 @@ class _BlueprintBondScreenState extends ConsumerState<BlueprintBondScreen> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(apiErrorMessage(e, fallback: fallback), style: GoogleFonts.dmSans()),
+        content: Text(apiErrorMessage(e, fallback: fallback)),
         backgroundColor: AppColors.error,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -106,7 +105,7 @@ class _BlueprintBondScreenState extends ConsumerState<BlueprintBondScreen> {
             : 'Saved';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(msg, style: GoogleFonts.dmSans()),
+            content: Text(msg),
             backgroundColor: AppColors.green,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -194,7 +193,7 @@ class _BlueprintBondScreenState extends ConsumerState<BlueprintBondScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Submitted for Honors review', style: GoogleFonts.dmSans()),
+            content: Text('Submitted for Honors review'),
             backgroundColor: AppColors.green,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -255,13 +254,16 @@ class _BlueprintBondScreenState extends ConsumerState<BlueprintBondScreen> {
         centerTitle: false,
         title: Text(
           'Blueprint Bond',
-          style: AppTypography.title.copyWith(fontWeight: FontWeight.w800, color: AppColors.textDark),
+          style: AppTypography.title.copyWith(
+            fontWeight: FontWeight.w800,
+            color: AppColors.textDark,
+          ),
         ),
       ),
       body: async.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(
-          child: Text(apiErrorMessage(e, fallback: 'Could not load your profile.'), style: GoogleFonts.dmSans()),
+          child: Text(apiErrorMessage(e, fallback: 'Could not load your profile.')),
         ),
         data: (profile) {
           _initFrom(profile);

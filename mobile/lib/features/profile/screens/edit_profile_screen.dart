@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_typography.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../onboarding/providers/onboarding_provider.dart';
 import '../../onboarding/widgets/onboarding_shared_widgets.dart';
@@ -85,8 +85,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-              staff ? 'Please enter your name.' : 'Name, major, and at least one "Looking for" are required.',
-              style: GoogleFonts.dmSans()),
+              staff ? 'Please enter your name.' : 'Name, major, and at least one "Looking for" are required.'),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -115,8 +114,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         setState(() => _saving = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to save. Please try again.',
-                style: GoogleFonts.dmSans()),
+            content: Text("Couldn't save your profile. Please try again."),
             backgroundColor: AppColors.error,
             behavior: SnackBarBehavior.floating,
             shape:
@@ -172,17 +170,13 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       backgroundColor: AppColors.surface,
       elevation: 0,
       leading: IconButton(
-        icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textDark),
+        // The same back arrow as every other pushed page.
+        icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: AppColors.textDark),
+        tooltip: 'Back',
         onPressed: () => context.pop(),
       ),
-      title: Text(
-        'Edit Profile',
-        style: GoogleFonts.dmSans(
-          fontSize: 16,
-          fontWeight: FontWeight.w700,
-          color: AppColors.textDark,
-        ),
-      ),
+      // The app bar theme's title — the page-title size every pushed page uses.
+      title: const Text('Edit profile'),
       actions: [
         if (_saving)
           const Padding(
@@ -200,10 +194,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             onPressed: onSave,
             child: Text(
               'Save',
-              style: GoogleFonts.dmSans(
-                color: AppColors.primary,
+              style: AppTypography.bodyLarge.copyWith(
+                color: AppColors.primaryText,
                 fontWeight: FontWeight.w700,
-                fontSize: 15,
               ),
             ),
           ),
@@ -221,7 +214,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           const SizedBox(height: 16),
           _textField(
             controller: _nameCtrl,
-            label: 'Full Name',
+            label: 'Full name',
             hint: 'Your display name',
             icon: Icons.person_outline_rounded,
             capitalization: TextCapitalization.words,
@@ -247,12 +240,12 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               onChanged: (_) => setState(() {}),
             ),
             const SizedBox(height: 14),
-            _FieldLabel('Class Year', optional: true),
+            _FieldLabel('Class year', optional: true),
             DropdownButtonFormField<int>(
               initialValue: _classYear,
               onChanged: (v) => setState(() => _classYear = v),
-              style: GoogleFonts.dmSans(
-                  fontSize: 14, color: AppColors.textDark),
+              style: AppTypography.body.copyWith(
+                  color: AppColors.textDark),
               decoration: const InputDecoration(
                 hintText: 'Select graduation year',
                 prefixIcon: Icon(Icons.calendar_today_outlined,
@@ -285,13 +278,13 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           const SizedBox(height: 28),
           _section('About'),
           const SizedBox(height: 16),
-          _FieldLabel('Short Bio', optional: true),
+          _FieldLabel('Short bio', optional: true),
           TextFormField(
             controller: _bioCtrl,
             maxLines: 4,
             maxLength: 500,
-            style: GoogleFonts.dmSans(
-                fontSize: 14, color: AppColors.textDark),
+            style: AppTypography.body.copyWith(
+                color: AppColors.textDark),
             decoration: const InputDecoration(
               hintText: 'Tell people about yourself...',
               alignLabelWithHint: true,
@@ -355,8 +348,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               children: [
                 Text(
                   'Looking for',
-                  style: GoogleFonts.dmSans(
-                    fontSize: 15,
+                  style: AppTypography.bodyLarge.copyWith(
                     fontWeight: FontWeight.w700,
                     color: AppColors.textDark,
                   ),
@@ -364,8 +356,10 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 const SizedBox(width: 8),
                 Text(
                   '— pick at least one',
-                  style: GoogleFonts.dmSans(
-                      fontSize: 12, color: AppColors.primary),
+                  style: AppTypography.label.copyWith(
+                    fontWeight: FontWeight.w400,
+                    color: AppColors.primaryText,
+                  ),
                 ),
               ],
             ),
@@ -396,8 +390,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                     )
                   : Text(
                       'Save Changes',
-                      style: GoogleFonts.dmSans(
-                          fontSize: 15, fontWeight: FontWeight.w700),
+                      style: AppTypography.bodyLarge.copyWith(
+                          fontWeight: FontWeight.w700),
                     ),
             ),
           ),
@@ -411,8 +405,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       children: [
         Text(
           title,
-          style: GoogleFonts.dmSans(
-            fontSize: 15,
+          style: AppTypography.bodyLarge.copyWith(
             fontWeight: FontWeight.w700,
             color: AppColors.textDark,
           ),
@@ -421,8 +414,10 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           const SizedBox(width: 8),
           Text(
             'optional',
-            style: GoogleFonts.dmSans(
-                fontSize: 12, color: AppColors.textMuted),
+            style: AppTypography.label.copyWith(
+              fontWeight: FontWeight.w400,
+              color: AppColors.textMuted,
+            ),
           ),
         ],
       ],
@@ -446,8 +441,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           controller: controller,
           onChanged: onChanged,
           textCapitalization: capitalization,
-          style: GoogleFonts.dmSans(
-              fontSize: 14, color: AppColors.textDark),
+          style: AppTypography.body.copyWith(
+              color: AppColors.textDark),
           decoration: InputDecoration(
             hintText: hint,
             prefixIcon:
@@ -472,8 +467,7 @@ class _FieldLabel extends StatelessWidget {
         children: [
           Text(
             text,
-            style: GoogleFonts.dmSans(
-              fontSize: 13.5,
+            style: AppTypography.bodySmall.copyWith(
               fontWeight: FontWeight.w600,
               color: AppColors.textMid,
             ),
@@ -482,8 +476,10 @@ class _FieldLabel extends StatelessWidget {
             const SizedBox(width: 6),
             Text(
               'optional',
-              style: GoogleFonts.dmSans(
-                  fontSize: 12, color: AppColors.textMuted),
+              style: AppTypography.label.copyWith(
+                fontWeight: FontWeight.w400,
+                color: AppColors.textMuted,
+              ),
             ),
           ],
         ],

@@ -5,7 +5,6 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../../core/api/api_error.dart';
 import '../../../core/theme/app_radii.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -113,7 +112,7 @@ class _GroupsPanelState extends ConsumerState<GroupsPanel> {
   void _snack(String message, {bool error = false}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message, style: GoogleFonts.dmSans(color: Colors.white)),
+        content: Text(message, style: TextStyle(color: Colors.white)),
         backgroundColor: error ? AppColors.textDark : AppColors.primary,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -343,7 +342,7 @@ class _GroupActionBtn extends StatelessWidget {
         ? (AppColors.primary, Colors.white)
         : joined
             ? (AppColors.primarySoft, AppColors.primaryText)
-            : (const Color(0xFFEEF2F6), AppColors.textMuted);
+            : (AppColors.quiet, AppColors.textMuted);
 
     return Semantics(
       container: true,

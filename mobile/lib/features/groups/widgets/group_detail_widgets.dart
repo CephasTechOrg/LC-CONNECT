@@ -51,19 +51,22 @@ class _GroupHeader extends StatelessWidget {
           Text(
             group.name,
             textAlign: TextAlign.center,
-            style: GoogleFonts.dmSans(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.textDark),
+            style: AppTypography.titleLarge.copyWith(
+              fontWeight: FontWeight.w700,
+              color: AppColors.textDark,
+            ),
           ),
           const SizedBox(height: 4),
           Text(
             '${_categoryLabel(group.category)} · ${group.memberCount} member${group.memberCount == 1 ? '' : 's'}',
-            style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.textMuted),
+            style: AppTypography.bodySmall.copyWith(color: AppColors.textMuted),
           ),
           if (group.description != null && group.description!.isNotEmpty) ...[
             const SizedBox(height: 12),
             Text(
               group.description!,
               textAlign: TextAlign.center,
-              style: GoogleFonts.dmSans(fontSize: 14, color: AppColors.textMid, height: 1.4),
+              style: AppTypography.body.copyWith(color: AppColors.textMid, height: 1.4),
             ),
           ],
         ],
@@ -176,7 +179,7 @@ class _GroupSection extends StatelessWidget {
 
 /// Red that passes AA on white (the brand error red is 3.5:1) — kept for the actions that remove
 /// you or the group.
-const _dangerRed = Color(0xFFB91C1C);
+const _dangerRed = AppColors.errorText;
 
 // ── Footer (leave / delete) ──────────────────────────────────────────────────
 

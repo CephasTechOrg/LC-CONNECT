@@ -295,7 +295,7 @@ class OnboardingSignOutButton extends ConsumerWidget {
               'Sign out',
               // AA red; [AppColors.error] is ~3.8:1 as text on white.
               style: AppTypography.body.copyWith(
-                color: const Color(0xFFB91C1C),
+                color: AppColors.errorText,
                 fontWeight: FontWeight.w700,
               ),
             ),

@@ -2,11 +2,11 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../core/api/api_error.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_typography.dart';
 import '../data/group_models.dart';
 import '../providers/groups_provider.dart';
 
@@ -120,7 +120,7 @@ class _CreateGroupFormState extends ConsumerState<_CreateGroupForm> {
             child: Container(width: 40, height: 4, decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2))),
           ),
           const SizedBox(height: 16),
-          Text('Create a group', style: GoogleFonts.dmSans(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textDark)),
+          Text('Create a group', style: AppTypography.title.copyWith(fontWeight: FontWeight.w700, color: AppColors.textDark)),
           const SizedBox(height: 16),
           Center(child: _avatarPicker()),
           const SizedBox(height: 16),
@@ -140,12 +140,15 @@ class _CreateGroupFormState extends ConsumerState<_CreateGroupForm> {
             padding: const EdgeInsets.only(top: 6),
             child: Text(
               _visibilityHint,
-              style: GoogleFonts.dmSans(fontSize: 11.5, color: AppColors.textMuted),
+              style: AppTypography.caption.copyWith(
+                fontWeight: FontWeight.w400,
+                color: AppColors.textMuted,
+              ),
             ),
           ),
           if (_error != null) ...[
             const SizedBox(height: 12),
-            Text(_error!, style: GoogleFonts.dmSans(fontSize: 12, color: Colors.red.shade600)),
+            Text(_error!, style: AppTypography.label.copyWith(fontWeight: FontWeight.w400, color: Colors.red.shade600)),
           ],
           const SizedBox(height: 20),
           SizedBox(
@@ -159,7 +162,7 @@ class _CreateGroupFormState extends ConsumerState<_CreateGroupForm> {
               ),
               child: _submitting
                   ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : Text('Create group', style: GoogleFonts.dmSans(fontWeight: FontWeight.w600, fontSize: 15, color: Colors.white)),
+                  : Text('Create group', style: AppTypography.bodyLarge.copyWith(fontWeight: FontWeight.w600, color: Colors.white)),
             ),
           ),
         ],
@@ -196,17 +199,17 @@ class _CreateGroupFormState extends ConsumerState<_CreateGroupForm> {
 
   Widget _label(String text) => Padding(
         padding: const EdgeInsets.only(bottom: 8),
-        child: Text(text, style: GoogleFonts.dmSans(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textMid)),
+        child: Text(text, style: AppTypography.label.copyWith(fontWeight: FontWeight.w600, color: AppColors.textMid)),
       );
 
   Widget _field(TextEditingController c, String hint, {int maxLines = 1, bool autofocus = false}) => TextField(
         controller: c,
         maxLines: maxLines,
         autofocus: autofocus,
-        style: GoogleFonts.dmSans(fontSize: 14, color: AppColors.textDark),
+        style: AppTypography.body.copyWith(color: AppColors.textDark),
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle: GoogleFonts.dmSans(fontSize: 14, color: AppColors.textMuted),
+          hintStyle: AppTypography.body.copyWith(color: AppColors.textMuted),
           filled: true,
           fillColor: AppColors.background,
           contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -232,8 +235,7 @@ class _CreateGroupFormState extends ConsumerState<_CreateGroupForm> {
                 ),
                 child: Text(
                   e.value,
-                  style: GoogleFonts.dmSans(
-                    fontSize: 12.5,
+                  style: AppTypography.label.copyWith(
                     fontWeight: FontWeight.w600,
                     color: selected == e.key ? Colors.white : AppColors.textMid,
                   ),

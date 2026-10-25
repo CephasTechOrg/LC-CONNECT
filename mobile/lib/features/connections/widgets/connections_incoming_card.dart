@@ -65,7 +65,7 @@ class _IncomingCardState extends ConsumerState<_IncomingCard> {
   }
 
   /// AA for white text; the brand [AppColors.green] is ~2.5:1 under a white label.
-  static const _successGreen = Color(0xFF15803D);
+  static const _successGreen = AppColors.green;
 
   @override
   Widget build(BuildContext context) {

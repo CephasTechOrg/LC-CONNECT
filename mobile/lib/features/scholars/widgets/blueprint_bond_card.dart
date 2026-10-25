@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_theme.dart';
@@ -183,8 +182,7 @@ class _EntryRow extends StatelessWidget {
                     // row only renders for verified scholars, so the label is always true.
                     Text(
                       'Honors Student',
-                      style: GoogleFonts.dmSans(
-                        fontSize: 14.5,
+                      style: AppTypography.body.copyWith(
                         fontWeight: FontWeight.w700,
                         color: AppColors.textDark,
                       ),
@@ -202,7 +200,10 @@ class _EntryRow extends StatelessWidget {
                           child: Text(
                             statusLabel,
                             overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.dmSans(fontSize: 12.5, color: AppColors.textMuted),
+                            style: AppTypography.label.copyWith(
+                              fontWeight: FontWeight.w400,
+                              color: AppColors.textMuted,
+                            ),
                           ),
                         ),
                       ],

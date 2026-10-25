@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_typography.dart';
 
 /// Shared back-arrow + title (+ optional subtitle) header for Campus Hub subpages —
 /// Announcements, Opportunities, and post detail all use this same plain style so the section
@@ -29,8 +29,7 @@ class CampusSubpageHeader extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: GoogleFonts.dmSans(
-                    fontSize: 19,
+                  style: AppTypography.title.copyWith(
                     fontWeight: FontWeight.w700,
                     color: AppColors.textDark,
                     letterSpacing: -0.2,
@@ -40,7 +39,10 @@ class CampusSubpageHeader extends StatelessWidget {
                   const SizedBox(height: 1),
                   Text(
                     subtitle!,
-                    style: GoogleFonts.dmSans(fontSize: 12.5, color: AppColors.textMuted),
+                    style: AppTypography.label.copyWith(
+                      fontWeight: FontWeight.w400,
+                      color: AppColors.textMuted,
+                    ),
                   ),
                 ],
               ],

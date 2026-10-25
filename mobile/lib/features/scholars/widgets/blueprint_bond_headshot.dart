@@ -52,7 +52,7 @@ class _HeadshotRow extends ConsumerWidget {
         ),
         TextButton(
           onPressed: uploading ? null : onUpload,
-          style: TextButton.styleFrom(foregroundColor: AppColors.primary),
+          style: TextButton.styleFrom(foregroundColor: AppColors.primaryText),
           child: uploading
               ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
               : Text(hasFile ? 'Replace' : 'Upload', style: _fileActionStyle),

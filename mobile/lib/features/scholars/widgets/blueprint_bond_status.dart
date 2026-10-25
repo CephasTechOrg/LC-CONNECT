@@ -116,9 +116,9 @@ class _StatusHeader extends StatelessWidget {
 // Status colours, each meaning one thing (DESIGN_PRINCIPLES rule 5) and each AA on white:
 // amber = still required, green = done, red = revoked. The lighter shades used before were
 // 2.4–3.5:1 — green "Done" was the least readable word on the page.
-const _kAmber = Color(0xFFB45309);
-const _kSuccess = Color(0xFF15803D);
-const _kDanger = Color(0xFFB91C1C);
+const _kAmber = AppColors.warning;
+const _kSuccess = AppColors.green;
+const _kDanger = AppColors.errorText;
 
 class _Pill extends StatelessWidget {
   final String label;

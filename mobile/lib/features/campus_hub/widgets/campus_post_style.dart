@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_typography.dart';
 
 /// (accent color, tinted background, icon) for a post's category — shared by list cards and the
 /// detail screen so a category reads the same everywhere.
@@ -64,7 +64,7 @@ class CampusBadge extends StatelessWidget {
               label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.dmSans(fontSize: 11, fontWeight: FontWeight.w700, color: color),
+              style: AppTypography.caption.copyWith(fontWeight: FontWeight.w700, color: color),
             ),
           ),
         ],

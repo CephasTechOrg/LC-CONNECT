@@ -1,9 +1,9 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_typography.dart';
 import '../providers/auth_provider.dart';
 import '../providers/suspension_provider.dart';
 
@@ -36,7 +36,6 @@ class _SuspendedScreenState extends ConsumerState<SuspendedScreen> {
         SnackBar(
           content: Text(
             'Appeal submitted. Our team will review it and contact you by email.',
-            style: GoogleFonts.dmSans(),
           ),
           behavior: SnackBarBehavior.floating,
         ),
@@ -47,7 +46,7 @@ class _SuspendedScreenState extends ConsumerState<SuspendedScreen> {
       final message = detail is Map ? (detail['detail'] as String?) : null;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(message ?? 'Could not submit appeal. Please try again.', style: GoogleFonts.dmSans()),
+          content: Text(message ?? 'Could not submit appeal. Please try again.'),
           backgroundColor: AppColors.error,
         ),
       );
@@ -64,7 +63,7 @@ class _SuspendedScreenState extends ConsumerState<SuspendedScreen> {
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(
-        title: Text('Account suspended', style: GoogleFonts.dmSans(fontWeight: FontWeight.w600)),
+        title: Text('Account suspended', style: TextStyle(fontWeight: FontWeight.w600)),
         automaticallyImplyLeading: false,
         actions: [
           TextButton(
@@ -83,21 +82,21 @@ class _SuspendedScreenState extends ConsumerState<SuspendedScreen> {
               const SizedBox(height: 16),
               Text(
                 'Your account has been suspended',
-                style: GoogleFonts.dmSans(fontSize: 22, fontWeight: FontWeight.w700),
+                style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 8),
               Text(
                 suspended?.email != null
                     ? 'Signed in as ${suspended!.email}. You cannot use LC Connect while suspended.'
                     : 'You cannot use LC Connect while your account is suspended.',
-                style: GoogleFonts.dmSans(color: AppColors.textMuted, height: 1.4),
+                style: TextStyle(color: AppColors.textMuted, height: 1.4),
               ),
               const SizedBox(height: 24),
               statusAsync.when(
                 loading: () => const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator())),
                 error: (_, _) => Text(
                   'Could not load appeal status. Tap “Check if account was restored” or sign out and try again.',
-                  style: GoogleFonts.dmSans(color: AppColors.textMuted),
+                  style: TextStyle(color: AppColors.textMuted),
                 ),
                 data: (status) {
                   final support = status.supportEmail;
@@ -115,12 +114,12 @@ class _SuspendedScreenState extends ConsumerState<SuspendedScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Appeal under review', style: GoogleFonts.dmSans(fontWeight: FontWeight.w600)),
+                              Text('Appeal under review', style: TextStyle(fontWeight: FontWeight.w600)),
                               const SizedBox(height: 8),
-                              Text(open.message, style: GoogleFonts.dmSans(height: 1.4)),
+                              Text(open.message, style: TextStyle(height: 1.4)),
                               if (open.adminNote != null && open.adminNote!.isNotEmpty) ...[
                                 const SizedBox(height: 8),
-                                Text('Team note: ${open.adminNote}', style: GoogleFonts.dmSans(fontSize: 13)),
+                                Text('Team note: ${open.adminNote}', style: AppTypography.bodySmall),
                               ],
                             ],
                           ),
@@ -128,13 +127,13 @@ class _SuspendedScreenState extends ConsumerState<SuspendedScreen> {
                         const SizedBox(height: 16),
                         Text(
                           'You already have an open appeal. Email $support if you need to add information.',
-                          style: GoogleFonts.dmSans(color: AppColors.textMuted, height: 1.4),
+                          style: TextStyle(color: AppColors.textMuted, height: 1.4),
                         ),
                       ] else ...[
                         Text(
                           'If you believe this was a mistake, submit a short appeal below. '
                           'This does not restore your account. An administrator will review it.',
-                          style: GoogleFonts.dmSans(height: 1.4),
+                          style: TextStyle(height: 1.4),
                         ),
                         const SizedBox(height: 16),
                         Form(
@@ -177,7 +176,7 @@ class _SuspendedScreenState extends ConsumerState<SuspendedScreen> {
                       Text(
                         'Questions? Email $support',
                         textAlign: TextAlign.center,
-                        style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.textMuted),
+                        style: AppTypography.bodySmall.copyWith(color: AppColors.textMuted),
                       ),
                     ],
                   );

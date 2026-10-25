@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_typography.dart';
 
 /// Search box for the Groups panel — filters discovery by group name (wired to the `q` param).
 /// Shows a clear button once there's text; debouncing lives in the panel.
@@ -30,11 +30,11 @@ class GroupSearchField extends StatelessWidget {
         controller: controller,
         onChanged: onChanged,
         textInputAction: TextInputAction.search,
-        style: GoogleFonts.dmSans(fontSize: 14, color: AppColors.textDark),
+        style: AppTypography.body.copyWith(color: AppColors.textDark),
         decoration: InputDecoration(
           isDense: true,
           hintText: 'Search groups',
-          hintStyle: GoogleFonts.dmSans(fontSize: 14, color: AppColors.textMuted),
+          hintStyle: AppTypography.body.copyWith(color: AppColors.textMuted),
           prefixIcon: const Icon(Icons.search_rounded, size: 20, color: AppColors.textMuted),
           suffixIcon: hasText
               ? IconButton(

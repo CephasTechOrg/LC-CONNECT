@@ -33,8 +33,7 @@ class _ReadBySheet extends ConsumerWidget {
             const SizedBox(height: 16),
             Text(
               'Read by',
-              style: GoogleFonts.dmSans(
-                fontSize: 16,
+              style: AppTypography.titleSmall.copyWith(
                 fontWeight: FontWeight.w700,
                 color: AppColors.textDark,
               ),
@@ -100,8 +99,7 @@ class _ReadByList extends StatelessWidget {
                         reader.name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.dmSans(
-                          fontSize: 14,
+                        style: AppTypography.body.copyWith(
                           fontWeight: FontWeight.w500,
                           color: AppColors.textDark,
                         ),
@@ -129,7 +127,7 @@ class _ReadByEmpty extends StatelessWidget {
         // Deliberately not "Nobody has read this": the honest reading of an empty list is that
         // nobody has *opened the conversation* past this message yet.
         'No one has caught up to this message yet.',
-        style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.textMuted),
+        style: AppTypography.bodySmall.copyWith(color: AppColors.textMuted),
       ),
     );
   }
@@ -151,7 +149,7 @@ class _ReadByError extends StatelessWidget {
               // Never "no one has read it" — a failed request must not be rendered as a fact
               // about other people.
               "Couldn't load who has read this.",
-              style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.textMid),
+              style: AppTypography.bodySmall.copyWith(color: AppColors.textMid),
             ),
           ),
           TextButton(onPressed: onRetry, child: const Text('Retry')),

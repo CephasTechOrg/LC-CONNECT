@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/app_filter_chip.dart';
 import '../../../shared/widgets/app_states.dart';
 import '../models/campus_post.dart';
@@ -174,7 +174,10 @@ class _AnnouncementsFooter extends StatelessWidget {
               )
             : Text(
                 'Showing $shown of $total announcement${total == 1 ? '' : 's'}',
-                style: GoogleFonts.dmSans(fontSize: 12.5, color: AppColors.textMuted),
+                style: AppTypography.label.copyWith(
+                  fontWeight: FontWeight.w400,
+                  color: AppColors.textMuted,
+                ),
               ),
       ),
     );

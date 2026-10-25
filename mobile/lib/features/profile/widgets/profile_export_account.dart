@@ -21,17 +21,17 @@ Future<void> _showExportAccountFlow(BuildContext context, WidgetRef ref) async {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
           'Your data export is ready',
-          style: GoogleFonts.dmSans(fontWeight: FontWeight.w700),
+          style: TextStyle(fontWeight: FontWeight.w700),
         ),
         content: Text(
           'A JSON copy of your LC Connect data has been copied to the clipboard. '
           'Paste it into Notes, email, or a file to keep it.',
-          style: GoogleFonts.dmSans(color: AppColors.textMid, height: 1.4),
+          style: TextStyle(color: AppColors.textMid, height: 1.4),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: Text('Done', style: GoogleFonts.dmSans(fontWeight: FontWeight.w600)),
+            child: Text('Done', style: TextStyle(fontWeight: FontWeight.w600)),
           ),
         ],
       ),
@@ -43,7 +43,6 @@ Future<void> _showExportAccountFlow(BuildContext context, WidgetRef ref) async {
       SnackBar(
         content: Text(
           apiErrorMessage(e, fallback: 'Could not export your data. Please try again.'),
-          style: GoogleFonts.dmSans(),
         ),
         behavior: SnackBarBehavior.floating,
       ),

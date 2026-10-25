@@ -36,9 +36,9 @@ extension _BubbleOptions on _BubbleTile {
               ListTile(
                 leading: const Icon(Icons.done_all_rounded, color: AppColors.primary),
                 title: Text('Read by',
-                    style: GoogleFonts.dmSans(fontWeight: FontWeight.w500, color: AppColors.textDark)),
+                    style: TextStyle(fontWeight: FontWeight.w500, color: AppColors.textDark)),
                 subtitle: Text('See who has read this message',
-                    style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textMuted)),
+                    style: AppTypography.label.copyWith(fontWeight: FontWeight.w400, color: AppColors.textMuted)),
                 onTap: () {
                   Navigator.of(sheetCtx).pop();
                   showModalBottomSheet<void>(
@@ -54,9 +54,9 @@ extension _BubbleOptions on _BubbleTile {
               ListTile(
                 leading: const Icon(Icons.edit_outlined, color: AppColors.textMid),
                 title: Text('Edit message',
-                    style: GoogleFonts.dmSans(fontWeight: FontWeight.w500, color: AppColors.textDark)),
+                    style: TextStyle(fontWeight: FontWeight.w500, color: AppColors.textDark)),
                 subtitle: Text('Everyone sees it change, marked as edited',
-                    style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textMuted)),
+                    style: AppTypography.label.copyWith(fontWeight: FontWeight.w400, color: AppColors.textMuted)),
                 onTap: () {
                   Navigator.of(sheetCtx).pop();
                   onEdit!(message);
@@ -66,9 +66,9 @@ extension _BubbleOptions on _BubbleTile {
               ListTile(
                 leading: const Icon(Icons.delete_outline_rounded, color: AppColors.error),
                 title: Text('Delete for everyone',
-                    style: GoogleFonts.dmSans(fontWeight: FontWeight.w500, color: AppColors.error)),
+                    style: TextStyle(fontWeight: FontWeight.w500, color: AppColors.error)),
                 subtitle: Text('Removes it for all participants',
-                    style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textMuted)),
+                    style: AppTypography.label.copyWith(fontWeight: FontWeight.w400, color: AppColors.textMuted)),
                 onTap: () {
                   Navigator.of(sheetCtx).pop();
                   onDelete?.call(message);
@@ -78,9 +78,9 @@ extension _BubbleOptions on _BubbleTile {
               ListTile(
                 leading: const Icon(Icons.flag_outlined, color: AppColors.textMid),
                 title: Text('Report message',
-                    style: GoogleFonts.dmSans(fontWeight: FontWeight.w500, color: AppColors.textDark)),
+                    style: TextStyle(fontWeight: FontWeight.w500, color: AppColors.textDark)),
                 subtitle: Text('Flag this message for review',
-                    style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textMuted)),
+                    style: AppTypography.label.copyWith(fontWeight: FontWeight.w400, color: AppColors.textMuted)),
                 onTap: () {
                   Navigator.of(sheetCtx).pop();
                   onReport?.call(message);
