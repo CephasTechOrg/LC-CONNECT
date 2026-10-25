@@ -34,9 +34,9 @@ class _ComposePostImages extends StatelessWidget {
         const _Label('Photos', optional: true),
         Text(
           remaining <= 0 ? '4 photos attached — cover is first.' : '$remaining of 4 photos remaining. First is the cover.',
-          style: GoogleFonts.dmSans(fontSize: 12.5, color: AppColors.textMuted),
+          style: AppTypography.label.copyWith(color: AppColors.textMuted),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: AppSpacing.sm),
         SizedBox(
           height: 88,
           child: ListView(
@@ -108,7 +108,7 @@ class _Thumb extends StatelessWidget {
                 decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(6)),
                 child: Text(
                   'Cover',
-                  style: GoogleFonts.dmSans(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.white),
+                  style: AppTypography.micro.copyWith(fontWeight: FontWeight.w700, color: Colors.white),
                 ),
               ),
             ),

@@ -4,17 +4,21 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/api/api_error.dart';
+import '../../../core/theme/app_radii.dart';
+import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/app_filter_chip.dart';
+import '../../../shared/widgets/app_form_section.dart';
 import '../models/campus_post.dart';
 import '../providers/campus_hub_provider.dart';
 import '../providers/campus_publishing_provider.dart';
 
+part '../widgets/compose_post_form_parts.dart';
 part '../widgets/compose_post_images.dart';
 
 /// Create or edit a campus post. Pass `existing` to edit. One clean form — grouped selectors up
@@ -243,12 +247,12 @@ class _ComposeCampusPostScreenState extends ConsumerState<ComposeCampusPostScree
   Future<bool?> _confirmPublish() => showDialog<bool>(
     context: context,
     builder: (context) => AlertDialog(
-      title: Text('Publish now?', style: GoogleFonts.dmSans(fontWeight: FontWeight.w700)),
+      title: const Text('Publish now?'),
       content: Text(
         _priority == 'important'
             ? 'This may notify the campus audience.'
             : 'This will appear in Campus Hub for the selected audience.',
-        style: GoogleFonts.dmSans(color: AppColors.textMid),
+        style: AppTypography.body.copyWith(color: AppColors.textMid),
       ),
       actions: [
         TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
@@ -265,7 +269,7 @@ class _ComposeCampusPostScreenState extends ConsumerState<ComposeCampusPostScree
 
   void _toast(String message) => ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(
-      content: Text(message, style: GoogleFonts.dmSans()),
+      content: Text(message),
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
     ),
@@ -273,278 +277,151 @@ class _ComposeCampusPostScreenState extends ConsumerState<ComposeCampusPostScree
 
   @override
   Widget build(BuildContext context) {
+    final isOpportunity = _kind == 'opportunity';
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _Header(title: _isEditing ? 'Edit post' : 'New campus post'),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
-                children: [
-                  const _Label('Type'),
-                  _ChipWrap(options: postKindLabels, selected: _kind, onSelect: _onKindChanged),
-                  const SizedBox(height: 20),
-                  const _Label('Category'),
-                  _ChipWrap(
-                    options: categoryLabelsForKind(_kind),
-                    selected: _category,
-                    onSelect: (v) => setState(() => _category = v),
-                  ),
-                  const SizedBox(height: 20),
-                  const _Label('Audience'),
-                  _ChipWrap(
-                    options: _audiences,
-                    selected: _audience,
-                    onSelect: (v) => setState(() => _audience = v),
-                  ),
-                  const SizedBox(height: 20),
-                  const _Label('Priority'),
-                  _ChipWrap(
-                    options: _priorities,
-                    selected: _priority,
-                    onSelect: (v) => setState(() => _priority = v),
-                  ),
-                  const SizedBox(height: 24),
-                  const _Label('Title'),
-                  TextField(
-                    controller: _titleCtrl,
-                    textCapitalization: TextCapitalization.sentences,
-                    decoration: const InputDecoration(hintText: 'A short, clear headline'),
-                  ),
-                  const SizedBox(height: 16),
-                  _Label(
-                    _kind == 'opportunity' ? 'Brief summary' : 'Summary',
-                    optional: _kind != 'opportunity',
-                  ),
-                  TextField(
-                    controller: _summaryCtrl,
-                    textCapitalization: TextCapitalization.sentences,
-                    maxLines: _kind == 'opportunity' ? 3 : 1,
-                    decoration: InputDecoration(
-                      hintText: _kind == 'opportunity'
-                          ? 'One or two lines students see on the card'
-                          : 'One line shown in the feed',
-                    ),
-                  ),
-                  if (_kind == 'announcement') ...[
-                    const SizedBox(height: 16),
-                    _ComposePostImages(
-                      uploaded: _images,
-                      pending: _pending,
-                      remaining: 4 - _imageCount,
-                      busy: _loading,
-                      onAdd: _pickImage,
-                      onRemoveUploaded: _removeUploadedImage,
-                      onRemovePending: _removePendingImage,
-                    ),
-                    const SizedBox(height: 16),
-                    const _Label('Details'),
-                    TextField(
-                      controller: _bodyCtrl,
-                      maxLines: 7,
-                      textCapitalization: TextCapitalization.sentences,
-                      decoration: const InputDecoration(
-                        hintText: 'Write the full message…',
-                        alignLabelWithHint: true,
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 16),
-                  _Label(
-                    _kind == 'opportunity' ? 'Application / details link' : 'External link',
-                    optional: true,
-                  ),
-                  TextField(
-                    controller: _urlCtrl,
-                    keyboardType: TextInputType.url,
-                    autocorrect: false,
-                    decoration: const InputDecoration(hintText: 'https://…'),
-                  ),
-                  const SizedBox(height: 16),
-                  const _Label('Closes on', optional: true),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: _pickExpires,
-                          icon: const Icon(Icons.event_outlined, size: 18),
-                          label: Text(
-                            _expiresAt == null
-                                ? 'No deadline'
-                                : DateFormat('MMM d, y').format(_expiresAt!),
-                            style: GoogleFonts.dmSans(fontWeight: FontWeight.w600),
-                          ),
-                        ),
-                      ),
-                      if (_expiresAt != null) ...[
-                        const SizedBox(width: 8),
-                        IconButton(
-                          tooltip: 'Clear deadline',
-                          onPressed: () => setState(() => _expiresAt = null),
-                          icon: const Icon(Icons.close_rounded),
-                        ),
-                      ],
-                    ],
-                  ),
-                  const SizedBox(height: 28),
-                  _Actions(
-                    isEditing: _isEditing,
-                    loading: _loading,
-                    onSaveDraft: () => _save(publish: false),
-                    onPublish: () => _save(publish: true),
-                    onSaveChanges: () => _save(publish: false),
-                  ),
-                ],
-              ),
-            ),
-          ],
+      appBar: AppBar(
+        title: Text(_isEditing ? 'Edit post' : 'New campus post'),
+        leading: IconButton(
+          tooltip: 'Close',
+          icon: const Icon(Icons.close_rounded),
+          onPressed: () => context.pop(),
         ),
       ),
-    );
-  }
-}
-
-// ── Pieces ────────────────────────────────────────────────────────
-class _Header extends StatelessWidget {
-  final String title;
-  const _Header({required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 8, 20, 8),
-      child: Row(
+      // Pinned, like Create activity: publishing used to sit under eleven fields.
+      bottomNavigationBar: AppFormActionBar(
+        child: _Actions(
+          isEditing: _isEditing,
+          loading: _loading,
+          onSaveDraft: () => _save(publish: false),
+          onPublish: () => _save(publish: true),
+          onSaveChanges: () => _save(publish: false),
+        ),
+      ),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.gutter,
+          AppSpacing.xs,
+          AppSpacing.gutter,
+          AppSpacing.xxxl,
+        ),
+        // The same shape as Create activity: required steps first, then an "Optional" group.
         children: [
-          IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
-            onPressed: () => context.pop(),
-          ),
-          Expanded(
-            child: Text(
-              title,
-              style: GoogleFonts.dmSans(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textDark,
+          AppFormSection(
+            step: 1,
+            title: "What you're posting",
+            children: [
+              const _Label('Type'),
+              _ChipWrap(options: postKindLabels, selected: _kind, onSelect: _onKindChanged),
+              const SizedBox(height: AppSpacing.lg),
+              const _Label('Category'),
+              _ChipWrap(
+                options: categoryLabelsForKind(_kind),
+                selected: _category,
+                onSelect: (v) => setState(() => _category = v),
               ),
-            ),
+            ],
+          ),
+          AppFormSection(
+            step: 2,
+            title: 'Who sees it',
+            children: [
+              const _Label('Audience'),
+              _ChipWrap(
+                options: _audiences,
+                selected: _audience,
+                onSelect: (v) => setState(() => _audience = v),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              const _Label('Priority'),
+              _ChipWrap(
+                options: _priorities,
+                selected: _priority,
+                onSelect: (v) => setState(() => _priority = v),
+              ),
+              if (_priority == 'important') ...[
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  'Important posts may notify the audience.',
+                  style: AppTypography.label.copyWith(color: AppColors.textMuted),
+                ),
+              ],
+            ],
+          ),
+          AppFormSection(
+            step: 3,
+            title: 'Content',
+            children: [
+              const _Label('Title'),
+              TextField(
+                controller: _titleCtrl,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: const InputDecoration(hintText: 'A short, clear headline'),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              _Label(isOpportunity ? 'Brief summary' : 'Summary', optional: !isOpportunity),
+              TextField(
+                controller: _summaryCtrl,
+                textCapitalization: TextCapitalization.sentences,
+                maxLines: isOpportunity ? 3 : 1,
+                decoration: InputDecoration(
+                  hintText: isOpportunity
+                      ? 'One or two lines students see on the card'
+                      : 'One line shown in the feed',
+                ),
+              ),
+              if (_kind == 'announcement') ...[
+                const SizedBox(height: AppSpacing.lg),
+                _ComposePostImages(
+                  uploaded: _images,
+                  pending: _pending,
+                  remaining: 4 - _imageCount,
+                  busy: _loading,
+                  onAdd: _pickImage,
+                  onRemoveUploaded: _removeUploadedImage,
+                  onRemovePending: _removePendingImage,
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                const _Label('Details'),
+                TextField(
+                  controller: _bodyCtrl,
+                  maxLines: 7,
+                  textCapitalization: TextCapitalization.sentences,
+                  decoration: const InputDecoration(
+                    hintText: 'Write the full message…',
+                    alignLabelWithHint: true,
+                  ),
+                ),
+              ],
+            ],
+          ),
+          const AppFormGroupHeading(
+            title: 'Optional',
+            subtitle: 'Not needed to publish, but they help students act on it.',
+          ),
+          AppFormSection(
+            children: [
+              _Label(isOpportunity ? 'Application or details link' : 'External link'),
+              TextField(
+                controller: _urlCtrl,
+                keyboardType: TextInputType.url,
+                autocorrect: false,
+                decoration: const InputDecoration(hintText: 'https://…'),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              const _Label('Closes on'),
+              _DeadlineTile(
+                label: _expiresAt == null
+                    ? 'No deadline'
+                    : DateFormat('MMM d, y').format(_expiresAt!),
+                hasValue: _expiresAt != null,
+                onPick: _pickExpires,
+                onClear: () => setState(() => _expiresAt = null),
+              ),
+            ],
           ),
         ],
       ),
-    );
-  }
-}
-
-class _Label extends StatelessWidget {
-  final String text;
-  final bool optional;
-  const _Label(this.text, {this.optional = false});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Row(
-        children: [
-          Text(
-            text,
-            style: GoogleFonts.dmSans(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textDark,
-            ),
-          ),
-          if (optional) ...[
-            const SizedBox(width: 6),
-            Text('optional', style: GoogleFonts.dmSans(fontSize: 11, color: AppColors.textMuted)),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _ChipWrap extends StatelessWidget {
-  final Map<String, String> options;
-  final String selected;
-  final ValueChanged<String> onSelect;
-  const _ChipWrap({required this.options, required this.selected, required this.onSelect});
-
-  @override
-  Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: [
-        for (final e in options.entries)
-          AppFilterChip(label: e.value, selected: selected == e.key, onTap: () => onSelect(e.key)),
-      ],
-    );
-  }
-}
-
-class _Actions extends StatelessWidget {
-  final bool isEditing;
-  final bool loading;
-  final VoidCallback onSaveDraft;
-  final VoidCallback onPublish;
-  final VoidCallback onSaveChanges;
-  const _Actions({
-    required this.isEditing,
-    required this.loading,
-    required this.onSaveDraft,
-    required this.onPublish,
-    required this.onSaveChanges,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    if (isEditing) {
-      return SizedBox(
-        width: double.infinity,
-        height: 50,
-        child: FilledButton(
-          onPressed: loading ? null : onSaveChanges,
-          child: Text(
-            loading ? 'Saving…' : 'Save changes',
-            style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 15),
-          ),
-        ),
-      );
-    }
-    return Column(
-      children: [
-        SizedBox(
-          width: double.infinity,
-          height: 50,
-          child: FilledButton(
-            onPressed: loading ? null : onPublish,
-            child: Text(
-              loading ? 'Working…' : 'Publish now',
-              style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 15),
-            ),
-          ),
-        ),
-        const SizedBox(height: 10),
-        SizedBox(
-          width: double.infinity,
-          height: 50,
-          child: OutlinedButton(
-            onPressed: loading ? null : onSaveDraft,
-            child: Text(
-              'Save as draft',
-              style: GoogleFonts.dmSans(
-                fontWeight: FontWeight.w700,
-                fontSize: 15,
-                color: AppColors.primary,
-              ),
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

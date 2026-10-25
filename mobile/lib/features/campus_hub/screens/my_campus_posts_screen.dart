@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/api/api_error.dart';
+import '../../../core/theme/app_radii.dart';
+import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_typography.dart';
+import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/app_states.dart';
 import '../models/campus_post.dart';
 import '../providers/campus_hub_provider.dart';
 import '../providers/campus_publishing_provider.dart';
+import '../widgets/campus_subpage_header.dart';
 
 class MyCampusPostsScreen extends ConsumerWidget {
   const MyCampusPostsScreen({super.key});
@@ -26,33 +30,18 @@ class MyCampusPostsScreen extends ConsumerWidget {
               backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,
               icon: const Icon(Icons.add),
-              label: Text('New post', style: GoogleFonts.dmSans(fontWeight: FontWeight.w700)),
+              label: Text('New post', style: AppTypography.body.copyWith(fontWeight: FontWeight.w700)),
             )
           : null,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(8, 8, 20, 8),
-              child: Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
-                    onPressed: () => context.pop(),
-                  ),
-                  Expanded(
-                    child: Text(
-                      'My campus posts',
-                      style: GoogleFonts.dmSans(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textDark,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+            // The same header as Announcements and Opportunities — this is their authoring side.
+            CampusSubpageHeader(
+              title: 'My campus posts',
+              subtitle: 'Drafts, published and archived',
+              onBack: () => context.pop(),
             ),
             Expanded(
               child: caps.when(
@@ -91,9 +80,14 @@ class MyCampusPostsScreen extends ConsumerWidget {
                           );
                         }
                         return ListView.separated(
-                          padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
+                          padding: const EdgeInsets.fromLTRB(
+                            AppSpacing.gutter,
+                            AppSpacing.sm,
+                            AppSpacing.gutter,
+                            100,
+                          ),
                           itemCount: posts.length,
-                          separatorBuilder: (_, _) => const SizedBox(height: 10),
+                          separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.md),
                           itemBuilder: (context, index) => _AuthorPostTile(
                             post: posts[index],
                             onEdit: () => context.push('/home/my-posts/new', extra: posts[index]),
@@ -211,83 +205,63 @@ class _AuthorPostTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final kind = postKindLabels[post.kind] ?? post.kind;
-    return Material(
-      color: AppColors.surface,
-      borderRadius: BorderRadius.circular(14),
-      child: InkWell(
-        onTap: onOpen,
-        borderRadius: BorderRadius.circular(14),
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(14, 12, 8, 14),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppColors.border),
+    final summary = post.summary;
+    return AppCard(
+      onTap: onOpen,
+      padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.xs, AppSpacing.xs, AppSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 48dp tall so the Publish pill and the menu keep full tap targets without padding the
+          // card's top edge.
+          SizedBox(
+            height: kMinInteractiveDimension,
+            child: Row(
+              children: [
+                _StatusPill(status: post.status),
+                const SizedBox(width: AppSpacing.sm),
+                Text(kind, style: AppTypography.label.copyWith(color: AppColors.textMuted)),
+                const Spacer(),
+                if (post.isDraft) _PublishPill(onTap: onPublish),
+                if (!_archived) _menu() else const SizedBox(width: AppSpacing.md),
+              ],
+            ),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  _StatusPill(status: post.status),
-                  const SizedBox(width: 8),
-                  Text(
-                    kind,
-                    style: GoogleFonts.dmSans(
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textMuted,
-                    ),
+          Padding(
+            padding: const EdgeInsets.only(right: AppSpacing.md),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  post.title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.titleSmall.copyWith(
+                    fontWeight: FontWeight.w700,
+                    // Archived posts are history: still readable, no longer competing.
+                    color: _archived ? AppColors.textMid : AppColors.textDark,
                   ),
-                  const Spacer(),
-                  if (post.isDraft)
-                    TextButton(
-                      onPressed: onPublish,
-                      style: TextButton.styleFrom(minimumSize: const Size(0, 32)),
-                      child: Text(
-                        'Publish',
-                        style: GoogleFonts.dmSans(
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                    ),
-                  if (!_archived) _menu(),
-                ],
-              ),
-              Padding(
-                padding: const EdgeInsets.only(left: 2, right: 6),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      post.title,
-                      style: GoogleFonts.dmSans(
-                        fontSize: 14.5,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textDark,
-                      ),
-                    ),
-                    if (post.summary != null && post.summary!.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        post.summary!,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.textMid),
-                      ),
-                    ],
-                  ],
                 ),
-              ),
-            ],
+                if (summary != null && summary.isNotEmpty) ...[
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    summary,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.bodySmall.copyWith(color: AppColors.textMuted, height: 1.4),
+                  ),
+                ],
+              ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
 
   Widget _menu() {
     return PopupMenuButton<String>(
+      tooltip: 'More',
       icon: const Icon(Icons.more_vert_rounded, size: 20, color: AppColors.textMuted),
       onSelected: (v) => v == 'edit' ? onEdit() : onRemove(),
       itemBuilder: (_) => [
@@ -298,24 +272,71 @@ class _AuthorPostTile extends StatelessWidget {
   }
 }
 
+/// A draft's one action — a filled pill, the same treatment as Join and Accept.
+class _PublishPill extends StatelessWidget {
+  final VoidCallback onTap;
+  const _PublishPill({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      container: true,
+      button: true,
+      label: 'Publish',
+      excludeSemantics: true,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: SizedBox(
+          height: kMinInteractiveDimension,
+          child: Center(
+            child: Container(
+              height: 32,
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: AppColors.primary,
+                borderRadius: AppRadii.all(AppRadii.full),
+              ),
+              child: Text(
+                'Publish',
+                style: AppTypography.bodySmall.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _StatusPill extends StatelessWidget {
   final String status;
   const _StatusPill({required this.status});
 
+  // Colour only where it means something: green for live, the soft brand tint for a draft,
+  // grey for archived. Text shades are the AA ones; the old green label was ~2.4:1.
+  static const _liveText = Color(0xFF15803D);
+  static const _liveTint = Color(0xFFDCFCE7);
+  static const _quietTint = Color(0xFFEEF2F6);
+
   @override
   Widget build(BuildContext context) {
     final (Color fg, Color bg, String label) = switch (status) {
-      'published' => (AppColors.green, AppColors.green.withValues(alpha: 0.12), 'Published'),
-      'draft' => (AppColors.primary, AppColors.primarySoft, 'Draft'),
-      'archived' => (AppColors.textMuted, AppColors.border, 'Archived'),
-      _ => (AppColors.textMuted, AppColors.border, status),
+      'published' => (_liveText, _liveTint, 'Published'),
+      'draft' => (AppColors.primaryText, AppColors.primarySoft, 'Draft'),
+      'archived' => (AppColors.textMuted, _quietTint, 'Archived'),
+      _ => (AppColors.textMuted, _quietTint, status),
     };
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(20)),
+      decoration: BoxDecoration(color: bg, borderRadius: AppRadii.all(AppRadii.full)),
       child: Text(
         label,
-        style: GoogleFonts.dmSans(fontSize: 11, fontWeight: FontWeight.w700, color: fg),
+        style: AppTypography.caption.copyWith(fontWeight: FontWeight.w700, color: fg),
       ),
     );
   }

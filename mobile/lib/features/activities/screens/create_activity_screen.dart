@@ -12,7 +12,7 @@ import '../../../core/theme/app_radii.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/app_typography.dart';
-import '../../../shared/widgets/app_card.dart';
+import '../../../shared/widgets/app_form_section.dart';
 import '../providers/activities_provider.dart';
 
 part '../widgets/activity_form_fields.dart';
@@ -203,13 +203,7 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
-      bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
-          color: AppColors.surface,
-          boxShadow: [BoxShadow(color: Color(0x0F1B3A5C), blurRadius: 16, offset: Offset(0, -4))],
-        ),
-        padding: EdgeInsets.fromLTRB(
-            20, 12, 20, 12 + MediaQuery.of(context).viewPadding.bottom),
+      bottomNavigationBar: AppFormActionBar(
         child: ListenableBuilder(
           listenable: Listenable.merge([_titleCtrl, _locationCtrl]),
           builder: (_, _) => FilledButton(
@@ -252,7 +246,7 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
               existingUrl: widget.existing?.bannerUrl,
               onTap: _submitting ? null : _pickBanner,
             ),
-            _FormSection(
+            AppFormSection(
               step: 1,
               title: 'What',
               children: [
@@ -281,7 +275,7 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
                 ),
               ],
             ),
-            _FormSection(
+            AppFormSection(
               step: 2,
               title: 'Where and when',
               children: [
@@ -314,8 +308,11 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
                 ),
               ],
             ),
-            const _OptionalHeading(),
-            _FormSection(
+            const AppFormGroupHeading(
+              title: 'Optional',
+              subtitle: 'Not needed to post, but they help people decide to come.',
+            ),
+            AppFormSection(
               children: [
                 const _Label('Description'),
                 const SizedBox(height: AppSpacing.sm),

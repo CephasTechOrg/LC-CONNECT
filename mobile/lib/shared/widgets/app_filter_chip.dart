@@ -30,6 +30,9 @@ class AppFilterChip extends StatelessWidget {
             constraints: const BoxConstraints(minHeight: 48),
             child: Align(
               alignment: Alignment.center,
+              // Shrink to the pill. Without it the Align took the full width wherever the chip
+              // got a bounded width — in a Wrap every chip sat alone on its own line.
+              widthFactor: 1,
               // Soft selected state (tint + accent text), matching the Messages
               // Chats/Groups track, rather than a solid fill competing with the
               // screen's primary buttons.
@@ -51,7 +54,8 @@ class AppFilterChip extends StatelessWidget {
                     style: GoogleFonts.dmSans(
                       fontSize: 13,
                       fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                      color: selected ? AppColors.primary : AppColors.textMid,
+                      // primaryText, not primary: brand blue on the soft tint is under AA.
+                      color: selected ? AppColors.primaryText : AppColors.textMid,
                     ),
                   ),
                 ),
