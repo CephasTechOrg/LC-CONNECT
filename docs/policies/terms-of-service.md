@@ -21,6 +21,8 @@ You need a current Livingstone College email address.
   is your identity here.
 - Whether you are treated as a **student** or as **staff** comes from your email domain. You cannot
   choose it.
+- You give your **first and last name** — your real ones. They are how people on campus know who
+  you are, so an account under a made-up name is not allowed.
 - You also give a **personal email address**. Every code and security notice goes there, because
   you may not be able to reach your campus mailbox yet.
 
