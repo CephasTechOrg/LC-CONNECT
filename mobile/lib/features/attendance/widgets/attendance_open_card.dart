@@ -103,7 +103,7 @@ class _AttendanceOpenCardState extends ConsumerState<AttendanceOpenCard> {
 
     // Already checked in: the card stays, because the session is still open and the countdown is
     // still meaningful, but it must stop telling the student to scan. It used to read
-    // "Scan to Check In" right through a successful check-in until the session closed.
+    // "Scan to check in" right through a successful check-in until the session closed.
     final checkedIn = active.isCheckedIn;
 
     return Padding(
@@ -200,7 +200,7 @@ class _OpenCard extends StatelessWidget {
                     borderRadius: AppRadii.all(AppRadii.full),
                   ),
                   child: Text(
-                    'Scan to Check In',
+                    'Scan to check in',
                     textAlign: TextAlign.center,
                     style: AppTypography.body.copyWith(
                       fontWeight: FontWeight.w700,

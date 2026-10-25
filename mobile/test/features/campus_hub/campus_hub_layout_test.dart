@@ -287,7 +287,7 @@ void main() {
       expect(find.text('Urgent campus alert'), findsOneWidget);
       expect(find.text('Publish to campus'), findsOneWidget);
       expect(find.text('Finish your Blueprint Bond profile'), findsOneWidget);
-      expect(find.text('Scan to Check In'), findsOneWidget);
+      expect(find.text('Scan to check in'), findsOneWidget);
       for (final title in ['Latest updates', 'Upcoming activities', 'Suggested connections']) {
         expect(find.text(title), findsOneWidget);
       }
@@ -338,7 +338,7 @@ void main() {
   testWidgets('once checked in, attendance steps down to a calm card', (tester) async {
     await _pumpHome(tester, checkedIn: true);
     expect(find.text("You're checked in"), findsOneWidget);
-    expect(find.text('Scan to Check In'), findsNothing);
+    expect(find.text('Scan to check in'), findsNothing);
     // One accent colour: the checked-in state used to be a solid green block.
     final greens = find.byWidgetPredicate((w) =>
         (w is Material && w.color == AppColors.green) ||

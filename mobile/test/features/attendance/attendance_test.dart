@@ -172,10 +172,10 @@ void main() {
 
       expect(find.text('Attendance is open'), findsOneWidget);
       expect(find.text('Honors Class'), findsOneWidget);
-      expect(find.text('Scan to Check In'), findsOneWidget);
+      expect(find.text('Scan to check in'), findsOneWidget);
     });
 
-    /// The card used to keep prompting "Scan to Check In" right through a successful check-in,
+    /// The card used to keep prompting "Scan to check in" right through a successful check-in,
     /// until the session closed — an action that could no longer do anything.
     testWidgets('stops prompting once the student has checked in', (tester) async {
       await tester.pumpWidget(cardWith(
@@ -184,7 +184,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text("You're checked in"), findsOneWidget);
-      expect(find.text('Scan to Check In'), findsNothing);
+      expect(find.text('Scan to check in'), findsNothing);
       expect(find.text('Attendance is open'), findsNothing);
       // The countdown is still meaningful — the session has not closed.
       expect(find.textContaining('Closes in'), findsOneWidget);
