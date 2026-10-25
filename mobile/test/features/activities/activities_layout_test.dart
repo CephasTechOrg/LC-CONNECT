@@ -165,11 +165,14 @@ void main() {
       expect(barTitle.opacity, 0);
     });
 
-    testWidgets('states the head-count once', (tester) async {
+    testWidgets('states the head-count once, and the spots beside Join', (tester) async {
       await _pump(tester, ActivityDetailScreen(activity: _acts[0]));
       expect(find.text('6 / 10 going'), findsOneWidget);
       expect(find.textContaining('6 going'), findsNothing);
-      expect(find.text('4 spots left'), findsOneWidget);
+      // The summary panel: when, and how full, next to the action they decide.
+      expect(find.text('4 left'), findsOneWidget);
+      expect(find.text('3:00 – 5:00 PM'), findsOneWidget);
+      expect(find.text('Join'), findsOneWidget);
     });
 
     testWidgets('once joined, the bar says so above Leave', (tester) async {

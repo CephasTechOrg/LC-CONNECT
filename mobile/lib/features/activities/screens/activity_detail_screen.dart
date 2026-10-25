@@ -7,6 +7,7 @@ import '../../../core/theme/app_radii.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/app_card.dart';
+import '../../../shared/widgets/app_summary_panel.dart';
 import '../../../core/api/api_error.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/util/app_date_format.dart';
@@ -136,7 +137,7 @@ class _ActivityDetailScreenState extends ConsumerState<ActivityDetailScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      bottomNavigationBar: _JoinBar(
+      bottomNavigationBar: _ActivitySummary(
         activity: activity,
         isFull: isFull,
         loading: _loading,
@@ -209,7 +210,13 @@ class _ActivityDetailScreenState extends ConsumerState<ActivityDetailScreen> {
                   ),
                 ],
                 const SizedBox(height: AppSpacing.xl),
-                _DetailsCard(activity: activity),
+                // Where — the one fact too long for a panel column. When, and how full, are in
+                // the summary panel below, beside the action they decide.
+                _DetailRow(
+                  icon: Icons.place_outlined,
+                  label: 'Location',
+                  value: activity.location,
+                ),
               ]),
             ),
           ),

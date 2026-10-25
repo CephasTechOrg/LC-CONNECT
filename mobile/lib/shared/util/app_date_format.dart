@@ -61,6 +61,19 @@ class AppDateFormat {
     return '$from – ${time(end)}';
   }
 
+  /// A time range for tight spaces — `3:00 – 5:00 PM`, saying AM/PM once when both ends share
+  /// it, else `11:00 AM – 1:00 PM`; just the start when [end] is null.
+  static String compactTimeRange(DateTime start, DateTime? end) {
+    if (end == null) return time(start);
+    final from = time(start);
+    final to = time(end);
+    final fromPeriod = from.substring(from.length - 2);
+    if (fromPeriod == to.substring(to.length - 2)) {
+      return '${from.substring(0, from.length - 3)} – $to';
+    }
+    return '$from – $to';
+  }
+
   /// Date and time together — `Tue, Sep 16 · 6:00 PM`.
   static String dateTime(DateTime at) => '${date(at)} · ${time(at)}';
 

@@ -71,6 +71,22 @@ void main() {
     });
   });
 
+  group('compactTimeRange', () {
+    test('says AM/PM once when both ends share it', () {
+      final start = DateTime(2026, 9, 16, 15);
+      expect(AppDateFormat.compactTimeRange(start, DateTime(2026, 9, 16, 17)), '3:00 – 5:00 PM');
+    });
+
+    test('keeps both periods when they differ', () {
+      final start = DateTime(2026, 9, 16, 11);
+      expect(AppDateFormat.compactTimeRange(start, DateTime(2026, 9, 16, 13)), '11:00 AM – 1:00 PM');
+    });
+
+    test('just the start without an end', () {
+      expect(AppDateFormat.compactTimeRange(DateTime(2026, 9, 16, 15), null), '3:00 PM');
+    });
+  });
+
   group('timeRange', () {
     test('renders both ends separated by an en dash', () {
       final end = instantUtc.add(const Duration(hours: 2));
