@@ -11,22 +11,26 @@ class _OutgoingCard extends ConsumerWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Withdraw request?',
-            style: GoogleFonts.dmSans(fontWeight: FontWeight.w700)),
+        title: const Text('Withdraw request?'),
         content: Text(
           "$name will no longer see your request. You can send another one later.",
-          style: GoogleFonts.dmSans(height: 1.45),
+          style: AppTypography.body.copyWith(color: AppColors.textMid, height: 1.45),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: Text('Keep it', style: GoogleFonts.dmSans()),
+            child: const Text('Keep it'),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: Text('Withdraw',
-                style: GoogleFonts.dmSans(
-                    color: AppColors.error, fontWeight: FontWeight.w700)),
+            child: Text(
+              'Withdraw',
+              // Darker than [AppColors.error], which is ~3.8:1 on white.
+              style: AppTypography.body.copyWith(
+                color: const Color(0xFFB91C1C),
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
         ],
       ),
@@ -39,7 +43,6 @@ class _OutgoingCard extends ConsumerWidget {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(
           apiErrorMessage(error, fallback: "Couldn't withdraw that. Please try again."),
-          style: GoogleFonts.dmSans(),
         ),
         backgroundColor: AppColors.error,
         behavior: SnackBarBehavior.floating,
@@ -52,106 +55,56 @@ class _OutgoingCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final r = request;
     final p = r.partnerProfile;
+    final intent = _intentLabel(r.intent);
 
-    return GestureDetector(
-      onTap: p != null
-          ? () => context.push('/users/${p.profileId}', extra: p.displayName)
-          : null,
-      child: Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-        boxShadow: const [
-          BoxShadow(
-              color: Color(0x0A000000), blurRadius: 8, offset: Offset(0, 2)),
-        ],
+    // No "Pending" chip: everything on this tab is pending — that is what the tab is. What
+    // varies is the age, so that is what the card shows, as "Sent 2d ago".
+    return AppCard(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.md,
+        AppSpacing.md,
+        AppSpacing.md,
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _Avatar(avatarUrl: p?.avatarUrl),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          _PersonRow(
+            profile: p,
+            meta: p?.major ?? '',
+            trailing: _ActionButton(
+              label: 'Withdraw',
+              loading: false,
+              filled: false,
+              onTap: () => _withdraw(context, ref),
+            ),
+          ),
+          Padding(
+            // Under the name, not under the avatar: 48 avatar + 12 gap. Its own line so a long
+            // major cannot push the age off the end.
+            padding: const EdgeInsets.only(left: 60),
+            child: Wrap(
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.xs,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Flexible(
-                      child: Text(
-                        p?.displayName ?? 'LC Student',
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.dmSans(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textDark,
-                        ),
-                      ),
-                    ),
-                    if (p?.campusVerified ?? false) ...[
-                      const SizedBox(width: 4),
-                      const VerifiedBadge(size: 14),
-                    ],
-                  ],
+                if (intent != null) _IntentChip(intent: r.intent!, label: intent),
+                Text(
+                  _sentAgo(r.createdAt),
+                  style: AppTypography.label.copyWith(color: AppColors.textMuted),
                 ),
-                if (p?.major != null)
-                  Text(
-                    p!.major!,
-                    style: GoogleFonts.dmSans(
-                        fontSize: 12, color: AppColors.textMuted),
-                  ),
-                const SizedBox(height: 6),
-                if (r.intent != null) _IntentBadge(intent: r.intent!),
               ],
             ),
           ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                _timeAgo(r.createdAt),
-                style: GoogleFonts.dmSans(
-                    fontSize: 11, color: AppColors.textMuted),
-              ),
-              const SizedBox(height: 6),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.primarySoft,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  'Pending',
-                  style: GoogleFonts.dmSans(
-                    fontSize: 11,
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 2),
-              TextButton(
-                onPressed: () => _withdraw(context, ref),
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 6),
-                  minimumSize: const Size(0, 28),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  foregroundColor: AppColors.textMuted,
-                ),
-                child: Text('Withdraw',
-                    style: GoogleFonts.dmSans(
-                        fontSize: 11.5, fontWeight: FontWeight.w600)),
-              ),
-            ],
-          ),
         ],
-      ),
       ),
     );
   }
+}
+
+String _sentAgo(DateTime at) {
+  final age = _timeAgo(at);
+  return 'Sent ${age == 'Just now' ? 'just now' : age}';
 }
 
 // ── Shared widgets ────────────────────────────────────────────────

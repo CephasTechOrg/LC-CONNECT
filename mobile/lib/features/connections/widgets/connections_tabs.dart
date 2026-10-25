@@ -18,9 +18,10 @@ class _IncomingTab extends ConsumerWidget {
             )
           : ListView.separated(
               physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.gutter, AppSpacing.lg, AppSpacing.gutter, AppSpacing.xxl),
               itemCount: requests.length,
-              separatorBuilder: (context, _) => const SizedBox(height: 12),
+              separatorBuilder: (context, _) => const SizedBox(height: AppSpacing.md),
               itemBuilder: (_, i) => _IncomingCard(request: requests[i]),
             ),
     );
@@ -45,9 +46,10 @@ class _OutgoingTab extends ConsumerWidget {
             )
           : ListView.separated(
               physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.gutter, AppSpacing.lg, AppSpacing.gutter, AppSpacing.xxl),
               itemCount: requests.length,
-              separatorBuilder: (context, _) => const SizedBox(height: 12),
+              separatorBuilder: (context, _) => const SizedBox(height: AppSpacing.md),
               itemBuilder: (_, i) => _OutgoingCard(request: requests[i]),
             ),
     );

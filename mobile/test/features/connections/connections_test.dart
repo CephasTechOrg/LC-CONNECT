@@ -215,7 +215,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Maya Chen'), findsOneWidget);
-      expect(find.text('Biology'), findsOneWidget);
+      expect(find.text('Biology · 2h ago'), findsOneWidget);
       expect(find.text('Accept'), findsOneWidget);
       expect(find.text('Decline'), findsOneWidget);
     });
@@ -224,7 +224,19 @@ void main() {
       await tester.pumpWidget(_scope(incoming: [_sampleIncoming]));
       await tester.pumpAndSettle();
 
-      expect(find.text('Wants to Study Together'), findsOneWidget);
+      // Same words as the profile's "Looking for", never the raw code.
+      expect(find.text('Study partner'), findsOneWidget);
+      expect(find.textContaining('study_'), findsNothing);
+    });
+
+    testWidgets('plain "connect" intent shows no badge', (tester) async {
+      await tester.pumpWidget(_scope(outgoing: [_sampleOutgoing]));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Outgoing'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Connect'), findsNothing);
+      expect(find.textContaining('Wants to'), findsNothing);
     });
 
     testWidgets('shows note on incoming card', (tester) async {
@@ -234,7 +246,7 @@ void main() {
       expect(find.textContaining('Let\'s study together!'), findsOneWidget);
     });
 
-    testWidgets('shows outgoing tab with pending badge', (tester) async {
+    testWidgets('shows outgoing tab with sent age', (tester) async {
       await tester.pumpWidget(_scope(outgoing: [_sampleOutgoing]));
       await tester.pumpAndSettle();
 
@@ -242,7 +254,8 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Ethan R.'), findsOneWidget);
-      expect(find.text('Pending'), findsOneWidget);
+      expect(find.text('Sent 1d ago'), findsOneWidget);
+      expect(find.text('Withdraw'), findsOneWidget);
     });
 
     testWidgets('shows empty outgoing state when no outgoing requests',
