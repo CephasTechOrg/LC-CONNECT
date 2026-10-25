@@ -25,9 +25,11 @@ class _SectionCard extends StatelessWidget {
         AppSpacing.lg,
         AppSpacing.lg,
       ),
+      // The shared card surface (soft shadow, card radius), same as Home and Activities.
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppRadii.card),
+        borderRadius: AppRadii.all(AppRadii.sheet),
+        boxShadow: AppShadows.soft,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -54,6 +56,28 @@ class _SectionCard extends StatelessWidget {
   }
 }
 
+/// Splits the required sections from the optional ones — a heading and one muted line, no box.
+class _GroupLabel extends StatelessWidget {
+  final String title;
+  final String detail;
+  const _GroupLabel({required this.title, required this.detail});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(AppSpacing.xs, AppSpacing.xxl, AppSpacing.xs, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: AppTypography.title.copyWith(color: AppColors.textDark)),
+          const SizedBox(height: 2),
+          Text(detail, style: AppTypography.bodySmall.copyWith(color: AppColors.textMuted)),
+        ],
+      ),
+    );
+  }
+}
+
 class _RequirementTag extends StatelessWidget {
   final bool? done;
   const _RequirementTag({this.done});
@@ -62,14 +86,15 @@ class _RequirementTag extends StatelessWidget {
   Widget build(BuildContext context) {
     final style = AppTypography.caption.copyWith(fontWeight: FontWeight.w600);
     return switch (done) {
-      null => Text('Optional', style: style.copyWith(color: AppColors.textMuted)),
+      // Optional sections sit under the "Optional" heading, so a tag on each would repeat it.
+      null => const SizedBox.shrink(),
       false => Text('Required', style: style.copyWith(color: _kAmber)),
       true => Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.check_circle_rounded, size: 14, color: AppColors.green),
+            const Icon(Icons.check_circle_rounded, size: 14, color: _kSuccess),
             const SizedBox(width: AppSpacing.xs),
-            Text('Done', style: style.copyWith(color: AppColors.green)),
+            Text('Done', style: style.copyWith(color: _kSuccess)),
           ],
         ),
     };

@@ -13,7 +13,7 @@ class _EditProfileButton extends StatelessWidget {
           onPressed: () => context.push('/profile/edit'),
           icon: const Icon(Icons.edit_outlined, size: 18),
           label: Text(
-            'Edit Profile',
+            'Edit profile',
             style: GoogleFonts.dmSans(
               fontSize: 15,
               fontWeight: FontWeight.w700,

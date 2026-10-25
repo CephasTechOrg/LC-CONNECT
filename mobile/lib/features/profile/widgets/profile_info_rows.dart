@@ -16,9 +16,8 @@ class _InfoRows extends StatelessWidget {
             _InfoRow(
               icon: Icons.verified_user_outlined,
               iconColor: AppColors.primary,
-              title: 'Verified Student',
+              title: 'Verified student',
               subtitle: 'Your profile is verified by Livingstone College',
-              showChevron: true,
             ),
             _divider(),
           ],
@@ -26,9 +25,8 @@ class _InfoRows extends StatelessWidget {
           if (profile.languagesSpoken.isNotEmpty)
             _InfoRow(
               icon: Icons.chat_bubble_outline_rounded,
-              title: 'Languages Spoken',
+              title: 'Languages spoken',
               subtitle: profile.languagesSpoken.join(', '),
-              showChevron: true,
             ),
           if (profile.languagesSpoken.isNotEmpty) _divider(),
           // Learning
@@ -37,7 +35,6 @@ class _InfoRows extends StatelessWidget {
               icon: Icons.menu_book_outlined,
               title: 'Learning',
               subtitle: profile.languagesLearning.join(', '),
-              showChevron: true,
             ),
           if (profile.languagesLearning.isNotEmpty) _divider(),
           // Interests
@@ -46,8 +43,18 @@ class _InfoRows extends StatelessWidget {
               icon: Icons.favorite_border_rounded,
               title: 'Interests',
               subtitle: profile.interests.join(', '),
-              showChevron: true,
             ),
+          // Looking for — a row like the others. It was a separate block of solid blue pills with
+          // check marks: the loudest thing on the profile, for a list of preferences, and five
+          // pills wrapped into three ragged rows.
+          if (profile.lookingFor.isNotEmpty) ...[
+            if (profile.interests.isNotEmpty) _divider(),
+            _InfoRow(
+              icon: Icons.people_outline_rounded,
+              title: 'Looking for',
+              subtitle: profile.lookingFor.join(', '),
+            ),
+          ],
         ],
       ),
     );
@@ -66,16 +73,16 @@ class _InfoRow extends StatelessWidget {
   final Color? iconColor;
   final String title;
   final String subtitle;
-  final bool showChevron;
   const _InfoRow({
     required this.icon,
     this.iconColor,
     required this.title,
     required this.subtitle,
-    this.showChevron = false,
   });
 
   @override
+  // No trailing chevron: these rows are not tappable, and a chevron promised an action that
+  // was not there.
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
@@ -99,7 +106,7 @@ class _InfoRow extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   subtitle,
-                  maxLines: 2,
+                  maxLines: 3,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.dmSans(
                       fontSize: 12, color: AppColors.textMuted),
@@ -107,9 +114,6 @@ class _InfoRow extends StatelessWidget {
               ],
             ),
           ),
-          if (showChevron)
-            const Icon(Icons.chevron_right_rounded,
-                size: 18, color: AppColors.border),
         ],
       ),
     );

@@ -239,6 +239,20 @@ class MessageThread {
     return [partnerPositionTitle, partnerDepartment].whereType<String>().join(' · ');
   }
 
+  /// The line under the name in the chat header: a staff member's position, or a student's
+  /// major and class year — so the chat says who you are talking to, as the inbox row does.
+  String? get headerSubtitle {
+    final staff = partnerSubtitle;
+    if (staff != null) return staff;
+    final p = partner;
+    if (p == null) return null;
+    final parts = [
+      if (p.major != null && p.major!.trim().isNotEmpty) p.major!.trim(),
+      if (p.classYear != null) 'Class of ${p.classYear}',
+    ];
+    return parts.isEmpty ? null : parts.join(' · ');
+  }
+
   factory MessageThread.fromJson(Map<String, dynamic> j) {
     final group = j['group'] as Map<String, dynamic>?;
     return MessageThread(

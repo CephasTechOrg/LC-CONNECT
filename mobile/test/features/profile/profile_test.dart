@@ -322,11 +322,18 @@ void main() {
       expect(find.text('Photography, Hiking'), findsOneWidget);
     });
 
-    testWidgets('shows looking for chips', (tester) async {
+    testWidgets('shows looking for as a row like interests', (tester) async {
+      // It was a block of solid blue pills — the loudest thing on the profile.
       await tester.pumpWidget(_scope(_makeProfile()));
       await tester.pumpAndSettle();
-      expect(find.text('Friendship'), findsOneWidget);
-      expect(find.text('Study Partner'), findsOneWidget);
+      expect(find.text('Looking for'), findsOneWidget);
+      expect(find.text('Friendship, Study Partner'), findsOneWidget);
+    });
+
+    testWidgets('info rows carry no chevron, since they are not tappable', (tester) async {
+      await tester.pumpWidget(_scope(_makeProfile()));
+      await tester.pumpAndSettle();
+      expect(find.byIcon(Icons.chevron_right_rounded), findsNothing);
     });
 
     testWidgets('shows stats row', (tester) async {
@@ -336,7 +343,7 @@ void main() {
       expect(find.text('42', skipOffstage: false), findsOneWidget);
       expect(find.text('7', skipOffstage: false), findsOneWidget);
       expect(find.text('Connections', skipOffstage: false), findsOneWidget);
-      expect(find.text('Joined Activities', skipOffstage: false),
+      expect(find.text('Joined activities', skipOffstage: false),
           findsOneWidget);
       // A cumulative message total only ever grows and says nothing useful about an account,
       // so it was removed from the profile deliberately.
@@ -357,7 +364,7 @@ void main() {
       // Scroll to bring the button into the build cache
       await tester.drag(find.byType(ListView), const Offset(0, -600));
       await tester.pumpAndSettle();
-      expect(find.text('Edit Profile'), findsOneWidget);
+      expect(find.text('Edit profile'), findsOneWidget);
     });
 
     // The hero carries two independent badges: verified-student (verified_rounded, the familiar
@@ -367,7 +374,7 @@ void main() {
         (tester) async {
       await tester.pumpWidget(_scope(_makeProfile(campusVerified: true)));
       await tester.pumpAndSettle();
-      expect(find.text('Verified Student'), findsOneWidget);
+      expect(find.text('Verified student'), findsOneWidget);
       expect(
         find.byIcon(Icons.verified_rounded, skipOffstage: false),
         findsOneWidget,
@@ -383,7 +390,7 @@ void main() {
         (tester) async {
       await tester.pumpWidget(_scope(_makeProfile(campusVerified: false)));
       await tester.pumpAndSettle();
-      expect(find.text('Verified Student', skipOffstage: false), findsNothing);
+      expect(find.text('Verified student', skipOffstage: false), findsNothing);
       expect(
         find.byIcon(Icons.verified_rounded, skipOffstage: false),
         findsNothing,

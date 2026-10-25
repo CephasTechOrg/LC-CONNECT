@@ -85,7 +85,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-              staff ? 'Please enter your name.' : 'Name, major, and at least one "Looking For" are required.',
+              staff ? 'Please enter your name.' : 'Name, major, and at least one "Looking for" are required.',
               style: GoogleFonts.dmSans()),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
@@ -354,7 +354,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             Row(
               children: [
                 Text(
-                  'Looking For',
+                  'Looking for',
                   style: GoogleFonts.dmSans(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,

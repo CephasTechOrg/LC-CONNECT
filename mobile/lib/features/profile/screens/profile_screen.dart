@@ -24,7 +24,6 @@ part '../widgets/profile_delete_account.dart';
 part '../widgets/profile_export_account.dart';
 part '../widgets/profile_hero.dart';
 part '../widgets/profile_info_rows.dart';
-part '../widgets/profile_looking_for.dart';
 part '../widgets/profile_preferences.dart';
 part '../widgets/profile_stats.dart';
 part '../widgets/profile_footer.dart';
@@ -126,8 +125,6 @@ class _ProfileBodyState extends ConsumerState<_ProfileBody> {
           ),
           const SizedBox(height: 8),
           _InfoRows(profile: profile),
-          const SizedBox(height: 8),
-          _LookingForSection(lookingFor: profile.lookingFor),
           const SizedBox(height: 8),
           _PreferencesCard(profile: profile),
           const SizedBox(height: 8),

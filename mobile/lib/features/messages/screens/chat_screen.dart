@@ -258,7 +258,7 @@ class _ChatScreenState extends _ChatScreenStateBase
 
     return _ChatScreenBody(
       partner: partner,
-      partnerSubtitle: widget.thread?.partnerSubtitle,
+      partnerSubtitle: widget.thread?.headerSubtitle,
       loading: loading,
       loadError: loadError,
       messages: messages,

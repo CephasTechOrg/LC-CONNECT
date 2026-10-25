@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/api/api_error.dart';
 import '../../../core/theme/app_radii.dart';
+import '../../../core/theme/app_shadows.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/app_typography.dart';
@@ -256,18 +257,6 @@ class _BlueprintBondScreenState extends ConsumerState<BlueprintBondScreen> {
           'Blueprint Bond',
           style: AppTypography.title.copyWith(fontWeight: FontWeight.w800, color: AppColors.textDark),
         ),
-        actions: [
-          TextButton(
-            onPressed: _saving ? null : _save,
-            style: TextButton.styleFrom(minimumSize: const Size(kMinTouchTarget, kMinTouchTarget)),
-            child: _saving
-                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                : Text(
-                    'Save',
-                    style: AppTypography.label.copyWith(fontWeight: FontWeight.w700, color: AppColors.primary),
-                  ),
-          ),
-        ],
       ),
       body: async.when(
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -279,8 +268,13 @@ class _BlueprintBondScreenState extends ConsumerState<BlueprintBondScreen> {
           return Column(
             children: [
               Expanded(child: _buildForm(profile)),
-              if (profile.canSubmitForReview)
-                _SubmitBar(submitting: _submitting, onSubmit: _submitForReview),
+              _ActionBar(
+                saving: _saving,
+                onSave: _save,
+                canSubmit: profile.canSubmitForReview,
+                submitting: _submitting,
+                onSubmit: _submitForReview,
+              ),
             ],
           );
         },
@@ -296,6 +290,9 @@ class _BlueprintBondScreenState extends ConsumerState<BlueprintBondScreen> {
       padding: const EdgeInsets.fromLTRB(AppSpacing.gutter, AppSpacing.xs, AppSpacing.gutter, AppSpacing.xxl),
       children: [
         _StatusHeader(profile: profile),
+        // Everything employers need, in one run: the required sections first, so the page reads
+        // top to bottom as a checklist. Employer visibility — required, and the one that
+        // actually shares the profile — used to sit last, after three optional sections.
         _SectionCard(
           title: 'Documents',
           requiredDone: doneUnless(const ['headshot', 'resume']),
@@ -331,24 +328,6 @@ class _BlueprintBondScreenState extends ConsumerState<BlueprintBondScreen> {
           ),
         ),
         _SectionCard(
-          title: 'Experience',
-          child: _InternshipSection(
-            items: _internships,
-            onAdd: _addInternship,
-            onRemove: (i) => setState(() => _internships.removeAt(i)),
-            onEdit: _editInternship,
-          ),
-        ),
-        _SectionCard(
-          title: 'Projects',
-          child: _ProjectSection(
-            items: _projects,
-            onAdd: _addProject,
-            onRemove: (i) => setState(() => _projects.removeAt(i)),
-            onEdit: _editProject,
-          ),
-        ),
-        _SectionCard(
           title: 'Skills & interests',
           requiredDone: doneUnless(const ['skills', 'career_interests']),
           child: Column(
@@ -375,6 +354,36 @@ class _BlueprintBondScreenState extends ConsumerState<BlueprintBondScreen> {
           ),
         ),
         _SectionCard(
+          title: 'Employer visibility',
+          requiredDone: doneUnless(const ['employer_visibility_consent']),
+          child: _ConsentRow(
+            value: profile.employerVisibilityConsent,
+            onChanged: _toggleConsent,
+          ),
+        ),
+        const _GroupLabel(
+          title: 'Optional',
+          detail: 'Not needed to submit, but they make your profile stronger.',
+        ),
+        _SectionCard(
+          title: 'Experience',
+          child: _InternshipSection(
+            items: _internships,
+            onAdd: _addInternship,
+            onRemove: (i) => setState(() => _internships.removeAt(i)),
+            onEdit: _editInternship,
+          ),
+        ),
+        _SectionCard(
+          title: 'Projects',
+          child: _ProjectSection(
+            items: _projects,
+            onAdd: _addProject,
+            onRemove: (i) => setState(() => _projects.removeAt(i)),
+            onEdit: _editProject,
+          ),
+        ),
+        _SectionCard(
           title: 'Links',
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -393,14 +402,6 @@ class _BlueprintBondScreenState extends ConsumerState<BlueprintBondScreen> {
                 keyboardType: TextInputType.url,
               ),
             ],
-          ),
-        ),
-        _SectionCard(
-          title: 'Employer visibility',
-          requiredDone: doneUnless(const ['employer_visibility_consent']),
-          child: _ConsentRow(
-            value: profile.employerVisibilityConsent,
-            onChanged: _toggleConsent,
           ),
         ),
       ],

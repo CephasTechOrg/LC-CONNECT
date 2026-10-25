@@ -222,13 +222,11 @@ class _PublicBodyState extends ConsumerState<_PublicBody> {
               ],
               if (profile.languagesSpoken.isNotEmpty ||
                   profile.languagesLearning.isNotEmpty ||
-                  profile.interests.isNotEmpty) ...[
-                _InfoRows(profile: profile),
-                const SizedBox(height: 8),
-              ],
-              // "Looking for" is student↔student matching intent — hidden when either side is staff.
-              if (!canMessage && profile.lookingFor.isNotEmpty) ...[
-                _LookingForSection(lookingFor: profile.lookingFor),
+                  profile.interests.isNotEmpty ||
+                  (!canMessage && profile.lookingFor.isNotEmpty)) ...[
+                // "Looking for" is student↔student matching intent — hidden when either side is
+                // staff.
+                _InfoRows(profile: profile, showLookingFor: !canMessage),
                 const SizedBox(height: 8),
               ],
               const SizedBox(height: 16),
@@ -385,7 +383,8 @@ class _MetaRow extends StatelessWidget {
 
 class _InfoRows extends StatelessWidget {
   final PublicProfile profile;
-  const _InfoRows({required this.profile});
+  final bool showLookingFor;
+  const _InfoRows({required this.profile, required this.showLookingFor});
 
   @override
   Widget build(BuildContext context) {
@@ -396,7 +395,7 @@ class _InfoRows extends StatelessWidget {
           if (profile.languagesSpoken.isNotEmpty) ...[
             _InfoRow(
               icon: Icons.chat_bubble_outline_rounded,
-              title: 'Languages Spoken',
+              title: 'Languages spoken',
               subtitle: profile.languagesSpoken.join(', '),
             ),
             _divider(),
@@ -415,6 +414,15 @@ class _InfoRows extends StatelessWidget {
               title: 'Interests',
               subtitle: profile.interests.join(', '),
             ),
+          // A row like the others, not a separate block of solid blue pills.
+          if (showLookingFor && profile.lookingFor.isNotEmpty) ...[
+            if (profile.interests.isNotEmpty || profile.languagesLearning.isNotEmpty) _divider(),
+            _InfoRow(
+              icon: Icons.people_outline_rounded,
+              title: 'Looking for',
+              subtitle: profile.lookingFor.join(', '),
+            ),
+          ],
         ],
       ),
     );
@@ -465,74 +473,6 @@ class _InfoRow extends StatelessWidget {
                 ),
               ],
             ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Looking For section ───────────────────────────────────────────
-
-class _LookingForSection extends StatelessWidget {
-  final List<String> lookingFor;
-  const _LookingForSection({required this.lookingFor});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: AppColors.surface,
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.people_outline_rounded,
-                  size: 20, color: AppColors.textMuted),
-              const SizedBox(width: 14),
-              Text(
-                'Looking For',
-                style: GoogleFonts.dmSans(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textDark,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: lookingFor
-                .map(
-                  (label) => Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.check_rounded,
-                            color: Colors.white, size: 13),
-                        const SizedBox(width: 5),
-                        Text(
-                          label,
-                          style: GoogleFonts.dmSans(
-                            fontSize: 12,
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-                .toList(),
           ),
         ],
       ),

@@ -51,7 +51,7 @@ class _Header extends StatelessWidget {
               const SizedBox(height: 8),
               ListTile(
                 leading: const Icon(Icons.edit_outlined, color: AppColors.textMid),
-                title: Text('Edit Profile', style: GoogleFonts.dmSans(color: AppColors.textDark, fontWeight: FontWeight.w500)),
+                title: Text('Edit profile', style: GoogleFonts.dmSans(color: AppColors.textDark, fontWeight: FontWeight.w500)),
                 trailing: const Icon(Icons.chevron_right_rounded, size: 18, color: AppColors.border),
                 onTap: () {
                   Navigator.of(context).pop();
