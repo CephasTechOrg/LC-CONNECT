@@ -379,7 +379,6 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                     ? _lookingFor.remove(v)
                     : _lookingFor.add(v);
               }),
-              highlight: true,
             ),
           ],
           const SizedBox(height: 36),
@@ -492,4 +491,3 @@ class _FieldLabel extends StatelessWidget {
     );
   }
 }
-

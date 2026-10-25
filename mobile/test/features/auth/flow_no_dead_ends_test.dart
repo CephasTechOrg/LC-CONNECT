@@ -32,8 +32,8 @@ void main() {
 
   testWidgets('verify-email offers a way back to login', (tester) async {
     await _pump(tester, const VerifyEmailScreen());
-    expect(find.byTooltip('Back to login'), findsOneWidget);
-    expect(find.text('Back to login'), findsOneWidget); // and a second, textual exit
+    expect(find.byTooltip('Back to sign in'), findsOneWidget);
+    expect(find.text('Back to sign in'), findsOneWidget); // and a second, textual exit
   });
 
   testWidgets('verify-email can request a fresh code', (tester) async {
@@ -57,7 +57,7 @@ void main() {
   testWidgets('reset-password can replace an expired code', (tester) async {
     await _pump(tester, const ResetPasswordScreen(email: 'a@students.livingstone.edu'));
     expect(find.byTooltip('Back'), findsOneWidget);
-    expect(find.textContaining('Send a new one', findRichText: true), findsOneWidget);
+    expect(find.text('Send a new code'), findsOneWidget);
   });
 
   testWidgets('onboarding has a sign-out escape', (tester) async {

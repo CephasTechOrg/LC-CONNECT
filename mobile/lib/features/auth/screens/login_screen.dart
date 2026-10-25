@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../../core/theme/app_radii.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/dismiss_keyboard.dart';
 import '../data/auth_error_messages.dart';
 import '../providers/auth_provider.dart';
@@ -45,7 +46,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         SnackBar(
           // Was hardcoded to "Invalid email or password" for *every* failure, which told a
           // rate-limited or unconfirmed user their password was wrong and hid the real reason.
-          content: Text(authErrorMessage(error), style: GoogleFonts.dmSans()),
+          content: Text(authErrorMessage(error)),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),

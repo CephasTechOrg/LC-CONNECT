@@ -1455,6 +1455,17 @@
             "title": "Email",
             "type": "string"
           },
+          "first_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Name"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -1463,6 +1474,17 @@
           "is_verified": {
             "title": "Is Verified",
             "type": "boolean"
+          },
+          "last_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Name"
           },
           "policies_accepted": {
             "title": "Policies Accepted",
@@ -3302,6 +3324,17 @@
             "title": "Email",
             "type": "string"
           },
+          "first_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Name"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -3310,6 +3343,17 @@
           "is_verified": {
             "title": "Is Verified",
             "type": "boolean"
+          },
+          "last_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Name"
           },
           "policies_accepted": {
             "title": "Policies Accepted",

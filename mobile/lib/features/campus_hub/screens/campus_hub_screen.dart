@@ -47,7 +47,12 @@ String _greeting() {
   return 'Good evening';
 }
 
-String _greetingName({String? displayName, String? email}) {
+/// The name the greeting uses: the first name given at signup, else the first word of the
+/// profile's display name, else the campus address. The display name may be a nickname or
+/// abbreviated, and older accounts have no signup name, hence the order.
+String _greetingName({String? firstName, String? displayName, String? email}) {
+  final fromSignup = firstName?.trim();
+  if (fromSignup != null && fromSignup.isNotEmpty) return fromSignup;
   final fromProfile = displayName?.trim();
   if (fromProfile != null && fromProfile.isNotEmpty) {
     return fromProfile.split(RegExp(r'\s+')).first;
@@ -67,6 +72,7 @@ class CampusHubScreen extends ConsumerWidget {
     final profile = ref.watch(myProfileNotifierProvider).asData?.value;
     final isStudent = (user?.role ?? 'student') == 'student';
     final firstName = _greetingName(
+      firstName: user?.firstName,
       displayName: profile?.displayName,
       email: user?.email,
     );

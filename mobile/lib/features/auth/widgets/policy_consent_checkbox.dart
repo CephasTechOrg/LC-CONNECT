@@ -22,11 +22,7 @@ class _PolicyConsentCheckbox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final plain = GoogleFonts.dmSans(
-      fontSize: 13,
-      height: 1.45,
-      color: AppColors.textMid,
-    );
+    final plain = AppTypography.bodySmall.copyWith(height: 1.45, color: AppColors.textMid);
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,

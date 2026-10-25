@@ -21,6 +21,7 @@ from app.shared.email_roles import (
     normalize_personal_contact_email,
     sync_user_role_from_email,
 )
+from app.shared.person_names import names_from_metadata
 from app.shared.policy_versions import CURRENT_POLICY_VERSION
 
 _CONTACT_EMAIL_METADATA_KEYS = ('contact_email', 'personal_email')
@@ -60,6 +61,28 @@ def _sync_contact_email(user: User, claims: SupabaseClaims) -> None:
     contact = contact_email_from_claims(claims)
     if contact is not None:
         user.contact_email = contact
+
+
+def names_from_claims(claims: SupabaseClaims) -> tuple[str, str] | None:
+    """(first, last) from signup metadata, validated; None when absent or invalid."""
+    for bucket in ('user_metadata', 'app_metadata'):
+        names = names_from_metadata(claims.raw.get(bucket))
+        if names is not None:
+            return names
+    return None
+
+
+def _sync_names(user: User, claims: SupabaseClaims) -> None:
+    """Fills the names once, from signup — never overwrites ones already stored.
+
+    Metadata is client-writable and replayed on every bootstrap, so letting it win on each sign-in
+    would make a stale token silently undo a later correction.
+    """
+    if user.first_name and user.last_name:
+        return
+    names = names_from_claims(claims)
+    if names is not None:
+        user.first_name, user.last_name = names
 
 
 def _accepted_version_from_claims(claims: SupabaseClaims) -> int:
@@ -196,6 +219,7 @@ async def _sync_and_return(
     _active_or_raise(user)
     sync_user_role_from_email(user, email)
     _sync_contact_email(user, claims)
+    _sync_names(user, claims)
     _sync_policy_acceptance(user, claims)
     if claims.email_verified and not user.is_verified:
         user.is_verified = True
@@ -206,7 +230,14 @@ async def _sync_and_return(
         await db.execute(select(Profile).where(Profile.user_id == user.id))
     ).scalar_one_or_none()
     if profile is None:
-        db.add(Profile(user_id=user.id, display_name=user.email.split('@', 1)[0]))
+        # The name given at signup, so the first thing a new student sees is themselves — not the
+        # local part of their campus address. Older accounts without one keep the old default.
+        display_name = (
+            f'{user.first_name} {user.last_name}'
+            if user.first_name and user.last_name
+            else user.email.split('@', 1)[0]
+        )
+        db.add(Profile(user_id=user.id, display_name=display_name))
         await db.flush()
         profile = (
             await db.execute(select(Profile).where(Profile.user_id == user.id))

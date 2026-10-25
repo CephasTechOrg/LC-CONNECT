@@ -1,63 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../../core/theme/app_radii.dart';
+import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_typography.dart';
 import '../../auth/providers/auth_provider.dart';
-
-class OnboardingStepIndicator extends StatelessWidget {
-  final int currentStep;
-  final int totalSteps;
-  const OnboardingStepIndicator({
-    super.key,
-    required this.currentStep,
-    required this.totalSteps,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: List.generate(totalSteps * 2 - 1, (i) {
-        if (i.isOdd) {
-          final isComplete = (i ~/ 2) < currentStep;
-          return Expanded(
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 250),
-              height: 2,
-              color: isComplete ? AppColors.primary : AppColors.border,
-            ),
-          );
-        }
-        final idx = i ~/ 2;
-        final isComplete = idx < currentStep;
-        final isActive = idx == currentStep;
-        return AnimatedContainer(
-          duration: const Duration(milliseconds: 250),
-          width: 28,
-          height: 28,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: isComplete || isActive ? AppColors.primary : Colors.white,
-            border: Border.all(
-              color: isComplete || isActive ? AppColors.primary : AppColors.border,
-              width: 2,
-            ),
-          ),
-          alignment: Alignment.center,
-          child: isComplete
-              ? const Icon(Icons.check_rounded, size: 14, color: Colors.white)
-              : Text(
-                  '${idx + 1}',
-                  style: GoogleFonts.dmSans(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: isActive ? Colors.white : AppColors.textMuted,
-                  ),
-                ),
-        );
-      }),
-    );
-  }
-}
 
 class OnboardingLabel extends StatelessWidget {
   final String text;
@@ -67,23 +14,20 @@ class OnboardingLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      // The same label as every other form: 13 semibold, dark, with a muted "optional".
       child: Row(
         children: [
           Text(
             text,
-            style: GoogleFonts.dmSans(
-              fontSize: 13.5,
+            style: AppTypography.bodySmall.copyWith(
               fontWeight: FontWeight.w600,
-              color: AppColors.textMid,
+              color: AppColors.textDark,
             ),
           ),
           if (optional) ...[
             const SizedBox(width: 6),
-            Text(
-              'optional',
-              style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textMuted),
-            ),
+            Text('optional', style: AppTypography.caption.copyWith(color: AppColors.textMuted)),
           ],
         ],
       ),
@@ -103,7 +47,6 @@ class OnboardingChipGrid extends StatelessWidget {
   final List<String>? optionKeys;
   final Set<String> selected;
   final ValueChanged<String> onToggle;
-  final bool highlight;
 
   /// When set, unselected chips stop responding once this many are chosen. The limit is shown
   /// rather than enforced silently — a chip that just does nothing reads as a broken app.
@@ -119,7 +62,6 @@ class OnboardingChipGrid extends StatelessWidget {
     this.optionKeys,
     required this.selected,
     required this.onToggle,
-    this.highlight = false,
     this.maxSelections,
     this.onAddCustom,
   });
@@ -137,79 +79,107 @@ class OnboardingChipGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Run spacing 0: each chip carries its own 48dp tap target around a 34dp pill, like
+    // [AppFilterChip], so the rows already sit apart.
     return Wrap(
-      spacing: 8,
-      runSpacing: 8,
+      spacing: AppSpacing.sm,
       children: [
         ...List.generate(options.length, (i) {
-        final key = optionKeys?[i] ?? options[i];
-        final label = options[i];
-        final isOn = selected.contains(key);
-        // At the limit, already-chosen chips stay tappable so you can swap one out; it is only
-        // adding a sixth that is blocked.
-        final locked = _atLimit && !isOn;
-        return Opacity(
-          opacity: locked ? 0.4 : 1,
-          child: GestureDetector(
-          onTap: locked ? null : () => onToggle(key),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            decoration: BoxDecoration(
-              color: isOn
-                  ? (highlight ? AppColors.primary : AppColors.primarySoft)
-                  : Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: isOn ? AppColors.primary : AppColors.border,
-                width: 1.5,
-              ),
+          final key = optionKeys?[i] ?? options[i];
+          final isOn = selected.contains(key);
+          // At the limit, already-chosen chips stay tappable so you can swap one out; it is only
+          // adding a sixth that is blocked.
+          final locked = _atLimit && !isOn;
+          return Opacity(
+            opacity: locked ? 0.4 : 1,
+            child: _ChoiceChip(
+              label: options[i],
+              selected: isOn,
+              onTap: locked ? null : () => onToggle(key),
             ),
-            child: Text(
-              label,
-              style: GoogleFonts.dmSans(
-                fontSize: 13,
-                fontWeight: isOn ? FontWeight.w600 : FontWeight.w400,
-                color: isOn
-                    ? (highlight ? Colors.white : AppColors.primary)
-                    : AppColors.textMid,
-              ),
-            ),
-          ),
-          ),
-        );
-      }),
+          );
+        }),
         if (onAddCustom != null && !_atLimit)
-          GestureDetector(
+          _ChoiceChip(
+            label: 'Add your own',
+            icon: Icons.add_rounded,
+            selected: false,
+            outlined: true,
             onTap: () => _promptForCustom(context),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          ),
+      ],
+    );
+  }
+}
+
+/// One selectable pill — the soft selected state every chip in the app uses (tint, accent text),
+/// never a solid fill: a solid chip outranked the Continue button below it.
+class _ChoiceChip extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback? onTap;
+  final IconData? icon;
+
+  /// The "Add your own" chip: a brand outline, so it reads as an action rather than an option.
+  final bool outlined;
+
+  const _ChoiceChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    this.icon,
+    this.outlined = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = selected || outlined;
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: label,
+      excludeSemantics: true,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: kMinInteractiveDimension),
+          child: Align(
+            widthFactor: 1,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
+                color: selected ? AppColors.primarySoft : AppColors.surface,
+                borderRadius: AppRadii.all(AppRadii.full),
                 border: Border.all(
-                  color: AppColors.primary,
-                  width: 1.5,
-                  style: BorderStyle.solid,
+                  color: outlined
+                      ? AppColors.primary
+                      : selected
+                          ? AppColors.primary.withValues(alpha: 0.35)
+                          : AppColors.border,
                 ),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.add_rounded, size: 15, color: AppColors.primary),
-                  const SizedBox(width: 4),
+                  if (icon != null) ...[
+                    Icon(icon, size: 15, color: AppColors.primaryText),
+                    const SizedBox(width: AppSpacing.xs),
+                  ],
                   Text(
-                    'Add your own',
-                    style: GoogleFonts.dmSans(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.primary,
+                    label,
+                    style: AppTypography.bodySmall.copyWith(
+                      fontWeight: accent ? FontWeight.w700 : FontWeight.w500,
+                      color: accent ? AppColors.primaryText : AppColors.textMid,
                     ),
                   ),
                 ],
               ),
             ),
           ),
-      ],
+        ),
+      ),
     );
   }
 }
@@ -235,10 +205,19 @@ class OnboardingBottomBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isLast = step == totalSteps - 1;
+    final shape = RoundedRectangleBorder(borderRadius: AppRadii.all(AppRadii.full));
+    final text = AppTypography.bodyLarge.copyWith(fontWeight: FontWeight.w700);
+    const size = Size.fromHeight(52);
+    // Pills, like every other form's action bar: Back outlined, Continue filled.
     return Container(
-      padding: const EdgeInsets.fromLTRB(22, 12, 22, 20),
+      padding: EdgeInsets.fromLTRB(
+        AppSpacing.gutter,
+        AppSpacing.md,
+        AppSpacing.gutter,
+        AppSpacing.md + MediaQuery.of(context).viewPadding.bottom,
+      ),
       decoration: const BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         border: Border(top: BorderSide(color: AppColors.border)),
       ),
       child: Row(
@@ -247,25 +226,33 @@ class OnboardingBottomBar extends StatelessWidget {
             Expanded(
               child: OutlinedButton(
                 onPressed: isLoading ? null : onBack,
-                child: const Text('Back'),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: size,
+                  shape: shape,
+                  foregroundColor: AppColors.textDark,
+                  side: const BorderSide(color: AppColors.border, width: 1.5),
+                ),
+                child: Text('Back', style: text),
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSpacing.md),
           ],
           Expanded(
             flex: 2,
             child: FilledButton(
               onPressed: (canProceed && !isLoading) ? onNext : null,
+              style: FilledButton.styleFrom(
+                minimumSize: size,
+                shape: shape,
+                disabledBackgroundColor: isLoading ? AppColors.primary : null,
+              ),
               child: isLoading
                   ? const SizedBox(
                       width: 20,
                       height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                     )
-                  : Text(isLast ? 'Finish Setup' : 'Continue'),
+                  : Text(isLast ? 'Finish setup' : 'Continue', style: text),
             ),
           ),
         ],
@@ -291,22 +278,26 @@ class OnboardingSignOutButton extends ConsumerWidget {
     final leave = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Sign out?', style: GoogleFonts.dmSans(fontWeight: FontWeight.w700)),
+        title: const Text('Sign out?'),
         content: Text(
           'You can finish setting up your profile next time you sign in. '
           'Anything you have typed here will be lost.',
-          style: GoogleFonts.dmSans(height: 1.45),
+          style: AppTypography.body.copyWith(color: AppColors.textMid, height: 1.45),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: Text('Keep setting up', style: GoogleFonts.dmSans()),
+            child: const Text('Keep setting up'),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
             child: Text(
               'Sign out',
-              style: GoogleFonts.dmSans(color: AppColors.error, fontWeight: FontWeight.w700),
+              // AA red; [AppColors.error] is ~3.8:1 as text on white.
+              style: AppTypography.body.copyWith(
+                color: const Color(0xFFB91C1C),
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ],
@@ -322,13 +313,12 @@ class OnboardingSignOutButton extends ConsumerWidget {
       onPressed: () => _confirmAndSignOut(context, ref),
       style: TextButton.styleFrom(
         foregroundColor: AppColors.textMuted,
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        minimumSize: const Size(0, 36),
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+        minimumSize: const Size(48, 48),
       ),
       child: Text(
         'Sign out',
-        style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w600),
+        style: AppTypography.bodySmall.copyWith(fontWeight: FontWeight.w600),
       ),
     );
   }
@@ -363,7 +353,7 @@ class _AddYourOwnDialogState extends State<_AddYourOwnDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text('Add your own', style: GoogleFonts.dmSans(fontWeight: FontWeight.w700)),
+      title: const Text('Add your own'),
       content: TextField(
         controller: _controller,
         autofocus: true,
@@ -376,11 +366,11 @@ class _AddYourOwnDialogState extends State<_AddYourOwnDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: Text('Cancel', style: GoogleFonts.dmSans()),
+          child: const Text('Cancel'),
         ),
         TextButton(
           onPressed: _submit,
-          child: Text('Add', style: GoogleFonts.dmSans(fontWeight: FontWeight.w700)),
+          child: const Text('Add'),
         ),
       ],
     );

@@ -35,10 +35,19 @@ def _payload(
     email: str = 'a@b.com',
     *,
     contact_email: str | None = None,
+    names: bool = True,
+    created_at: str | None = None,
 ) -> dict:
     user: dict = {'id': str(uuid4()), 'email': email}
+    metadata: dict = {}
     if contact_email is not None:
-        user['user_metadata'] = {'contact_email': contact_email}
+        metadata['contact_email'] = contact_email
+    if names:
+        metadata.update(first_name='Ama', last_name='Mensah')
+    if metadata:
+        user['user_metadata'] = metadata
+    if created_at is not None:
+        user['created_at'] = created_at
     return {
         'user': user,
         'email_data': {
@@ -280,3 +289,55 @@ def test_signing_secret_tolerates_whitespace(monkeypatch):
     """A trailing newline from a copy-paste into Render must not change the key."""
     monkeypatch.setattr(email_hook.settings, 'supabase_send_email_hook_secret', '  v1,whsec_AAAA\n')
     assert email_hook._signing_secret() == 'whsec_AAAA'
+
+
+# ── names are required for a new signup ─────────────────────────────────────────
+
+
+def test_new_signup_without_names_is_refused_before_any_email(monkeypatch):
+    calls = _capture(monkeypatch, 'send_signup_confirmation_email')
+    with pytest.raises(HTTPException) as exc:
+        email_hook.send_for_payload(_payload('signup', names=False))
+    assert exc.value.status_code == 400
+    assert 'First and last name' in exc.value.detail
+    assert calls == [], 'no code may go out for a signup that is refused'
+
+
+def test_new_signup_with_a_blank_last_name_is_refused(monkeypatch):
+    _capture(monkeypatch, 'send_signup_confirmation_email')
+    payload = _payload('signup')
+    payload['user']['user_metadata']['last_name'] = '   '
+    with pytest.raises(HTTPException):
+        email_hook.send_for_payload(payload)
+
+
+def test_refused_signup_blocks_the_auth_action_through_the_endpoint(monkeypatch):
+    monkeypatch.setattr(email_hook.settings, 'supabase_send_email_hook_secret', TEST_SECRET)
+    _capture(monkeypatch, 'send_signup_confirmation_email')
+    body = json.dumps(_payload('signup', names=False)).encode()
+    response = client.post(
+        '/api/v1/auth/webhooks/send-email', content=body, headers=_signed_headers(TEST_SECRET, body)
+    )
+    assert response.status_code == 400
+    assert response.json()['error']['http_code'] == 400
+
+
+def test_resend_for_an_account_older_than_the_requirement_still_goes_out(monkeypatch):
+    # Supabase reports a resend as 'signup' too. An unconfirmed account made before names were
+    # required must still be able to get its code, or it could never be confirmed.
+    calls = _capture(monkeypatch, 'send_signup_confirmation_email')
+    email_hook.send_for_payload(_payload('signup', names=False, created_at='2026-01-02T10:00:00.000000Z'))
+    assert len(calls) == 1
+
+
+def test_password_recovery_never_needs_names(monkeypatch):
+    calls = _capture(monkeypatch, 'send_password_reset_email')
+    email_hook.send_for_payload(_payload('recovery', names=False))
+    assert len(calls) == 1
+
+
+def test_a_just_created_account_counts_as_new():
+    just_now = datetime.now(UTC).isoformat().replace('+00:00', 'Z')
+    assert email_hook._is_new_signup({'created_at': just_now})
+    assert email_hook._is_new_signup({}), 'a missing timestamp must fail closed'
+    assert email_hook._is_new_signup({'created_at': 'not a date'}), 'so must an unreadable one'

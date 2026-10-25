@@ -73,6 +73,8 @@ async def build_account_export(db: AsyncSession, user: User) -> dict[str, Any]:
         'account': {
             'id': _id(user.id),
             'email': user.email,
+            'first_name': user.first_name,
+            'last_name': user.last_name,
             'role': user.role,
             'status': user.status,
             'is_active': user.is_active,

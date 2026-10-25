@@ -19,6 +19,7 @@ hook). A request that fails verification is rejected before any email is compose
 from __future__ import annotations
 
 import logging
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from fastapi import HTTPException, Request, status
@@ -27,6 +28,7 @@ from standardwebhooks.webhooks import Webhook, WebhookVerificationError
 from app import email as email_service
 from app.config import settings
 from app.shared.email_roles import normalize_personal_contact_email
+from app.shared.person_names import names_from_metadata
 
 logger = logging.getLogger(__name__)
 
@@ -88,6 +90,44 @@ def _resolve_delivery_email(user: dict, action_type: str) -> str:
     return auth_email
 
 
+# A signup code sent for an account older than this is a *resend* for an existing unconfirmed
+# account (Supabase reports resends as 'signup' too). Those predate the name requirement and must
+# still be able to confirm, so only a fresh signup is held to it.
+_NEW_SIGNUP_WINDOW = timedelta(minutes=10)
+
+
+def _is_new_signup(user: dict, now: datetime | None = None) -> bool:
+    """True unless `created_at` proves the account is older than the window — an unreadable
+    timestamp counts as new, so the gate fails closed rather than open."""
+    raw = user.get('created_at')
+    if not isinstance(raw, str):
+        return True
+    try:
+        created = datetime.fromisoformat(raw.replace('Z', '+00:00'))
+    except ValueError:
+        return True
+    if created.tzinfo is None:
+        created = created.replace(tzinfo=UTC)
+    return (now or datetime.now(UTC)) - created <= _NEW_SIGNUP_WINDOW
+
+
+def require_names_for_new_signup(user: dict, action_type: str) -> None:
+    """The server side of "first and last name are required".
+
+    The mobile form checks them, but the app calls Supabase's `signUp()` directly — this backend
+    never sees the request. This hook is the one step every signup passes through before an
+    account can be confirmed, and it is fail-closed, so raising here stops the signup itself for
+    any client: an old app build, a script, or a tampered request.
+    """
+    if action_type != 'signup' or not _is_new_signup(user):
+        return
+    if names_from_metadata(user.get('user_metadata')) is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail='First and last name are required to create an account',
+        )
+
+
 def send_for_payload(payload: dict[str, Any]) -> None:
     """Always raises HTTPException on failure (400 for a malformed payload, 500 for a send
     failure) — never a bare exception — so the caller (the webhook endpoint) can uniformly turn
@@ -101,6 +141,7 @@ def send_for_payload(payload: dict[str, Any]) -> None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Missing user email in hook payload')
 
     action_type = email_data.get('email_action_type')
+    require_names_for_new_signup(user, action_type or '')
     to_email = _resolve_delivery_email(user, action_type or '')
     code = email_data.get('token', '')
     # The plain destination page Supabase was told to return to — deliberately NOT the

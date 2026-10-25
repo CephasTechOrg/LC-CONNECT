@@ -4,12 +4,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 
+import '../../../core/theme/app_radii.dart';
+import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_typography.dart';
 import '../data/auth_error_messages.dart';
 import '../data/otp_config.dart';
 import '../providers/auth_provider.dart';
+import '../widgets/auth_page_parts.dart';
 import '../widgets/auth_text_field.dart';
 
 /// Code-entry + new-password step of the reset flow.
@@ -81,8 +84,8 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
   }
 
   SnackBar _snack(String msg, {required bool isError}) => SnackBar(
-        content: Text(msg, style: GoogleFonts.dmSans()),
-        backgroundColor: isError ? AppColors.error : const Color(0xFF10B981),
+        content: Text(msg),
+        backgroundColor: isError ? AppColors.error : const Color(0xFF15803D),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       );
@@ -151,7 +154,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
       body: SafeArea(
         child: SingleChildScrollView(
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-          padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
+          padding: const EdgeInsets.fromLTRB(AppSpacing.xxl, AppSpacing.sm, AppSpacing.xxl, AppSpacing.xxxl),
           child: _success
               ? _SuccessView(onLogin: () => context.go('/login'))
               : _buildForm(),
@@ -167,29 +170,12 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Container(
-              width: 64,
-              height: 64,
-              decoration: BoxDecoration(
-                color: AppColors.primaryPale,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: const Icon(Icons.mark_email_read_outlined,
-                  size: 32, color: AppColors.primary),
+            AuthHeading(
+              icon: Icons.mark_email_read_outlined,
+              title: 'Enter your reset code',
+              subtitle: _subtitle(),
             ),
-            const SizedBox(height: 20),
-            Text(
-              'Enter your reset code',
-              style: GoogleFonts.dmSans(
-                fontSize: 24,
-                fontWeight: FontWeight.w800,
-                color: AppColors.textDark,
-                letterSpacing: -0.5,
-              ),
-            ),
-            const SizedBox(height: 8),
-            _subtitle(),
-            const SizedBox(height: 28),
+            const SizedBox(height: AppSpacing.xxl),
             if (_needsEmail) ...[
               AuthTextField(
                 controller: _emailCtrl,
@@ -256,68 +242,48 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
               loading: _loading,
               onTap: _submit,
             ),
-            const SizedBox(height: 22),
-            Center(child: _resendRow()),
+            const SizedBox(height: AppSpacing.sm),
+            _resendRow(),
           ],
         ),
       ),
     );
   }
 
-  Widget _subtitle() {
-    final style = GoogleFonts.dmSans(
-        fontSize: 14, color: AppColors.textMuted, height: 1.5);
+  List<InlineSpan> _subtitle() {
     if (_needsEmail) {
-      return Text(
-        'Enter your Livingstone email and the $kOtpLength-digit code we sent to your personal '
-        'inbox, then choose a new password.',
-        style: style,
-      );
+      return [
+        TextSpan(
+          text: 'Enter your Livingstone email and the $kOtpLength-digit code we sent to your '
+              'personal inbox, then choose a new password.',
+        ),
+      ];
     }
-    return RichText(
-      text: TextSpan(
-        style: style,
-        children: [
-          TextSpan(text: 'We sent a $kOtpLength-digit code to the personal inbox for '),
-          TextSpan(
-            text: widget.email,
-            style: const TextStyle(
-                fontWeight: FontWeight.w700, color: AppColors.textDark),
-          ),
-          const TextSpan(text: '. Enter it below along with your new password.'),
-        ],
-      ),
-    );
+    return [
+      const TextSpan(text: 'We sent a code to the personal inbox for '),
+      authEmphasis(widget.email ?? ''),
+      const TextSpan(text: '. Enter it below along with your new password.'),
+    ];
   }
 
   Widget _resendRow() {
     if (_resendCooldown > 0) {
-      return Text(
-        'Resend code in ${_resendCooldown}s',
-        style: GoogleFonts.dmSans(fontSize: 14, color: const Color(0xFF9CA3AF)),
+      return SizedBox(
+        height: kMinInteractiveDimension,
+        child: Center(
+          child: Text(
+            'Resend code in ${_resendCooldown}s',
+            style: AppTypography.body.copyWith(color: AppColors.textMuted),
+          ),
+        ),
       );
     }
-    return GestureDetector(
+    return AuthTextLink(
+      label: _resending ? 'Sending…' : 'Send a new code',
       onTap: _resending ? null : _resend,
-      child: RichText(
-        text: TextSpan(
-          style: GoogleFonts.dmSans(fontSize: 14, color: AppColors.textMuted),
-          children: [
-            const TextSpan(text: 'Code expired or never arrived? '),
-            TextSpan(
-              text: _resending ? 'Sending…' : 'Send a new one',
-              style: GoogleFonts.dmSans(
-                color: AppColors.primary,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
-
 
 class _EyeToggle extends StatelessWidget {
   final bool obscured;
@@ -341,46 +307,40 @@ class _SuccessView extends StatelessWidget {
   final VoidCallback onLogin;
   const _SuccessView({required this.onLogin});
 
+  // The AA success green, on its own tint: the old #10B981 icon was ~2.4:1 against its tile.
+  static const _success = Color(0xFF15803D);
+  static const _successTint = Color(0xFFDCFCE7);
+
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const SizedBox(height: 40),
+        const SizedBox(height: AppSpacing.xxxl),
         Center(
           child: Container(
-            width: 80,
-            height: 80,
+            width: 72,
+            height: 72,
             decoration: BoxDecoration(
-              color: const Color(0xFFECFDF5),
-              borderRadius: BorderRadius.circular(20),
+              color: _successTint,
+              borderRadius: AppRadii.all(AppRadii.sheet),
             ),
-            child: const Icon(Icons.check_circle_outline_rounded,
-                size: 44, color: Color(0xFF10B981)),
+            child: const Icon(Icons.check_circle_outline_rounded, size: 40, color: _success),
           ),
         ),
-        const SizedBox(height: 28),
+        const SizedBox(height: AppSpacing.xxl),
         Text(
           'Password reset',
           textAlign: TextAlign.center,
-          style: GoogleFonts.dmSans(
-            fontSize: 24,
-            fontWeight: FontWeight.w800,
-            color: AppColors.textDark,
-            letterSpacing: -0.5,
-          ),
+          style: AppTypography.display.copyWith(color: AppColors.textDark),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: AppSpacing.sm),
         Text(
           'Your password has been updated.\nSign in with your new password.',
           textAlign: TextAlign.center,
-          style: GoogleFonts.dmSans(
-            fontSize: 14,
-            color: AppColors.textMuted,
-            height: 1.6,
-          ),
+          style: AppTypography.body.copyWith(color: AppColors.textMuted, height: 1.5),
         ),
-        const SizedBox(height: 36),
+        const SizedBox(height: AppSpacing.xxxl),
         AuthPrimaryButton(label: 'Back to sign in', loading: false, onTap: onLogin),
       ],
     );

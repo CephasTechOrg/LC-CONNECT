@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 
+import '../../../core/theme/app_radii.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_typography.dart';
 
 /// The one text field every auth screen uses.
 ///
@@ -32,6 +33,7 @@ class AuthTextField extends StatelessWidget {
   final TextAlign textAlign;
   final TextStyle? textStyle;
   final String? hintOverrideStyleFont;
+  final TextCapitalization textCapitalization;
 
   const AuthTextField({
     super.key,
@@ -50,6 +52,7 @@ class AuthTextField extends StatelessWidget {
     this.textAlign = TextAlign.start,
     this.textStyle,
     this.hintOverrideStyleFont,
+    this.textCapitalization = TextCapitalization.none,
   });
 
   OutlineInputBorder _border(Color color, {double width = 1}) => OutlineInputBorder(
@@ -62,6 +65,7 @@ class AuthTextField extends StatelessWidget {
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
+      textCapitalization: textCapitalization,
       obscureText: obscureText,
       maxLength: maxLength,
       validator: validator,
@@ -71,11 +75,11 @@ class AuthTextField extends StatelessWidget {
       onFieldSubmitted: onFieldSubmitted,
       textAlign: textAlign,
       style: textStyle ??
-          GoogleFonts.dmSans(fontSize: 15, color: AppColors.textDark),
+          AppTypography.bodyLarge.copyWith(color: AppColors.textDark),
       decoration: InputDecoration(
         hintText: hintText,
         hintStyle: textStyle?.copyWith(color: const Color(0xFFB6BECA)) ??
-            GoogleFonts.dmSans(fontSize: 15, color: const Color(0xFF9CA3AF)),
+            AppTypography.bodyLarge.copyWith(color: const Color(0xFF9CA3AF)),
         filled: true,
         fillColor: Colors.white,
         prefixIcon: icon == null
@@ -101,69 +105,54 @@ class AuthTextField extends StatelessWidget {
         focusedBorder: _border(AppColors.primary, width: 1.5),
         errorBorder: _border(AppColors.error),
         focusedErrorBorder: _border(AppColors.error, width: 1.5),
-        errorStyle: GoogleFonts.dmSans(fontSize: 12, color: AppColors.error, height: 1.3),
+        // Darker than the border's red: [AppColors.error] is ~3.8:1 as 12px text on white.
+        errorStyle: AppTypography.label.copyWith(color: const Color(0xFFB91C1C), height: 1.3),
         errorMaxLines: 2,
       ),
     );
   }
 }
 
-/// Full-width gradient button shared by the auth screens.
+/// The primary action on every auth screen: a full-width solid pill, the same shape as Join,
+/// Create activity and Publish, so the app's main button looks the same from the first screen on.
+///
+/// Sign in, Create account and these screens each had their own copy — two gradients and a flat
+/// fill, at 13 and 12 radius, one with a coloured glow.
 class AuthPrimaryButton extends StatelessWidget {
   final String label;
   final bool loading;
   final VoidCallback onTap;
-  final double height;
+
+  /// False shows the theme's disabled fill: visibly not ready, rather than a ready-looking button
+  /// that refuses the tap.
+  final bool enabled;
 
   const AuthPrimaryButton({
     super.key,
     required this.label,
     required this.loading,
     required this.onTap,
-    this.height = 48,
+    this.enabled = true,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      enabled: !loading,
-      label: label,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: loading ? null : onTap,
-          borderRadius: BorderRadius.circular(12),
-          child: Ink(
-            height: height,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Color(0xFF5A94C2), Color(0xFF3E7EB4)],
-              ),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Center(
-              child: loading
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white),
-                    )
-                  : Text(
-                      label,
-                      style: GoogleFonts.dmSans(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-            ),
-          ),
-        ),
+    return FilledButton(
+      onPressed: (enabled && !loading) ? onTap : null,
+      style: FilledButton.styleFrom(
+        minimumSize: const Size.fromHeight(52),
+        shape: RoundedRectangleBorder(borderRadius: AppRadii.all(AppRadii.full)),
+        // While loading the button is disabled; keep it brand blue so the spinner reads as
+        // "working", not "unavailable".
+        disabledBackgroundColor: loading ? AppColors.primary : null,
       ),
+      child: loading
+          ? const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+            )
+          : Text(label, style: AppTypography.bodyLarge.copyWith(fontWeight: FontWeight.w700)),
     );
   }
 }

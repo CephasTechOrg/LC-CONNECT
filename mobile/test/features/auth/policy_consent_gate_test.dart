@@ -24,6 +24,8 @@ class _RecordingAuth extends AuthNotifier {
   Future<void> register(
     String email,
     String password, {
+    required String firstName,
+    required String lastName,
     required String contactEmail,
     required int policiesAcceptedVersion,
   }) async {
@@ -50,6 +52,11 @@ class _DocsAdapter implements HttpClientAdapter {
 }
 
 Future<void> _pump(WidgetTester tester) async {
+  // A phone, not the default 800x600 test window: with the name fields the form is taller than
+  // 600, and the checkbox and policy links this file taps would sit below the fold.
+  tester.view.physicalSize = const Size(1179, 2556);
+  tester.view.devicePixelRatio = 3;
+  addTearDown(tester.view.reset);
   final dio = Dio(BaseOptions(baseUrl: 'http://t/api/v1'))..httpClientAdapter = _DocsAdapter();
   final router = GoRouter(initialLocation: '/register', routes: [
     GoRoute(path: '/login', builder: (c, s) => const Scaffold(body: Text('login'))),
@@ -71,15 +78,26 @@ Future<void> _pump(WidgetTester tester) async {
 
 Future<void> _fillForm(WidgetTester tester) async {
   final fields = find.byType(TextFormField);
-  await tester.enterText(fields.at(0), 'jane@students.livingstone.edu');
-  await tester.enterText(fields.at(1), 'jane@gmail.com');
-  await tester.enterText(fields.at(2), 'hunter2pass');
-  await tester.enterText(fields.at(3), 'hunter2pass');
+  await tester.enterText(fields.at(0), 'Jane');
+  await tester.enterText(fields.at(1), 'Smith');
+  await tester.enterText(fields.at(2), 'jane@students.livingstone.edu');
+  await tester.enterText(fields.at(3), 'jane@gmail.com');
+  await tester.enterText(fields.at(4), 'hunter2pass');
+  await tester.enterText(fields.at(5), 'hunter2pass');
   await tester.pump();
 }
 
 bool _consentTicked(WidgetTester tester) =>
     tester.widget<Checkbox>(find.byType(Checkbox)).value == true;
+
+/// Scrolled into view first: under the page heading the button sits below a phone-height test
+/// viewport, and a tap that misses would make "cannot submit" pass for the wrong reason.
+Future<void> _tapFormCreateAccount(WidgetTester tester) async {
+  final button = find.text('Create account').first;
+  await tester.ensureVisible(button);
+  await tester.pumpAndSettle();
+  await tester.tap(button);
+}
 
 void main() {
   setUpAll(() => dotenv.loadFromString(
@@ -107,7 +125,7 @@ void main() {
       await _pump(tester);
       await _fillForm(tester);
 
-      await tester.tap(find.text('Create Account'));
+      await _tapFormCreateAccount(tester);
       await tester.pumpAndSettle();
 
       // No confirm sheet, no signup — the button is inert, not merely refusing after the fact.
@@ -135,7 +153,7 @@ void main() {
       await tester.pump();
       expect(_consentTicked(tester), isTrue);
 
-      await tester.tap(find.text('Create Account'));
+      await _tapFormCreateAccount(tester);
       await tester.pumpAndSettle();
       expect(find.text('Check your details'), findsOneWidget);
     });
@@ -145,9 +163,9 @@ void main() {
       await _fillForm(tester);
       await tester.tap(find.byType(Checkbox));
       await tester.pump();
-      await tester.tap(find.text('Create Account'));
+      await _tapFormCreateAccount(tester);
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Create account')); // the sheet's confirm
+      await tester.tap(find.text('Create account').last); // the sheet's confirm
       await tester.pumpAndSettle();
 
       expect(_RecordingAuth.calls, ['jane@students.livingstone.edu|v$kPolicyVersion']);

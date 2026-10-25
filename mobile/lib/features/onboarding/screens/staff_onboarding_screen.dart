@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../../core/api/api_client.dart';
 import '../../../core/api/api_error.dart';
+import '../../../core/theme/app_radii.dart';
+import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_typography.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../campus_positions/providers/campus_positions_provider.dart';
+import '../data/suggested_name.dart';
+import '../widgets/onboarding_header.dart';
 import '../widgets/onboarding_shared_widgets.dart';
 
 const _categories = <String, String>{
@@ -45,15 +49,10 @@ class _StaffOnboardingScreenState extends ConsumerState<StaffOnboardingScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _email = ref.read(authNotifierProvider).asData?.value?.email;
-      if (_nameCtrl.text.isEmpty && _email != null) {
-        final prefix = _email!.split('@').first;
-        _nameCtrl.text = prefix
-            .replaceAll(RegExp(r'[._\-]'), ' ')
-            .split(' ')
-            .map((w) => w.isEmpty ? '' : w[0].toUpperCase() + w.substring(1).toLowerCase())
-            .join(' ')
-            .trim();
+      final user = ref.read(authNotifierProvider).asData?.value;
+      _email = user?.email;
+      if (_nameCtrl.text.isEmpty && user != null) {
+        _nameCtrl.text = suggestedDisplayName(user);
         setState(() {});
       }
     });
@@ -141,7 +140,6 @@ class _StaffOnboardingScreenState extends ConsumerState<StaffOnboardingScreen> {
                 ? 'Your details were saved, but we could not finish setting up. '
                     'Check your connection and retry.'
                 : apiErrorMessage(e, fallback: 'Something went wrong. Please try again.'),
-            style: GoogleFonts.dmSans(),
           ),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
@@ -163,82 +161,32 @@ class _StaffOnboardingScreenState extends ConsumerState<StaffOnboardingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final titles = ['Basic Profile', 'Campus Position', 'Contact & Submit'];
-    final subtitles = [
+    const titles = ['Basic profile', 'Campus position', 'Contact and submit'];
+    const subtitles = [
       'How you appear on LC Connect',
       'Your official campus role',
       'How students can reach you',
     ];
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.surface,
       body: SafeArea(
         child: Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(22, 20, 22, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 34,
-                        height: 34,
-                        decoration: BoxDecoration(
-                          color: AppColors.primary,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        alignment: Alignment.center,
-                        child: Text(
-                          'LC',
-                          style: GoogleFonts.dmSans(
-                            color: Colors.white,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          'Staff Setup',
-                          style: GoogleFonts.dmSans(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textDark,
-                          ),
-                        ),
-                      ),
-                      // The only way out of onboarding — see [OnboardingSignOutButton].
-                      const OnboardingSignOutButton(),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  OnboardingStepIndicator(currentStep: _step, totalSteps: _totalSteps),
-                  const SizedBox(height: 18),
-                  Text(
-                    titles[_step],
-                    style: GoogleFonts.dmSans(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textDark,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    subtitles[_step],
-                    style: GoogleFonts.dmSans(fontSize: 13.5, color: AppColors.textMuted),
-                  ),
-                  const SizedBox(height: 18),
-                  const Divider(color: AppColors.border, height: 1),
-                ],
+            OnboardingHeader(
+              flowTitle: onboardingWelcome(
+                ref.watch(authNotifierProvider).asData?.value,
+                fallback: 'Staff setup',
               ),
+              step: _step,
+              totalSteps: _totalSteps,
+              stepTitle: titles[_step],
+              stepSubtitle: subtitles[_step],
             ),
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(22, 4, 22, 32),
+                padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.gutter, AppSpacing.xs, AppSpacing.gutter, AppSpacing.xxxl),
                 child: _buildStep(),
               ),
             ),
@@ -272,7 +220,7 @@ class _StaffOnboardingScreenState extends ConsumerState<StaffOnboardingScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 20),
-        const OnboardingLabel('Display Name'),
+        const OnboardingLabel('Display name'),
         TextFormField(
           controller: _nameCtrl,
           onChanged: (_) => setState(() {}),
@@ -286,7 +234,7 @@ class _StaffOnboardingScreenState extends ConsumerState<StaffOnboardingScreen> {
           decoration: const InputDecoration(hintText: 'e.g., she/her, he/him'),
         ),
         const SizedBox(height: 16),
-        const OnboardingLabel('Short Bio', optional: true),
+        const OnboardingLabel('Short bio', optional: true),
         TextFormField(
           controller: _bioCtrl,
           maxLines: 3,
@@ -301,7 +249,7 @@ class _StaffOnboardingScreenState extends ConsumerState<StaffOnboardingScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 20),
-        const OnboardingLabel('Campus Category'),
+        const OnboardingLabel('Campus category'),
         DropdownButtonFormField<String>(
           initialValue: _category,
           items: _categories.entries
@@ -311,21 +259,21 @@ class _StaffOnboardingScreenState extends ConsumerState<StaffOnboardingScreen> {
           decoration: const InputDecoration(hintText: 'Select a category'),
         ),
         const SizedBox(height: 16),
-        const OnboardingLabel('Official Title'),
+        const OnboardingLabel('Official title'),
         TextFormField(
           controller: _titleCtrl,
           onChanged: (_) => setState(() {}),
           decoration: const InputDecoration(hintText: 'e.g., Associate Professor'),
         ),
         const SizedBox(height: 16),
-        const OnboardingLabel('Department or Office'),
+        const OnboardingLabel('Department or office'),
         TextFormField(
           controller: _departmentCtrl,
           onChanged: (_) => setState(() {}),
           decoration: const InputDecoration(hintText: 'e.g., Biology Department'),
         ),
         const SizedBox(height: 16),
-        const OnboardingLabel('Office Location', optional: true),
+        const OnboardingLabel('Office location', optional: true),
         TextFormField(
           controller: _officeCtrl,
           decoration: const InputDecoration(hintText: 'Building and room'),
@@ -339,7 +287,7 @@ class _StaffOnboardingScreenState extends ConsumerState<StaffOnboardingScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 20),
-        const OnboardingLabel('Official Email'),
+        const OnboardingLabel('Official email'),
         TextFormField(
           initialValue: _email,
           readOnly: true,
@@ -355,7 +303,7 @@ class _StaffOnboardingScreenState extends ConsumerState<StaffOnboardingScreen> {
           decoration: const InputDecoration(hintText: 'Office or campus phone'),
         ),
         const SizedBox(height: 16),
-        const OnboardingLabel('Office Hours', optional: true),
+        const OnboardingLabel('Office hours', optional: true),
         TextFormField(
           controller: _availabilityCtrl,
           maxLines: 2,
@@ -363,14 +311,24 @@ class _StaffOnboardingScreenState extends ConsumerState<StaffOnboardingScreen> {
         ),
         const SizedBox(height: 16),
         Container(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(AppSpacing.md),
           decoration: BoxDecoration(
             color: AppColors.primarySoft,
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: AppRadii.all(AppRadii.lg),
           ),
-          child: Text(
-            'Your position will be reviewed by an administrator before appearing in the campus directory.',
-            style: GoogleFonts.dmSans(fontSize: 12.5, color: AppColors.textMid, height: 1.4),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(Icons.info_outline_rounded, size: 18, color: AppColors.primaryText),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  'Your position will be reviewed by an administrator before appearing in the '
+                  'campus directory.',
+                  style: AppTypography.bodySmall.copyWith(color: AppColors.textMid, height: 1.4),
+                ),
+              ),
+            ],
           ),
         ),
       ],
