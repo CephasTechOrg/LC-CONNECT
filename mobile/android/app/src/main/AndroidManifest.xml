@@ -1,4 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Release needs this too. Debug/profile manifests only cover the Flutter tool
+         (hot reload); without INTERNET here a Play build cannot reach the API. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <!-- Image picker: gallery access -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
