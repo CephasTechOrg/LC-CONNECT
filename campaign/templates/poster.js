@@ -43,13 +43,47 @@ function renderCopy(copy) {
   }));
 }
 
+// Studio backdrops are rarely flat (dark wall → lit floor), so a single fill colour shows a seam
+// where the canvas extends past the photo. This reads a strip of the photo's own background
+// (`backdrop.side`, `inset` px in from that edge, `width` px wide) and turns its row averages into
+// a vertical gradient aligned to the photo's placement. Only the canvas fill is generated — the
+// photograph itself is never modified.
+function sampledBackdrop(img, photo) {
+  const { side = "left", inset = 40, width = 40, bands = 40 } = photo.backdrop;
+  const w = img.naturalWidth;
+  const h = img.naturalHeight;
+  const x0 = side === "left" ? inset : w - inset - width;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  ctx.drawImage(img, x0, 0, width, h, 0, 0, width, h);
+  const { data } = ctx.getImageData(0, 0, width, h);
+
+  const stops = [];
+  for (let b = 0; b < bands; b++) {
+    const rowStart = Math.floor((b * h) / bands);
+    const rowEnd = Math.floor(((b + 1) * h) / bands);
+    const sum = [0, 0, 0];
+    for (let i = rowStart * width * 4; i < rowEnd * width * 4; i += 4) {
+      sum[0] += data[i]; sum[1] += data[i + 1]; sum[2] += data[i + 2];
+    }
+    const n = (rowEnd - rowStart) * width;
+    const rgb = sum.map((c) => Math.round(c / n)).join(" ");
+    const y = photo.y + ((rowStart + rowEnd) / 2) * photo.scale;
+    stops.push(`rgb(${rgb}) ${y.toFixed(1)}px`);
+  }
+  return `linear-gradient(to bottom, ${stops.join(", ")})`;
+}
+
 async function renderPhoto(poster, photo) {
   const img = document.getElementById("photo");
   img.alt = photo.alt ?? "";
   await loadImage(img, photo.src);
   const feather = photo.feather ?? {};
   setVars(poster, {
-    "--backdrop": photo.backdrop,
+    "--backdrop": typeof photo.backdrop === "string" ? photo.backdrop : sampledBackdrop(img, photo),
     "--photo-x": px(photo.x),
     "--photo-y": px(photo.y),
     "--photo-w": px(img.naturalWidth * photo.scale),

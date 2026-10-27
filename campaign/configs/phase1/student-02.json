@@ -1,0 +1,18 @@
+{
+  "id": "student-02",
+  "campaign": "configs/phase1/campaign.json",
+  "photo": {
+    "src": "assets/students/student-02.jpg",
+    "alt": "Livingstone College tennis player in a ready stance holding a racket",
+    "scale": 0.7,
+    "x": 298,
+    "y": -40,
+    "backdrop": { "side": "left", "inset": 40, "width": 40 },
+    "feather": { "left": 160 }
+  },
+  "layout": {
+    "align": "left",
+    "headlineTop": 200,
+    "footerWidth": 420
+  }
+}
