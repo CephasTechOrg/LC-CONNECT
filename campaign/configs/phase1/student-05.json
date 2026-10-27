@@ -4,31 +4,29 @@
   "photo": {
     "src": "assets/students/student-05.jpg",
     "alt": "Livingstone College student in glasses and a red tie reading a book, seated on a chair against a red backdrop",
-    "scale": 0.72,
-    "x": 0,
-    "y": -82,
+    "scale": 0.85,
+    "x": 251,
+    "y": -92,
     "backdrop": {
-      "side": "right",
-      "inset": 6,
+      "side": "left",
+      "inset": 210,
       "width": 30,
       "bands": 80
     },
     "feather": {
-      "right": 140
+      "left": 140
     },
     "fadeOut": {
-      "from": 818,
-      "to": 904,
+      "from": 990,
+      "to": 1068,
       "color": null
     }
   },
   "layout": {
     "align": "left",
-    "brandTop": 876,
-    "headlineSize": 72,
-    "headlineBottom": -10,
-    "footerAlign": "right",
-    "footerWidth": 380,
+    "headlineTop": 200,
+    "headlineSize": 80,
+    "footerWidth": 420,
     "accent": "var(--lc-ink-white)"
   }
 }

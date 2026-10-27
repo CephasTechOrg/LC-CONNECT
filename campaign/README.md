@@ -112,12 +112,12 @@ Copy, colours, type and the logo treatment are deliberately **not** per-student:
 - **group-03** (four students on a balcony, bright white building): same treatment as student-04 —
   full width at 0.81 (the right-hand student's foot and hand touch the frame edge), dissolving into
   black on the white ledge just below the shoes.
-- **student-05** (seated reader on saturated red paper): the red is kept full-bleed — white type
-  reads on it (headline 6.2:1, 78%-white supporting copy 4.2:1, both large text), but the brand
-  blue measures ~1.1:1 against it, so this poster sets `layout.accent` to white for "LC",
-  "One place." and the Coming Soon rule; the blue stays in the bear. The photo sits flush left at
-  0.72, the right side and the bottom continue the photo's own sampled red, and the photo's lower
-  edge dissolves into that red just above the photographer's mark.
+- **student-05** (seated reader on saturated red paper): the red is kept full-bleed and the type
+  uses the single-portrait side-column layout (subject right at 0.85, left side continued in the
+  photo's own sampled red; sample strip set past the photographer's mark). White type reads on the
+  red (headline 5–6:1); the brand blue measures 1.3:1 and the light app blue 2.4:1, so this poster
+  sets `layout.accent` to white for "LC", "One place." and the Coming Soon rule — the blue stays in
+  the bear. The photo's lower edge dissolves into the red just above the photographer's mark.
 - **Coming Soon** is a rule-and-label signature in the type system rather than a badge, so it reads
   as part of the campaign rather than a sticker.
 - **Mobile.** Smallest text is 24px at 1080 wide (~9px on a phone feed); body copy is 31px and the
