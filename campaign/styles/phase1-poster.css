@@ -87,6 +87,9 @@ html, body { background: #000; }
 .zone { position: absolute; left: 0; }
 .type[data-align="right"] .zone { left: auto; right: 0; text-align: right; }
 
+/* `--accent` (layout.accent) defaults to the brand blue. Override it only for a photo whose own
+   colour leaves the blue unreadable (e.g. saturated red paper), so the accent never disappears. */
+
 /* Layer 3 + 4 + 5: brand lockup */
 .brand { top: var(--brand-top, 0px); display: flex; align-items: center; gap: 18px; }
 .type[data-align="right"] .brand { flex-direction: row-reverse; }
@@ -108,7 +111,7 @@ html, body { background: #000; }
   letter-spacing: -0.02em;
   line-height: 1;
 }
-.wordmark .wm-lc { color: var(--lc-blue); }
+.wordmark .wm-lc { color: var(--accent, var(--lc-blue)); }
 
 .descriptor {
   font-size: var(--type-descriptor);
@@ -132,7 +135,7 @@ html, body { background: #000; }
 /* Wide group shots leave space only above/below the subjects: anchor the headline to the bottom
    of the frame instead, sharing the band with the footer. */
 .headline[data-anchor="bottom"] { top: auto; bottom: var(--headline-bottom, 0px); }
-.headline .line.accent { color: var(--lc-blue); }
+.headline .line.accent { color: var(--accent, var(--lc-blue)); }
 
 /* Footer: layers 7 + 8 */
 .footer {
@@ -174,5 +177,5 @@ html, body { background: #000; }
   width: 48px;
   height: 3px;
   border-radius: 2px;
-  background: var(--lc-blue);
+  background: var(--accent, var(--lc-blue));
 }

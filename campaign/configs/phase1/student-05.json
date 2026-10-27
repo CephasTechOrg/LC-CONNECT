@@ -18,7 +18,8 @@
     },
     "fadeOut": {
       "from": 818,
-      "to": 904
+      "to": 904,
+      "color": null
     }
   },
   "layout": {
@@ -27,6 +28,7 @@
     "headlineSize": 72,
     "headlineBottom": -10,
     "footerAlign": "right",
-    "footerWidth": 380
+    "footerWidth": 380,
+    "accent": "var(--lc-ink-white)"
   }
 }

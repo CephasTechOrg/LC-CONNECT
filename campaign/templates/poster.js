@@ -97,7 +97,9 @@ async function renderPhoto(poster, photo) {
 
   const feather = photo.feather ?? {};
   setVars(poster, {
-    "--backdrop": photo.fadeOut ? `${fadeOverlay(photo.fadeOut)}, ${backdrop}` : backdrop,
+    // fadeOut.color: null dissolves into the backdrop itself instead of fading it to black.
+    "--backdrop": photo.fadeOut && photo.fadeOut.color !== null
+      ? `${fadeOverlay(photo.fadeOut)}, ${backdrop}` : backdrop,
     "--photo-x": px(Math.round(photo.x)),
     "--photo-y": px(Math.round(photo.y)),
     "--photo-w": px(width),
@@ -164,6 +166,7 @@ function renderLayout(poster, layout = {}) {
     "--type-headline": px(layout.headlineSize),
     "--bear-h": px(layout.bearHeight),
     "--brand-top": px(layout.brandTop),
+    "--accent": layout.accent,
     "--tone": layout.tone,
   });
 }
