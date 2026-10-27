@@ -108,6 +108,9 @@ Copy, colours, type and the logo treatment are deliberately **not** per-student:
   sunny photo, it is shown at 1:1 (pixel-identical to the original) and dissolves into campaign
   black just below the feet; the full type block — lockup, headline, product line, Coming Soon —
   sits on that black in the standard colours. The crop starts just below the awning (no sliver).
+- **group-03** (four students on a balcony, bright white building): same treatment as student-04 —
+  full width at 0.81 (the right-hand student's foot and hand touch the frame edge), dissolving into
+  black on the white ledge just below the shoes.
 - **Coming Soon** is a rule-and-label signature in the type system rather than a badge, so it reads
   as part of the campaign rather than a sticker.
 - **Mobile.** Smallest text is 24px at 1080 wide (~9px on a phone feed); body copy is 31px and the
@@ -138,6 +141,8 @@ Copy, colours, type and the logo treatment are deliberately **not** per-student:
   spare and faces are ~65px wide. A higher-resolution original would let the team fill more of the
   frame. The original also has a dark out-of-focus object at the top-left edge and a few small
   floor specks (left untouched).
+- group-03's original carries the photographer's watermark (Shot Vault Media, top right). The
+  campaign crop excludes it, so confirm usage rights / credit with the photographer before posting.
 - A full-length pose makes the face smaller (≈110px wide on the 1080 canvas) than a three-quarter
   portrait; still recognisable on a phone, but tighter shots suit the campaign best.
 - Brand colours are the app's UI tokens; if Livingstone College has official print/brand

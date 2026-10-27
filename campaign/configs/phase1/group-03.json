@@ -1,0 +1,21 @@
+{
+  "id": "group-03",
+  "campaign": "configs/phase1/campaign.json",
+  "photo": {
+    "src": "assets/students/group-03.jpg",
+    "alt": "Four Livingstone College students in blue, white and black outfits leaning on a balcony railing",
+    "scale": 0.81,
+    "x": 0,
+    "y": -387,
+    "backdrop": "#0e0e0c",
+    "fadeOut": { "from": 832, "to": 950 }
+  },
+  "layout": {
+    "align": "left",
+    "brandTop": 880,
+    "headlineSize": 72,
+    "headlineBottom": -10,
+    "footerAlign": "right",
+    "footerWidth": 380
+  }
+}
