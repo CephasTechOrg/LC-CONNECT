@@ -147,28 +147,57 @@ function fadeOverlay({ from, to, color = "#0e0e0c" }) {
 // or upscaling, the canvas around it (above/below, and beside it if it is narrower) is filled with the photo's own top/bottom `strip` rows
 // stretched to fit and blurred by `blur` px (sky and ground read as out-of-focus continuation). The
 // sharp photo sits on top, feathered into it. Nothing is generated: it is the photo's own pixels.
-async function extendedBackdrop(img, poster, photo) {
-  const { strip = 24, blur = 36 } = photo.extend;
-  const cw = poster.offsetWidth;
-  const ch = poster.offsetHeight;
-  const x = Math.round(photo.x);
-  const y = Math.round(photo.y);
+// Default mode: the photo itself plus its stretched top/bottom rows and side columns. On dark photos
+// the blurred subject reads as ambient glow.
+function drawPhotoAndStrips(ctx, img, x, y, cw, ch, strip) {
   const w = img.naturalWidth;
   const h = img.naturalHeight;
-
-  const base = new OffscreenCanvas(cw, ch);
-  const ctx = base.getContext("2d");
   ctx.drawImage(img, 0, 0, w, strip, x, 0, w, y + strip);              // top strip → above
   ctx.drawImage(img, 0, h - strip, w, strip, x, y + h - strip, w, ch - y - h + strip); // bottom → below
   ctx.drawImage(img, x, y);
   // Narrower than the canvas: stretch the now full-height edge columns sideways as well.
   if (x > 0 || x + w < cw) {
     const band = new OffscreenCanvas(cw, ch);
-    band.getContext("2d").drawImage(base, 0, 0);
+    band.getContext("2d").drawImage(ctx.canvas, 0, 0);
     if (x > 0) ctx.drawImage(band, x, 0, strip, ch, 0, 0, x + strip, ch);
     if (x + w < cw) ctx.drawImage(band, x + w - strip, 0, strip, ch, x + w - strip, 0, cw - x - w + strip, ch);
     ctx.drawImage(img, x, y);
   }
+}
+
+// `mode: "edges"`: build the backdrop only from the photo's outer rows/columns (no subject pixels),
+// so nothing of the subject bleeds into a light backdrop. Each side column fills half the photo's
+// width; top/bottom rows and the four corner squares fill the margins.
+function drawEdgesOnly(ctx, img, x, y, cw, ch, strip) {
+  const w = img.naturalWidth;
+  const h = img.naturalHeight;
+  const mid = x + w / 2;
+  const below = ch - y - h;
+  ctx.drawImage(img, 0, 0, strip, h, 0, y, mid, h);                                // left column
+  ctx.drawImage(img, w - strip, 0, strip, h, mid, y, cw - mid, h);                 // right column
+  if (y > 0) {
+    ctx.drawImage(img, 0, 0, w, strip, x, 0, w, y);                                // top rows
+    ctx.drawImage(img, 0, 0, strip, strip, 0, 0, x, y);                            // corners
+    ctx.drawImage(img, w - strip, 0, strip, strip, x + w, 0, cw - x - w, y);
+  }
+  if (below > 0) {
+    ctx.drawImage(img, 0, h - strip, w, strip, x, y + h, w, below);
+    ctx.drawImage(img, 0, h - strip, strip, strip, 0, y + h, x, below);
+    ctx.drawImage(img, w - strip, h - strip, strip, strip, x + w, y + h, cw - x - w, below);
+  }
+}
+
+async function extendedBackdrop(img, poster, photo) {
+  const { strip = 24, blur = 36, mode = "photo" } = photo.extend;
+  const cw = poster.offsetWidth;
+  const ch = poster.offsetHeight;
+  const x = Math.round(photo.x);
+  const y = Math.round(photo.y);
+
+  const base = new OffscreenCanvas(cw, ch);
+  const ctx = base.getContext("2d");
+  if (mode === "edges") drawEdgesOnly(ctx, img, x, y, cw, ch, strip);
+  else drawPhotoAndStrips(ctx, img, x, y, cw, ch, strip);
 
   const out = new OffscreenCanvas(cw, ch);
   const octx = out.getContext("2d");

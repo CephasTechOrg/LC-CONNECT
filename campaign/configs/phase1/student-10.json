@@ -1,0 +1,34 @@
+{
+  "id": "student-10",
+  "campaign": "configs/phase1/campaign.json",
+  "photo": {
+    "src": "assets/students/student-10-story-screenshot.webp",
+    "alt": "Livingstone College student in glasses and a black Livingstone sweatshirt, hands in pockets",
+    "crop": {
+      "x": 110,
+      "y": 476,
+      "w": 860,
+      "h": 984
+    },
+    "scale": 0.8,
+    "x": 392,
+    "y": 563,
+    "backdrop": "#f2f1ec",
+    "extend": {
+      "mode": "edges",
+      "strip": 12,
+      "blur": 40
+    },
+    "feather": {
+      "left": 60,
+      "top": 60
+    }
+  },
+  "layout": {
+    "theme": "light",
+    "align": "left",
+    "headlineTop": 200,
+    "headlineSize": 80,
+    "footerWidth": 360
+  }
+}
