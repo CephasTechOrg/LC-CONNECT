@@ -253,7 +253,19 @@ class _ThreadCard extends ConsumerWidget {
     );
   }
 
+  /// "Ama reacted 👍 to your message" — names the reactor in a group (where it is not obvious),
+  /// and in a DM resolves to the partner when the live frame carried only an id.
+  String _reactionPreviewText(ThreadReactionPreview reaction) {
+    final name = reaction.actorName ??
+        (thread.isGroup ? null : thread.partner?.displayName);
+    final who = name == null || name.trim().isEmpty ? 'Someone' : name.trim();
+    return '$who reacted ${reaction.emoji} to your message';
+  }
+
   Widget _preview(ChatMessage? latest, {required bool hasUnread}) {
+    // Precedence: typing is live and most salient; then a reaction to my message when it is the
+    // newest thing on the thread; otherwise the latest message. A reaction older than the latest
+    // message is superseded by it — the reaction never reorders the row, it only decorates it.
     if (thread.partnerTyping) {
       return Text(
         'typing…',
@@ -261,6 +273,19 @@ class _ThreadCard extends ConsumerWidget {
           color: AppColors.primaryText,
           fontWeight: FontWeight.w600,
           fontStyle: FontStyle.italic,
+        ),
+      );
+    }
+    final reaction = thread.latestReaction;
+    if (reaction != null &&
+        (latest == null || reaction.reactedAt.isAfter(latest.createdAt))) {
+      return Text(
+        _reactionPreviewText(reaction),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: AppTypography.bodySmall.copyWith(
+          color: AppColors.textMid,
+          fontWeight: FontWeight.w500,
         ),
       );
     }

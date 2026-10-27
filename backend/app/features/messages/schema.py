@@ -54,6 +54,26 @@ class MessageEditRequest(BaseModel):
     body: str = Field(min_length=1, max_length=MAX_BODY_CHARS)
 
 
+class LinkPreviewRequest(BaseModel):
+    """A URL (or a snippet containing one) to unfurl for the chat composer / bubble card."""
+
+    url: str = Field(min_length=8, max_length=2000)
+
+
+class MessageLinkPreviewRead(BaseModel):
+    """Open Graph / meta preview for a chat URL. Soft-fails: `status='failed'` still carries
+    the domain so the client can render a hostname card rather than nothing."""
+
+    url: str
+    domain: str | None = None
+    site_name: str | None = None
+    title: str | None = None
+    description: str | None = None
+    image_url: str | None = None
+    fetched_at: datetime | None = None
+    status: str  # ok | failed
+
+
 class StaffThreadCreate(BaseModel):
     """Start (or resolve) a staff↔anyone conversation — no connection required."""
 
@@ -88,6 +108,22 @@ class MessageRead(BaseModel):
     reactions: list[ReactionSummary] = []
 
 
+class ThreadReactionPreview(BaseModel):
+    """The most recent reaction another member left on one of the viewer's own messages in a
+    thread.
+
+    Surfaced on the inbox row so a reaction to your message is visible without opening the chat —
+    the durable half of the feature whose live half is the `messages.reaction_activity` frame.
+    It is deliberately additive: it never affects thread ordering or the unread count.
+    """
+
+    emoji: str
+    actor_id: UUID
+    actor_name: str | None = None
+    message_id: UUID
+    reacted_at: datetime
+
+
 class GroupThreadInfo(BaseModel):
     id: UUID
     name: str
@@ -108,6 +144,9 @@ class MessageThreadRead(BaseModel):
     partner_department: str | None = None
     group: GroupThreadInfo | None = None  # group only
     latest_message: MessageRead | None
+    # The most recent reaction someone else left on one of my messages here, if any. Additive —
+    # see [ThreadReactionPreview]; it does not move the row or change the unread count.
+    latest_reaction: ThreadReactionPreview | None = None
 
 
 class UnreadSummary(BaseModel):

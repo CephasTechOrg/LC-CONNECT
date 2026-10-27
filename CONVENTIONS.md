@@ -2,7 +2,7 @@
 
 This is the single source of truth for how code is organized and sized in LC Connect.
 It applies to both the FastAPI backend and the Flutter mobile app. Enforced in CI
-(`.github/workflows/ci.yml`) via `scripts/check_line_limits.py`, `ruff`, and `flutter analyze`.
+(`.github/workflows/ci.yml`) via `scripts/check_line_limits.py`, `ruff`, `flutter analyze`, and `flutter test`.
 
 ---
 

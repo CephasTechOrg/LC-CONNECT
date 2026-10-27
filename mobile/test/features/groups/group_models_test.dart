@@ -108,6 +108,33 @@ void main() {
       expect(roleRank('admin') > roleRank('member'), isTrue);
     });
   });
+
+  group('discoverableGroups (de-dupe)', () {
+    GroupSummary g(String id, {String? myStatus}) => GroupSummary(
+          id: id,
+          name: id,
+          category: 'club',
+          visibility: 'public',
+          joinPolicy: 'open',
+          memberCount: 1,
+          myStatus: myStatus,
+        );
+
+    test('drops groups you are already a member of', () {
+      final out = discoverableGroups([g('a', myStatus: 'active'), g('b')]);
+      expect(out.map((e) => e.id), ['b']);
+    });
+
+    test('drops groups you have been invited to', () {
+      final out = discoverableGroups([g('a', myStatus: 'invited'), g('b')]);
+      expect(out.map((e) => e.id), ['b']);
+    });
+
+    test('keeps requested and joinable groups', () {
+      final out = discoverableGroups([g('a', myStatus: 'requested'), g('b'), g('c', myStatus: 'banned')]);
+      expect(out.map((e) => e.id), ['a', 'b', 'c']);
+    });
+  });
 }
 
 Map<String, dynamic> _json({required String? myRole}) => {

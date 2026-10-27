@@ -48,6 +48,11 @@ class _BubbleTile extends StatelessWidget {
   static const _bubbleRadius = Radius.circular(18);
   static const _tailRadius = Radius.circular(AppRadii.xs);
 
+  /// Reaction badge geometry. The strip overlaps the bubble's bottom edge and the stack reserves
+  /// [_reactionOverhang] below it, so the badge never bleeds into the footer or the next message.
+  static const _reactionOverhang = 14.0;
+  static const _reactionInset = 10.0;
+
   bool get _canReport => !isMine && onReport != null;
 
   /// A deleted message keeps no body, so a reaction on it would hang off a tombstone. An
@@ -70,10 +75,9 @@ class _BubbleTile extends StatelessWidget {
   /// Only for my own group messages. In a DM the tick already answers this precisely, and for
   /// someone else's message "who has read it" is not mine to ask.
   bool get _canSeeReadBy => isGroup && isMine && !message.deleted && !message.id.startsWith('local:');
-  // Include react/edit: otherwise long-press never opens on a partner message when report
-  // isn’t wired the same way, and the picker only appears on your own bubbles (delete).
-  bool get _hasMenu =>
-      !message.deleted && (_canReport || _canDelete || _canReact || _canEdit);
+  // Copy is always offered on a live message, so the sheet opens even when react/report/delete
+  // are not wired (a received DM on an older protocol, for example).
+  bool get _hasMenu => !message.deleted;
 
   bool get _isEdited => message.editedAt != null && !message.deleted;
 
@@ -119,7 +123,9 @@ class _BubbleTile extends StatelessWidget {
                       ),
                     ),
                   ),
-                GestureDetector(
+                _withReactions(
+                  context,
+                  GestureDetector(
                   onLongPress: _hasMenu ? () => _showOptions(context) : null,
                   // Double-tap opens the same sheet so reacting does not depend on discovering
                   // long-press alone (Wave A optional affordance).
@@ -153,20 +159,47 @@ class _BubbleTile extends StatelessWidget {
                           child: message.deleted ? _deletedBody() : _textBody(),
                         ),
                 ),
+                ),
                 if (_footerVisible) _footer(),
-                // Below the bubble rather than inside it: chips belong to the message but are not
-                // part of what was said, and inside they would push the text around as people
-                // react.
-                if (!message.deleted)
-                  _ReactionStrip(
-                    reactions: message.reactions,
-                    onToggle: _canReact ? (emoji) => onReact!(message, emoji) : (_) {},
-                  ),
               ],
             ),
           ),
         ],
       ),
+    );
+  }
+
+  /// Attaches the reaction strip to the bubble's lower, tail-side corner (WhatsApp-style) rather
+  /// than as a detached row below. The strip overlaps the bubble by a few px; the stack reserves
+  /// [_reactionOverhang] underneath so it never collides with the footer or the next message.
+  /// An un-reacted message pays no extra space — it returns the bare bubble.
+  Widget _withReactions(BuildContext context, Widget bubble) {
+    final reactions = message.deleted ? const <ReactionSummary>[] : message.reactions;
+    if (reactions.isEmpty) return bubble;
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: _reactionOverhang),
+          child: bubble,
+        ),
+        Positioned(
+          bottom: 0,
+          // Tail side: bottom-right on my messages, bottom-left on the other person's.
+          left: isMine ? null : _reactionInset,
+          right: isMine ? _reactionInset : null,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: MediaQuery.of(context).size.width * 0.72,
+            ),
+            child: _ReactionStrip(
+              isMine: isMine,
+              reactions: reactions,
+              onToggle: _canReact ? (emoji) => onReact!(message, emoji) : (_) {},
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -223,13 +256,20 @@ class _BubbleTile extends StatelessWidget {
         ],
       );
 
-  Widget _textBody() => Text(
-        message.body,
-        style: AppTypography.body.copyWith(
-          color: isMine ? Colors.white : AppColors.textDark,
-          height: 1.4,
-        ),
-      );
+  Widget _textBody() {
+    final url = firstHttpUrl(message.body);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        LinkedMessageText(text: message.body, isMine: isMine),
+        if (url != null) ...[
+          const SizedBox(height: AppSpacing.sm),
+          MessageLinkCard(url: url, isMine: isMine),
+        ],
+      ],
+    );
+  }
 
   Widget _footer() {
     return Padding(

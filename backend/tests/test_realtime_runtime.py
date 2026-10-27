@@ -107,6 +107,46 @@ async def test_broadcast_message_deleted_routes_canonical_and_addresses_by_match
     assert user_calls == [(member_id, frame)]
 
 
+# ── reaction inbox signal: author's user channel, add-only ────────────────────
+
+async def test_emit_reaction_activity_reaches_only_the_authors_user_channel(monkeypatch):
+    """The inbox half of reactions: a frame to the *author's* user channel so their thread row
+    updates even with the chat closed. The conversation channel already covers an open chat, so
+    this must not touch it — only the user channel, only the author."""
+    sender_id, actor_id, addressing_id, message_id = uuid4(), uuid4(), uuid4(), uuid4()
+
+    user_calls: list[tuple] = []
+    conversation_calls: list[tuple] = []
+
+    async def fake_to_user(uid, frame):
+        user_calls.append((uid, frame))
+
+    async def fake_to_conversation(cid, frame, exclude_user=None):
+        conversation_calls.append((cid, frame))
+
+    monkeypatch.setattr(runtime.event_bus, 'publish_to_user', fake_to_user)
+    monkeypatch.setattr(runtime.event_bus, 'publish_to_conversation', fake_to_conversation)
+
+    await runtime.emit_reaction_activity(
+        sender_id=sender_id,
+        actor_id=actor_id,
+        addressing_id=addressing_id,
+        message_id=message_id,
+        emoji='👍',
+    )
+
+    assert conversation_calls == [], 'the inbox signal must not re-fan on the conversation channel'
+    assert len(user_calls) == 1
+    target, frame = user_calls[0]
+    assert target == sender_id, 'the signal goes to the message author, not the reactor'
+    assert frame['type'] == 'messages.reaction_activity'
+    assert frame['conversation_id'] == str(addressing_id)
+    assert frame['message_id'] == str(message_id)
+    assert frame['actor_id'] == str(actor_id)
+    assert frame['emoji'] == '👍'
+    assert 'reacted_at' in frame
+
+
 async def test_broadcast_message_deleted_for_group_uses_conversation_id_for_both(monkeypatch):
     """Groups have no match id, so routing and addressing coincide — the identity path."""
     from datetime import UTC, datetime

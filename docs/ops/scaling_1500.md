@@ -61,7 +61,7 @@ Every request gets an `X-Request-Id` (middleware in `app/shared/request_context.
 INFO:     [lc_connect…] [req=<uuid>] …
 ```
 
-In Render → `lc-connect-api` → Logs:
+In Render → `lc-connect` → Logs:
 
 1. Filter by `req=` when a student reports a slow action.
 2. Watch p95 informally for paths that matter most: `/discover`, `/messages/*`, WebSocket connect/send.

@@ -18,12 +18,20 @@ class _DetailBanner extends StatelessWidget {
           )
         else
           Image.asset(fallback, fit: BoxFit.cover),
+        // Two-sided scrim: darker at the very top so the white back/menu icons stay legible over
+        // any banner photo, light through the middle, darker again at the bottom for the category
+        // badge. The top band is what makes the adaptive icon colour reliable.
         DecoratedBox(
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [Colors.black.withAlpha(20), Colors.black.withAlpha(120)],
+              stops: const [0.0, 0.32, 1.0],
+              colors: [
+                Colors.black.withAlpha(95),
+                Colors.black.withAlpha(20),
+                Colors.black.withAlpha(130),
+              ],
             ),
           ),
         ),

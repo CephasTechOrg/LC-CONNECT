@@ -18,6 +18,7 @@ from app.config import settings
 from app.email_notices import send_employer_rejected_email, send_quietly
 from app.models import EmployerAccount, EmployerOpportunitySubmission, EmployerOrganization, User
 from app.shared.audit import record_audit
+from app.shared.blocking import run_sync
 from app.shared.employer_publishing import publish_submission
 from app.shared.supabase_admin import (
     AuthUserAlreadyRegistered,
@@ -71,12 +72,14 @@ async def approve_organization(
     # approved with no matching Supabase identity for its contact.
     redirect_to = f'{settings.employer_portal_url}/accept-invite' if settings.employer_portal_url else None
     try:
-        auth_user_id = invite_auth_user(account.email, redirect_to=redirect_to, context='employer')
+        auth_user_id = await run_sync(
+            invite_auth_user, account.email, redirect_to=redirect_to, context='employer'
+        )
     except AuthUserAlreadyRegistered:
         # The contact already has an LC Connect account (e.g. they're also a student). Link that
         # identity so approval still succeeds — they sign in with their existing password. A
         # legitimate business decision must not be blocked by an email-reuse edge case.
-        auth_user_id = get_auth_user_id_by_email(account.email)
+        auth_user_id = await run_sync(get_auth_user_id_by_email, account.email)
     if auth_user_id is None:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -120,7 +123,9 @@ async def resend_organization_invite(db: AsyncSession, *, actor: User, org_id: U
 
     redirect_to = f'{settings.employer_portal_url}/accept-invite' if settings.employer_portal_url else None
     try:
-        auth_user_id = invite_auth_user(account.email, redirect_to=redirect_to, context='employer')
+        auth_user_id = await run_sync(
+            invite_auth_user, account.email, redirect_to=redirect_to, context='employer'
+        )
     except AuthUserAlreadyRegistered as exc:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -173,7 +178,9 @@ async def reject_organization(
 
     # Approval emails the branded invite via `invite_auth_user`; rejection used to send nothing,
     # leaving the contact waiting indefinitely. Failure-isolated — the rejection already stands.
-    send_quietly(send_employer_rejected_email, account.email, review_note=org.review_note)
+    await run_sync(
+        send_quietly, send_employer_rejected_email, account.email, review_note=org.review_note
+    )
     return org
 
 

@@ -13,6 +13,7 @@ from app.email_notices import send_position_decision_email, send_quietly
 from app.features.campus_hub import publishing
 from app.models import CampusPosition, CampusPost, Profile, User
 from app.shared.audit import record_audit
+from app.shared.blocking import run_sync
 
 
 async def _notify_decision(db: AsyncSession, position: CampusPosition, outcome: str) -> None:
@@ -26,8 +27,12 @@ async def _notify_decision(db: AsyncSession, position: CampusPosition, outcome: 
     owner = await db.get(User, position.user_id)
     if owner is None or not owner.email:
         return
-    send_quietly(
-        send_position_decision_email, owner.email, outcome=outcome, review_note=position.review_note
+    await run_sync(
+        send_quietly,
+        send_position_decision_email,
+        owner.email,
+        outcome=outcome,
+        review_note=position.review_note,
     )
 
 

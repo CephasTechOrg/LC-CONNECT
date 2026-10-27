@@ -163,6 +163,13 @@ class GroupMember {
   String get nameOrFallback => displayName ?? 'LC Student';
 }
 
+/// The groups to show in the discovery list: those you are **not** already a member of and have
+/// **not** been invited to. Both of those have their own sections above — "Your groups" and
+/// "Pending invites" — so a public group you'd joined or been invited to used to appear twice.
+/// Pending (requested) and joinable groups stay, since discovery is their only home.
+List<GroupSummary> discoverableGroups(List<GroupSummary> all) =>
+    all.where((g) => !g.isMember && !g.isInvited).toList();
+
 /// Role ordering: owner (2) outranks admin (1) outranks member (0). Unknown roles sort lowest.
 int roleRank(String role) => const {'member': 0, 'admin': 1, 'owner': 2}[role] ?? -1;
 

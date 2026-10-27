@@ -203,27 +203,33 @@ mixin _ChatReactionLogic on _ChatScreenStateBase {
   }
 }
 
-/// The chips under a bubble. Renders nothing when there are none, so an un-reacted message costs
-/// no vertical space.
+/// The reaction chips, attached to the bubble's tail-side corner by `_BubbleTile._withReactions`
+/// (WhatsApp-style) rather than floating as a detached row. Renders nothing when there are none.
+///
+/// [isMine] only sets the wrap alignment so a multi-type strip grows away from the tail corner;
+/// placement and overlap are the anchor's job.
 class _ReactionStrip extends StatelessWidget {
-  const _ReactionStrip({required this.reactions, required this.onToggle});
+  const _ReactionStrip({
+    required this.reactions,
+    required this.onToggle,
+    this.isMine = false,
+  });
 
   final List<ReactionSummary> reactions;
   final void Function(String emoji) onToggle;
+  final bool isMine;
 
   @override
   Widget build(BuildContext context) {
     if (reactions.isEmpty) return const SizedBox.shrink();
-    return Padding(
-      padding: const EdgeInsets.only(top: AppSpacing.xs),
-      child: Wrap(
-        spacing: AppSpacing.xs,
-        runSpacing: AppSpacing.xs,
-        children: [
-          for (final reaction in reactions)
-            _ReactionChip(reaction: reaction, onTap: () => onToggle(reaction.emoji)),
-        ],
-      ),
+    return Wrap(
+      alignment: isMine ? WrapAlignment.end : WrapAlignment.start,
+      spacing: AppSpacing.xs,
+      runSpacing: AppSpacing.xs,
+      children: [
+        for (final reaction in reactions)
+          _ReactionChip(reaction: reaction, onTap: () => onToggle(reaction.emoji)),
+      ],
     );
   }
 }
@@ -247,6 +253,10 @@ class _ReactionChip extends StatelessWidget {
       excludeSemantics: true,
       child: Material(
         color: mine ? AppColors.primarySoft : AppColors.surface,
+        // A small lift so the chip reads as sitting on top of the bubble it now overlaps,
+        // rather than being painted into it.
+        elevation: 1.5,
+        shadowColor: Colors.black26,
         shape: StadiumBorder(
           side: BorderSide(color: mine ? AppColors.primary : AppColors.border),
         ),

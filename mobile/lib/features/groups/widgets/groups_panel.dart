@@ -157,7 +157,7 @@ class _GroupsPanelState extends ConsumerState<GroupsPanel> {
           child: Row(
             children: [
               Text(
-                'All groups',
+                'Discover',
                 style: AppTypography.titleSmall.copyWith(
                   fontWeight: FontWeight.w700,
                   color: AppColors.textDark,
@@ -192,13 +192,19 @@ class _GroupsPanelState extends ConsumerState<GroupsPanel> {
             message: 'Couldn\'t load groups',
             onRetry: () => ref.invalidate(discoverGroupsProvider(_discoverArgs)),
           ),
-          data: (groups) => groups.isEmpty
-              ? AppInlineMessage(
-                  message: _query.isNotEmpty
-                      ? 'No groups match "$_query"'
-                      : 'No groups yet. Create the first one.',
-                )
-              : Padding(
+          data: (allGroups) {
+            // De-duplicate: groups you're already in appear in "Your groups", and ones you're
+            // invited to appear in "Pending invites" — don't list them again here.
+            final groups = discoverableGroups(allGroups);
+            if (groups.isEmpty) {
+              final message = _query.isNotEmpty
+                  ? 'No groups match "$_query"'
+                  : allGroups.isEmpty
+                      ? 'No groups yet. Create the first one.'
+                      : "You're in all the groups here — create a new one.";
+              return AppInlineMessage(message: message);
+            }
+            return Padding(
                   padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
                   child: Column(
                     children: [
@@ -214,7 +220,8 @@ class _GroupsPanelState extends ConsumerState<GroupsPanel> {
                         ),
                     ],
                   ),
-                ),
+                );
+          },
         ),
       ],
     ),

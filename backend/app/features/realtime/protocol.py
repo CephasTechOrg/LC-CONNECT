@@ -23,7 +23,10 @@ MAX_BODY_CHARS = _MAX_BODY_CHARS
 # 3 adds `messages.reaction` (outbound). Reactions are applied over REST rather than a new
 # inbound frame: the request needs a response the client can roll an optimistic chip back from,
 # and the WebSocket path has no request/response shape.
-PROTOCOL_VERSION = 3
+# 4 adds `messages.reaction_activity` (outbound, user channel). The v3 `messages.reaction` only
+# reaches clients with that chat open; this reaches the message author's inbox so a reaction to
+# their message is visible without opening the thread. Older clients ignore the unknown type.
+PROTOCOL_VERSION = 4
 
 
 # ── Error + close codes ───────────────────────────────────────────────────────
@@ -321,6 +324,32 @@ def reaction_event(
         'user_id': str(user_id),
         'emoji': emoji,
         'added': added,
+    }
+
+
+def reaction_activity(
+    conversation_id: UUID | str,
+    message_id: UUID,
+    actor_id: UUID,
+    emoji: str,
+    reacted_at_iso: str,
+) -> dict[str, Any]:
+    """User-channel event: someone reacted to one of *your* messages (protocol 4).
+
+    Sent to the message's author only, and only on add — the inbox mirror of the `message_reaction`
+    notification. The conversation-channel `messages.reaction` reaches only clients with that chat
+    open; this reaches the author's inbox so the thread row can reflect the reaction live.
+
+    `conversation_id` is the **addressing** id (see `addressing_id`), matching every other
+    user-channel frame, so the client maps it to the right inbox row.
+    """
+    return {
+        'type': 'messages.reaction_activity',
+        'conversation_id': str(conversation_id),
+        'message_id': str(message_id),
+        'actor_id': str(actor_id),
+        'emoji': emoji,
+        'reacted_at': reacted_at_iso,
     }
 
 

@@ -27,6 +27,10 @@ class _ResourceCategory {
     required this.description,
     required this.icon,
   });
+
+  /// Optional per-category photo, dropped into `assets/images/resources/<key>.webp`. Absent by
+  /// default — the tile falls back to its icon band — so images can be added incrementally.
+  String get imageAsset => 'assets/images/resources/$key.webp';
 }
 
 /// Every category shares the app's one tint (see campus_post_style.dart). The grid used to give
@@ -120,30 +124,34 @@ class _CampusResourcesScreenState extends ConsumerState<CampusResourcesScreen> {
               child: RefreshIndicator(
                 color: AppColors.primary,
                 onRefresh: () async => ref.invalidate(campusResourcesProvider(_query)),
-                child: resourcesAsync.when(
-                  // A skeleton in the shape of the content that is coming, not a spinner: the Campus Hub
-                  // sub-pages were the only lists in the app that spun while every other list
-                  // showed placeholders (4.2).
-                  loading: () => const AppHubPanelSkeleton(count: 4),
-                  error: (_, _) => AppErrorState(
-                    message: 'Could not load resources.',
-                    onRetry: () => ref.invalidate(campusResourcesProvider(_query)),
-                  ),
-                  data: (resources) {
-                    if (resources.isEmpty) {
-                      if (_category == 'all') {
-                        return _StaticCategoryGrid(
-                          onCategoryTap: (key) => setState(() => _category = key),
-                        );
-                      }
-                      return _ComingSoon(
-                        category: _category,
-                        onBack: () => setState(() => _category = 'all'),
-                      );
-                    }
-                    return _ResourceList(resources: resources, onOpenLink: _launch);
-                  },
-                ),
+                // "All" is always the six-category grid — the page's home. Previously the grid
+                // appeared only when the resource list happened to be empty, so the moment any
+                // resource existed the categorised entry point vanished and users landed on a flat
+                // list. The grid renders immediately (no network wait); a specific category then
+                // resolves to its list, or a "coming soon" when it has nothing yet.
+                child: _category == 'all'
+                    ? _StaticCategoryGrid(
+                        onCategoryTap: (key) => setState(() => _category = key),
+                      )
+                    : resourcesAsync.when(
+                        // A skeleton in the shape of the content that is coming, not a spinner: the
+                        // Campus Hub sub-pages were the only lists in the app that spun while every
+                        // other list showed placeholders (4.2).
+                        loading: () => const AppHubPanelSkeleton(count: 4),
+                        error: (_, _) => AppErrorState(
+                          message: 'Could not load resources.',
+                          onRetry: () => ref.invalidate(campusResourcesProvider(_query)),
+                        ),
+                        data: (resources) {
+                          if (resources.isEmpty) {
+                            return _ComingSoon(
+                              category: _category,
+                              onBack: () => setState(() => _category = 'all'),
+                            );
+                          }
+                          return _ResourceList(resources: resources, onOpenLink: _launch);
+                        },
+                      ),
               ),
             ),
           ],
@@ -233,7 +241,9 @@ class _StaticCategoryGrid extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
       mainAxisSpacing: 14,
       crossAxisSpacing: 14,
-      childAspectRatio: 0.82,
+      // A little taller than before: the tiles now carry an image header above the text, so they
+      // need the extra vertical room to keep the description legible down to a 320dp width.
+      childAspectRatio: 0.74,
       children: _staticCategories
           .map((cat) => _StaticCategoryCard(cat: cat, onTap: () => onCategoryTap(cat.key)))
           .toList(),
@@ -249,59 +259,102 @@ class _StaticCategoryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // The shared card surface (borderless, soft shadow), same as Home and Activities.
+    // The shared card surface (borderless, soft shadow), same as Home and Activities. Zero padding
+    // so the header image can be cropped edge-to-edge; AppCard clips it to the card's corners.
     return AppCard(
       onTap: onTap,
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.zero,
       child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-            color: AppColors.primarySoft,
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: Icon(cat.icon, color: AppColors.primaryText, size: 24),
-        ),
-        const SizedBox(height: 14),
-        Text(
-          cat.title,
-          style: AppTypography.body.copyWith(
-            fontWeight: FontWeight.w700,
-            color: AppColors.textDark,
-            height: 1.25,
-          ),
-        ),
-        const SizedBox(height: 6),
-        Expanded(
-          child: Text(
-            cat.description,
-            style: AppTypography.label.copyWith(
-              fontWeight: FontWeight.w400,
-              color: AppColors.textMid,
-              height: 1.4,
-            ),
-          ),
-        ),
-        Row(
-          children: [
-            Text(
-              'View resources',
-              style: AppTypography.label.copyWith(
-                fontWeight: FontWeight.w600,
-                color: AppColors.primaryText,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _CategoryImageHeader(cat: cat),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    cat.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.body.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textDark,
+                      height: 1.2,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Expanded(
+                    child: Text(
+                      cat.description,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTypography.label.copyWith(
+                        fontWeight: FontWeight.w400,
+                        color: AppColors.textMid,
+                        height: 1.35,
+                      ),
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          'View resources',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTypography.label.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.primaryText,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      const Icon(Icons.chevron_right_rounded,
+                          size: 18, color: AppColors.primaryText),
+                    ],
+                  ),
+                ],
               ),
             ),
-            const SizedBox(width: 4),
-            const Icon(Icons.chevron_right_rounded, size: 18, color: AppColors.primaryText),
-          ],
-        ),
+          ),
         ],
       ),
     );
   }
+}
+
+/// The header band of a category tile: the provided photo, cropped to fill, or — until one is
+/// dropped in — a tinted band carrying the category's icon, so a missing image reads as
+/// intentional rather than broken.
+class _CategoryImageHeader extends StatelessWidget {
+  final _ResourceCategory cat;
+  const _CategoryImageHeader({required this.cat});
+
+  static const _height = 86.0;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: _height,
+      width: double.infinity,
+      child: Image.asset(
+        cat.imageAsset,
+        fit: BoxFit.cover,
+        // No asset yet (or a decode failure) → the branded icon band. This is the default state
+        // until the per-category images are added under assets/images/resources/.
+        errorBuilder: (_, _, _) => _iconBand(),
+      ),
+    );
+  }
+
+  Widget _iconBand() => ColoredBox(
+        color: AppColors.primarySoft,
+        child: Center(
+          child: Icon(cat.icon, color: AppColors.primaryText, size: 30),
+        ),
+      );
 }
 
 /// Shown when a specific category (tapped from the grid or filter bar) has no resources yet —

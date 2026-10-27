@@ -23,6 +23,7 @@ import '../../scholars/widgets/blueprint_bond_card.dart';
 import '../../attendance/providers/attendance_provider.dart';
 import '../../attendance/widgets/attendance_open_card.dart';
 import '../data/campus_spotlights.dart';
+import '../data/greeting_name.dart';
 import '../models/campus_post.dart';
 import '../providers/campus_hub_provider.dart';
 import '../providers/campus_publishing_provider.dart';
@@ -47,35 +48,34 @@ String _greeting() {
   return 'Good evening';
 }
 
-/// The name the greeting uses: the first name given at signup, else the first word of the
-/// profile's display name, else the campus address. The display name may be a nickname or
-/// abbreviated, and older accounts have no signup name, hence the order.
-String _greetingName({String? firstName, String? displayName, String? email}) {
-  final fromSignup = firstName?.trim();
-  if (fromSignup != null && fromSignup.isNotEmpty) return fromSignup;
-  final fromProfile = displayName?.trim();
-  if (fromProfile != null && fromProfile.isNotEmpty) {
-    return fromProfile.split(RegExp(r'\s+')).first;
-  }
-  if (email == null || email.isEmpty) return 'there';
-  final raw = email.split('@').first;
-  if (raw.isEmpty) return 'there';
-  return raw[0].toUpperCase() + raw.substring(1);
-}
-
-class CampusHubScreen extends ConsumerWidget {
+class CampusHubScreen extends ConsumerStatefulWidget {
   const CampusHubScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final user = ref.watch(authNotifierProvider).asData?.value;
-    final profile = ref.watch(myProfileNotifierProvider).asData?.value;
+  ConsumerState<CampusHubScreen> createState() => _CampusHubScreenState();
+}
+
+class _CampusHubScreenState extends ConsumerState<CampusHubScreen> {
+  /// The last name we successfully resolved. Held across provider reloads (login, pull-to-refresh,
+  /// resume) so the greeting never downgrades to a transient fallback while data is in flight.
+  String? _lastGoodName;
+
+  @override
+  Widget build(BuildContext context) {
+    // `.value`, not `asData?.value`: a provider being refreshed keeps its previous value available
+    // here, so a pull-to-refresh does not blank the inputs and flash a fallback.
+    final user = ref.watch(authNotifierProvider).value;
+    final profileAsync = ref.watch(myProfileNotifierProvider);
+    final profile = profileAsync.value;
     final isStudent = (user?.role ?? 'student') == 'student';
-    final firstName = _greetingName(
+    final resolvedName = resolveGreetingName(
       firstName: user?.firstName,
       displayName: profile?.displayName,
       email: user?.email,
+      profileResolved: profileAsync.hasValue,
     );
+    if (resolvedName != null) _lastGoodName = resolvedName;
+    final firstName = _lastGoodName ?? 'there';
     final timeOfDay = _greeting();
     final overviewAsync = ref.watch(campusHubOverviewProvider);
     // Keep badge notifiers alive while Hub is visible (announcements WS + opportunities cursor).

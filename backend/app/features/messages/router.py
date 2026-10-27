@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -10,8 +10,10 @@ from app.dependencies import require_verified_user
 from app.features.messages.editing import edit_message
 from app.features.messages.reactions import reactions_for, toggle_reaction
 from app.features.messages.schema import (
+    LinkPreviewRequest,
     MessageCreate,
     MessageEditRequest,
+    MessageLinkPreviewRead,
     MessageRead,
     MessageReadBy,
     MessageThreadRead,
@@ -42,6 +44,7 @@ from app.shared.conversations import (
 )
 from app.shared.policies import can_message_as_staff
 from app.shared.rate_limit import (
+    link_preview_limit,
     message_edit_limit,
     message_send_limit,
     reaction_limit,
@@ -96,6 +99,38 @@ async def start_staff_thread(
 async def list_threads(current_user: User = Depends(require_verified_user), db: AsyncSession = Depends(get_db)):
     """The unified inbox — DM, staff, and group threads, newest activity first."""
     return await list_threads_for_user(db, current_user.id)
+
+
+@router.post('/link-preview', response_model=MessageLinkPreviewRead)
+async def preview_chat_link(
+    payload: LinkPreviewRequest,
+    current_user: User = Depends(link_preview_limit),
+) -> MessageLinkPreviewRead:
+    """Unfurl the first http(s) URL in `payload.url` for a chat bubble or the composer.
+
+    Uses the same SSRF-guarded fetch as campus-post previews. Soft-fails to `status='failed'`
+    (still carrying the domain) so a dead page still gets a tappable hostname card. Never
+    persists — each client caches; a send is not delayed for this.
+    """
+    from app.shared.link_preview import fetch_link_preview, first_http_url
+
+    extracted = first_http_url(payload.url.strip())
+    if extracted is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail='Enter a valid http(s) URL',
+        )
+    preview = await fetch_link_preview(extracted)
+    return MessageLinkPreviewRead(
+        url=extracted,
+        domain=preview.domain,
+        site_name=preview.site_name,
+        title=preview.title,
+        description=preview.description,
+        image_url=preview.image_url,
+        fetched_at=datetime.now(UTC),
+        status=preview.status,
+    )
 
 
 @router.get('/unread-summary', response_model=UnreadSummary)
@@ -243,7 +278,11 @@ async def add_reaction(
     reacted = await toggle_reaction(
         db, message_id=message_id, user_id=current_user.id, emoji=emoji, add=True
     )
-    from app.features.realtime.runtime import broadcast_reaction, emit_notification
+    from app.features.realtime.runtime import (
+        broadcast_reaction,
+        emit_notification,
+        emit_reaction_activity,
+    )
 
     await broadcast_reaction(
         conversation_id=reacted.conversation_id,
@@ -257,6 +296,15 @@ async def add_reaction(
     # nobody who is not looking at it, so there was no inbox change, no badge and no push.
     # Removing a reaction is deliberately silent: "someone un-reacted" is not news.
     if reacted.sender_id is not None and reacted.sender_id != current_user.id:
+        # The inbox signal: updates the author's thread row live even with the chat closed. Paired
+        # with the durable `latest_reaction` the thread list now carries for a cold load.
+        await emit_reaction_activity(
+            sender_id=reacted.sender_id,
+            actor_id=current_user.id,
+            addressing_id=reacted.addressing_id,
+            message_id=message_id,
+            emoji=emoji,
+        )
         await emit_notification(
             user_id=reacted.sender_id,
             notif_type='message_reaction',

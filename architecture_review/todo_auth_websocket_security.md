@@ -10,7 +10,7 @@
 - [x] Daily start docs (`docs/getting-started/daily_dev_start.md`)
 - [x] Cursor rules (architecture + file structure)
 - [x] Dependency lock — direct deps pinned to exact versions in `requirements.txt` + `requirements-dev.txt` (reproducible across CI, Render, local; Render/CI install these directly)
-- [x] CI pipeline (`.github/workflows/ci.yml` — line limits + backend unit/snapshot + Postgres `tests/db` + `flutter analyze`)
+- [x] CI pipeline (`.github/workflows/ci.yml` — line limits + backend unit/snapshot + Postgres `tests/db` + `flutter analyze` + `flutter test`)
 - [x] Backend regression harness (`backend/tests/` — OpenAPI snapshot, route inventory, import smoke)
 - [x] File-length enforcement (`scripts/check_line_limits.py`, 600 hard cap; pre-push hook + CI)
 

@@ -1,6 +1,6 @@
 part of '../screens/chat_screen.dart';
 
-class _InputBar extends StatelessWidget {
+class _InputBar extends StatefulWidget {
   final TextEditingController controller;
   final bool sending;
   final VoidCallback onSend;
@@ -11,6 +11,31 @@ class _InputBar extends StatelessWidget {
     required this.onSend,
     required this.onTyping,
   });
+
+  @override
+  State<_InputBar> createState() => _InputBarState();
+}
+
+class _InputBarState extends State<_InputBar> {
+  String? _previewUrl;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_onText);
+    _previewUrl = firstHttpUrl(widget.controller.text);
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_onText);
+    super.dispose();
+  }
+
+  void _onText() {
+    final next = firstHttpUrl(widget.controller.text);
+    if (next != _previewUrl) setState(() => _previewUrl = next);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -25,7 +50,14 @@ class _InputBar extends StatelessWidget {
         AppSpacing.sm,
         AppSpacing.sm,
       ),
-      child: Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (_previewUrl != null) ...[
+            MessageLinkCard(url: _previewUrl!, isMine: false, compact: true),
+            const SizedBox(height: AppSpacing.sm),
+          ],
+          Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           // Attachment (+) removed — media chat is not shipped; a no-op button
@@ -40,7 +72,7 @@ class _InputBar extends StatelessWidget {
                 border: Border.all(color: AppColors.border),
               ),
               child: TextField(
-                controller: controller,
+                controller: widget.controller,
                 textCapitalization: TextCapitalization.sentences,
                 maxLines: 4,
                 minLines: 1,
@@ -64,8 +96,8 @@ class _InputBar extends StatelessWidget {
                   isDense: true,
                   contentPadding: const EdgeInsets.symmetric(vertical: 11),
                 ),
-                onChanged: (_) => onTyping(),
-                onSubmitted: (_) => onSend(),
+                onChanged: (_) => widget.onTyping(),
+                onSubmitted: (_) => widget.onSend(),
               ),
             ),
           ),
@@ -91,14 +123,14 @@ class _InputBar extends StatelessWidget {
             button: true,
             label: 'Send message',
             child: GestureDetector(
-              onTap: onSend,
+              onTap: widget.onSend,
               behavior: HitTestBehavior.opaque,
               child: SizedBox(
                 width: kMinTouchTarget,
                 height: kMinTouchTarget,
                 child: Center(
                   child: ValueListenableBuilder<TextEditingValue>(
-                    valueListenable: controller,
+                    valueListenable: widget.controller,
                     builder: (context, value, _) {
                       final hasText = value.text.trim().isNotEmpty;
                       return AnimatedContainer(
@@ -106,12 +138,12 @@ class _InputBar extends StatelessWidget {
                         width: 44,
                         height: 44,
                         decoration: BoxDecoration(
-                          color: sending
+                          color: widget.sending
                               ? AppColors.primarySoft
                               : AppColors.primary.withValues(alpha: hasText ? 1 : 0.45),
                           shape: BoxShape.circle,
                         ),
-                        child: sending
+                        child: widget.sending
                             ? const Padding(
                                 padding: EdgeInsets.all(12),
                                 child: CircularProgressIndicator(
@@ -126,6 +158,8 @@ class _InputBar extends StatelessWidget {
               ),
             ),
           ),
+        ],
+      ),
         ],
       ),
     );

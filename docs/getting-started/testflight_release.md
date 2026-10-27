@@ -16,10 +16,10 @@ The app talks to a live backend, so a lot is fixable without touching TestFlight
 | Employer or admin portal | Push → Render auto-deploys. |
 | **Flutter code, app icon, `Info.plist`, assets** | **New build.** Follow the checklist. |
 
-> ⚠️ **Policy edits never auto-deploy the API.** `render.yaml` sets `rootDir: backend`, and Render
-> only auto-deploys a service when files *inside its root* change. The policy markdown lives in
-> `docs/policies/`, outside `backend/`. The API also `@cache`s documents for the process
-> lifetime, so nothing updates until it restarts.
+> ⚠️ **Policy edits never auto-deploy the API.** The dashboard-managed `lc-connect` service has
+> Root Directory `backend`, and Render only auto-deploys when files *inside that root* change.
+> The policy markdown lives in `docs/policies/`, outside `backend/`. The API also `@cache`s
+> documents for the process lifetime, so nothing updates until it restarts.
 > **Fix: Render → `lc-connect` (the API service, in its own project) → Manual Deploy → Deploy latest commit.**
 
 ---
@@ -99,6 +99,7 @@ already has a completed profile. Keep it working; it is used on every real revie
 |---|---|
 | `ITMS-90683` missing `NSPhotoLibraryUsageDescription` | `image_picker` uses `ImageSource.gallery`; the purpose string was absent. |
 | `ITMS-90683` missing `NSLocationWhenInUseUsageDescription` | `permission_handler_apple` compiles **every** permission strategy into the *release* binary, so `CoreLocation` links and Apple demands a string — even though the app only requests `Permission.camera`. Debug builds don't show this. |
+| `ITMS-90683` missing `NSLocationAlwaysAndWhenInUseUsageDescription` | Same plugin, next key. Apple's scanner also sees `requestAlwaysAuthorization`. Add the Always keys even though the app never asks. A *failed* upload still consumes the build number — bump before rebuilding. |
 | Build number rejected | A failed upload still consumes the number. Bump again. |
 | Build never appears in TestFlight | Processing takes 5–15 min after upload. "No Builds" during that window is normal. |
 | Policy page shows old text | The API wasn't manually redeployed (see above). |

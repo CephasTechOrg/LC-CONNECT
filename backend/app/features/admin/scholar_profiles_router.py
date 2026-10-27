@@ -24,6 +24,7 @@ from app.features.admin.schema import (
 )
 from app.features.realtime.runtime import emit_notification
 from app.models import Profile, ScholarProfessionalProfile, User
+from app.shared.blocking import run_sync
 
 router = APIRouter()
 
@@ -43,7 +44,8 @@ async def _notify_scholar_decision(
         target_type='scholar_profile',
         target_id=profile_id,
     )
-    send_quietly(
+    await run_sync(
+        send_quietly,
         send_scholar_profile_decision_email,
         email,
         outcome=outcome,

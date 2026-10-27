@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.models import EmployerProfileView, Profile, Program, ProgramMembership, ScholarProfessionalProfile
+from app.shared.blocking import run_sync
 from app.shared.programs import PRESIDENTIAL_SCHOLARS_SLUG
 from app.shared.scholar_profile import CURRENT_CONSENT_VERSION
 from app.shared.storage import storage_service
@@ -64,8 +65,10 @@ async def headshot_signed_url(db: AsyncSession, user_id: UUID) -> str:
     profile, _ = await get_eligible_scholar_or_404(db, user_id)
     if profile.headshot_path is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='No headshot on file')
-    return storage_service.scholar_signed_url(
-        profile.headshot_path, expires_in=settings.scholar_signed_url_expires_seconds
+    return await run_sync(
+        storage_service.scholar_signed_url,
+        profile.headshot_path,
+        expires_in=settings.scholar_signed_url_expires_seconds,
     )
 
 
@@ -73,6 +76,8 @@ async def resume_signed_url(db: AsyncSession, user_id: UUID) -> str:
     profile, _ = await get_eligible_scholar_or_404(db, user_id)
     if profile.resume_path is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='No résumé on file')
-    return storage_service.scholar_signed_url(
-        profile.resume_path, expires_in=settings.scholar_signed_url_expires_seconds
+    return await run_sync(
+        storage_service.scholar_signed_url,
+        profile.resume_path,
+        expires_in=settings.scholar_signed_url_expires_seconds,
     )

@@ -112,7 +112,9 @@ void main() {
       testWidgets('lays out without overflow at ${width.toInt()}dp', (tester) async {
         await _pump(tester, const ActivitiesScreen(), width: width);
         expect(tester.takeException(), isNull);
-        expect(find.text('Featured'), findsOneWidget);
+        // One hero card up top. The ranking (see `selectFeatured`) deterministically picks the
+        // joinable, soonest study group over the full movie night, so its title heads the list once.
+        expect(find.text('Study group: Organic Chemistry'), findsOneWidget);
       });
     }
 
@@ -179,6 +181,40 @@ void main() {
       await _pump(tester, ActivityDetailScreen(activity: _acts[1]));
       expect(find.text("You're going"), findsOneWidget);
       expect(find.text('Leave'), findsOneWidget);
+    });
+
+    testWidgets('app bar icons flip from white over the banner to dark once collapsed',
+        (tester) async {
+      // Owned by the signed-in user, so the three-dot menu is present alongside the back arrow.
+      final mine = Activity(
+        id: 'mine',
+        creatorId: 'user-1',
+        title: 'My study jam',
+        category: 'study',
+        // Long enough to make the body overflow a short viewport, so the bar can actually collapse.
+        description: 'Line of detail. ' * 60,
+        location: 'Library',
+        startTime: _at(2, 15),
+        participantCount: 3,
+        hasJoined: false,
+        bannerUrl: 'https://example.com/banner.jpg',
+      );
+      await _pump(tester, ActivityDetailScreen(activity: mine));
+      // _pump uses a tall viewport; shrink it so the body overflows and the bar can collapse.
+      tester.view.physicalSize = const Size(393 * 2, 600 * 2);
+      await tester.pumpAndSettle();
+
+      SliverAppBar bar() =>
+          tester.widget<SliverAppBar>(find.byType(SliverAppBar));
+
+      // Expanded over the banner photo: icons are white.
+      expect(find.byIcon(Icons.more_vert_rounded), findsOneWidget);
+      expect(bar().foregroundColor, Colors.white);
+
+      // Collapse the bar onto the solid surface: icons go dark for contrast.
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, -400));
+      await tester.pumpAndSettle();
+      expect(bar().foregroundColor, AppColors.textDark);
     });
   });
 }

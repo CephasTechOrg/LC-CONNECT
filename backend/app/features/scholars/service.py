@@ -25,6 +25,7 @@ from app.features.scholars.schema import (
 )
 from app.models import ScholarProfessionalProfile
 from app.shared import scholar_profile as _scholar_completeness
+from app.shared.blocking import run_image, run_sync
 from app.shared.image_processing import sanitize_avatar
 from app.shared.programs import PRESIDENTIAL_SCHOLARS_SLUG, is_active_program_member
 from app.shared.scholar_profile import missing_profile_fields
@@ -310,8 +311,10 @@ async def upload_headshot(db: AsyncSession, user_id: UUID, data: bytes) -> Schol
         raise HTTPException(
             status_code=status.HTTP_413_CONTENT_TOO_LARGE, detail='Headshot image is too large'
         )
-    clean_data, content_type, ext = _validate_headshot(data)
-    profile.headshot_path = storage_service.upload_scholar_file(user_id, 'headshot', ext, content_type, clean_data)
+    clean_data, content_type, ext = await run_image(_validate_headshot, data)
+    profile.headshot_path = await run_sync(
+        storage_service.upload_scholar_file, user_id, 'headshot', ext, content_type, clean_data
+    )
     _requeue_after_material_edit(profile)
     await db.commit()
     await db.refresh(profile)
@@ -323,7 +326,9 @@ async def upload_resume(db: AsyncSession, user_id: UUID, data: bytes) -> Scholar
     if len(data) > settings.max_resume_mb * 1024 * 1024:
         raise HTTPException(status_code=status.HTTP_413_CONTENT_TOO_LARGE, detail='Résumé file is too large')
     content_type, ext = _validate_resume(data)
-    profile.resume_path = storage_service.upload_scholar_file(user_id, 'resume', ext, content_type, data)
+    profile.resume_path = await run_sync(
+        storage_service.upload_scholar_file, user_id, 'resume', ext, content_type, data
+    )
     _requeue_after_material_edit(profile)
     await db.commit()
     await db.refresh(profile)
@@ -334,11 +339,19 @@ async def headshot_signed_url(db: AsyncSession, user_id: UUID) -> str:
     profile = await _get_or_create(db, user_id)
     if profile.headshot_path is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='No headshot on file')
-    return storage_service.scholar_signed_url(profile.headshot_path, expires_in=settings.scholar_signed_url_expires_seconds)
+    return await run_sync(
+        storage_service.scholar_signed_url,
+        profile.headshot_path,
+        expires_in=settings.scholar_signed_url_expires_seconds,
+    )
 
 
 async def resume_signed_url(db: AsyncSession, user_id: UUID) -> str:
     profile = await _get_or_create(db, user_id)
     if profile.resume_path is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='No résumé on file')
-    return storage_service.scholar_signed_url(profile.resume_path, expires_in=settings.scholar_signed_url_expires_seconds)
+    return await run_sync(
+        storage_service.scholar_signed_url,
+        profile.resume_path,
+        expires_in=settings.scholar_signed_url_expires_seconds,
+    )

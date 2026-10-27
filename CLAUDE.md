@@ -56,6 +56,7 @@ pieces manually:
 
 # Mobile (from mobile/):
 flutter analyze
+flutter test
 
 # Repo:
 python scripts/check_line_limits.py

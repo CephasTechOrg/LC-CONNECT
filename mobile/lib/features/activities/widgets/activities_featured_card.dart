@@ -2,7 +2,10 @@ part of '../screens/activities_screen.dart';
 
 class _FeaturedCard extends ConsumerStatefulWidget {
   final Activity activity;
-  const _FeaturedCard({required this.activity});
+  /// Why this activity is the hero — e.g. "Filling up", "Starting soon" — so the badge is accurate
+  /// rather than a blanket "Featured". See `selectFeatured`.
+  final String label;
+  const _FeaturedCard({required this.activity, this.label = 'Featured'});
 
   @override
   ConsumerState<_FeaturedCard> createState() => _FeaturedCardState();
@@ -104,8 +107,9 @@ class _FeaturedCardState extends ConsumerState<_FeaturedCard> {
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
-                        // Sentence case, not capitals — DESIGN_PRINCIPLES rule 2.
-                        'Featured',
+                        // Sentence case, not capitals — DESIGN_PRINCIPLES rule 2. The text states
+                        // why this is the hero (see `selectFeatured`), not a blanket "Featured".
+                        widget.label,
                         // 10, not 9: the smallest size on the app's type scale.
                         style: AppTypography.micro.copyWith(
                           color: Colors.white,

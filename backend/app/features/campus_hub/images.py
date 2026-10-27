@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.features.campus_hub import publishing
 from app.models import CampusPost, CampusPostImage, User
+from app.shared.blocking import run_image, run_sync
 from app.shared.image_processing import sanitize_announcement_image
 from app.shared.storage import storage_service
 
@@ -63,10 +64,10 @@ async def add_image(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail='Announcements can have at most 4 images',
         )
-    clean, content_type = sanitize_announcement_image(data)
+    clean, content_type = await run_image(sanitize_announcement_image, data)
     image_id = uuid4()
-    object_path, public_url = storage_service.upload_campus_post_image(
-        post.id, image_id, content_type, clean
+    object_path, public_url = await run_sync(
+        storage_service.upload_campus_post_image, post.id, image_id, content_type, clean
     )
     db.add(
         CampusPostImage(
@@ -93,7 +94,7 @@ async def delete_image(
     image = next((img for img in post.images if img.id == image_id), None)
     if image is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Image not found')
-    storage_service.delete_campus_post_image(image.object_path)
+    await run_sync(storage_service.delete_campus_post_image, image.object_path)
     remaining = [img for img in post.images if img.id != image_id]
     await db.delete(image)
     await db.flush()
@@ -127,7 +128,7 @@ async def reorder_images(
 async def delete_all_for_post(post: CampusPost) -> None:
     """Best-effort storage cleanup before a hard delete (rows cascade with the post)."""
     for img in list(post.images):
-        storage_service.delete_campus_post_image(img.object_path)
+        await run_sync(storage_service.delete_campus_post_image, img.object_path)
 
 
 async def _image_count(db: AsyncSession, post_id: UUID) -> int:

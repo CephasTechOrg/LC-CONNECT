@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import select
@@ -294,6 +295,38 @@ async def broadcast_reaction(
         conversation_id,
         protocol.reaction_event(message_id, user_id, emoji, added=added),
     )
+
+
+async def emit_reaction_activity(
+    *,
+    sender_id: UUID,
+    actor_id: UUID,
+    addressing_id: UUID,
+    message_id: UUID,
+    emoji: str,
+) -> None:
+    """Tell a message's author, on their user channel, that someone reacted — so their inbox row
+    updates live even with the chat closed (protocol 4).
+
+    Add-only and author-only, mirroring the reaction notification. The conversation-channel
+    `broadcast_reaction` still covers anyone with the chat open; this is purely the inbox signal.
+
+    Best-effort, like every broadcast here: a dropped frame is recovered by the durable inbox
+    preview (`latest_reactions_for_threads`) on the next load.
+    """
+    try:
+        await event_bus.publish_to_user(
+            sender_id,
+            protocol.reaction_activity(
+                addressing_id,
+                message_id,
+                actor_id,
+                emoji,
+                datetime.now(UTC).isoformat(),
+            ),
+        )
+    except Exception as exc:  # noqa: BLE001 — a live ping must never break the reaction
+        logger.warning('emit_reaction_activity failed (user=%s): %s', sender_id, exc)
 
 
 async def broadcast_message_deleted(message: Message, member_ids: list[UUID]) -> None:

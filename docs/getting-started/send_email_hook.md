@@ -58,8 +58,8 @@ SUPABASE_SEND_EMAIL_HOOK_SECRET=whsec_...
 ```
 
 - Local: `backend/.env`
-- Production: Render Dashboard → `lc-connect-api` → Environment → add
-  `SUPABASE_SEND_EMAIL_HOOK_SECRET` (mark it secret, `sync: false` in `render.yaml`).
+- Production: Render Dashboard → `lc-connect` → Environment → add
+  `SUPABASE_SEND_EMAIL_HOOK_SECRET` (mark it secret). The API is dashboard-managed, not in `render.yaml`.
 
 Until this is set, the endpoint returns `503` for every request — it never processes an
 unverifiable webhook rather than silently trusting an unsigned one.

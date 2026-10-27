@@ -25,6 +25,22 @@ SAMPLE_HTML = """
 """
 
 
+@pytest.mark.parametrize(
+    ('text', 'expected'),
+    [
+        ('https://example.com/jobs', 'https://example.com/jobs'),
+        ('see https://example.com.', 'https://example.com'),
+        ('(https://example.com/a)', 'https://example.com/a'),
+        ('no link here', None),
+        ('ftp://example.com/a', None),
+        ('https://a.com and https://b.com', 'https://a.com'),
+        ('', None),
+    ],
+)
+def test_first_http_url(text: str, expected: str | None) -> None:
+    assert lp.first_http_url(text) == expected
+
+
 def test_parse_html_preview_reads_og_and_absolutizes_image():
     preview = lp.parse_html_preview(SAMPLE_HTML, base_url='https://jobs.example.com/posting/1')
     assert preview.status == 'ok'

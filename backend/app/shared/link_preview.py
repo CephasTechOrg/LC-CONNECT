@@ -32,6 +32,11 @@ MAX_DESCRIPTION_LEN = 300
 MAX_IMAGE_URL_LEN = 2000
 USER_AGENT = 'LC-Connect-LinkPreview/1.0 (+https://livingstone.edu)'
 
+# First http(s) URL in free text (chat bodies, composer). Trailing sentence punctuation is
+# stripped so "see https://example.com." still unfurls.
+_URL_IN_TEXT = re.compile(r'https?://[^\s<>"\']+', re.IGNORECASE)
+_TRAILING_URL_PUNCT = '.,);:!?]\''
+
 _BLOCKED_HOSTS = frozenset(
     {
         'localhost',
@@ -71,6 +76,15 @@ def apply_link_preview(post: CampusPost, preview: LinkPreview) -> None:
     post.link_preview_image_url = preview.image_url
     post.link_preview_fetched_at = datetime.now(UTC)
     post.link_preview_status = preview.status
+
+
+def first_http_url(text: str) -> str | None:
+    """The first http(s) URL in free text, or None. Strips trailing sentence punctuation."""
+    match = _URL_IN_TEXT.search(text or '')
+    if match is None:
+        return None
+    url = match.group(0).rstrip(_TRAILING_URL_PUNCT)
+    return url or None
 
 
 def failed_preview_for(url: str) -> LinkPreview:

@@ -6,7 +6,7 @@ from sqlalchemy.orm import selectinload
 from app.database import get_db
 from app.dependencies import require_verified_connect_student
 from app.features.discovery.schema import DiscoveryCard
-from app.features.discovery.service import calculate_match
+from app.features.discovery.service import rank_candidates
 from app.models import Block, ConnectionRequest, Match, Profile, User, UserLanguage
 from app.shared.profiles import get_profile_by_user_id
 from app.shared.serializers import profile_to_public
@@ -45,17 +45,15 @@ async def get_discovery_cards(current_user: User = Depends(require_verified_conn
     # Respect owners who restrict visibility to email-verified users (no-op for verified viewers).
     if not current_user.is_verified:
         stmt = stmt.where(Profile.show_profile_to_verified_only.is_(False))
-    result = await db.execute(stmt.limit(150))
-    candidates = result.scalars().unique().all()
+    # Score the full eligible pool — no pre-score truncation (the filters above already bound it to
+    # active, visible, completed students). Ranking, tie-breaking and diversity live in the service.
+    result = await db.execute(stmt)
+    candidates = list(result.scalars().unique().all())
 
-    scored = []
-    for candidate in candidates:
-        score, reasons = calculate_match(current_profile, candidate)
-        scored.append((score, reasons, candidate))
-    scored.sort(key=lambda item: item[0], reverse=True)
+    ranked = rank_candidates(current_profile, candidates, limit=limit)
 
     cards: list[DiscoveryCard] = []
-    for score, reasons, profile in scored[:limit]:
+    for score, reasons, profile in ranked:
         public = profile_to_public(profile)
         cards.append(DiscoveryCard(
             profile_id=public.id,

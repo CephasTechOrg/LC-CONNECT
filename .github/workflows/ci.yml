@@ -78,7 +78,7 @@ jobs:
         run: pytest tests/db -v --tb=short
 
   mobile:
-    name: Mobile (flutter analyze)
+    name: Mobile (analyze + test)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -92,3 +92,4 @@ jobs:
       # pubspec lists `.env` as an asset; the real file is gitignored — CI uses the example.
       - run: cp .env.example .env
       - run: flutter analyze
+      - run: flutter test

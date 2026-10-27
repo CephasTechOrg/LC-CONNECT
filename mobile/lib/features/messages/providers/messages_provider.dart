@@ -191,6 +191,36 @@ class ChatMessage {
       );
 }
 
+/// The most recent reaction someone else left on one of *my* messages in a thread.
+///
+/// Surfaced on the inbox row so a reaction to your message is visible without opening the chat.
+/// Seeded from `GET /messages/threads` (durable) and updated live by a `messages.reaction_activity`
+/// frame. [reactedAt] is compared against the thread's latest message so a newer message still
+/// takes the row — the reaction never reorders the inbox.
+class ThreadReactionPreview {
+  const ThreadReactionPreview({
+    required this.emoji,
+    required this.actorId,
+    required this.reactedAt,
+    this.actorName,
+    this.messageId,
+  });
+
+  final String emoji;
+  final String actorId;
+  final String? actorName;
+  final String? messageId;
+  final DateTime reactedAt;
+
+  factory ThreadReactionPreview.fromJson(Map<String, dynamic> j) => ThreadReactionPreview(
+        emoji: j['emoji'] as String,
+        actorId: j['actor_id'] as String,
+        actorName: j['actor_name'] as String?,
+        messageId: j['message_id'] as String?,
+        reactedAt: DateTime.parse(j['reacted_at'] as String),
+      );
+}
+
 // ── Message thread (DM, staff DM, or group) ────────────────────────
 class MessageThread {
   final String conversationId; // always present
@@ -205,6 +235,9 @@ class MessageThread {
   final String? groupName; // group only
   final String? groupAvatarUrl; // group only
   final ChatMessage? latestMessage;
+  // The most recent reaction to one of my messages here, if any. Seeded from REST, kept live by
+  // `messages.reaction_activity`. Additive — it never changes thread ordering.
+  final ThreadReactionPreview? latestReaction;
   final bool partnerTyping; // transient (live), never from JSON
 
   const MessageThread({
@@ -218,6 +251,7 @@ class MessageThread {
     this.groupName,
     this.groupAvatarUrl,
     this.latestMessage,
+    this.latestReaction,
     this.partnerTyping = false,
   });
 
@@ -270,10 +304,18 @@ class MessageThread {
       latestMessage: j['latest_message'] != null
           ? ChatMessage.fromJson(j['latest_message'] as Map<String, dynamic>)
           : null,
+      latestReaction: j['latest_reaction'] != null
+          ? ThreadReactionPreview.fromJson(j['latest_reaction'] as Map<String, dynamic>)
+          : null,
     );
   }
 
-  MessageThread copyWith({ChatMessage? latestMessage, bool? partnerTyping}) => MessageThread(
+  MessageThread copyWith({
+    ChatMessage? latestMessage,
+    ThreadReactionPreview? latestReaction,
+    bool? partnerTyping,
+  }) =>
+      MessageThread(
         conversationId: conversationId,
         kind: kind,
         matchId: matchId,
@@ -284,6 +326,7 @@ class MessageThread {
         groupName: groupName,
         groupAvatarUrl: groupAvatarUrl,
         latestMessage: latestMessage ?? this.latestMessage,
+        latestReaction: latestReaction ?? this.latestReaction,
         partnerTyping: partnerTyping ?? this.partnerTyping,
       );
 }
@@ -309,6 +352,8 @@ class ThreadsNotifier extends AsyncNotifier<List<MessageThread>> {
         _onConversationUpdated(event);
       } else if (event is TypingEvent) {
         _onTyping(event);
+      } else if (event is ReactionActivity) {
+        _onReactionActivity(event);
       }
     });
     ref.onDispose(() {
@@ -352,6 +397,26 @@ class ThreadsNotifier extends AsyncNotifier<List<MessageThread>> {
       if (bTime == null) return -1;
       return bTime.compareTo(aTime);
     });
+    state = AsyncData(updated);
+  }
+
+  /// A reaction to one of my messages arrived (protocol 4). Decorate the thread's row in place —
+  /// deliberately **no re-sort**: a reaction is not new-message activity and must not jump a
+  /// thread to the top. The row's subtitle decides whether to show it (see `_preview`).
+  void _onReactionActivity(ReactionActivity event) {
+    final current = state.asData?.value;
+    if (current == null) return;
+    final idx = current.indexWhere((t) => t.addressingId == event.conversationId);
+    if (idx == -1) return; // a thread we don't have loaded — REST will seed it on next open
+    final updated = List<MessageThread>.from(current);
+    updated[idx] = current[idx].copyWith(
+      latestReaction: ThreadReactionPreview(
+        emoji: event.emoji,
+        actorId: event.actorId,
+        messageId: event.messageId,
+        reactedAt: DateTime.tryParse(event.reactedAt) ?? DateTime.now(),
+      ),
+    );
     state = AsyncData(updated);
   }
 

@@ -327,6 +327,13 @@ void main() {
     handle.dispose();
   });
 
+  testWidgets('greets with the first word of the saved profile name', (tester) async {
+    // The profile fixture's display name is "Ama Mensah" and the auth fixture has no signup
+    // first name, so the greeting resolves to the profile name — not an email-derived fallback.
+    await _pumpHome(tester);
+    expect(find.text('Ama'), findsOneWidget);
+  });
+
   testWidgets('the spotlight does not advance on its own', (tester) async {
     await _pumpHome(tester);
     final before = tester.widget<PageView>(find.byType(PageView)).controller!.page;

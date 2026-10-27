@@ -175,10 +175,10 @@ void main() {
     });
 
     test('the client advertises its current protocol version', () {
-      // Bumped to 3 by reactions. `kDeliveryProtocolVersion` stays at 2 on purpose: it is the
-      // version delivery *arrived* in, and gating on the current version would stop a v2 server
-      // from getting delivery acknowledgements it understands perfectly well.
-      expect(kProtocolVersion, 3);
+      // Bumped to 4 by the reaction inbox signal. The capability constants stay pinned to the
+      // version each feature *arrived* in: gating on the current version would stop an older
+      // server from getting acknowledgements or reactions it understands perfectly well.
+      expect(kProtocolVersion, 4);
       expect(kDeliveryProtocolVersion, 2);
       expect(kReactionProtocolVersion, 3);
       expect(authFrame('tok')['protocol_version'], kProtocolVersion);
@@ -228,6 +228,43 @@ void main() {
       }) as ReactionEvent;
 
       expect(event.added, isTrue);
+    });
+  });
+
+  /// Protocol 4 — the reaction inbox signal.
+  group('reaction activity frame', () {
+    test('parseInbound understands messages.reaction_activity', () {
+      final event = parseInbound({
+        'type': 'messages.reaction_activity',
+        'conversation_id': 'conv-1',
+        'message_id': 'msg-9',
+        'actor_id': 'them',
+        'emoji': '👍',
+        'reacted_at': '2026-01-01T00:00:00.000Z',
+      });
+
+      expect(event, isA<ReactionActivity>());
+      final activity = event as ReactionActivity;
+      expect(activity.conversationId, 'conv-1');
+      expect(activity.messageId, 'msg-9');
+      expect(activity.actorId, 'them');
+      expect(activity.emoji, '👍');
+      expect(activity.reactedAt, '2026-01-01T00:00:00.000Z');
+    });
+
+    test('it is distinct from the conversation-channel reaction frame', () {
+      // One updates an open chat's chips; the other updates the inbox row. Confusing them would
+      // send an inbox update into the chat, or drop the inbox update entirely.
+      final activity = parseInbound({
+        'type': 'messages.reaction_activity',
+        'conversation_id': 'c',
+        'message_id': 'm',
+        'actor_id': 'u',
+        'emoji': '👍',
+        'reacted_at': '2026-01-01T00:00:00.000Z',
+      });
+      expect(activity, isA<ReactionActivity>());
+      expect(activity, isNot(isA<ReactionEvent>()));
     });
   });
 }

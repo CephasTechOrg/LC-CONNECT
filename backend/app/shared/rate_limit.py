@@ -225,6 +225,10 @@ message_edit_limit = UserRateLimit(
     'message_edit', settings.rate_limit_message_edits_per_minute, 60,
     'Slow down — too many edits.',
 )
+link_preview_limit = UserRateLimit(
+    'link_preview', settings.rate_limit_link_previews_per_minute, 60,
+    'Slow down — too many link previews.',
+)
 
 
 # ── Public (unauthenticated) abuse limits ──────────────────────────────────────────

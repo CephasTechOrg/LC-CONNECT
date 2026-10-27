@@ -35,6 +35,8 @@ import '../data/message_limits.dart';
 import '../data/chat_message_cache.dart';
 import '../data/emoji_only.dart';
 import '../data/message_runs.dart';
+import '../data/message_urls.dart';
+import '../widgets/message_link_preview.dart';
 
 part '../widgets/chat_header.dart';
 part '../widgets/chat_message_list.dart';

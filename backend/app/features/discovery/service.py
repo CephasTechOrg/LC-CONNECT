@@ -1,4 +1,4 @@
-"""Discovery domain logic: the MVP match-scoring heuristic.
+"""Discovery domain logic: the MVP match-scoring heuristic and candidate ranking.
 
 Simple and explainable by design (see the architecture review). Returns a score and
 up to three human-readable reasons for surfacing a candidate.
@@ -6,7 +6,12 @@ up to three human-readable reasons for surfacing a candidate.
 
 from __future__ import annotations
 
+from collections import OrderedDict
+
 from app.models import Profile
+
+# A scored candidate: its match score, up to three reasons, and the profile itself.
+ScoredCandidate = tuple[int, list[str], Profile]
 
 
 def calculate_match(current: Profile, candidate: Profile) -> tuple[int, list[str]]:
@@ -51,3 +56,57 @@ def calculate_match(current: Profile, candidate: Profile) -> tuple[int, list[str
     if not reasons:
         reasons.append('New student to discover')
     return score, reasons[:3]
+
+
+def rank_candidates(current: Profile, candidates: list[Profile], *, limit: int) -> list[ScoredCandidate]:
+    """Score the full eligible pool, then order it deterministically with a light diversity pass.
+
+    - **Full pool:** every eligible candidate is scored. Previously the query truncated to an
+      arbitrary, unordered first 150 rows *before* scoring, so a strong match sitting outside that
+      window was dropped before it could ever be compared. Scoring happens here, over everyone.
+    - **Deterministic ties:** primary order is score descending; equal scores break on ``user_id``,
+      so the same viewer sees a stable, reproducible order instead of whatever the DB happened to
+      return.
+    - **Diversity/fairness:** within a run of equal scores we round-robin by major, so a single
+      program can't monopolise a tie block. This never reorders across scores — a better match
+      always ranks above a worse one — it only spreads out equally-good candidates.
+    """
+    scored: list[ScoredCandidate] = []
+    for candidate in candidates:
+        score, reasons = calculate_match(current, candidate)
+        scored.append((score, reasons, candidate))
+    scored.sort(key=lambda item: (-item[0], str(item[2].user_id)))
+    return _diversify_equal_score_runs(scored)[:limit]
+
+
+def _diversify_equal_score_runs(scored: list[ScoredCandidate]) -> list[ScoredCandidate]:
+    """Round-robin by major *within* each equal-score run; order across runs is untouched.
+
+    Assumes ``scored`` is already sorted by score desc then ``user_id`` (so bucket and within-bucket
+    order are deterministic). Candidates without a major share one bucket.
+    """
+    ordered: list[ScoredCandidate] = []
+    i, n = 0, len(scored)
+    while i < n:
+        j = i
+        while j < n and scored[j][0] == scored[i][0]:
+            j += 1
+        ordered.extend(_round_robin_by_major(scored[i:j]))
+        i = j
+    return ordered
+
+
+def _round_robin_by_major(run: list[ScoredCandidate]) -> list[ScoredCandidate]:
+    if len(run) < 3:
+        return run  # nothing to spread out
+    buckets: OrderedDict[str, list[ScoredCandidate]] = OrderedDict()
+    for item in run:
+        key = (item[2].major or '').strip().lower()
+        buckets.setdefault(key, []).append(item)
+    result: list[ScoredCandidate] = []
+    while buckets:
+        for key in list(buckets.keys()):
+            result.append(buckets[key].pop(0))
+            if not buckets[key]:
+                del buckets[key]
+    return result

@@ -99,7 +99,7 @@ LC Connect’s API is on **Render**. Add a **Cron Job** service in the same repo
 | **Build command** | `pip install --upgrade pip && pip install -r requirements.txt` |
 | **Command** | `PYTHONPATH=. python scripts/purge_soft_deleted_messages.py --apply` |
 
-4. **Environment** — copy from `lc-connect-api` (at minimum `DATABASE_URL`). Optionally set:
+4. **Environment** — copy from `lc-connect` (at minimum `DATABASE_URL`). Optionally set:
    - `MESSAGE_SOFT_DELETE_RETENTION_DAYS=90`
    - `ENVIRONMENT=production`
 

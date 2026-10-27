@@ -148,7 +148,11 @@ class _ActivityDetailScreenState extends ConsumerState<ActivityDetailScreen> {
             expandedHeight: _bannerHeight,
             pinned: true,
             backgroundColor: AppColors.surface,
-            foregroundColor: AppColors.textDark,
+            // The back arrow and the three-dot menu adapt to what's behind them: white while the
+            // banner photo is showing (backed by the banner's top scrim so they read over any
+            // image), dark once the bar collapses onto the solid surface. Without this the dark
+            // icons vanished against darker banners.
+            foregroundColor: _titleInBar ? AppColors.textDark : Colors.white,
             title: AnimatedOpacity(
               opacity: _titleInBar ? 1 : 0,
               duration: const Duration(milliseconds: 150),

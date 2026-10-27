@@ -17,6 +17,7 @@ from app.features.activities.schema import (
 )
 from app.features.activities.service import activity_read
 from app.models import Activity, ActivityParticipant, User
+from app.shared.blocking import run_image, run_sync
 from app.shared.image_processing import sanitize_avatar
 from app.shared.rate_limit import activity_create_limit, avatar_upload_limit
 from app.shared.storage import storage_service
@@ -109,8 +110,10 @@ async def upload_activity_banner(
     data = await file.read()
     if len(data) > settings.max_profile_image_mb * 1024 * 1024:
         raise HTTPException(status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail='Image is too large')
-    clean, content_type = sanitize_avatar(data)  # validates bytes + strips EXIF; preserves aspect
-    activity.banner_url = storage_service.upload_activity_banner(activity.id, content_type, clean)
+    clean, content_type = await run_image(sanitize_avatar, data)  # validates bytes + strips EXIF; preserves aspect
+    activity.banner_url = await run_sync(
+        storage_service.upload_activity_banner, activity.id, content_type, clean
+    )
     await db.commit()
     return await activity_read(db, activity, current_user.id)
 

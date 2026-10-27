@@ -46,6 +46,7 @@ from app.models import (
     profile_interests,
     user_looking_for,
 )
+from app.shared.blocking import run_sync
 from app.shared.storage import storage_service
 from app.shared.supabase_admin import delete_auth_user
 
@@ -177,7 +178,7 @@ async def delete_account(db: AsyncSession, user: User) -> None:
         profile.avatar_url = None
         profile.is_hidden = True
         profile.profile_completed = False
-        storage_service.delete_profile_image(user_id)
+        await run_sync(storage_service.delete_profile_image, user_id)
 
     # 6. Anonymize the user row and revoke access (is_active=False → auth deps reject immediately).
     user.email = f'deleted+{user_id}@deleted.invalid'
@@ -193,7 +194,7 @@ async def delete_account(db: AsyncSession, user: User) -> None:
 
     # 7. External cleanup — best-effort, must not fail the deletion.
     await disconnect_user(user_id)
-    storage_service.delete_scholar_file(user_id, 'headshot')
-    storage_service.delete_scholar_file(user_id, 'resume')
-    if auth_user_id is not None and not delete_auth_user(str(auth_user_id)):
+    await run_sync(storage_service.delete_scholar_file, user_id, 'headshot')
+    await run_sync(storage_service.delete_scholar_file, user_id, 'resume')
+    if auth_user_id is not None and not await run_sync(delete_auth_user, str(auth_user_id)):
         logger.warning('delete_account: Supabase auth user %s not removed; local row anonymized', auth_user_id)

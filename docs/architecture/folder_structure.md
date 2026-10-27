@@ -13,7 +13,7 @@ lc-connect/
   docs/     # Project documentation
   scripts/             # repo tooling (check_line_limits.py)
   CONVENTIONS.md       # engineering conventions (structure + line rules)
-  .github/workflows/   # CI (line limits, backend tests/lint, flutter analyze)
+  .github/workflows/   # CI (line limits, backend tests/lint, flutter analyze + test)
   README.md
   .gitignore
 ```

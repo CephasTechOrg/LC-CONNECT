@@ -4668,6 +4668,22 @@
         "title": "LinkPreviewRead",
         "type": "object"
       },
+      "LinkPreviewRequest": {
+        "description": "A URL (or a snippet containing one) to unfurl for the chat composer / bubble card.",
+        "properties": {
+          "url": {
+            "maxLength": 2000,
+            "minLength": 8,
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "title": "LinkPreviewRequest",
+        "type": "object"
+      },
       "LivenessResponse": {
         "properties": {
           "service": {
@@ -4789,6 +4805,92 @@
           "body"
         ],
         "title": "MessageEditRequest",
+        "type": "object"
+      },
+      "MessageLinkPreviewRead": {
+        "description": "Open Graph / meta preview for a chat URL. Soft-fails: `status='failed'` still carries\nthe domain so the client can render a hostname card rather than nothing.",
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "domain": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Domain"
+          },
+          "fetched_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fetched At"
+          },
+          "image_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Url"
+          },
+          "site_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Site Name"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url",
+          "status"
+        ],
+        "title": "MessageLinkPreviewRead",
         "type": "object"
       },
       "MessageRead": {
@@ -4977,6 +5079,16 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/MessageRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "latest_reaction": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ThreadReactionPreview"
               },
               {
                 "type": "null"
@@ -7938,6 +8050,49 @@
           "websocket_connections"
         ],
         "title": "SystemStatusRead",
+        "type": "object"
+      },
+      "ThreadReactionPreview": {
+        "description": "The most recent reaction another member left on one of the viewer's own messages in a\nthread.\n\nSurfaced on the inbox row so a reaction to your message is visible without opening the chat \u2014\nthe durable half of the feature whose live half is the `messages.reaction_activity` frame.\nIt is deliberately additive: it never affects thread ordering or the unread count.",
+        "properties": {
+          "actor_id": {
+            "format": "uuid",
+            "title": "Actor Id",
+            "type": "string"
+          },
+          "actor_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor Name"
+          },
+          "emoji": {
+            "title": "Emoji",
+            "type": "string"
+          },
+          "message_id": {
+            "format": "uuid",
+            "title": "Message Id",
+            "type": "string"
+          },
+          "reacted_at": {
+            "format": "date-time",
+            "title": "Reacted At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "emoji",
+          "actor_id",
+          "message_id",
+          "reacted_at"
+        ],
+        "title": "ThreadReactionPreview",
         "type": "object"
       },
       "UnreadCount": {
@@ -15160,6 +15315,53 @@
           }
         ],
         "summary": "Get Messaging Capabilities",
+        "tags": [
+          "messages"
+        ]
+      }
+    },
+    "/api/v1/messages/link-preview": {
+      "post": {
+        "description": "Unfurl the first http(s) URL in `payload.url` for a chat bubble or the composer.\n\nUses the same SSRF-guarded fetch as campus-post previews. Soft-fails to `status='failed'`\n(still carrying the domain) so a dead page still gets a tappable hostname card. Never\npersists \u2014 each client caches; a send is not delayed for this.",
+        "operationId": "preview_chat_link_api_v1_messages_link_preview_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LinkPreviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageLinkPreviewRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Preview Chat Link",
         "tags": [
           "messages"
         ]

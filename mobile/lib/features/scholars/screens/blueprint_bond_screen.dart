@@ -11,6 +11,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/a11y.dart';
+import '../data/url_field.dart';
 import '../providers/scholars_provider.dart';
 
 part '../widgets/blueprint_bond_form_parts.dart';
@@ -75,43 +76,89 @@ class _BlueprintBondScreenState extends ConsumerState<BlueprintBondScreen> {
   }
 
   void _showError(Object e, {String fallback = 'Something went wrong. Try again.'}) {
+    _showSnack(apiErrorMessage(e, fallback: fallback), error: true);
+  }
+
+  void _showSnack(String message, {bool error = false}) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(apiErrorMessage(e, fallback: fallback)),
-        backgroundColor: AppColors.error,
+        content: Text(message),
+        backgroundColor: error ? AppColors.error : AppColors.green,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
   }
 
+  /// Validate and normalize both link fields before they leave the device. Returns the normalized
+  /// pair, or null after showing which field is wrong — so a bad URL never reaches the API or an
+  /// employer. On success the visible fields are rewritten to the normalized form the server stores.
+  ({String linkedin, String handshake})? _normalizedLinks() {
+    final linkedin = normalizeProfileUrl(
+      _linkedinCtrl.text,
+      fieldLabel: 'LinkedIn',
+      example: 'linkedin.com/in/your-name',
+    );
+    if (linkedin is UrlFieldInvalid) {
+      _showSnack(linkedin.message, error: true);
+      return null;
+    }
+    final handshake = normalizeProfileUrl(
+      _handshakeCtrl.text,
+      fieldLabel: 'Handshake',
+      example: 'livingstone.joinhandshake.com',
+    );
+    if (handshake is UrlFieldInvalid) {
+      _showSnack(handshake.message, error: true);
+      return null;
+    }
+    final linkedinValue = (linkedin as UrlFieldValid).value;
+    final handshakeValue = (handshake as UrlFieldValid).value;
+    _linkedinCtrl.text = linkedinValue;
+    _handshakeCtrl.text = handshakeValue;
+    return (linkedin: linkedinValue, handshake: handshakeValue);
+  }
+
+  /// Re-seed the editable lists from the profile the server just returned, so what the student sees
+  /// is exactly what was stored (server trimming, de-duping or ordering, and any dropped entries).
+  /// Text fields are left alone — the user may still have focus — the links are handled separately.
+  void _syncListsFrom(ScholarProfile saved) {
+    _skills
+      ..clear()
+      ..addAll(saved.skills);
+    _careerInterests
+      ..clear()
+      ..addAll(saved.careerInterests);
+    _internships
+      ..clear()
+      ..addAll(saved.internships);
+    _projects
+      ..clear()
+      ..addAll(saved.projects);
+  }
+
   Future<void> _save() async {
+    final links = _normalizedLinks();
+    if (links == null) return;
     setState(() => _saving = true);
     try {
       await ref.read(scholarProfileNotifierProvider.notifier).updateFields(
-            linkedinUrl: _linkedinCtrl.text.trim(),
-            handshakeUrl: _handshakeCtrl.text.trim(),
+            linkedinUrl: links.linkedin,
+            handshakeUrl: links.handshake,
             summary: _summaryCtrl.text.trim(),
             skills: _skills.toList(),
             careerInterests: _careerInterests.toList(),
             internships: List.of(_internships),
             projects: List.of(_projects),
           );
-      if (mounted) {
-        final status = ref.read(scholarProfileNotifierProvider).asData?.value.reviewStatus;
-        final msg = status == 'pending_review'
-            ? 'Saved — back in Honors review until approved again'
-            : 'Saved';
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(msg),
-            backgroundColor: AppColors.green,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          ),
-        );
-      }
+      if (!mounted) return;
+      final saved = ref.read(scholarProfileNotifierProvider).asData?.value;
+      if (saved != null) setState(() => _syncListsFrom(saved));
+      final msg = saved?.reviewStatus == 'pending_review'
+          ? 'Saved — back in Honors review until approved again'
+          : 'Saved';
+      _showSnack(msg);
     } catch (e) {
       _showError(e);
     } finally {
@@ -177,12 +224,14 @@ class _BlueprintBondScreenState extends ConsumerState<BlueprintBondScreen> {
   }
 
   Future<void> _submitForReview() async {
+    final links = _normalizedLinks();
+    if (links == null) return;
     setState(() => _submitting = true);
     try {
       // Persist local edits first so Honors reviews what the student currently sees.
       await ref.read(scholarProfileNotifierProvider.notifier).updateFields(
-            linkedinUrl: _linkedinCtrl.text.trim(),
-            handshakeUrl: _handshakeCtrl.text.trim(),
+            linkedinUrl: links.linkedin,
+            handshakeUrl: links.handshake,
             summary: _summaryCtrl.text.trim(),
             skills: _skills.toList(),
             careerInterests: _careerInterests.toList(),
@@ -190,16 +239,10 @@ class _BlueprintBondScreenState extends ConsumerState<BlueprintBondScreen> {
             projects: List.of(_projects),
           );
       await ref.read(scholarProfileNotifierProvider.notifier).submitForReview();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Submitted for Honors review'),
-            backgroundColor: AppColors.green,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          ),
-        );
-      }
+      if (!mounted) return;
+      final saved = ref.read(scholarProfileNotifierProvider).asData?.value;
+      if (saved != null) setState(() => _syncListsFrom(saved));
+      _showSnack('Submitted for Honors review');
     } catch (e) {
       _showError(e, fallback: 'Could not submit for review.');
     } finally {
@@ -295,6 +338,10 @@ class _BlueprintBondScreenState extends ConsumerState<BlueprintBondScreen> {
         // Everything employers need, in one run: the required sections first, so the page reads
         // top to bottom as a checklist. Employer visibility — required, and the one that
         // actually shares the profile — used to sit last, after three optional sections.
+        const _GroupLabel(
+          title: 'Required',
+          detail: 'Complete these to submit for Honors review.',
+        ),
         _SectionCard(
           title: 'Documents',
           requiredDone: doneUnless(const ['headshot', 'resume']),

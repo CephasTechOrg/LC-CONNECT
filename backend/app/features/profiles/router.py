@@ -15,6 +15,7 @@ from app.features.profiles.service import (
     get_or_create_languages,
 )
 from app.models import ActivityParticipant, Match, Message, Profile, User, UserLanguage
+from app.shared.blocking import run_image, run_sync
 from app.shared.image_processing import sanitize_avatar
 from app.shared.onboarding import compute_onboarding_completed
 from app.shared.policies import assert_profile_visible, connection_state
@@ -108,9 +109,11 @@ async def upload_my_avatar(file: UploadFile = File(...), current_user: User = De
     data = await file.read()
     if len(data) > settings.max_profile_image_mb * 1024 * 1024:
         raise HTTPException(status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail='Profile image is too large')
-    clean_data, content_type = sanitize_avatar(data)
+    clean_data, content_type = await run_image(sanitize_avatar, data)
     profile = await get_profile_by_user_id(db, current_user.id)
-    profile.avatar_url = storage_service.upload_profile_image(current_user.id, content_type, clean_data)
+    profile.avatar_url = await run_sync(
+        storage_service.upload_profile_image, current_user.id, content_type, clean_data
+    )
     await db.commit()
     return profile_to_public(await get_profile_by_user_id(db, current_user.id))
 

@@ -15,6 +15,7 @@ import '../../../shared/widgets/app_skeleton.dart';
 import '../../../shared/util/app_date_format.dart';
 import '../../../shared/widgets/app_states.dart';
 import '../../notifications/widgets/notifications_bell_button.dart';
+import '../data/featured_ranking.dart';
 import '../providers/activities_provider.dart';
 
 // ── Filter definitions ───────────────────────────────────────────

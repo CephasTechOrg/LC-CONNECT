@@ -109,6 +109,11 @@ async def list_threads_for_user(db: AsyncSession, user_id: UUID) -> list[Message
         return []
 
     conv_ids = [c.id for c in conversations]
+    # The most recent reaction someone else left on one of my messages in each thread. Additive —
+    # it decorates the row the loop builds below and never changes the sort or the unread count.
+    from app.features.messages.reactions import latest_reactions_for_threads
+
+    reaction_previews = await latest_reactions_for_threads(db, conv_ids, owner_id=user_id)
     latest = (
         await db.execute(
             select(Message)
@@ -180,6 +185,7 @@ async def list_threads_for_user(db: AsyncSession, user_id: UUID) -> list[Message
                 partner_position_title=position.official_title if position else None,
                 partner_department=position.department if position else None,
                 latest_message=message_read(latest_msg) if latest_msg else None,
+                latest_reaction=reaction_previews.get(conv.id),
             ))
         else:
             group = group_of.get(conv.id)
@@ -189,6 +195,7 @@ async def list_threads_for_user(db: AsyncSession, user_id: UUID) -> list[Message
                 conversation_id=conv.id, kind='group',
                 group=GroupThreadInfo(id=group.id, name=group.name, avatar_url=group.avatar_url),
                 latest_message=message_read(latest_msg) if latest_msg else None,
+                latest_reaction=reaction_previews.get(conv.id),
             ))
 
     # Newest activity first; a message beats an empty thread.

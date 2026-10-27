@@ -20,6 +20,7 @@ from app.features.groups.schema import (
     JoinResult,
 )
 from app.models import Conversation, Group, User
+from app.shared.blocking import run_image, run_sync
 from app.shared.image_processing import sanitize_avatar
 from app.shared.rate_limit import avatar_upload_limit, group_create_limit, group_invite_limit
 from app.shared.storage import storage_service
@@ -138,8 +139,9 @@ async def upload_group_avatar(
     data = await file.read()
     if len(data) > settings.max_profile_image_mb * 1024 * 1024:
         raise HTTPException(status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail='Image is too large')
-    clean, content_type = sanitize_avatar(data)  # validates bytes + strips EXIF/GPS (same as profiles)
-    await service.set_avatar(db, group, storage_service.upload_group_image(group.id, content_type, clean))
+    clean, content_type = await run_image(sanitize_avatar, data)  # validates bytes + strips EXIF/GPS (same as profiles)
+    url = await run_sync(storage_service.upload_group_image, group.id, content_type, clean)
+    await service.set_avatar(db, group, url)
     await db.commit()
     return await service.to_read(db, group, member)
 

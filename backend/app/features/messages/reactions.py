@@ -15,8 +15,8 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.features.messages.schema import ReactionSummary
-from app.models import Message, MessageReaction
+from app.features.messages.schema import ReactionSummary, ThreadReactionPreview
+from app.models import Message, MessageReaction, Profile
 
 #: The reactions a client may send, in the order the picker shows them.
 #:
@@ -151,3 +151,62 @@ async def reactions_for(
     for items in summaries.values():
         items.sort(key=lambda s: order.get(s.emoji, len(order)))
     return summaries
+
+
+async def latest_reactions_for_threads(
+    db: AsyncSession, conversation_ids: list[UUID], *, owner_id: UUID
+) -> dict[UUID, ThreadReactionPreview]:
+    """The most recent reaction another member left on one of `owner_id`'s own messages, per
+    conversation — **one bounded query** for the whole inbox (``DISTINCT ON`` the conversation).
+
+    Powers the durable inbox preview: the live `messages.reaction_activity` frame updates an open
+    inbox, and this makes the same information survive a cold load or a restart. Scoped to the
+    viewer's *own* messages reacted to by *someone else* — the only reaction the owner is told
+    about — so it mirrors exactly what the notification and the live frame cover.
+
+    No ordering or unread implications: it reads the reactions table and the caller attaches the
+    result to a row it has already placed.
+    """
+    if not conversation_ids:
+        return {}
+
+    rows = (
+        await db.execute(
+            select(
+                Message.conversation_id,
+                MessageReaction.emoji,
+                MessageReaction.user_id,
+                MessageReaction.message_id,
+                MessageReaction.created_at,
+                Profile.display_name,
+            )
+            .select_from(MessageReaction)
+            .join(Message, Message.id == MessageReaction.message_id)
+            .outerjoin(Profile, Profile.user_id == MessageReaction.user_id)
+            .where(
+                Message.conversation_id.in_(conversation_ids),
+                Message.sender_id == owner_id,
+                Message.deleted_at.is_(None),
+                MessageReaction.user_id != owner_id,
+            )
+            # Latest reaction per conversation. Mirrors the `DISTINCT ON` the thread list already
+            # uses for the latest message, so it stays one query rather than one per thread.
+            .distinct(Message.conversation_id)
+            .order_by(
+                Message.conversation_id,
+                MessageReaction.created_at.desc(),
+                MessageReaction.id.desc(),
+            )
+        )
+    ).all()
+
+    return {
+        conversation_id: ThreadReactionPreview(
+            emoji=emoji,
+            actor_id=actor_id,
+            actor_name=display_name,
+            message_id=message_id,
+            reacted_at=created_at,
+        )
+        for conversation_id, emoji, actor_id, message_id, created_at, display_name in rows
+    }

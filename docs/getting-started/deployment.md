@@ -277,7 +277,7 @@ Prepend `PYTHONPATH=.` to the command:
 PYTHONPATH=. python scripts/bootstrap_db.py && uvicorn app.main:app --host 0.0.0.0 --port $PORT
 ```
 
-`PYTHONPATH=.` adds the current working directory to Python's module search path. Since `rootDir` in render.yaml is `backend`, the current directory at startup is `backend/`, which contains the `app/` package.
+`PYTHONPATH=.` adds the current working directory to Python's module search path. The dashboard-managed API has Root Directory `backend`, so the current directory at startup is `backend/`, which contains the `app/` package.
 
 `uvicorn` does not need `PYTHONPATH=.` because it handles module discovery differently, but having it set does not hurt.
 
@@ -513,8 +513,8 @@ Suspended users can file an in-app appeal (mobile `/suspended` screen). Admins r
 
 | Item | Production action |
 |------|-------------------|
-| **Database** | Automatic — `suspension_appeals` table created by `alembic upgrade head` on API deploy |
-| **`SUPPORT_EMAIL`** | Set on API service (declared in `render.yaml` with default; override in dashboard) |
+| **Database** | Automatic — `bootstrap_db.py` applies migrations (including `suspension_appeals`) on API deploy |
+| **`SUPPORT_EMAIL`** | Set on the dashboard-managed `lc-connect` service (default `support@livingstone.edu`) |
 | **Admin UI** | Ships with admin portal — no extra env |
 | **Mobile** | Ship app build that includes `/suspended` route (after API is live) |
 | **Cron** | None |

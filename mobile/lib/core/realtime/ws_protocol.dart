@@ -9,7 +9,10 @@ library;
 /// 3 adds `messages.reaction` and `message.edited` (both inbound). Reactions and edits are
 /// *applied* over REST, not as frames: each needs a response an optimistic change can be rolled
 /// back from, and an edit additionally needs the 409 that says the window has passed.
-const int kProtocolVersion = 3;
+/// 4 adds `messages.reaction_activity` (inbound, user channel): a reaction to one of *your*
+/// messages, so the inbox row reflects it without the chat open. Inbound-only and additive — no
+/// new outbound frame — so it needs no gating; an older server simply never sends it.
+const int kProtocolVersion = 4;
 
 /// Frames introduced in protocol 2. Pass to `RealtimeClient.supportsProtocol` before sending one.
 const int kDeliveryProtocolVersion = 2;
@@ -173,6 +176,28 @@ class MessageEdited extends InboundEvent {
   const MessageEdited(this.conversationId, this.messageId, this.body, this.editedAt);
 }
 
+/// Someone reacted to one of *your* messages (protocol 4, user channel).
+///
+/// The inbox counterpart to [ReactionEvent]: that one rides the conversation channel and only
+/// reaches a client with the chat open, so the thread list never learned of it. This reaches the
+/// message author's user channel, so the inbox row can show the reaction live. Add-only — a
+/// removal is deliberately not news. [reactedAt] orders it against the thread's latest message so
+/// a newer message still wins the row.
+class ReactionActivity extends InboundEvent {
+  final String conversationId;
+  final String messageId;
+  final String actorId;
+  final String emoji;
+  final String reactedAt;
+  const ReactionActivity(
+    this.conversationId,
+    this.messageId,
+    this.actorId,
+    this.emoji,
+    this.reactedAt,
+  );
+}
+
 class NotificationEvent extends InboundEvent {
   /// The serialized notification (id, type, group, actor, ...) — same shape as `GET /notifications`.
   final Map<String, dynamic> notification;
@@ -269,6 +294,14 @@ InboundEvent parseInbound(Map<String, dynamic> raw) {
         raw['user_id'] as String,
         raw['emoji'] as String,
         raw['added'] as bool? ?? true,
+      );
+    case 'messages.reaction_activity':
+      return ReactionActivity(
+        raw['conversation_id'] as String,
+        raw['message_id'] as String,
+        raw['actor_id'] as String,
+        raw['emoji'] as String,
+        raw['reacted_at'] as String? ?? '',
       );
     case 'notification':
       return NotificationEvent(Map<String, dynamic>.from(raw['notification'] as Map));

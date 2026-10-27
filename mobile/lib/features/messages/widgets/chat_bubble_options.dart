@@ -32,6 +32,26 @@ extension _BubbleOptions on _BubbleTile {
               ),
               const Divider(height: 1, color: AppColors.border),
             ],
+            ListTile(
+              leading: const Icon(Icons.copy_rounded, color: AppColors.textMid),
+              title: Text('Copy',
+                  style: TextStyle(fontWeight: FontWeight.w500, color: AppColors.textDark)),
+              subtitle: Text('Copy this message',
+                  style: AppTypography.label.copyWith(fontWeight: FontWeight.w400, color: AppColors.textMuted)),
+              onTap: () async {
+                await Clipboard.setData(ClipboardData(text: message.body));
+                if (sheetCtx.mounted) Navigator.of(sheetCtx).pop();
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: const Text('Copied'),
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                  );
+                }
+              },
+            ),
             if (_canSeeReadBy)
               ListTile(
                 leading: const Icon(Icons.done_all_rounded, color: AppColors.primary),

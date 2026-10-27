@@ -386,6 +386,56 @@ void main() {
       expect(find.text('Hey! Let\'s study together.'), findsOneWidget);
     });
 
+    testWidgets('a reaction newer than the last message surfaces on the row', (tester) async {
+      // Someone reacted to my message after the last message was sent — it is the newest activity
+      // on the thread, so it takes the subtitle (but never reorders the inbox).
+      final reacted = MessageThread(
+        conversationId: 'conv-001', kind: 'dm', matchId: 'match-001',
+        partner: _samplePartner, latestMessage: _sampleMessage,
+        latestReaction: ThreadReactionPreview(
+          emoji: '👍', actorId: 'user-001', reactedAt: DateTime.now(),
+        ),
+      );
+      await tester.pumpWidget(_threadScope(threads: [reacted]));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('reacted 👍 to your message'), findsOneWidget);
+      expect(find.text('Hey! Let\'s study together.'), findsNothing);
+    });
+
+    testWidgets('a reaction older than the last message does not hide it', (tester) async {
+      // Precedence is about recency: a message sent after the reaction supersedes it.
+      final reacted = MessageThread(
+        conversationId: 'conv-001', kind: 'dm', matchId: 'match-001',
+        partner: _samplePartner, latestMessage: _sampleMessage,
+        latestReaction: ThreadReactionPreview(
+          emoji: '👍', actorId: 'user-001',
+          reactedAt: DateTime.now().subtract(const Duration(hours: 2)),
+        ),
+      );
+      await tester.pumpWidget(_threadScope(threads: [reacted]));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Hey! Let\'s study together.'), findsOneWidget);
+      expect(find.textContaining('reacted'), findsNothing);
+    });
+
+    testWidgets('typing takes precedence over a reaction preview', (tester) async {
+      final reacted = MessageThread(
+        conversationId: 'conv-001', kind: 'dm', matchId: 'match-001',
+        partner: _samplePartner, latestMessage: _sampleMessage,
+        latestReaction: ThreadReactionPreview(
+          emoji: '👍', actorId: 'user-001', reactedAt: DateTime.now(),
+        ),
+        partnerTyping: true,
+      );
+      await tester.pumpWidget(_threadScope(threads: [reacted]));
+      await tester.pumpAndSettle();
+
+      expect(find.text('typing…'), findsOneWidget);
+      expect(find.textContaining('reacted'), findsNothing);
+    });
+
     testWidgets('shows no messages yet italic when latest_message is null',
         (tester) async {
       await tester

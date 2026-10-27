@@ -12,6 +12,7 @@ from app.features.auth.schema import BootstrapResponse, CurrentUserResponse, For
 from app.features.auth.service import bootstrap_user
 from app.models import User
 from app.security import SupabaseClaims
+from app.shared.blocking import run_sync
 from app.shared.policy_versions import CURRENT_POLICY_VERSION
 from app.shared.rate_limit import forgot_password_email_limit, forgot_password_ip_limit
 from app.shared.supabase_admin import request_password_reset
@@ -28,7 +29,7 @@ async def send_email_hook(request: Request) -> JSONResponse:
     for the user to confirm."""
     payload = await email_hook.verify_and_parse(request)
     try:
-        email_hook.send_for_payload(payload)
+        await run_sync(email_hook.send_for_payload, payload)
     except HTTPException as exc:
         return JSONResponse(status_code=exc.status_code, content={'error': {'http_code': exc.status_code, 'message': exc.detail}})
     return JSONResponse(content={})
@@ -50,7 +51,7 @@ async def forgot_password(payload: ForgotPasswordRequest) -> MessageResponse:
     await forgot_password_email_limit.acheck(payload.email)
     portal_url = settings.admin_portal_url if payload.portal == 'admin' else settings.employer_portal_url
     redirect_to = f'{portal_url}/reset-password' if portal_url else None
-    request_password_reset(payload.email, redirect_to=redirect_to)
+    await run_sync(request_password_reset, payload.email, redirect_to=redirect_to)
     return MessageResponse(message='If an account exists for that email, a reset link has been sent.')
 
 

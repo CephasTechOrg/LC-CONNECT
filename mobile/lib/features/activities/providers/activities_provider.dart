@@ -17,6 +17,12 @@ class Activity {
   final int? maxParticipants;
   final int participantCount;
   final bool hasJoined;
+  // Whether the creator has cancelled it. The list endpoint already filters these out, but the
+  // featured ranking still guards on it so a cached or detail-passed activity can never be featured.
+  final bool isCancelled;
+  // When it was created — a stable, deterministic tie-break signal for ranking (older-but-upcoming
+  // activities are not penalised, but it keeps ordering reproducible).
+  final DateTime? createdAt;
 
   const Activity({
     required this.id,
@@ -31,6 +37,8 @@ class Activity {
     this.maxParticipants,
     required this.participantCount,
     required this.hasJoined,
+    this.isCancelled = false,
+    this.createdAt,
   });
 
   factory Activity.fromJson(Map<String, dynamic> j) => Activity(
@@ -47,6 +55,9 @@ class Activity {
         maxParticipants: j['max_participants'] as int?,
         participantCount: (j['participant_count'] as num?)?.toInt() ?? 0,
         hasJoined: j['has_joined'] as bool? ?? false,
+        isCancelled: j['is_cancelled'] as bool? ?? false,
+        createdAt:
+            j['created_at'] != null ? DateTime.parse(j['created_at'] as String) : null,
       );
 
   Activity copyWith({int? participantCount, bool? hasJoined}) => Activity(
@@ -62,6 +73,8 @@ class Activity {
         maxParticipants: maxParticipants,
         participantCount: participantCount ?? this.participantCount,
         hasJoined: hasJoined ?? this.hasJoined,
+        isCancelled: isCancelled,
+        createdAt: createdAt,
       );
 }
 

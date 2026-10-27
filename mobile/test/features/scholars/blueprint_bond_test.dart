@@ -19,6 +19,35 @@ class _MockScholarNotifier extends ScholarProfileNotifier {
   Future<String> headshotUrl() async => '';
 }
 
+/// Captures a save and lets the test decide what the "server" returns, so the re-sync and the
+/// URL-validation guard can be asserted without a real API.
+class _SaveMockNotifier extends ScholarProfileNotifier {
+  _SaveMockNotifier(this._initial, {this.saveResult});
+  final ScholarProfile _initial;
+  final ScholarProfile? saveResult;
+  bool updateCalled = false;
+
+  @override
+  Future<ScholarProfile> build() async => _initial;
+
+  @override
+  Future<String> headshotUrl() async => '';
+
+  @override
+  Future<void> updateFields({
+    String? linkedinUrl,
+    String? handshakeUrl,
+    String? summary,
+    List<String>? skills,
+    List<String>? careerInterests,
+    List<ScholarInternship>? internships,
+    List<ScholarProject>? projects,
+  }) async {
+    updateCalled = true;
+    state = AsyncData(saveResult ?? _initial);
+  }
+}
+
 class _MockAuthNotifier extends AuthNotifier {
   @override
   Future<AuthUser?> build() async => AuthUser(
@@ -140,6 +169,65 @@ void main() {
 
     final switchWidget = tester.widget<Switch>(find.byType(Switch));
     expect(switchWidget.value, isTrue);
+  });
+
+  // ── Save: URL validation + re-sync from the response ──────────────────────────
+  Finder linkedinField() => find.byWidgetPredicate(
+      (w) => w is TextField && (w.controller?.text ?? '').contains('linkedin'));
+
+  Widget saveScope(_SaveMockNotifier notifier) => ProviderScope(
+        overrides: [
+          scholarProfileNotifierProvider.overrideWith(() => notifier),
+          scholarHeadshotPreviewProvider.overrideWith((ref) async => null),
+          authNotifierProvider.overrideWith(_MockAuthNotifier.new),
+        ],
+        child: const MaterialApp(home: BlueprintBondScreen()),
+      );
+
+  testWidgets('a bad LinkedIn URL blocks the save and names the field', (tester) async {
+    useTallViewport(tester);
+    final notifier = _SaveMockNotifier(_profile());
+    await tester.pumpWidget(saveScope(notifier));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(linkedinField(), 'not a url');
+    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    await tester.pump(); // surface the snackbar
+
+    expect(find.textContaining('valid LinkedIn URL'), findsOneWidget);
+    expect(notifier.updateCalled, isFalse);
+  });
+
+  testWidgets('a scheme-less URL is normalized to https on save', (tester) async {
+    useTallViewport(tester);
+    final notifier = _SaveMockNotifier(_profile());
+    await tester.pumpWidget(saveScope(notifier));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(linkedinField(), 'linkedin.com/in/newname');
+    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    await tester.pumpAndSettle();
+
+    expect(notifier.updateCalled, isTrue);
+    expect(find.text('https://linkedin.com/in/newname'), findsOneWidget);
+  });
+
+  testWidgets('optional lists re-sync from the save response', (tester) async {
+    useTallViewport(tester);
+    // Server drops "Public Speaking" (e.g. de-duped/normalized); the editor must reflect that.
+    final notifier = _SaveMockNotifier(
+      _profile(skills: const ['Python', 'Public Speaking']),
+      saveResult: _profile(skills: const ['Python']),
+    );
+    await tester.pumpWidget(saveScope(notifier));
+    await tester.pumpAndSettle();
+    expect(find.text('Public Speaking'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Python'), findsOneWidget);
+    expect(find.text('Public Speaking'), findsNothing);
   });
 }
 

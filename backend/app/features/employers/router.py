@@ -25,6 +25,7 @@ from app.features.employers.schema import (
 )
 from app.features.scholars.schema import SignedUrlRead
 from app.models import EmployerAccount
+from app.shared.blocking import run_sync
 from app.shared.policy_versions import CURRENT_EMPLOYER_AGREEMENT_VERSION
 from app.shared.rate_limit import employer_register_limit
 from app.shared.storage import storage_service
@@ -148,7 +149,8 @@ async def list_eligible_scholars(
     employer-visibility consent — re-evaluated on every call, never cached."""
     rows = await discovery.list_eligible_scholars(db)
     # Sign every headshot in ONE call so the directory can show faces without N round trips.
-    signed = storage_service.scholar_signed_urls(
+    signed = await run_sync(
+        storage_service.scholar_signed_urls,
         [p.headshot_path for p, _ in rows if p.headshot_path],
         expires_in=settings.scholar_signed_url_expires_seconds,
     )
@@ -170,8 +172,10 @@ async def get_eligible_scholar(
     # hiccup should degrade to initials, never 500 a profile the employer is allowed to see.
     headshot_url = None
     if profile.headshot_path:
-        signed = storage_service.scholar_signed_urls(
-            [profile.headshot_path], expires_in=settings.scholar_signed_url_expires_seconds
+        signed = await run_sync(
+            storage_service.scholar_signed_urls,
+            [profile.headshot_path],
+            expires_in=settings.scholar_signed_url_expires_seconds,
         )
         headshot_url = signed.get(profile.headshot_path)
     return _scholar_view(profile, social_profile, headshot_url=headshot_url)

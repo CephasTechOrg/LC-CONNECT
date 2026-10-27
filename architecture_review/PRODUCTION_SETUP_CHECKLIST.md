@@ -2,7 +2,7 @@
 
 **Use this before first production launch and after any change that adds migrations, env vars, or cron jobs.**
 
-Last updated: 2026-08-30 (includes suspension appeals #22, message retention cron #21).
+Last updated: 2026-10-26 (API is dashboard-managed `lc-connect`; email hook path corrected).
 
 ---
 
@@ -10,21 +10,21 @@ Last updated: 2026-08-30 (includes suspension appeals #22, message retention cro
 
 | Component | Host | Config source |
 |-----------|------|----------------|
-| FastAPI API | Render `lc-connect-api` | Root [`render.yaml`](../render.yaml) + Render dashboard secrets |
+| FastAPI API | Render `lc-connect` (`https://lc-connect.onrender.com`) | **Dashboard-managed** — recreate details in [`deployment.md`](../docs/getting-started/deployment.md) §2. Not in [`render.yaml`](../render.yaml). |
 | Admin portal | Render `lc-connect-admin` | `render.yaml` + `NEXT_PUBLIC_*` at **build** time |
 | Employer portal | Render `lc-connect-employer` | Same as admin |
 | Flutter mobile | App Store / Play Store | `mobile/.env` / CI secrets (`SUPABASE_URL`, API base URL) |
 | PostgreSQL | Supabase | `DATABASE_URL` on API (transaction pooler, port **6543**) |
-| Auth + email hook | Supabase | Send Email hook → API `/auth/hooks/send-email` |
-| Message purge cron | Render cron **or** GitHub Actions | [`MESSAGE_RETENTION_CRON_RUNBOOK.md`](./MESSAGE_RETENTION_CRON_RUNBOOK.md) |
+| Auth + email hook | Supabase | Send Email hook → `POST /api/v1/auth/webhooks/send-email` ([guide](../docs/getting-started/send_email_hook.md)) |
+| Message purge cron | Render cron **or** GitHub Actions | [`MESSAGE_RETENTION_CRON_RUNBOOK.md`](./MESSAGE_RETENTION_CRON_RUNBOOK.md) — **script exists; scheduler is not in the repo** |
 
-**Schema migrations:** automatic on every API deploy — `alembic upgrade head` is in the API `startCommand` (see `render.yaml`). You do **not** run Alembic manually on Render unless debugging a failed deploy.
+**Schema migrations:** automatic on every API deploy. The start command is `PYTHONPATH=. python scripts/bootstrap_db.py && uvicorn …` (dashboard, not `render.yaml`). `bootstrap_db.py` create-and-stamps an empty database, or runs `alembic upgrade head` when already managed. You do **not** run Alembic manually on Render unless debugging a failed deploy.
 
 ---
 
-## 1. API service (`lc-connect-api`) — required secrets
+## 1. API service (`lc-connect`) — required secrets
 
-Set in **Render → lc-connect-api → Environment**. Declared in `render.yaml` with `sync: false` where secret.
+Set in **Render → lc-connect → Environment** (dashboard only; the API is not declared in `render.yaml`).
 
 | Variable | Required | Notes |
 |----------|----------|--------|
@@ -59,7 +59,7 @@ Set in **Render → lc-connect-api → Environment**. Declared in `render.yaml` 
 | `RESEND_REPLY_TO` | unset | Support inbox for email replies |
 | `ALLOWED_EMAIL_DOMAINS` | `students.livingstone.edu,livingstone.edu` | Campus signup policy |
 
-Both optional vars are declared in [`render.yaml`](../render.yaml) with safe defaults so new environments get them without a manual step.
+These are **not** in `render.yaml` — set them on the dashboard-managed `lc-connect` service. Recreate checklist: [`deployment.md`](../docs/getting-started/deployment.md) §2–3.
 
 ---
 
@@ -98,7 +98,7 @@ Runbook: [`SUSPENSION_APPEAL_RUNBOOK.md`](./SUSPENSION_APPEAL_RUNBOOK.md)
 
 | Job | Runbook | Status |
 |-----|---------|--------|
-| Soft-deleted message purge (daily) | [`MESSAGE_RETENTION_CRON_RUNBOOK.md`](./MESSAGE_RETENTION_CRON_RUNBOOK.md) | **Create Render cron or GitHub Action** — not in `render.yaml` yet |
+| Soft-deleted message purge (daily) | [`MESSAGE_RETENTION_CRON_RUNBOOK.md`](./MESSAGE_RETENTION_CRON_RUNBOOK.md) | Script + tests exist. **Scheduler is not in the repo** — create a Render cron or GitHub Action once. |
 
 Suspension appeals do **not** need a cron job (in-app + admin UI only).
 
@@ -126,7 +126,7 @@ curl -s https://YOUR-API.onrender.com/health/ready
 
 ### Schema (suspension appeals table)
 
-Confirm deploy logs show `alembic upgrade head` succeeded. Optional — list routes include:
+Confirm deploy logs show `bootstrap_db.py` succeeded (create-and-stamp, or `alembic upgrade head` on an already-managed database). Optional — list routes include:
 
 - `GET /api/v1/account/suspension-status`
 - `POST /api/v1/account/suspension-appeal`
@@ -153,14 +153,14 @@ PYTHONPATH=. python scripts/purge_soft_deleted_messages.py   # dry-run
 
 ### Code / CI
 
-- [ ] `main` green: unit tests + `tests/db` (CI Postgres)
+- [ ] `main` green: backend unit + `tests/db` (CI Postgres), `flutter analyze` + `flutter test`
 - [ ] `python scripts/check_line_limits.py` passes
 - [ ] OpenAPI snapshot updated if API changed (`UPDATE_SNAPSHOTS=1 pytest` from `backend/`)
 
 ### Render
 
-- [ ] Push to `main` (auto-deploy) or manual deploy all three web services
-- [ ] Verify API logs: `alembic upgrade head` OK, no `ValidationError` on startup
+- [ ] Push to `main` (portals auto-deploy from `render.yaml`; API auto-deploys from the dashboard service) or manual deploy all three web services
+- [ ] Verify API logs: `bootstrap_db.py` OK, no `ValidationError` on startup
 - [ ] `SUPPORT_EMAIL` set to real inbox (if not using default)
 - [ ] Message retention cron still scheduled (if already created)
 

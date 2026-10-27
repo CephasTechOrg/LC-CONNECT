@@ -18,6 +18,7 @@ from app.features.account.schema import (
 )
 from app.models import User
 from app.shared import supabase_admin
+from app.shared.blocking import run_sync
 from app.shared.rate_limit import RateLimiter
 
 router = APIRouter(prefix='/account', tags=['account'])
@@ -103,7 +104,8 @@ async def delete_account(
         )
 
     expected_sub = str(current_user.auth_user_id) if current_user.auth_user_id else None
-    if not supabase_admin.verify_password_for_email(
+    if not await run_sync(
+        supabase_admin.verify_password_for_email,
         current_user.email,
         payload.password,
         expected_auth_user_id=expected_sub,

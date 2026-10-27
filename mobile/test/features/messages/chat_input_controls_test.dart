@@ -74,7 +74,7 @@ void main() {
       // the first one stays that way for up to 60s, so `onTap: sending ? null : onSend` left the
       // button dead for a full minute. The tap then fell through to the app-level
       // DismissKeyboardOnTap — which is why the keyboard reacted when the button did not.
-      expect(source, contains('onTap: onSend'));
+      expect(source, contains('onTap: widget.onSend'));
       expect(source.contains('sending ? null : onSend'), isFalse,
           reason: 'a queued send must not block the next one — the outbox and the '
               'idempotent server already handle it');

@@ -37,6 +37,22 @@ class _CompactCardState extends ConsumerState<_CompactCard> {
     }
   }
 
+  /// The 60×60 row thumbnail. A remote banner is cached and cropped to fill; while it loads, and
+  /// if it fails, it falls back to the generic campus image rather than a blank or broken box.
+  Widget _thumbnail(String? bannerUrl) {
+    const fallback = Image(
+      image: AssetImage('assets/images/school.webp'),
+      fit: BoxFit.cover,
+    );
+    if (bannerUrl == null || bannerUrl.isEmpty) return fallback;
+    return CachedNetworkImage(
+      imageUrl: bannerUrl,
+      fit: BoxFit.cover,
+      placeholder: (_, _) => const ColoredBox(color: AppColors.primaryPale),
+      errorWidget: (_, _, _) => fallback,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final a = widget.activity;
@@ -53,16 +69,15 @@ class _CompactCardState extends ConsumerState<_CompactCard> {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
       child: Row(
         children: [
-          // Thumbnail
+          // Thumbnail: the activity's own banner when it has one, cropped square; otherwise the
+          // generic campus image. Previously every row showed `school.webp`, so a list of
+          // activities with distinct banners looked identical down the page.
           ClipRRect(
             borderRadius: BorderRadius.circular(10),
             child: SizedBox(
               width: 60,
               height: 60,
-              child: Image.asset(
-                'assets/images/school.webp',
-                fit: BoxFit.cover,
-              ),
+              child: _thumbnail(a.bannerUrl),
             ),
           ),
           const SizedBox(width: 12),

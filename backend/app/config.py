@@ -146,6 +146,11 @@ class Settings(BaseSettings):
     rate_limit_message_edits_per_minute: int = Field(
         default=20, alias='RATE_LIMIT_MESSAGE_EDITS_PER_MINUTE'
     )
+    # Chat link unfurl: one outbound HTTP fetch per call (SSRF-guarded). Generous for a thread of
+    # pasted links; tight enough that a client cannot turn the API into an open proxy.
+    rate_limit_link_previews_per_minute: int = Field(
+        default=30, alias='RATE_LIMIT_LINK_PREVIEWS_PER_MINUTE'
+    )
     # Replies to frames this server does not implement, per connection per minute. Unlike the
     # malformed budget this never closes the socket — going over just stops the replies. Generous
     # because the legitimate cause is a newer client probing a feature, which happens in bursts on
