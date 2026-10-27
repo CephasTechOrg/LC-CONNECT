@@ -96,12 +96,13 @@ async function renderPhoto(poster, photo) {
   await img.decode();
 
   if (photo.blend) renderBlend(poster, photo, width);
+  const extended = photo.extend ? await extendedBackdrop(img, poster, photo) : null;
 
   const feather = photo.feather ?? {};
   setVars(poster, {
     // fadeOut.color: null dissolves into the backdrop itself instead of fading it to black.
-    "--backdrop": photo.fadeOut && photo.fadeOut.color !== null
-      ? `${fadeOverlay(photo.fadeOut)}, ${backdrop}` : backdrop,
+    "--backdrop": extended ?? (photo.fadeOut && photo.fadeOut.color !== null
+      ? `${fadeOverlay(photo.fadeOut)}, ${backdrop}` : backdrop),
     "--photo-x": px(Math.round(photo.x)),
     "--photo-y": px(Math.round(photo.y)),
     "--photo-w": px(width),
@@ -140,6 +141,34 @@ function fadeOverlay({ from, to, color = "#0e0e0c" }) {
     stops.push(`rgb(${r} ${g} ${b} / ${alpha.toFixed(3)}) ${(from + (to - from) * t).toFixed(1)}px`);
   }
   return `linear-gradient(to bottom, ${stops.join(", ")})`;
+}
+
+// `photo.extend`: { strip, blur } — when a wide photo can't fill the canvas height without cutting
+// people out, the canvas above/below it is filled with the photo's own top/bottom `strip` rows
+// stretched to fit and blurred by `blur` px (sky and ground read as out-of-focus continuation). The
+// sharp photo sits on top, feathered into it. Nothing is generated: it is the photo's own pixels.
+async function extendedBackdrop(img, poster, photo) {
+  const { strip = 24, blur = 36 } = photo.extend;
+  const cw = poster.offsetWidth;
+  const ch = poster.offsetHeight;
+  const x = Math.round(photo.x);
+  const y = Math.round(photo.y);
+  const w = img.naturalWidth;
+  const h = img.naturalHeight;
+
+  const base = new OffscreenCanvas(cw, ch);
+  const ctx = base.getContext("2d");
+  ctx.drawImage(img, 0, 0, w, strip, x, 0, w, y + strip);              // top strip → above
+  ctx.drawImage(img, 0, h - strip, w, strip, x, y + h - strip, w, ch - y - h + strip); // bottom → below
+  ctx.drawImage(img, x, y);
+
+  const out = new OffscreenCanvas(cw, ch);
+  const octx = out.getContext("2d");
+  octx.filter = `blur(${blur}px)`;
+  // Draw oversized so the blur doesn't pull transparent edges in from outside the canvas.
+  octx.drawImage(base, -blur * 2, -blur * 2, cw + blur * 4, ch + blur * 4);
+  const blob = await out.convertToBlob({ type: "image/png" });
+  return `url(${URL.createObjectURL(blob)})`;
 }
 
 // `photo.blend`: { side, width, solid?, top?, bottom?, fade } — blend the backdrop over the photo's

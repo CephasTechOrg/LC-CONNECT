@@ -53,6 +53,7 @@ To preview while tweaking, serve the folder (`npx http-server .`) and open
 | `photo.feather` | `{left,right,top,bottom}` px of soft edge for any photo edge that lands inside the canvas. |
 | `photo.backdrop.bands` | Sampling resolution for the gradient backdrop (default 40); raise it (e.g. 200) when the floor lighting changes quickly. |
 | `photo.fadeOut` | `{ from, to, color? }` canvas rows over which the photo dissolves (smoothstep) into black (`color`, default campaign black `#0e0e0c`); a coloured backdrop extension fades with it. `color: null` dissolves into the backdrop itself instead (e.g. to hide an edge mark while keeping a coloured ground). For bright or saturated photos with no dark negative space: the type then sits on black below the subject. |
+| `photo.extend` | `{ strip, blur }` — fill the canvas above/below a wide photo with its own top/bottom `strip` rows, stretched and blurred by `blur` px, instead of black. Pair with a `layout.tone` dark gradient behind the type. Use when a landscape group can't fill the height without cutting someone out. |
 | `layout.accent` | Override the accent colour (default brand blue) — only for a photo whose own colour makes the blue unreadable, e.g. `"var(--lc-ink-white)"` on saturated red. |
 | `layout.brandTop` | Move the brand lockup down from the top margin (px), e.g. into a faded-out band with the rest of the type. |
 | `photo.blend` | `{ side, width, solid?, top?, bottom?, fade }` — lays the backdrop over one photo edge (fully opaque for `solid` px, fading out by `width` px), limited to below canvas y `top` and/or above canvas y `bottom`. For textured floors where a narrow feather shows a seam but a wide one would fade the subject, or to settle a corner of the photo (e.g. app UI on a screenshot) into the backdrop. |
@@ -140,6 +141,11 @@ Copy, colours, type and the logo treatment are deliberately **not** per-student:
   shot. `photo.crop` takes a 1080-wide window (x 170–1250) so it runs at exactly 1:1 — no resampling —
   with the sign near centre. The pink sky fades into black above (lockup band) and the front row's
   cut legs fade below; headline + footer share the bottom band, as in group-01.
+- **group-05** (three students in suits before the bear statue): the three span the full width of a
+  3:2 frame, so the photo can't fill the 4:5 height without cutting someone. Instead of black bands,
+  `photo.extend` continues the photo's own sky and grass (stretched + blurred) above and below, and a
+  dark `layout.tone` gradient sits behind the type only — one continuous image, no split. The top
+  overlay is deep enough for the blue "LC" (3.3:1). Source is 5205×3470, so quality is ample.
 - **Coming Soon** is a rule-and-label signature in the type system rather than a badge, so it reads
   as part of the campaign rather than a sticker.
 - **Mobile.** Smallest text is 24px at 1080 wide (~9px on a phone feed); body copy is 31px and the

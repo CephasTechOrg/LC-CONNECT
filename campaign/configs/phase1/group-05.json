@@ -1,0 +1,34 @@
+{
+  "id": "group-05",
+  "campaign": "configs/phase1/campaign.json",
+  "photo": {
+    "src": "assets/students/group-05.jpg",
+    "alt": "Three Livingstone College students in suits standing in front of the campus bear statue",
+    "crop": {
+      "x": 364,
+      "y": 0,
+      "w": 4685,
+      "h": 3470
+    },
+    "scale": 0.2305,
+    "x": 0,
+    "y": 280,
+    "backdrop": "#0e0e0c",
+    "extend": {
+      "strip": 24,
+      "blur": 36
+    },
+    "feather": {
+      "top": 60,
+      "bottom": 60
+    }
+  },
+  "layout": {
+    "align": "left",
+    "headlineSize": 72,
+    "headlineBottom": -10,
+    "footerAlign": "right",
+    "footerWidth": 380,
+    "tone": "linear-gradient(to bottom, rgba(10,12,14,0.86) 0, rgba(10,12,14,0.74) 180px, rgba(10,12,14,0) 310px, rgba(10,12,14,0) 1020px, rgba(10,12,14,0.6) 1110px, rgba(10,12,14,0.86) 1350px)"
+  }
+}
