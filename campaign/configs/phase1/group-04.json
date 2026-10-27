@@ -1,0 +1,29 @@
+{
+  "id": "group-04",
+  "campaign": "configs/phase1/campaign.json",
+  "photo": {
+    "src": "assets/students/group-04.jpg",
+    "alt": "Livingstone College students cheering in the stands at dusk, holding an LC vs Allen sign",
+    "crop": {
+      "x": 170,
+      "y": 0,
+      "w": 1080,
+      "h": 853
+    },
+    "scale": 1,
+    "x": 0,
+    "y": 185,
+    "backdrop": "#0e0e0c",
+    "feather": {
+      "top": 90,
+      "bottom": 70
+    }
+  },
+  "layout": {
+    "align": "left",
+    "headlineSize": 72,
+    "headlineBottom": -10,
+    "footerAlign": "right",
+    "footerWidth": 380
+  }
+}

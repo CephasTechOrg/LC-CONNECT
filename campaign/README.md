@@ -136,6 +136,10 @@ Copy, colours, type and the logo treatment are deliberately **not** per-student:
   canvas. So the photo is set as a hard-edged print bleeding off the right and bottom edges —
   `photo.crop` keeps x 245–850 (briefcase to elbow), scaled 0.83 — with the type column on black
   to its left. The vintage grade is the photographer's and is left as is.
+- **group-04** (students in the stands at dusk with an "LC vs Allen" sign): a 1280×853 landscape
+  shot. `photo.crop` takes a 1080-wide window (x 170–1250) so it runs at exactly 1:1 — no resampling —
+  with the sign near centre. The pink sky fades into black above (lockup band) and the front row's
+  cut legs fade below; headline + footer share the bottom band, as in group-01.
 - **Coming Soon** is a rule-and-label signature in the type system rather than a badge, so it reads
   as part of the campaign rather than a sticker.
 - **Mobile.** Smallest text is 24px at 1080 wide (~9px on a phone feed); body copy is 31px and the
