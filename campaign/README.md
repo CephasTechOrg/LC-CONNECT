@@ -53,7 +53,7 @@ To preview while tweaking, serve the folder (`npx http-server .`) and open
 | `photo.feather` | `{left,right,top,bottom}` px of soft edge for any photo edge that lands inside the canvas. |
 | `photo.backdrop.bands` | Sampling resolution for the gradient backdrop (default 40); raise it (e.g. 200) when the floor lighting changes quickly. |
 | `photo.fadeOut` | `{ from, to, color? }` canvas rows over which the photo dissolves (smoothstep) into black (`color`, default campaign black `#0e0e0c`); a coloured backdrop extension fades with it. `color: null` dissolves into the backdrop itself instead (e.g. to hide an edge mark while keeping a coloured ground). For bright or saturated photos with no dark negative space: the type then sits on black below the subject. |
-| `photo.extend` | `{ strip, blur }` — fill the canvas above/below a wide photo with its own top/bottom `strip` rows, stretched and blurred by `blur` px, instead of black. Pair with a `layout.tone` dark gradient behind the type. Use when a landscape group can't fill the height without cutting someone out. |
+| `photo.extend` | `{ strip, blur }` — fill the canvas around a photo (above/below, and beside it if narrower) with its own top/bottom `strip` rows, stretched and blurred by `blur` px, instead of black. Pair with a `layout.tone` dark gradient behind the type. Use when a landscape group can't fill the height without cutting someone out. |
 | `layout.accent` | Override the accent colour (default brand blue) — only for a photo whose own colour makes the blue unreadable, e.g. `"var(--lc-ink-white)"` on saturated red. |
 | `layout.brandTop` | Move the brand lockup down from the top margin (px), e.g. into a faded-out band with the rest of the type. |
 | `photo.blend` | `{ side, width, solid?, top?, bottom?, fade }` — lays the backdrop over one photo edge (fully opaque for `solid` px, fading out by `width` px), limited to below canvas y `top` and/or above canvas y `bottom`. For textured floors where a narrow feather shows a seam but a wide one would fade the subject, or to settle a corner of the photo (e.g. app UI on a screenshot) into the backdrop. |
@@ -127,11 +127,11 @@ Copy, colours, type and the logo treatment are deliberately **not** per-student:
   top fading into campaign black under the type column. The story's repost icon and the
   photographer's watermark sat on the photo's top-right corner; `photo.blend` settles that corner
   into black like ceiling shadow. The subject area is pixel-identical to the screenshot.
-- **student-07** (white tuxedo on a stage, also a story screenshot): cropped to x 200–725 of the
-  photo card — this drops the story's repost icon and a half-visible second person at the right
-  edge, and keeps ~105px of stage either side of the student. The bright blue curtains can't carry
-  type, so the 525×1148 crop sits at 1:1 flush right as a panel, its left edge fading over the dark
-  gap between curtains, and the whole left half is black for the type column.
+- **student-07** (white tuxedo on a stage, from a story screenshot): `photo.crop` takes x 118–904,
+  y 476–1470 of the screenshot — below the story's repost icon, left of a half-visible second person,
+  inside the card's rounded corners — at 1:1. The photo is narrower and shorter than the canvas, so
+  `photo.extend` continues its own curtains and stage on all four sides (blurred), with a dark
+  overlay top and bottom for the type and a soft side vignette like a stage spotlight. No black split.
 - **student-08** (suit and vintage briefcase on a sunny lawn, film-grain look): bright everywhere, the
   shoes and briefcase touch the bottom edge (no room to dissolve), and the file is narrower than the
   canvas. So the photo is set as a hard-edged print bleeding off the right and bottom edges —
@@ -185,9 +185,8 @@ Copy, colours, type and the logo treatment are deliberately **not** per-student:
   canvas without upscaling and shows some softness. The original file from the photographer (Shot
   Vault Media) would allow a larger, sharper subject. Their watermark is covered by the corner
   blend — confirm usage/credit with them.
-- student-07 is also from a story screenshot (photo card ~848×1148, recompressed). The crop is
-  narrow (525px), so the student is small-ish in frame (~80px face); the original file would allow
-  a wider, sharper crop.
+- student-07 is from a story screenshot (photo card ~848×1148, recompressed), so it is a little
+  soft; the original file would sharpen it.
 - A full-length pose makes the face smaller (≈110px wide on the 1080 canvas) than a three-quarter
   portrait; still recognisable on a phone, but tighter shots suit the campaign best.
 - Brand colours are the app's UI tokens; if Livingstone College has official print/brand

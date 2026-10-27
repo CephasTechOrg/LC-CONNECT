@@ -2,20 +2,35 @@
   "id": "student-07",
   "campaign": "configs/phase1/campaign.json",
   "photo": {
-    "src": "assets/students/student-07.png",
+    "src": "assets/students/student-07-story-screenshot.webp",
     "alt": "Livingstone College student in a white tuxedo jacket smiling on a stage with blue curtains",
+    "crop": {
+      "x": 118,
+      "y": 476,
+      "w": 786,
+      "h": 994
+    },
     "scale": 1,
-    "x": 555,
-    "y": 202,
+    "x": 147,
+    "y": 96,
     "backdrop": "#0e0e0c",
+    "extend": {
+      "strip": 16,
+      "blur": 60
+    },
     "feather": {
-      "left": 140,
-      "top": 24
+      "left": 120,
+      "right": 120,
+      "top": 60,
+      "bottom": 60
     }
   },
   "layout": {
     "align": "left",
-    "headlineTop": 200,
-    "footerWidth": 420
+    "headlineSize": 72,
+    "headlineBottom": -10,
+    "footerAlign": "right",
+    "footerWidth": 380,
+    "tone": "linear-gradient(to right, rgba(10,12,14,0.62) 0, rgba(10,12,14,0.25) 150px, rgba(10,12,14,0) 260px, rgba(10,12,14,0) 820px, rgba(10,12,14,0.25) 930px, rgba(10,12,14,0.62) 1080px), linear-gradient(to bottom, rgba(10,12,14,0.88) 0, rgba(10,12,14,0.78) 185px, rgba(10,12,14,0) 300px, rgba(10,12,14,0) 1000px, rgba(10,12,14,0.72) 1090px, rgba(10,12,14,0.9) 1350px)"
   }
 }

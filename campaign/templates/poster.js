@@ -143,8 +143,8 @@ function fadeOverlay({ from, to, color = "#0e0e0c" }) {
   return `linear-gradient(to bottom, ${stops.join(", ")})`;
 }
 
-// `photo.extend`: { strip, blur } — when a wide photo can't fill the canvas height without cutting
-// people out, the canvas above/below it is filled with the photo's own top/bottom `strip` rows
+// `photo.extend`: { strip, blur } — when a photo can't fill the canvas without cutting people out
+// or upscaling, the canvas around it (above/below, and beside it if it is narrower) is filled with the photo's own top/bottom `strip` rows
 // stretched to fit and blurred by `blur` px (sky and ground read as out-of-focus continuation). The
 // sharp photo sits on top, feathered into it. Nothing is generated: it is the photo's own pixels.
 async function extendedBackdrop(img, poster, photo) {
@@ -161,6 +161,14 @@ async function extendedBackdrop(img, poster, photo) {
   ctx.drawImage(img, 0, 0, w, strip, x, 0, w, y + strip);              // top strip → above
   ctx.drawImage(img, 0, h - strip, w, strip, x, y + h - strip, w, ch - y - h + strip); // bottom → below
   ctx.drawImage(img, x, y);
+  // Narrower than the canvas: stretch the now full-height edge columns sideways as well.
+  if (x > 0 || x + w < cw) {
+    const band = new OffscreenCanvas(cw, ch);
+    band.getContext("2d").drawImage(base, 0, 0);
+    if (x > 0) ctx.drawImage(band, x, 0, strip, ch, 0, 0, x + strip, ch);
+    if (x + w < cw) ctx.drawImage(band, x + w - strip, 0, strip, ch, x + w - strip, 0, cw - x - w + strip, ch);
+    ctx.drawImage(img, x, y);
+  }
 
   const out = new OffscreenCanvas(cw, ch);
   const octx = out.getContext("2d");
