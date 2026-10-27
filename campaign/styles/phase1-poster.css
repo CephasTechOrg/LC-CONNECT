@@ -35,7 +35,9 @@ html, body { background: #000; }
 /* ── Layer 1: photograph ──────────────────────────────────────────────────
  * Scaled proportionally (width only, height follows) and never distorted. Edges that fall inside
  * the canvas are feathered into the backdrop, which is sampled from the photo's own studio
- * background so the extension is invisible. */
+ * background so the extension is invisible. `--fade-stops` (set by poster.js)
+ * optionally dissolves the photo into the backdrop part-way down, for bright photos whose type needs
+ * dark ground. */
 .layer-photo img {
   position: absolute;
   left: var(--photo-x, 0px);
@@ -46,12 +48,12 @@ html, body { background: #000; }
     linear-gradient(to right, transparent 0, #000 var(--feather-left, 0px),
       #000 calc(100% - var(--feather-right, 0px)), transparent 100%),
     linear-gradient(to bottom, transparent 0, #000 var(--feather-top, 0px),
-      #000 calc(100% - var(--feather-bottom, 0px)), transparent 100%);
+      var(--fade-stops, #000 calc(100% - var(--feather-bottom, 0px)), transparent 100%));
   mask-image:
     linear-gradient(to right, transparent 0, #000 var(--feather-left, 0px),
       #000 calc(100% - var(--feather-right, 0px)), transparent 100%),
     linear-gradient(to bottom, transparent 0, #000 var(--feather-top, 0px),
-      #000 calc(100% - var(--feather-bottom, 0px)), transparent 100%);
+      var(--fade-stops, #000 calc(100% - var(--feather-bottom, 0px)), transparent 100%));
   mask-composite: intersect;
 }
 
@@ -86,7 +88,7 @@ html, body { background: #000; }
 .type[data-align="right"] .zone { left: auto; right: 0; text-align: right; }
 
 /* Layer 3 + 4 + 5: brand lockup */
-.brand { top: 0; display: flex; align-items: center; gap: 18px; }
+.brand { top: var(--brand-top, 0px); display: flex; align-items: center; gap: 18px; }
 .type[data-align="right"] .brand { flex-direction: row-reverse; }
 
 .brand-mark {

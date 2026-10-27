@@ -1,0 +1,24 @@
+{
+  "id": "student-04",
+  "campaign": "configs/phase1/campaign.json",
+  "photo": {
+    "src": "assets/students/student-04.jpg",
+    "alt": "Livingstone College student in a white vest and shorts walking down the brick building's front steps",
+    "scale": 1,
+    "x": 0,
+    "y": -360,
+    "backdrop": "#0e0e0c",
+    "fadeOut": {
+      "from": 818,
+      "to": 944
+    }
+  },
+  "layout": {
+    "align": "left",
+    "brandTop": 876,
+    "headlineSize": 72,
+    "headlineBottom": -10,
+    "footerAlign": "right",
+    "footerWidth": 380
+  }
+}

@@ -105,7 +105,23 @@ async function renderPhoto(poster, photo) {
     "--feather-right": px(feather.right),
     "--feather-top": px(feather.top),
     "--feather-bottom": px(feather.bottom),
+    "--fade-stops": photo.fadeOut ? fadeStops(photo.fadeOut, Math.round(photo.y)) : undefined,
   });
+}
+
+// `photo.fadeOut`: { from, to } canvas rows over which the photo dissolves into the backdrop. The
+// alpha follows a smoothstep curve so neither end of the fade reads as a line. Returns mask stops in
+// photo-local px.
+function fadeStops({ from, to }, photoY) {
+  const steps = 8;
+  const stops = [];
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    const alpha = 1 - t * t * (3 - 2 * t);
+    const y = from + (to - from) * t - photoY;
+    stops.push(`rgb(0 0 0 / ${alpha.toFixed(3)}) ${y.toFixed(1)}px`);
+  }
+  return stops.join(", ");
 }
 
 // `photo.blend`: { side, width, top, fade } — blend the backdrop over the photo's `side` edge,
@@ -133,6 +149,7 @@ function renderLayout(poster, layout = {}) {
     "--footer-w": px(layout.footerWidth),
     "--type-headline": px(layout.headlineSize),
     "--bear-h": px(layout.bearHeight),
+    "--brand-top": px(layout.brandTop),
     "--tone": layout.tone,
   });
 }

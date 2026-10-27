@@ -51,6 +51,8 @@ To preview while tweaking, serve the folder (`npx http-server .`) and open
 | `photo.backdrop` | Canvas fill where the photo doesn't reach. Either a colour sampled from the photo's background (`"#0e0e0c"`), or `{ "side": "left", "inset": 40, "width": 40 }` to build a vertical gradient from a strip of the photo's own edge — use this when the studio backdrop isn't flat (e.g. dark wall → lit floor). Set `inset` past any stand or edge artefact. |
 | `photo.feather` | `{left,right,top,bottom}` px of soft edge for any photo edge that lands inside the canvas. |
 | `photo.backdrop.bands` | Sampling resolution for the gradient backdrop (default 40); raise it (e.g. 200) when the floor lighting changes quickly. |
+| `photo.fadeOut` | `{ from, to }` canvas rows over which the photo dissolves (smoothstep) into the backdrop. For bright photos with no dark negative space: the type then sits on campaign black below the subject. |
+| `layout.brandTop` | Move the brand lockup down from the top margin (px), e.g. into a faded-out band with the rest of the type. |
 | `photo.blend` | `{ side, width, top, fade }` — lays the backdrop over just the lower part of one photo edge (below canvas y `top`, fading `width` px into the photo). For textured floors where a narrow feather shows a seam but a wide one would fade the subject. |
 | `layout.align` | `left` or `right` — which side the type column sits on. Pick the side with negative space. |
 | `layout.headlineTop` | Headline distance below the top safe margin, px. |
@@ -101,6 +103,11 @@ Copy, colours, type and the logo treatment are deliberately **not** per-student:
   clean background, so the Barbados flag's hem is fully intact behind a 4px feather. The textured
   floor is blended into the extension with `photo.blend` only below the flags. Same type
   arrangement as group-01.
+- **student-04** (bright outdoor, brick + sunlit steps): nothing in the photo is dark enough for
+  white type, and the brand blue disappears on light concrete. Rather than darkening the whole
+  sunny photo, it is shown at 1:1 (pixel-identical to the original) and dissolves into campaign
+  black just below the feet; the full type block — lockup, headline, product line, Coming Soon —
+  sits on that black in the standard colours. The crop starts just below the awning (no sliver).
 - **Coming Soon** is a rule-and-label signature in the type system rather than a badge, so it reads
   as part of the campaign rather than a sticker.
 - **Mobile.** Smallest text is 24px at 1080 wide (~9px on a phone feed); body copy is 31px and the
