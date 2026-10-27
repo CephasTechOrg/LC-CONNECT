@@ -1,0 +1,18 @@
+{
+  "id": "student-03",
+  "campaign": "configs/phase1/campaign.json",
+  "photo": {
+    "src": "assets/students/student-03.jpg",
+    "alt": "Livingstone College tennis player in a Blue Bears Tennis shirt shouting mid-stride with one knee raised",
+    "scale": 0.88,
+    "x": 118,
+    "y": -182,
+    "backdrop": { "side": "left", "inset": 40, "width": 40 },
+    "feather": { "left": 160 }
+  },
+  "layout": {
+    "align": "left",
+    "headlineTop": 200,
+    "footerWidth": 420
+  }
+}

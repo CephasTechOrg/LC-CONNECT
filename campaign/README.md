@@ -84,7 +84,9 @@ Copy, colours, type and the logo treatment are deliberately **not** per-student:
   elbows in frame. student-02 (full-length tennis stance): the whole figure including the shoes is
   kept — cutting at ankles or knees would break the stance — so the photo is scaled to 0.70 and the
   canvas extended with a gradient sampled from the photo's own wall-to-floor background. In both,
-  hair, face, hands and the racket/gesture stay fully clear of type.
+  hair, face, hands and the racket/gesture stay fully clear of type. student-03 (same studio,
+  raised-knee power pose) is narrower, so it runs larger (0.88) with the whole figure and shoes
+  kept, using the same sampled-gradient extension.
 - **group-01** (team photo): eight people fill the frame edge to edge, so the photo spans the full
   width and nobody is moved or cropped. The lockup sits over the darkest part of the trees, above
   the Livingstone Tennis banner (kept fully visible — it reinforces the campus link), with a soft
