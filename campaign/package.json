@@ -1,0 +1,13 @@
+{
+  "name": "lc-connect-campaign",
+  "private": true,
+  "description": "LC Connect marketing campaign templates and export tooling.",
+  "type": "module",
+  "scripts": {
+    "render": "node scripts/render.mjs",
+    "render:phase1": "node scripts/render.mjs configs/phase1/student-01.json"
+  },
+  "devDependencies": {
+    "playwright": "^1.50.0"
+  }
+}

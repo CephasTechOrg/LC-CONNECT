@@ -1,0 +1,152 @@
+/*
+ * Phase 1 pre-launch poster — layout.
+ *
+ * Layout strategy: the photograph is placed freely (each portrait needs its own crop), while all
+ * type lives inside one safe-area frame (`.type`) with three anchored zones:
+ *
+ *   brand    → top edge of the frame      (bear + wordmark + descriptor)
+ *   headline → `--headline-top` below it  (the emotional statement)
+ *   footer   → bottom edge of the frame   (product line + Coming Soon)
+ *
+ * `data-align="left|right"` mirrors the whole type column so it can sit on whichever side of a
+ * portrait has the negative space. Per-photo values arrive as CSS custom properties from the
+ * config (see templates/poster.js), so nothing here is specific to one student.
+ */
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body { background: #000; }
+
+.poster {
+  position: relative;
+  width: var(--poster-w, 1080px);
+  height: var(--poster-h, 1350px);
+  overflow: hidden;
+  background: var(--backdrop, #0e0e0c);
+  font-family: var(--lc-font);
+  color: var(--lc-ink-white);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+  font-kerning: normal;
+}
+
+.layer { position: absolute; inset: 0; }
+
+/* ── Layer 1: photograph ──────────────────────────────────────────────────
+ * Scaled proportionally (width only, height follows) and never distorted. Edges that fall inside
+ * the canvas are feathered into the backdrop, which is sampled from the photo's own studio
+ * background so the extension is invisible. */
+.layer-photo img {
+  position: absolute;
+  left: var(--photo-x, 0px);
+  top: var(--photo-y, 0px);
+  width: var(--photo-w, 100%);
+  height: auto;
+  -webkit-mask-image:
+    linear-gradient(to right, transparent 0, #000 var(--feather-left, 0px),
+      #000 calc(100% - var(--feather-right, 0px)), transparent 100%),
+    linear-gradient(to bottom, transparent 0, #000 var(--feather-top, 0px),
+      #000 calc(100% - var(--feather-bottom, 0px)), transparent 100%);
+  mask-image:
+    linear-gradient(to right, transparent 0, #000 var(--feather-left, 0px),
+      #000 calc(100% - var(--feather-right, 0px)), transparent 100%),
+    linear-gradient(to bottom, transparent 0, #000 var(--feather-top, 0px),
+      #000 calc(100% - var(--feather-bottom, 0px)), transparent 100%);
+  mask-composite: intersect;
+}
+
+/* ── Layer 2: optional tonal adjustment (off unless a config sets --tone) ── */
+.layer-tone { background: var(--tone, none); pointer-events: none; }
+
+/* ── Layers 3–8: typography frame ───────────────────────────────────────── */
+.type {
+  position: absolute;
+  inset: var(--poster-margin);
+}
+
+.zone { position: absolute; left: 0; }
+.type[data-align="right"] .zone { left: auto; right: 0; text-align: right; }
+
+/* Layer 3 + 4 + 5: brand lockup */
+.brand { top: 0; display: flex; align-items: center; gap: 18px; }
+.type[data-align="right"] .brand { flex-direction: row-reverse; }
+
+.brand-mark {
+  height: var(--bear-h, 100px);
+  width: auto;
+  display: block;
+  /* Lifts the mascot's black outline/fur off the near-black photo without altering the artwork. */
+  filter: drop-shadow(0 0 1px rgba(140, 176, 191, 0.55)) drop-shadow(0 0 14px rgba(63, 127, 181, 0.28));
+}
+
+.brand-text { display: flex; flex-direction: column; gap: 6px; }
+
+.wordmark {
+  font-size: var(--type-wordmark);
+  font-weight: 700;
+  font-variation-settings: "opsz" 40;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+.wordmark .wm-lc { color: var(--lc-blue); }
+
+.descriptor {
+  font-size: var(--type-descriptor);
+  font-weight: 500;
+  font-variation-settings: "opsz" 14;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+  color: var(--lc-ink-soft);
+}
+
+/* Layer 6: headline */
+.headline {
+  top: var(--headline-top, 220px);
+  font-size: var(--type-headline);
+  font-weight: 700;
+  font-variation-settings: "opsz" 40;
+  line-height: 0.98;
+  letter-spacing: -0.035em;
+}
+.headline .line { display: block; white-space: nowrap; }
+.headline .line.accent { color: var(--lc-blue); }
+
+/* Footer: layers 7 + 8 */
+.footer {
+  bottom: 0;
+  width: var(--footer-w, 420px);
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+/* Layer 7: product clarification */
+.product {
+  font-size: var(--type-body);
+  font-weight: 400;
+  font-variation-settings: "opsz" 20;
+  line-height: 1.32;
+  letter-spacing: -0.005em;
+  text-wrap: balance;
+  color: var(--lc-ink-soft);
+}
+
+/* Layer 8: launch status — a rule-and-label signature, part of the type system rather than a badge */
+.status {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: var(--type-status);
+  font-weight: 600;
+  font-variation-settings: "opsz" 32;
+  letter-spacing: -0.01em;
+  line-height: 1;
+}
+.type[data-align="right"] .status { flex-direction: row-reverse; }
+.status::before {
+  content: "";
+  width: 48px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--lc-blue);
+}

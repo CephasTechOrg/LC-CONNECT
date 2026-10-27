@@ -1,0 +1,15 @@
+{
+  "campaign": "LC Connect — Phase 1 Pre-Launch Awareness",
+  "canvas": { "width": 1080, "height": 1350 },
+  "brand": {
+    "logo": "assets/brand/blue-bear.webp"
+  },
+  "copy": {
+    "brand": "LC Connect",
+    "descriptor": "The Digital Home for Campus Life",
+    "headline": ["Your campus.", "Your people.", "One place."],
+    "headlineAccentLine": 2,
+    "product": "A new app for connection, academics, and campus events.",
+    "status": "Coming Soon"
+  }
+}

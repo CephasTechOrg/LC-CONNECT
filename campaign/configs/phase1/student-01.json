@@ -1,0 +1,18 @@
+{
+  "id": "student-01",
+  "campaign": "configs/phase1/campaign.json",
+  "photo": {
+    "src": "assets/students/student-01.jpg",
+    "alt": "Livingstone College student in an IMANI uniform making a triangle hand sign",
+    "scale": 0.78,
+    "x": 250,
+    "y": -50,
+    "backdrop": "#0e0e0c",
+    "feather": { "left": 140 }
+  },
+  "layout": {
+    "align": "left",
+    "headlineTop": 200,
+    "footerWidth": 420
+  }
+}

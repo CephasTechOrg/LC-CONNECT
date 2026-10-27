@@ -1,0 +1,43 @@
+/*
+ * LC Connect campaign design tokens.
+ *
+ * Brand colours are mirrored from the app's own palette
+ * (mobile/lib/core/theme/app_theme.dart → AppColors) so the campaign and the product read as
+ * one identity. Do not add new brand colours here without design sign-off.
+ */
+
+@font-face {
+  /* DM Sans is the app's typeface (AppTypography). Variable: opsz 9–40, wght 100–1000. */
+  font-family: "DM Sans";
+  src: url("../assets/fonts/DMSans-opsz-wght.woff2") format("woff2");
+  font-weight: 100 1000;
+  font-style: normal;
+  font-display: block;
+}
+
+:root {
+  /* ── brand colour (AppColors) ─────────────────────────────────────────── */
+  --lc-blue: #3F7FB5;        /* AppColors.primary */
+  --lc-blue-light: #8CB0BF;  /* AppColors.primaryLight */
+  --lc-navy: #1B3A5C;        /* navy used across app panels */
+
+  /* ── neutrals for type on dark photography ────────────────────────────── */
+  --lc-ink-white: #F6F7F9;
+  --lc-ink-soft: rgba(246, 247, 249, 0.78);
+  --lc-ink-quiet: rgba(246, 247, 249, 0.56);
+  --lc-hairline: rgba(246, 247, 249, 0.22);
+
+  /* ── typography ───────────────────────────────────────────────────────── */
+  --lc-font: "DM Sans", system-ui, sans-serif;
+
+  /* Poster type scale (px at 1080-wide output). Each role has one job. */
+  --type-wordmark: 46px;
+  --type-descriptor: 24px;
+  --type-headline: 88px;
+  --type-body: 31px;
+  --type-status: 38px;
+
+  /* ── spacing ──────────────────────────────────────────────────────────── */
+  --space-unit: 8px;
+  --poster-margin: 72px;     /* safe area on every edge */
+}

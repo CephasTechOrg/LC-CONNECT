@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>LC Connect — Phase 1 Poster</title>
+  <link rel="stylesheet" href="../styles/tokens.css">
+  <link rel="stylesheet" href="../styles/phase1-poster.css">
+</head>
+<body>
+  <!--
+    Each layer is an independent element; poster.js fills it from
+    configs/phase1/campaign.json (shared copy + brand) and the per-student config named in ?config=.
+  -->
+  <div class="poster" id="poster">
+    <div class="layer layer-photo"><img id="photo" alt=""></div>          <!-- 1: student photo -->
+    <div class="layer layer-tone"></div>                                   <!-- 2: optional tone -->
+    <div class="type" id="type">
+      <div class="zone brand">
+        <img class="brand-mark" id="bear" alt="Livingstone College Blue Bear"> <!-- 3: logo -->
+        <div class="brand-text">
+          <div class="wordmark" id="wordmark"></div>                       <!-- 4: wordmark -->
+          <div class="descriptor" id="descriptor"></div>                   <!-- 5: descriptor -->
+        </div>
+      </div>
+      <h1 class="zone headline" id="headline"></h1>                        <!-- 6: headline -->
+      <div class="zone footer">
+        <p class="product" id="product"></p>                               <!-- 7: product line -->
+        <div class="status" id="status"></div>                             <!-- 8: Coming Soon -->
+      </div>
+    </div>
+  </div>
+  <script type="module" src="poster.js"></script>
+</body>
+</html>
