@@ -166,12 +166,11 @@ Copy, colours, type and the logo treatment are deliberately **not** per-student:
   give the sign-off clean ground. A soft radial `layout.tone` evens out the source's blocky dark
   backdrop behind the type; the subject is untouched.
 - **student-12** (masked student in a low wide stance, same hallway shoot as student-06, from a story
-  screenshot): cropped below the watermark, the repost icon and the EXIT sign, at 1:1. Treated like
-  student-07 — the hallway is continued around her with `photo.extend`, dark overlays top and
-  bottom for the type and a soft side vignette — and `photo.blend` settles a bright wall cabinet at
-  top-left into shadow behind the lockup. Overlays and feathers are kept clear of her: the figure
-  is pixel-identical to the screenshot apart from a 12px soft edge at the soles, which touch the
-  photo's bottom edge.
+  screenshot): uses student-06's clean layout — the photo (cropped below the watermark, repost icon
+  and EXIT sign; 0.95) sits right and dissolves into campaign black on the left, with lockup and
+  headline at the top of the black column and product line + Coming Soon at the bottom-left, ≥45px
+  clear of her leg. `photo.blend` settles a bright wall cabinet into the black behind the headline;
+  the figure itself is untouched.
 - **Coming Soon** is a rule-and-label signature in the type system rather than a badge, so it reads
   as part of the campaign rather than a sticker.
 - **Mobile.** Smallest text is 24px at 1080 wide (~9px on a phone feed); body copy is 31px and the
