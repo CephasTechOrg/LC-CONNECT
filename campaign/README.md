@@ -65,6 +65,7 @@ To preview while tweaking, serve the folder (`npx http-server .`) and open
 | `layout.headlineBottom` | Anchor the headline to the bottom of the frame instead (px from the bottom margin; negative lets descenders sit in the margin). For wide/group shots with space only below the subjects. |
 | `layout.footerAlign` | `right` puts the product line + Coming Soon in a column opposite the headline. |
 | `layout.footerTop` | Anchor the product line + Coming Soon to the top band instead (px below the top margin) — for hero shots where the subject fills the lower frame and all type sits above them in two columns. |
+| `layout.statusBottom` | `true` takes Coming Soon out of the footer block and sets it alone at the bottom margin as a sign-off (the product line stays where the footer is). |
 | `layout.tone` | Optional CSS background for the tone layer (e.g. a soft gradient); off by default. |
 
 For group photos (people across the whole width) don't shift anyone aside: fill the width,
@@ -158,11 +159,12 @@ Copy, colours, type and the logo treatment are deliberately **not** per-student:
   two-column header above her (lockup + headline left, product line + Coming Soon right, via
   `layout.footerTop`). The off-white sweep is continued at the sides with `photo.extend` in `edges`
   mode, so nothing of her bleeds into the backdrop.
-- **student-11** (portrait, grey blazer and red shirt, dark studio): the classic dark layout. Scaled
-  0.55 and set right so the face is large (~355px); the crossed arms run into the lower-left, so
-  the product line + Coming Soon stack under the headline in the left column (`layout.footerTop`)
-  instead of the bottom. A soft radial `layout.tone` evens out the source's blocky dark backdrop
-  behind the type; the subject is untouched.
+- **student-11** (portrait, grey blazer and red shirt, dark studio): the classic dark layout, read
+  top to bottom — lockup at the top, headline in the middle level with his eyes (≥40px from his
+  face), the product line under it, and Coming Soon alone at the bottom (`layout.statusBottom`). The
+  photo sits right at 0.55 and its lower edge (below the crossed arms) dissolves into the backdrop to
+  give the sign-off clean ground. A soft radial `layout.tone` evens out the source's blocky dark
+  backdrop behind the type; the subject is untouched.
 - **Coming Soon** is a rule-and-label signature in the type system rather than a badge, so it reads
   as part of the campaign rather than a sticker.
 - **Mobile.** Smallest text is 24px at 1080 wide (~9px on a phone feed); body copy is 31px and the

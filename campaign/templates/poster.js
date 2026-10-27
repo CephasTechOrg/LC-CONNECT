@@ -234,6 +234,11 @@ function renderLayout(poster, layout = {}) {
   if (layout.headlineBottom !== undefined) document.getElementById("headline").dataset.anchor = "bottom";
   if (layout.footerAlign) document.querySelector(".footer").dataset.align = layout.footerAlign;
   if (layout.footerTop !== undefined) document.querySelector(".footer").dataset.anchor = "top";
+  if (layout.statusBottom) {
+    const status = document.getElementById("status");
+    status.classList.add("zone", "status-bottom");
+    document.getElementById("type").appendChild(status);
+  }
   setVars(poster, {
     "--headline-top": px(layout.headlineTop),
     "--headline-bottom": px(layout.headlineBottom),

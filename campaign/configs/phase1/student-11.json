@@ -5,20 +5,26 @@
     "src": "assets/students/student-11.jpg",
     "alt": "Livingstone College student in a grey blazer and red shirt, arms crossed, against a dark backdrop",
     "scale": 0.55,
-    "x": 10,
-    "y": 250,
+    "x": 40,
+    "y": 170,
     "backdrop": "#070709",
     "feather": {
       "left": 40,
       "top": 120
+    },
+    "fadeOut": {
+      "from": 1090,
+      "to": 1230,
+      "color": "#070709"
     }
   },
   "layout": {
     "align": "left",
-    "headlineTop": 150,
+    "headlineTop": 318,
     "headlineSize": 72,
-    "footerTop": 420,
+    "footerTop": 578,
     "footerWidth": 360,
-    "tone": "radial-gradient(ellipse 540px 980px at 0px 300px, rgba(7,7,9,0.82) 0%, rgba(7,7,9,0.6) 55%, rgba(7,7,9,0) 100%), linear-gradient(to bottom, rgba(7,7,9,0.7) 0, rgba(7,7,9,0.45) 300px, rgba(7,7,9,0) 400px)"
+    "statusBottom": true,
+    "tone": "radial-gradient(ellipse 560px 1000px at 0px 520px, rgba(7,7,9,0.82) 0%, rgba(7,7,9,0.6) 55%, rgba(7,7,9,0) 100%), linear-gradient(to bottom, rgba(7,7,9,0.7) 0, rgba(7,7,9,0.45) 220px, rgba(7,7,9,0) 320px)"
   }
 }

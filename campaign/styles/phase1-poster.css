@@ -177,6 +177,8 @@ html, body { background: #000; }
 }
 
 /* Layer 8: launch status — a rule-and-label signature, part of the type system rather than a badge */
+/* layout.statusBottom: Coming Soon leaves the footer block and signs off alone at the bottom margin. */
+.status.status-bottom { bottom: 0; }
 .status {
   display: flex;
   align-items: center;
