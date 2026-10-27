@@ -174,6 +174,7 @@ POST /api/v1/groups/{group_id}/join
 POST /api/v1/groups/{group_id}/requests/{user_id}/approve
 POST /api/v1/groups/{group_id}/requests/{user_id}/reject
 POST /api/v1/groups/{group_id}/transfer
+POST /api/v1/messages/link-preview
 POST /api/v1/messages/staff-threads
 POST /api/v1/messages/threads/{match_id}
 POST /api/v1/notifications/read

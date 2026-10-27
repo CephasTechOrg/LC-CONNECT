@@ -151,28 +151,45 @@ Two product decisions were confirmed up front:
   unloaded threads and never changes ordering; adaptive contrast improves (not weakens) legibility.
 - Whole-project `flutter analyze` clean; line-limit check passes (every touched file < 600).
 
+### 13. Chat copy, paste, and link previews (post-plan)
+
+- **Copy / paste:** long-press on a non-deleted bubble offers Copy; the body goes on the clipboard
+  with a "Copied" snack. Composer paste is the stock TextField path.
+- **Tappable URLs:** `LinkedMessageText` splits `http(s)` runs and opens them externally.
+- **OG cards:** bubbles and the composer (when a URL is pasted) show `MessageLinkCard`. Unfurl is
+  on-demand via `POST /messages/link-preview` — same SSRF-guarded fetch as campus posts. Not stored
+  on `Message` rows, does not block send, no protocol bump, no Redis history.
+- **Files:** `messages/router.py`, `messages/schema.py`, `shared/link_preview.py` (`first_http_url`),
+  `message_urls.dart`, `link_preview_provider.dart`, `message_link_preview.dart`, `chat_bubble.dart`,
+  `chat_bubble_options.dart`, `chat_input.dart`.
+- **Tests:** `test_link_preview.py`, `test_message_link_preview.py`, `message_urls_test.dart`,
+  `chat_copy_link_test.dart`. Isolated widgets (full `ChatScreen` + `pumpAndSettle` hangs on
+  RealtimeClient keepalives). OpenAPI + route inventory regenerated for the additive endpoint.
+
 ---
 
 ## Verification
 
-All gates green on 2026-10-27:
+All gates green on 2026-10-27 (final sweep, including copy/link):
 
 | Gate | Result |
 | --- | --- |
 | `flutter analyze` (whole project) | No issues |
-| `flutter test` (whole suite) | **829 passed** |
+| `flutter test` (whole suite) | **839 passed** |
 | `ruff check .` | All checks passed |
-| `pytest --ignore=tests/db` (unit + snapshot) | **460 passed** |
+| `pytest --ignore=tests/db` (unit + snapshot + route inventory) | **460 passed** |
 | `pytest tests/db` (integration, local Postgres, `REQUIRE_TEST_DB=1`) | **539 passed** |
-| OpenAPI snapshot | Regenerated once for the additive `latest_reaction` field; discovery change is data-only (snapshot byte-identical) |
-| `scripts/check_line_limits.py` | Passes (no file over the 600 hard cap) |
+| OpenAPI + route inventory | Regenerated for additive `latest_reaction` and `POST /api/v1/messages/link-preview` |
+| `scripts/check_line_limits.py` | Passes (no file over the 600 hard cap; 25 files over the 400 soft target, pre-existing) |
 
 **Remaining human step:** a manual on-device pass (physical iOS/Android) for the visual items
 — greeting stability, attached reactions, resource grid imagery, featured labels, activity-menu
-contrast over real banners — which cannot be exercised in the automated harness.
+contrast over real banners, copy-from-bubble / paste-into-composer / OG cards on a live URL —
+which cannot be exercised in the automated harness. Simulator is running; hot-restart to pick up
+new Dart files.
 
 ## Final status
 
-All 17 planned items are implemented and verified. The work stayed within the stated guardrails:
-no infra/pricing/scaling changes, no new services, no DB restructuring, auth and messaging
-architecture untouched, security/authorization/privacy preserved.
+All 17 planned items plus chat copy/link previews are implemented and verified. The work stayed
+within the stated guardrails: no infra/pricing/scaling changes, no new services, no DB
+restructuring, auth and messaging architecture untouched, security/authorization/privacy preserved.
