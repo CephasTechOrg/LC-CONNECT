@@ -76,13 +76,13 @@ function resizeColumns(src, w, sh, dh) {
   return out;
 }
 
-// Returns an object URL for `img` resampled to dw×dh. The original file is never modified.
-export async function lanczosResample(img, dw, dh) {
-  const sw = img.naturalWidth;
-  const sh = img.naturalHeight;
+// Returns an object URL for `img` (or its `crop` rectangle, in source px) resampled to dw×dh.
+// The original file is never modified.
+export async function lanczosResample(img, dw, dh, crop = null) {
+  const { x = 0, y = 0, w: sw = img.naturalWidth, h: sh = img.naturalHeight } = crop ?? {};
   const srcCanvas = new OffscreenCanvas(sw, sh);
   const sctx = srcCanvas.getContext("2d");
-  sctx.drawImage(img, 0, 0);
+  sctx.drawImage(img, x, y, sw, sh, 0, 0, sw, sh);
   const src = sctx.getImageData(0, 0, sw, sh).data;
 
   const pixels = resizeColumns(resizeRows(src, sw, sh, dw), dw, sh, dh);

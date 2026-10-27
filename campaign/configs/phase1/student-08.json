@@ -1,0 +1,19 @@
+{
+  "id": "student-08",
+  "campaign": "configs/phase1/campaign.json",
+  "photo": {
+    "src": "assets/students/student-08.png",
+    "alt": "Livingstone College student in a light suit and tie standing on a lawn beside a vintage briefcase",
+    "crop": { "x": 245, "y": 25, "w": 605, "h": 1394 },
+    "scale": 0.83,
+    "x": 578,
+    "y": 193,
+    "backdrop": "#0e0e0c"
+  },
+  "layout": {
+    "align": "left",
+    "headlineTop": 200,
+    "headlineSize": 76,
+    "footerWidth": 420
+  }
+}

@@ -47,6 +47,7 @@ To preview while tweaking, serve the folder (`npx http-server .`) and open
 | Key | What it does |
 |---|---|
 | `photo.scale` | Proportional scale of the original. Keep ≤ 1 so the photo is never upscaled. |
+| `photo.crop` | Optional `{ x, y, w, h }` in source px: use only part of the original (the file stays untouched); `scale` then applies to the cropped size. |
 | `photo.x`, `photo.y` | Top-left position on the 1080×1350 canvas, in px. |
 | `photo.backdrop` | Canvas fill where the photo doesn't reach. Either a colour sampled from the photo's background (`"#0e0e0c"`), or `{ "side": "left", "inset": 40, "width": 40 }` to build a vertical gradient from a strip of the photo's own edge — use this when the studio backdrop isn't flat (e.g. dark wall → lit floor). Set `inset` past any stand or edge artefact. |
 | `photo.feather` | `{left,right,top,bottom}` px of soft edge for any photo edge that lands inside the canvas. |
@@ -130,6 +131,11 @@ Copy, colours, type and the logo treatment are deliberately **not** per-student:
   edge, and keeps ~105px of stage either side of the student. The bright blue curtains can't carry
   type, so the 525×1148 crop sits at 1:1 flush right as a panel, its left edge fading over the dark
   gap between curtains, and the whole left half is black for the type column.
+- **student-08** (suit and vintage briefcase on a sunny lawn, film-grain look): bright everywhere, the
+  shoes and briefcase touch the bottom edge (no room to dissolve), and the file is narrower than the
+  canvas. So the photo is set as a hard-edged print bleeding off the right and bottom edges —
+  `photo.crop` keeps x 245–850 (briefcase to elbow), scaled 0.83 — with the type column on black
+  to its left. The vintage grade is the photographer's and is left as is.
 - **Coming Soon** is a rule-and-label signature in the type system rather than a badge, so it reads
   as part of the campaign rather than a sticker.
 - **Mobile.** Smallest text is 24px at 1080 wide (~9px on a phone feed); body copy is 31px and the

@@ -88,9 +88,11 @@ async function renderPhoto(poster, photo) {
   // Read the backdrop from the original pixels, then swap in a Lanczos resample at the exact
   // on-canvas size so the browser draws it 1:1 (integer size + integer position = no re-filtering).
   const backdrop = typeof photo.backdrop === "string" ? photo.backdrop : sampledBackdrop(img, photo);
-  const width = Math.round(img.naturalWidth * photo.scale);
-  const height = Math.round(img.naturalHeight * photo.scale);
-  img.src = await lanczosResample(img, width, height);
+  // `photo.crop`: { x, y, w, h } in source px — use only part of the original (file stays intact).
+  const crop = photo.crop ?? null;
+  const width = Math.round((crop?.w ?? img.naturalWidth) * photo.scale);
+  const height = Math.round((crop?.h ?? img.naturalHeight) * photo.scale);
+  img.src = await lanczosResample(img, width, height, crop);
   await img.decode();
 
   if (photo.blend) renderBlend(poster, photo, width);
