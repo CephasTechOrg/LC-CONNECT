@@ -50,6 +50,8 @@ To preview while tweaking, serve the folder (`npx http-server .`) and open
 | `photo.x`, `photo.y` | Top-left position on the 1080×1350 canvas, in px. |
 | `photo.backdrop` | Canvas fill where the photo doesn't reach. Either a colour sampled from the photo's background (`"#0e0e0c"`), or `{ "side": "left", "inset": 40, "width": 40 }` to build a vertical gradient from a strip of the photo's own edge — use this when the studio backdrop isn't flat (e.g. dark wall → lit floor). Set `inset` past any stand or edge artefact. |
 | `photo.feather` | `{left,right,top,bottom}` px of soft edge for any photo edge that lands inside the canvas. |
+| `photo.backdrop.bands` | Sampling resolution for the gradient backdrop (default 40); raise it (e.g. 200) when the floor lighting changes quickly. |
+| `photo.blend` | `{ side, width, top, fade }` — lays the backdrop over just the lower part of one photo edge (below canvas y `top`, fading `width` px into the photo). For textured floors where a narrow feather shows a seam but a wide one would fade the subject. |
 | `layout.align` | `left` or `right` — which side the type column sits on. Pick the side with negative space. |
 | `layout.headlineTop` | Headline distance below the top safe margin, px. |
 | `layout.footerWidth` | Max width of the product line + Coming Soon block, px. |
@@ -93,6 +95,12 @@ Copy, colours, type and the logo treatment are deliberately **not** per-student:
   top-only tone gradient behind it for legibility; it ends before the banner and touches no one.
   Headline and footer share the clean court floor below the team as two bottom-aligned columns,
   baselines matched. The headline is 76px here (88px on single portraits) to fit that band.
+- **group-02** (three players with flags): both flags run off the photo's sides, so nobody can be
+  moved aside. The photo sits flush right (the Venezuelan flag is still cut by the frame, as in the
+  original) at 0.72, and the canvas is extended on the left — the original's first 6 columns are
+  clean background, so the Barbados flag's hem is fully intact behind a 4px feather. The textured
+  floor is blended into the extension with `photo.blend` only below the flags. Same type
+  arrangement as group-01.
 - **Coming Soon** is a rule-and-label signature in the type system rather than a badge, so it reads
   as part of the campaign rather than a sticker.
 - **Mobile.** Smallest text is 24px at 1080 wide (~9px on a phone feed); body copy is 31px and the

@@ -1,0 +1,34 @@
+{
+  "id": "group-02",
+  "campaign": "configs/phase1/campaign.json",
+  "photo": {
+    "src": "assets/students/group-02.jpg",
+    "alt": "Three Livingstone College tennis players holding the flags of Barbados, Guinea and Venezuela",
+    "scale": 0.72,
+    "x": 120,
+    "y": -182,
+    "backdrop": {
+      "side": "left",
+      "inset": 0,
+      "width": 4,
+      "bands": 200
+    },
+    "feather": {
+      "left": 4,
+      "bottom": 60
+    },
+    "blend": {
+      "side": "left",
+      "width": 170,
+      "top": 860,
+      "fade": 90
+    }
+  },
+  "layout": {
+    "align": "left",
+    "headlineSize": 76,
+    "headlineBottom": -10,
+    "footerAlign": "right",
+    "footerWidth": 380
+  }
+}

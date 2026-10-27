@@ -55,6 +55,24 @@ html, body { background: #000; }
   mask-composite: intersect;
 }
 
+/* ── Layer 1b: optional edge blend ─────────────────────────────────────────
+ * Where a photo edge inside the canvas crosses textured floor, a straight feather shows a seam but
+ * a wide one would fade the subject. This lays the backdrop over just one region of that edge (below
+ * --blend-top, fading out over --blend-width), so only empty floor is blended. Off unless configured. */
+.layer-blend {
+  display: none;
+  background: var(--backdrop, #0e0e0c);
+  pointer-events: none;
+  -webkit-mask-image:
+    linear-gradient(var(--blend-dir), #000 var(--blend-from), transparent var(--blend-to)),
+    linear-gradient(to bottom, transparent var(--blend-top), #000 var(--blend-top-solid));
+  mask-image:
+    linear-gradient(var(--blend-dir), #000 var(--blend-from), transparent var(--blend-to)),
+    linear-gradient(to bottom, transparent var(--blend-top), #000 var(--blend-top-solid));
+  mask-composite: intersect;
+}
+.layer-blend[data-on] { display: block; }
+
 /* ── Layer 2: optional tonal adjustment (off unless a config sets --tone) ── */
 .layer-tone { background: var(--tone, none); pointer-events: none; }
 

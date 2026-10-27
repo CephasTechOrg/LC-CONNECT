@@ -93,6 +93,8 @@ async function renderPhoto(poster, photo) {
   img.src = await lanczosResample(img, width, height);
   await img.decode();
 
+  if (photo.blend) renderBlend(poster, photo, width);
+
   const feather = photo.feather ?? {};
   setVars(poster, {
     "--backdrop": backdrop,
@@ -103,6 +105,21 @@ async function renderPhoto(poster, photo) {
     "--feather-right": px(feather.right),
     "--feather-top": px(feather.top),
     "--feather-bottom": px(feather.bottom),
+  });
+}
+
+// `photo.blend`: { side, width, top, fade } — blend the backdrop over the photo's `side` edge,
+// fading out `width` px into the photo, only below canvas y `top` (fading in over `fade` px).
+function renderBlend(poster, photo, photoWidth) {
+  const { side = "left", width, top, fade = 60 } = photo.blend;
+  const edge = side === "left" ? Math.round(photo.x) : poster.offsetWidth - Math.round(photo.x) - photoWidth;
+  document.getElementById("blend").dataset.on = "";
+  setVars(poster, {
+    "--blend-dir": side === "left" ? "to right" : "to left",
+    "--blend-from": px(edge),
+    "--blend-to": px(edge + width),
+    "--blend-top": px(top),
+    "--blend-top-solid": px(top + fade),
   });
 }
 
