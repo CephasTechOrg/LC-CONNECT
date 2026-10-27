@@ -127,6 +127,14 @@ html, body { background: #000; }
   color: var(--lc-ink-soft);
 }
 
+/* Light theme (layout.theme: "light") — for bright photos where the subject must stay full
+   brightness (e.g. a white studio sweep): type switches to the app's navy, blue accents unchanged. */
+.poster[data-theme="light"] {
+  --lc-ink-white: var(--lc-navy);
+  --lc-ink-soft: rgba(27, 58, 92, 0.82);
+}
+.poster[data-theme="light"] .brand-mark { filter: none; }
+
 /* Layer 6: headline */
 .headline {
   top: var(--headline-top, 220px);

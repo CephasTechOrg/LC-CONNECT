@@ -55,6 +55,7 @@ To preview while tweaking, serve the folder (`npx http-server .`) and open
 | `photo.fadeOut` | `{ from, to, color? }` canvas rows over which the photo dissolves (smoothstep) into black (`color`, default campaign black `#0e0e0c`); a coloured backdrop extension fades with it. `color: null` dissolves into the backdrop itself instead (e.g. to hide an edge mark while keeping a coloured ground). For bright or saturated photos with no dark negative space: the type then sits on black below the subject. |
 | `photo.extend` | `{ strip, blur }` — fill the canvas around a photo (above/below, and beside it if narrower) with its own top/bottom `strip` rows, stretched and blurred by `blur` px, instead of black. Pair with a `layout.tone` dark gradient behind the type. Use when a landscape group can't fill the height without cutting someone out. |
 | `layout.accent` | Override the accent colour (default brand blue) — only for a photo whose own colour makes the blue unreadable, e.g. `"var(--lc-ink-white)"` on saturated red. |
+| `layout.theme` | `"light"` switches the type to the app's navy (blue accents unchanged) and drops the bear's glow — for bright photos (e.g. a white studio sweep) where a dark overlay would only turn the backdrop grey. |
 | `layout.brandTop` | Move the brand lockup down from the top margin (px), e.g. into a faded-out band with the rest of the type. |
 | `photo.blend` | `{ side, width, solid?, top?, bottom?, fade }` — lays the backdrop over one photo edge (fully opaque for `solid` px, fading out by `width` px), limited to below canvas y `top` and/or above canvas y `bottom`. For textured floors where a narrow feather shows a seam but a wide one would fade the subject, or to settle a corner of the photo (e.g. app UI on a screenshot) into the backdrop. |
 | `layout.align` | `left` or `right` — which side the type column sits on. Pick the side with negative space. |
@@ -146,6 +147,10 @@ Copy, colours, type and the logo treatment are deliberately **not** per-student:
   `photo.extend` continues the photo's own sky and grass (stretched + blurred) above and below, and a
   dark `layout.tone` gradient sits behind the type only — one continuous image, no split. The top
   overlay is deep enough for the blue "LC" (3.3:1). Source is 5205×3470, so quality is ample.
+- **student-09** (headshot on a white studio sweep): a dark overlay on white just reads as grey, so
+  this poster uses `layout.theme: "light"` — navy type (11.5:1), brand blue accents (4.2:1, large
+  text) — and the white backdrop extends seamlessly above. Shown 1:1, bottom-right, with the type
+  column on the open white to the left.
 - **Coming Soon** is a rule-and-label signature in the type system rather than a badge, so it reads
   as part of the campaign rather than a sticker.
 - **Mobile.** Smallest text is 24px at 1080 wide (~9px on a phone feed); body copy is 31px and the
@@ -187,6 +192,8 @@ Copy, colours, type and the logo treatment are deliberately **not** per-student:
   blend — confirm usage/credit with them.
 - student-07 is from a story screenshot (photo card ~848×1148, recompressed), so it is a little
   soft; the original file would sharpen it.
+- student-09 wears a sweater with a third-party logo (Bloomberg). The photo is not edited, so it
+  stays visible; confirm that's acceptable for the campaign, or choose another photo.
 - A full-length pose makes the face smaller (≈110px wide on the 1080 canvas) than a three-quarter
   portrait; still recognisable on a phone, but tighter shots suit the campaign best.
 - Brand colours are the app's UI tokens; if Livingstone College has official print/brand

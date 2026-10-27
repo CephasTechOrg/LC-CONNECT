@@ -1,0 +1,20 @@
+{
+  "id": "student-09",
+  "campaign": "configs/phase1/campaign.json",
+  "photo": {
+    "src": "assets/students/student-09.jpg",
+    "alt": "Livingstone College student smiling in a black quarter-zip over a white collared shirt",
+    "scale": 1,
+    "x": 150,
+    "y": 390,
+    "backdrop": "#fefefe",
+    "feather": { "top": 40, "left": 40 }
+  },
+  "layout": {
+    "theme": "light",
+    "align": "left",
+    "headlineTop": 200,
+    "headlineSize": 80,
+    "footerWidth": 360
+  }
+}

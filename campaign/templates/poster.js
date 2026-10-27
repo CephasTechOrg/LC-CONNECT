@@ -201,6 +201,7 @@ function renderBlend(poster, photo, photoWidth) {
 
 function renderLayout(poster, layout = {}) {
   document.getElementById("type").dataset.align = layout.align ?? "left";
+  if (layout.theme) poster.dataset.theme = layout.theme;
   if (layout.headlineBottom !== undefined) document.getElementById("headline").dataset.anchor = "bottom";
   if (layout.footerAlign) document.querySelector(".footer").dataset.align = layout.footerAlign;
   setVars(poster, {
