@@ -97,7 +97,7 @@ async function renderPhoto(poster, photo) {
 
   const feather = photo.feather ?? {};
   setVars(poster, {
-    "--backdrop": backdrop,
+    "--backdrop": photo.fadeOut ? `${fadeOverlay(photo.fadeOut)}, ${backdrop}` : backdrop,
     "--photo-x": px(Math.round(photo.x)),
     "--photo-y": px(Math.round(photo.y)),
     "--photo-w": px(width),
@@ -122,6 +122,20 @@ function fadeStops({ from, to }, photoY) {
     stops.push(`rgb(0 0 0 / ${alpha.toFixed(3)}) ${y.toFixed(1)}px`);
   }
   return stops.join(", ");
+}
+
+// The backdrop fades to `fadeOut.color` (campaign black by default) in step with the photo, so a
+// coloured canvas extension (e.g. sampled red studio paper) also ends in black under the type.
+function fadeOverlay({ from, to, color = "#0e0e0c" }) {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(color.slice(i, i + 2), 16));
+  const steps = 8;
+  const stops = [];
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    const alpha = t * t * (3 - 2 * t);
+    stops.push(`rgb(${r} ${g} ${b} / ${alpha.toFixed(3)}) ${(from + (to - from) * t).toFixed(1)}px`);
+  }
+  return `linear-gradient(to bottom, ${stops.join(", ")})`;
 }
 
 // `photo.blend`: { side, width, top, fade } — blend the backdrop over the photo's `side` edge,

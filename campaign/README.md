@@ -51,7 +51,7 @@ To preview while tweaking, serve the folder (`npx http-server .`) and open
 | `photo.backdrop` | Canvas fill where the photo doesn't reach. Either a colour sampled from the photo's background (`"#0e0e0c"`), or `{ "side": "left", "inset": 40, "width": 40 }` to build a vertical gradient from a strip of the photo's own edge — use this when the studio backdrop isn't flat (e.g. dark wall → lit floor). Set `inset` past any stand or edge artefact. |
 | `photo.feather` | `{left,right,top,bottom}` px of soft edge for any photo edge that lands inside the canvas. |
 | `photo.backdrop.bands` | Sampling resolution for the gradient backdrop (default 40); raise it (e.g. 200) when the floor lighting changes quickly. |
-| `photo.fadeOut` | `{ from, to }` canvas rows over which the photo dissolves (smoothstep) into the backdrop. For bright photos with no dark negative space: the type then sits on campaign black below the subject. |
+| `photo.fadeOut` | `{ from, to, color? }` canvas rows over which the photo dissolves (smoothstep) into black (`color`, default campaign black `#0e0e0c`); a coloured backdrop extension fades with it. For bright or saturated photos with no dark negative space: the type then sits on black below the subject. |
 | `layout.brandTop` | Move the brand lockup down from the top margin (px), e.g. into a faded-out band with the rest of the type. |
 | `photo.blend` | `{ side, width, top, fade }` — lays the backdrop over just the lower part of one photo edge (below canvas y `top`, fading `width` px into the photo). For textured floors where a narrow feather shows a seam but a wide one would fade the subject. |
 | `layout.align` | `left` or `right` — which side the type column sits on. Pick the side with negative space. |
@@ -111,6 +111,11 @@ Copy, colours, type and the logo treatment are deliberately **not** per-student:
 - **group-03** (four students on a balcony, bright white building): same treatment as student-04 —
   full width at 0.81 (the right-hand student's foot and hand touch the frame edge), dissolving into
   black on the white ledge just below the shoes.
+- **student-05** (seated reader on saturated red paper): white type would pass on the red, but the
+  brand blue measures ~1.1:1 against it, so "LC", "One place." and the Coming Soon rule would vanish.
+  Same dissolve as student-04, now into black from a red extension: the photo sits flush left at
+  0.72 with the right side continued in the photo's own sampled red, and both fade to black under
+  the shoes so the type keeps its standard colours.
 - **Coming Soon** is a rule-and-label signature in the type system rather than a badge, so it reads
   as part of the campaign rather than a sticker.
 - **Mobile.** Smallest text is 24px at 1080 wide (~9px on a phone feed); body copy is 31px and the
@@ -143,6 +148,9 @@ Copy, colours, type and the logo treatment are deliberately **not** per-student:
   floor specks (left untouched).
 - group-03's original carries the photographer's watermark (Shot Vault Media, top right). The
   campaign crop excludes it, so confirm usage rights / credit with the photographer before posting.
+- student-05's original is 1148×1471 with a photographer's mark ("OMP", bottom left). The fade ends
+  just above the mark so no half-visible fragment remains; confirm credit/usage with the
+  photographer. The low source resolution keeps the face small (~70px).
 - A full-length pose makes the face smaller (≈110px wide on the 1080 canvas) than a three-quarter
   portrait; still recognisable on a phone, but tighter shots suit the campaign best.
 - Brand colours are the app's UI tokens; if Livingstone College has official print/brand
