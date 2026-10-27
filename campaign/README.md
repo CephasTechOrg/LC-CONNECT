@@ -158,6 +158,11 @@ Copy, colours, type and the logo treatment are deliberately **not** per-student:
   two-column header above her (lockup + headline left, product line + Coming Soon right, via
   `layout.footerTop`). The off-white sweep is continued at the sides with `photo.extend` in `edges`
   mode, so nothing of her bleeds into the backdrop.
+- **student-11** (portrait, grey blazer and red shirt, dark studio): the classic dark layout. Scaled
+  0.55 and set right so the face is large (~355px); the crossed arms run into the lower-left, so
+  the product line + Coming Soon stack under the headline in the left column (`layout.footerTop`)
+  instead of the bottom. A soft radial `layout.tone` evens out the source's blocky dark backdrop
+  behind the type; the subject is untouched.
 - **Coming Soon** is a rule-and-label signature in the type system rather than a badge, so it reads
   as part of the campaign rather than a sticker.
 - **Mobile.** Smallest text is 24px at 1080 wide (~9px on a phone feed); body copy is 31px and the
@@ -201,6 +206,9 @@ Copy, colours, type and the logo treatment are deliberately **not** per-student:
   soft; the original file would sharpen it.
 - student-09 wears a sweater with a third-party logo (Bloomberg). The photo is not edited, so it
   stays visible; confirm that's acceptable for the campaign, or choose another photo.
+- student-11's original shows blocky compression / AI-upscale artefacts in the dark backdrop (only
+  visible when brightened); the tone layer hides them behind the type, but a clean original would
+  be better.
 - A full-length pose makes the face smaller (≈110px wide on the 1080 canvas) than a three-quarter
   portrait; still recognisable on a phone, but tighter shots suit the campaign best.
 - Brand colours are the app's UI tokens; if Livingstone College has official print/brand
