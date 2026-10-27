@@ -1,0 +1,21 @@
+{
+  "id": "student-07",
+  "campaign": "configs/phase1/campaign.json",
+  "photo": {
+    "src": "assets/students/student-07.png",
+    "alt": "Livingstone College student in a white tuxedo jacket smiling on a stage with blue curtains",
+    "scale": 1,
+    "x": 555,
+    "y": 202,
+    "backdrop": "#0e0e0c",
+    "feather": {
+      "left": 140,
+      "top": 24
+    }
+  },
+  "layout": {
+    "align": "left",
+    "headlineTop": 200,
+    "footerWidth": 420
+  }
+}

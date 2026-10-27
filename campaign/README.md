@@ -125,6 +125,11 @@ Copy, colours, type and the logo treatment are deliberately **not** per-student:
   top fading into campaign black under the type column. The story's repost icon and the
   photographer's watermark sat on the photo's top-right corner; `photo.blend` settles that corner
   into black like ceiling shadow. The subject area is pixel-identical to the screenshot.
+- **student-07** (white tuxedo on a stage, also a story screenshot): cropped to x 200–725 of the
+  photo card — this drops the story's repost icon and a half-visible second person at the right
+  edge, and keeps ~105px of stage either side of the student. The bright blue curtains can't carry
+  type, so the 525×1148 crop sits at 1:1 flush right as a panel, its left edge fading over the dark
+  gap between curtains, and the whole left half is black for the type column.
 - **Coming Soon** is a rule-and-label signature in the type system rather than a badge, so it reads
   as part of the campaign rather than a sticker.
 - **Mobile.** Smallest text is 24px at 1080 wide (~9px on a phone feed); body copy is 31px and the
@@ -164,6 +169,9 @@ Copy, colours, type and the logo treatment are deliberately **not** per-student:
   canvas without upscaling and shows some softness. The original file from the photographer (Shot
   Vault Media) would allow a larger, sharper subject. Their watermark is covered by the corner
   blend — confirm usage/credit with them.
+- student-07 is also from a story screenshot (photo card ~848×1148, recompressed). The crop is
+  narrow (525px), so the student is small-ish in frame (~80px face); the original file would allow
+  a wider, sharper crop.
 - A full-length pose makes the face smaller (≈110px wide on the 1080 canvas) than a three-quarter
   portrait; still recognisable on a phone, but tighter shots suit the campaign best.
 - Brand colours are the app's UI tokens; if Livingstone College has official print/brand

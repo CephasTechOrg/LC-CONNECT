@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "render": "node scripts/render.mjs",
-    "render:phase1": "node scripts/render.mjs configs/phase1/student-01.json configs/phase1/student-02.json configs/phase1/student-03.json configs/phase1/group-01.json configs/phase1/group-02.json configs/phase1/student-04.json configs/phase1/group-03.json configs/phase1/student-05.json configs/phase1/student-06.json"
+    "render:phase1": "node scripts/render.mjs configs/phase1/student-01.json configs/phase1/student-02.json configs/phase1/student-03.json configs/phase1/group-01.json configs/phase1/group-02.json configs/phase1/student-04.json configs/phase1/group-03.json configs/phase1/student-05.json configs/phase1/student-06.json configs/phase1/student-07.json"
   },
   "devDependencies": {
     "playwright": "^1.50.0"
