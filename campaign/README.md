@@ -64,6 +64,7 @@ To preview while tweaking, serve the folder (`npx http-server .`) and open
 | `layout.headlineSize` | Optional override of the headline size for tight portraits. |
 | `layout.headlineBottom` | Anchor the headline to the bottom of the frame instead (px from the bottom margin; negative lets descenders sit in the margin). For wide/group shots with space only below the subjects. |
 | `layout.footerAlign` | `right` puts the product line + Coming Soon in a column opposite the headline. |
+| `layout.footerTop` | Anchor the product line + Coming Soon to the top band instead (px below the top margin) — for hero shots where the subject fills the lower frame and all type sits above them in two columns. |
 | `layout.tone` | Optional CSS background for the tone layer (e.g. a soft gradient); off by default. |
 
 For group photos (people across the whole width) don't shift anyone aside: fill the width,
@@ -151,11 +152,12 @@ Copy, colours, type and the logo treatment are deliberately **not** per-student:
   this poster uses `layout.theme: "light"` — navy type (11.5:1), brand blue accents (4.2:1, large
   text) — and the white backdrop extends seamlessly above. Shown 1:1, bottom-right, with the type
   column on the open white to the left.
-- **student-10** (Livingstone sweatshirt on a white studio sweep, from a story screenshot): light
-  theme like student-09. Cropped below the story's repost icon and inside the card's rounded
-  corners, scaled 0.8 and set bottom-right; the warm off-white sweep is continued around it with
-  `photo.extend` in `edges` mode (only the photo's empty borders, blurred), so no subject shadow
-  bleeds into the backdrop.
+- **student-10** (Livingstone sweatshirt on a white studio sweep, from a story screenshot): a hero
+  layout. Light theme like student-09, but shown at 1:1 (the largest the screenshot allows), centred,
+  cropped just below the hands-in-pockets so she fills the lower two-thirds; all type sits in a
+  two-column header above her (lockup + headline left, product line + Coming Soon right, via
+  `layout.footerTop`). The off-white sweep is continued at the sides with `photo.extend` in `edges`
+  mode, so nothing of her bleeds into the backdrop.
 - **Coming Soon** is a rule-and-label signature in the type system rather than a badge, so it reads
   as part of the campaign rather than a sticker.
 - **Mobile.** Smallest text is 24px at 1080 wide (~9px on a phone feed); body copy is 31px and the

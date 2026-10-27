@@ -8,11 +8,11 @@
       "x": 110,
       "y": 476,
       "w": 860,
-      "h": 984
+      "h": 864
     },
-    "scale": 0.8,
-    "x": 392,
-    "y": 563,
+    "scale": 1,
+    "x": 110,
+    "y": 486,
     "backdrop": "#f2f1ec",
     "extend": {
       "mode": "edges",
@@ -20,15 +20,18 @@
       "blur": 40
     },
     "feather": {
-      "left": 60,
-      "top": 60
+      "left": 40,
+      "right": 40,
+      "top": 40
     }
   },
   "layout": {
     "theme": "light",
     "align": "left",
-    "headlineTop": 200,
+    "headlineTop": 140,
     "headlineSize": 80,
+    "footerAlign": "right",
+    "footerTop": 180,
     "footerWidth": 360
   }
 }

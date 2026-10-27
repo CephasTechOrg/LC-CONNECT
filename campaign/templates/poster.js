@@ -233,10 +233,12 @@ function renderLayout(poster, layout = {}) {
   if (layout.theme) poster.dataset.theme = layout.theme;
   if (layout.headlineBottom !== undefined) document.getElementById("headline").dataset.anchor = "bottom";
   if (layout.footerAlign) document.querySelector(".footer").dataset.align = layout.footerAlign;
+  if (layout.footerTop !== undefined) document.querySelector(".footer").dataset.anchor = "top";
   setVars(poster, {
     "--headline-top": px(layout.headlineTop),
     "--headline-bottom": px(layout.headlineBottom),
     "--footer-w": px(layout.footerWidth),
+    "--footer-top": px(layout.footerTop),
     "--type-headline": px(layout.headlineSize),
     "--bear-h": px(layout.bearHeight),
     "--brand-top": px(layout.brandTop),

@@ -158,6 +158,9 @@ html, body { background: #000; }
   flex-direction: column;
   gap: 28px;
 }
+/* Footer in the header band (layout.footerTop) — for hero shots where the subject fills the lower
+   frame and the type sits above them in two columns. */
+.footer[data-anchor="top"] { bottom: auto; top: var(--footer-top, 0px); }
 /* Footer on the opposite side from the headline (text stays left-aligned as a column). */
 .type .footer[data-align="right"] { left: auto; right: 0; text-align: left; }
 .type .footer[data-align="right"] .status { flex-direction: row; }
