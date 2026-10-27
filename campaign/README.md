@@ -54,7 +54,7 @@ To preview while tweaking, serve the folder (`npx http-server .`) and open
 | `photo.fadeOut` | `{ from, to, color? }` canvas rows over which the photo dissolves (smoothstep) into black (`color`, default campaign black `#0e0e0c`); a coloured backdrop extension fades with it. `color: null` dissolves into the backdrop itself instead (e.g. to hide an edge mark while keeping a coloured ground). For bright or saturated photos with no dark negative space: the type then sits on black below the subject. |
 | `layout.accent` | Override the accent colour (default brand blue) — only for a photo whose own colour makes the blue unreadable, e.g. `"var(--lc-ink-white)"` on saturated red. |
 | `layout.brandTop` | Move the brand lockup down from the top margin (px), e.g. into a faded-out band with the rest of the type. |
-| `photo.blend` | `{ side, width, top, fade }` — lays the backdrop over just the lower part of one photo edge (below canvas y `top`, fading `width` px into the photo). For textured floors where a narrow feather shows a seam but a wide one would fade the subject. |
+| `photo.blend` | `{ side, width, solid?, top?, bottom?, fade }` — lays the backdrop over one photo edge (fully opaque for `solid` px, fading out by `width` px), limited to below canvas y `top` and/or above canvas y `bottom`. For textured floors where a narrow feather shows a seam but a wide one would fade the subject, or to settle a corner of the photo (e.g. app UI on a screenshot) into the backdrop. |
 | `layout.align` | `left` or `right` — which side the type column sits on. Pick the side with negative space. |
 | `layout.headlineTop` | Headline distance below the top safe margin, px. |
 | `layout.footerWidth` | Max width of the product line + Coming Soon block, px. |
@@ -118,6 +118,13 @@ Copy, colours, type and the logo treatment are deliberately **not** per-student:
   red (headline 5–6:1); the brand blue measures 1.3:1 and the light app blue 2.4:1, so this poster
   sets `layout.accent` to white for "LC", "One place." and the Coming Soon rule — the blue stays in
   the bear. The photo's lower edge dissolves into the red just above the photographer's mark.
+- **student-06** (masked student in a hallway, supplied as an Instagram story screenshot): only the
+  photo card was cropped out of the screenshot (lossless; the handle, story frame and blurred
+  background are gone — the full screenshot is kept as `student-06-story-screenshot.webp`). The card
+  is just 864×1152, so it is placed at 1:1 rather than enlarged: flush right, with the left side and
+  top fading into campaign black under the type column. The story's repost icon and the
+  photographer's watermark sat on the photo's top-right corner; `photo.blend` settles that corner
+  into black like ceiling shadow. The subject area is pixel-identical to the screenshot.
 - **Coming Soon** is a rule-and-label signature in the type system rather than a badge, so it reads
   as part of the campaign rather than a sticker.
 - **Mobile.** Smallest text is 24px at 1080 wide (~9px on a phone feed); body copy is 31px and the
@@ -153,6 +160,10 @@ Copy, colours, type and the logo treatment are deliberately **not** per-student:
 - student-05's original is 1148×1471 with a photographer's mark ("OMP", bottom left). The fade ends
   just above the mark so no half-visible fragment remains; confirm credit/usage with the
   photographer. The low source resolution keeps the face small (~70px).
+- student-06 comes from a story screenshot: 864×1152 and already recompressed, so it can't fill the
+  canvas without upscaling and shows some softness. The original file from the photographer (Shot
+  Vault Media) would allow a larger, sharper subject. Their watermark is covered by the corner
+  blend — confirm usage/credit with them.
 - A full-length pose makes the face smaller (≈110px wide on the 1080 canvas) than a three-quarter
   portrait; still recognisable on a phone, but tighter shots suit the campaign best.
 - Brand colours are the app's UI tokens; if Livingstone College has official print/brand

@@ -60,17 +60,22 @@ html, body { background: #000; }
 /* ── Layer 1b: optional edge blend ─────────────────────────────────────────
  * Where a photo edge inside the canvas crosses textured floor, a straight feather shows a seam but
  * a wide one would fade the subject. This lays the backdrop over just one region of that edge (below
- * --blend-top, fading out over --blend-width), so only empty floor is blended. Off unless configured. */
+ * --blend-top and/or above --blend-bottom, fading out over --blend-width), so only empty floor or
+ * background is blended. Off unless configured. */
 .layer-blend {
   display: none;
   background: var(--backdrop, #0e0e0c);
   pointer-events: none;
   -webkit-mask-image:
-    linear-gradient(var(--blend-dir), #000 var(--blend-from), transparent var(--blend-to)),
-    linear-gradient(to bottom, transparent var(--blend-top), #000 var(--blend-top-solid));
+    linear-gradient(var(--blend-dir), #000 var(--blend-from), #000 var(--blend-solid-to, var(--blend-from)),
+      transparent var(--blend-to)),
+    linear-gradient(to bottom, transparent var(--blend-top, 0px), #000 var(--blend-top-solid, 0px),
+      #000 var(--blend-bottom-solid, 100%), transparent var(--blend-bottom, 100%));
   mask-image:
-    linear-gradient(var(--blend-dir), #000 var(--blend-from), transparent var(--blend-to)),
-    linear-gradient(to bottom, transparent var(--blend-top), #000 var(--blend-top-solid));
+    linear-gradient(var(--blend-dir), #000 var(--blend-from), #000 var(--blend-solid-to, var(--blend-from)),
+      transparent var(--blend-to)),
+    linear-gradient(to bottom, transparent var(--blend-top, 0px), #000 var(--blend-top-solid, 0px),
+      #000 var(--blend-bottom-solid, 100%), transparent var(--blend-bottom, 100%));
   mask-composite: intersect;
 }
 .layer-blend[data-on] { display: block; }

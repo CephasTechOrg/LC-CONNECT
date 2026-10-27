@@ -140,18 +140,23 @@ function fadeOverlay({ from, to, color = "#0e0e0c" }) {
   return `linear-gradient(to bottom, ${stops.join(", ")})`;
 }
 
-// `photo.blend`: { side, width, top, fade } — blend the backdrop over the photo's `side` edge,
-// fading out `width` px into the photo, only below canvas y `top` (fading in over `fade` px).
+// `photo.blend`: { side, width, solid?, top?, bottom?, fade } — blend the backdrop over the photo's
+// `side` edge (fully opaque for `solid` px, then fading out by `width` px into the photo), only below canvas y `top` and/or above canvas y
+// `bottom` (each fading over `fade` px). Used to settle textured floor into an extension, or to
+// cover a corner of a photo (e.g. app UI on a screenshot) without touching the subject.
 function renderBlend(poster, photo, photoWidth) {
-  const { side = "left", width, top, fade = 60 } = photo.blend;
+  const { side = "left", width, solid = 0, top, bottom, fade = 60 } = photo.blend;
   const edge = side === "left" ? Math.round(photo.x) : poster.offsetWidth - Math.round(photo.x) - photoWidth;
   document.getElementById("blend").dataset.on = "";
   setVars(poster, {
     "--blend-dir": side === "left" ? "to right" : "to left",
     "--blend-from": px(edge),
+    "--blend-solid-to": solid ? px(edge + solid) : undefined,
     "--blend-to": px(edge + width),
     "--blend-top": px(top),
-    "--blend-top-solid": px(top + fade),
+    "--blend-top-solid": top === undefined ? undefined : px(top + fade),
+    "--blend-bottom-solid": bottom === undefined ? undefined : px(bottom - fade),
+    "--blend-bottom": px(bottom),
   });
 }
 

@@ -1,0 +1,29 @@
+{
+  "id": "student-06",
+  "campaign": "configs/phase1/campaign.json",
+  "photo": {
+    "src": "assets/students/student-06.png",
+    "alt": "Livingstone College student in a blue and gold mask, gold vest and blue trousers striking a pose in a hallway",
+    "scale": 1,
+    "x": 216,
+    "y": 198,
+    "backdrop": "#0e0e0c",
+    "feather": {
+      "left": 240,
+      "top": 90,
+      "bottom": 36
+    },
+    "blend": {
+      "side": "right",
+      "solid": 190,
+      "width": 360,
+      "bottom": 445,
+      "fade": 120
+    }
+  },
+  "layout": {
+    "align": "left",
+    "headlineTop": 200,
+    "footerWidth": 420
+  }
+}
