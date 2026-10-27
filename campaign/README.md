@@ -18,6 +18,7 @@ campaign/
   templates/
     phase1-poster.html          # layered poster markup (8 independent layers)
     poster.js                   # fills the template from config
+    resample.js                 # Lanczos-3 photo downscaling (export quality, see below)
   configs/phase1/
     campaign.json               # approved copy + canvas size + logo path (shared by every poster)
     student-NN.json             # per-photo crop, placement and type-zone settings
@@ -30,8 +31,8 @@ campaign/
 From `campaign/` (needs Node 18+ and Playwright; `npm install` if it isn't already available):
 
 ```bash
-node scripts/render.mjs configs/phase1/student-01.json configs/phase1/student-02.json
-# → exports/phase1/student-0N_1080x1350.png and .jpg
+node scripts/render.mjs configs/phase1/*.json
+# → exports/phase1/<id>_1080x1350.png (lossless master) and .jpg (quality 95)
 ```
 
 To preview while tweaking, serve the folder (`npx http-server .`) and open
@@ -53,7 +54,13 @@ To preview while tweaking, serve the folder (`npx http-server .`) and open
 | `layout.headlineTop` | Headline distance below the top safe margin, px. |
 | `layout.footerWidth` | Max width of the product line + Coming Soon block, px. |
 | `layout.headlineSize` | Optional override of the headline size for tight portraits. |
+| `layout.headlineBottom` | Anchor the headline to the bottom of the frame instead (px from the bottom margin; negative lets descenders sit in the margin). For wide/group shots with space only below the subjects. |
+| `layout.footerAlign` | `right` puts the product line + Coming Soon in a column opposite the headline. |
 | `layout.tone` | Optional CSS background for the tone layer (e.g. a soft gradient); off by default. |
+
+For group photos (people across the whole width) don't shift anyone aside: fill the width,
+put the brand lockup above the group and run headline + footer side by side in the space below —
+see `group-01.json`.
 
 Rules of thumb: keep type off the face, hair, hands and gesture; don't crop at a joint (elbow,
 knee, wrist); leave ~40px between type and the subject's silhouette.
@@ -78,10 +85,27 @@ Copy, colours, type and the logo treatment are deliberately **not** per-student:
   kept — cutting at ankles or knees would break the stance — so the photo is scaled to 0.70 and the
   canvas extended with a gradient sampled from the photo's own wall-to-floor background. In both,
   hair, face, hands and the racket/gesture stay fully clear of type.
+- **group-01** (team photo): eight people fill the frame edge to edge, so the photo spans the full
+  width and nobody is moved or cropped. The lockup sits over the darkest part of the trees, above
+  the Livingstone Tennis banner (kept fully visible — it reinforces the campus link), with a soft
+  top-only tone gradient behind it for legibility; it ends before the banner and touches no one.
+  Headline and footer share the clean court floor below the team as two bottom-aligned columns,
+  baselines matched. The headline is 76px here (88px on single portraits) to fit that band.
 - **Coming Soon** is a rule-and-label signature in the type system rather than a badge, so it reads
   as part of the campaign rather than a sticker.
 - **Mobile.** Smallest text is 24px at 1080 wide (~9px on a phone feed); body copy is 31px and the
   headline 88px.
+
+## Export quality
+
+- Photos are never upscaled (`scale > 1` is an error) and the export is exactly 1080×1350 at 1×.
+- Chromium's own image scaling is soft (≈ bilinear, even with `resizeQuality: "high"`). The
+  template therefore resamples each photo once with Lanczos-3 (`resample.js`) to its exact
+  on-canvas pixel size and places it at integer coordinates, so the browser draws it 1:1. This
+  matches PIL's Lanczos to within ~0.3 levels and kept ~30% more edge detail on the group photo
+  than Chromium's scaler.
+- PNG is the lossless master; JPEG is quality 95 for places that need it. Instagram recompresses on
+  upload, so upload the PNG.
 
 ## Known limitations
 
@@ -93,6 +117,10 @@ Copy, colours, type and the logo treatment are deliberately **not** per-student:
 - student-02's original has a faint circular light artefact in the backdrop (it lands just right of
   the wordmark) and a tiny bright speck on the floor bottom-right. Both are in the original photo
   and were left untouched; retouch the source in an editor if they should go.
+- group-01's source is only 1123px wide, so at 0.962 it is near 1:1 — there is no resolution to
+  spare and faces are ~65px wide. A higher-resolution original would let the team fill more of the
+  frame. The original also has a dark out-of-focus object at the top-left edge and a few small
+  floor specks (left untouched).
 - A full-length pose makes the face smaller (≈110px wide on the 1080 canvas) than a three-quarter
   portrait; still recognisable on a phone, but tighter shots suit the campaign best.
 - Brand colours are the app's UI tokens; if Livingstone College has official print/brand

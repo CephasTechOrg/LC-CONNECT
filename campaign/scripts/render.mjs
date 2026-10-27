@@ -2,7 +2,7 @@
 // Renders poster configs to PNG + JPEG with headless Chromium.
 //
 //   node scripts/render.mjs configs/phase1/student-01.json [more configs...]
-//   node scripts/render.mjs --out exports/phase1 --jpeg-quality 92 configs/phase1/*.json
+//   node scripts/render.mjs --out exports/phase1 --jpeg-quality 95 configs/phase1/*.json
 //
 // Run from campaign/. Serves the folder over a throwaway local HTTP server (fetch() is blocked on
 // file:// URLs), loads the template, waits for fonts + images, and screenshots the poster element.
@@ -25,7 +25,7 @@ const MIME = {
 };
 
 function parseArgs(argv) {
-  const opts = { out: "exports/phase1", jpegQuality: 92, configs: [] };
+  const opts = { out: "exports/phase1", jpegQuality: 95, configs: [] };
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === "--out") opts.out = argv[++i];
     else if (argv[i] === "--jpeg-quality") opts.jpegQuality = Number(argv[++i]);

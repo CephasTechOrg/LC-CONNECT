@@ -1,0 +1,20 @@
+{
+  "id": "group-01",
+  "campaign": "configs/phase1/campaign.json",
+  "photo": {
+    "src": "assets/students/group-01.jpg",
+    "alt": "Livingstone College women's tennis team posed on court in front of the Livingstone Tennis banner",
+    "scale": 0.962,
+    "x": 0,
+    "y": -235,
+    "backdrop": "#0c1019"
+  },
+  "layout": {
+    "align": "left",
+    "headlineSize": 76,
+    "headlineBottom": -10,
+    "footerAlign": "right",
+    "footerWidth": 380,
+    "tone": "linear-gradient(to bottom, rgba(0,0,0,0.6) 0, rgba(0,0,0,0.4) 130px, rgba(0,0,0,0) 196px)"
+  }
+}

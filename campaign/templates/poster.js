@@ -2,6 +2,8 @@
 //   templates/phase1-poster.html?config=configs/phase1/student-01.json
 // All paths in configs are relative to the campaign/ root.
 
+import { lanczosResample } from "./resample.js";
+
 const ROOT = new URL("../", window.location.href);
 const at = (path) => new URL(path, ROOT).href;
 
@@ -81,12 +83,22 @@ async function renderPhoto(poster, photo) {
   const img = document.getElementById("photo");
   img.alt = photo.alt ?? "";
   await loadImage(img, photo.src);
+  if (photo.scale > 1) throw new Error(`photo.scale ${photo.scale} would upscale ${photo.src}`);
+
+  // Read the backdrop from the original pixels, then swap in a Lanczos resample at the exact
+  // on-canvas size so the browser draws it 1:1 (integer size + integer position = no re-filtering).
+  const backdrop = typeof photo.backdrop === "string" ? photo.backdrop : sampledBackdrop(img, photo);
+  const width = Math.round(img.naturalWidth * photo.scale);
+  const height = Math.round(img.naturalHeight * photo.scale);
+  img.src = await lanczosResample(img, width, height);
+  await img.decode();
+
   const feather = photo.feather ?? {};
   setVars(poster, {
-    "--backdrop": typeof photo.backdrop === "string" ? photo.backdrop : sampledBackdrop(img, photo),
-    "--photo-x": px(photo.x),
-    "--photo-y": px(photo.y),
-    "--photo-w": px(img.naturalWidth * photo.scale),
+    "--backdrop": backdrop,
+    "--photo-x": px(Math.round(photo.x)),
+    "--photo-y": px(Math.round(photo.y)),
+    "--photo-w": px(width),
     "--feather-left": px(feather.left),
     "--feather-right": px(feather.right),
     "--feather-top": px(feather.top),
@@ -96,8 +108,11 @@ async function renderPhoto(poster, photo) {
 
 function renderLayout(poster, layout = {}) {
   document.getElementById("type").dataset.align = layout.align ?? "left";
+  if (layout.headlineBottom !== undefined) document.getElementById("headline").dataset.anchor = "bottom";
+  if (layout.footerAlign) document.querySelector(".footer").dataset.align = layout.footerAlign;
   setVars(poster, {
     "--headline-top": px(layout.headlineTop),
+    "--headline-bottom": px(layout.headlineBottom),
     "--footer-w": px(layout.footerWidth),
     "--type-headline": px(layout.headlineSize),
     "--bear-h": px(layout.bearHeight),

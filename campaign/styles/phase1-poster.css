@@ -109,6 +109,9 @@ html, body { background: #000; }
   letter-spacing: -0.035em;
 }
 .headline .line { display: block; white-space: nowrap; }
+/* Wide group shots leave space only above/below the subjects: anchor the headline to the bottom
+   of the frame instead, sharing the band with the footer. */
+.headline[data-anchor="bottom"] { top: auto; bottom: var(--headline-bottom, 0px); }
 .headline .line.accent { color: var(--lc-blue); }
 
 /* Footer: layers 7 + 8 */
@@ -119,6 +122,9 @@ html, body { background: #000; }
   flex-direction: column;
   gap: 28px;
 }
+/* Footer on the opposite side from the headline (text stays left-aligned as a column). */
+.type .footer[data-align="right"] { left: auto; right: 0; text-align: left; }
+.type .footer[data-align="right"] .status { flex-direction: row; }
 
 /* Layer 7: product clarification */
 .product {
