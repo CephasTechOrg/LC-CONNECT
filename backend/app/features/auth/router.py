@@ -55,6 +55,10 @@ async def forgot_password(payload: ForgotPasswordRequest) -> MessageResponse:
     return MessageResponse(message='If an account exists for that email, a reset link has been sent.')
 
 
+def _display_name(user: User) -> str | None:
+    return user.profile.display_name if user.profile else None
+
+
 def _policies_accepted(user: User) -> bool:
     """Current acceptance, not merely *some* acceptance.
 
@@ -91,6 +95,7 @@ async def accept_policies(
         auth_user_id=current_user.auth_user_id,
         first_name=current_user.first_name,
         last_name=current_user.last_name,
+        display_name=_display_name(current_user),
     )
 
 
@@ -113,6 +118,7 @@ async def bootstrap(
         auth_user_id=user.auth_user_id,
         first_name=user.first_name,
         last_name=user.last_name,
+        display_name=_display_name(user),
     )
 
 
@@ -130,4 +136,5 @@ async def me(current_user: User = Depends(get_current_user)) -> CurrentUserRespo
         auth_user_id=current_user.auth_user_id,
         first_name=current_user.first_name,
         last_name=current_user.last_name,
+        display_name=_display_name(current_user),
     )

@@ -94,17 +94,33 @@ void main() {
   });
 
   group('BackendStatusNotifier', () {
-    test('reportUnreachable flips state to offline', () {
+    ProviderContainer online() {
       final container = ProviderContainer(
         overrides: [
           backendStatusProvider.overrideWith(() => _FixedStatus(BackendStatus.online)),
         ],
       );
       addTearDown(container.dispose);
-
       expect(container.read(backendStatusProvider), BackendStatus.online);
-      container.read(backendStatusProvider.notifier).reportUnreachable();
+      return container;
+    }
+
+    test('reportUnreachable flips state to offline once the app has been awake a while', () {
+      final container = online();
+      final notifier = container.read(backendStatusProvider.notifier)
+        ..wokeAt = DateTime.now().subtract(const Duration(minutes: 1));
+      notifier.reportUnreachable();
       expect(container.read(backendStatusProvider), BackendStatus.offline);
+    });
+
+    test('right after a resume, a failed request asks for a probe instead of the banner', () {
+      // The radio is often still waking up; flipping here flashed "You're offline" on every
+      // app switch.
+      final container = online();
+      container.read(backendStatusProvider.notifier)
+        ..wokeAt = DateTime.now()
+        ..reportUnreachable();
+      expect(container.read(backendStatusProvider), BackendStatus.online);
     });
   });
 }

@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/api/api_client.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../shared/util/caching.dart';
 import '../../../shared/util/keep_fresh.dart';
 import '../../auth/providers/auth_provider.dart';
 
@@ -83,6 +84,9 @@ class ScholarProfile {
   final String reviewStatus;
   final String? reviewNote;
   final bool hasHeadshot;
+
+  /// Changes only when a new headshot is uploaded; the image's cache key. Null on an older server.
+  final String? headshotVersion;
   final bool hasResume;
 
   /// Server-owned. The client must never re-derive this: the rule includes a minimum summary
@@ -108,6 +112,7 @@ class ScholarProfile {
     this.reviewStatus = 'draft',
     this.reviewNote,
     required this.hasHeadshot,
+    this.headshotVersion,
     required this.hasResume,
     required this.isComplete,
     required this.missingFields,
@@ -139,6 +144,7 @@ class ScholarProfile {
         reviewStatus: j['review_status'] as String? ?? 'draft',
         reviewNote: j['review_note'] as String?,
         hasHeadshot: j['has_headshot'] as bool? ?? false,
+        headshotVersion: j['headshot_updated_at'] as String?,
         hasResume: j['has_resume'] as bool? ?? false,
         // Absent means an older server. Defaulting to *incomplete* keeps the prompt visible,
         // which is the safe failure: a student is nudged about a profile that may be finished,
@@ -158,7 +164,8 @@ class ScholarProfileNotifier extends AsyncNotifier<ScholarProfile> {
     // back: nothing in the app invalidated this notifier, so it re-ran only when the signed-in
     // identity changed. See [keepFresh].
     keepFresh(ref, onStale: ref.invalidateSelf);
-    ref.watch(authNotifierProvider);
+    // Identity only — see `MyProfileNotifier.build`.
+    ref.watch(authNotifierProvider.select((a) => a.value?.id));
     final client = ref.watch(apiClientProvider);
     final response = await client.dio.get('/scholars/me');
     return ScholarProfile.fromJson(response.data as Map<String, dynamic>);
@@ -254,16 +261,38 @@ class ScholarProfileNotifier extends AsyncNotifier<ScholarProfile> {
   }
 }
 
-/// Short-lived signed URL for the scholar's own headshot, for on-page preview.
+/// A signed URL for the scholar's own headshot plus the stable key to cache the image under.
+class ScholarHeadshot {
+  const ScholarHeadshot({required this.url, required this.cacheKey});
+
+  final String url;
+  final String cacheKey;
+}
+
+/// The scholar's own headshot for the on-page preview. Null when nothing is on file, or if signing
+/// fails (the editor keeps the placeholder).
 ///
-/// The profile payload only has `has_headshot` — the file lives in a private bucket. Null when
-/// nothing is on file, or if signing fails (the editor keeps the placeholder). Auto-dispose so
-/// the credential does not outlive the editor.
-final scholarHeadshotPreviewProvider = FutureProvider.autoDispose<String?>((ref) async {
-  final profile = await ref.watch(scholarProfileNotifierProvider.future);
-  if (!profile.hasHeadshot) return null;
+/// Depends on the headshot's identity only (owner + upload time), not the whole profile: watching
+/// `.future` re-signed and re-downloaded the photo after every Save, resume and auth refresh.
+/// Cached for 4 minutes — under the server's 5-minute signed-URL lifetime — so moving around the
+/// app does not re-sign either; the image itself stays on disk under [ScholarHeadshot.cacheKey].
+final scholarHeadshotPreviewProvider = FutureProvider.autoDispose<ScholarHeadshot?>((ref) async {
+  cacheFor(ref, const Duration(minutes: 4));
+  final identity = await ref.watch(
+    scholarProfileNotifierProvider.selectAsync(
+      (p) => p.hasHeadshot ? (version: p.headshotVersion, owner: p.userId) : null,
+    ),
+  );
+  if (identity == null) return null;
   try {
-    return await ref.read(scholarProfileNotifierProvider.notifier).headshotUrl();
+    final url = await ref.read(scholarProfileNotifierProvider.notifier).headshotUrl();
+    final version = identity.version;
+    return ScholarHeadshot(
+      url: url,
+      // An older server sends no version, so there is no safe stable key: fall back to the URL,
+      // which caches nothing but can never show a replaced photo.
+      cacheKey: version == null ? url : 'scholar-headshot:${identity.owner}:$version',
+    );
   } catch (_) {
     return null;
   }

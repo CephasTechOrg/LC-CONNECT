@@ -23,6 +23,7 @@ import '../utils/chat_routes.dart';
 import '../widgets/messages_segments.dart';
 import '../widgets/staff_tag.dart';
 import '../data/thread_preview.dart';
+import '../../../shared/util/caching.dart';
 
 part '../widgets/thread_row.dart';
 
@@ -94,7 +95,7 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
                 onClear: _clearSearch,
               ),
             Expanded(
-              child: async.when(
+              child: async.cached(
                 loading: () => const AppThreadListSkeleton(),
                 error: (e, _) => _ErrorState(
                   onRetry: () => ref.invalidate(threadsNotifierProvider),

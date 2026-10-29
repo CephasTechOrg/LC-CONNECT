@@ -1,23 +1,22 @@
 /// Resolves the name the Home greeting shows.
 ///
-/// Order: the first word of the student's *current saved* profile display name, else the first
-/// name given at signup, else the campus address (email local part), else `there`. The editable
-/// profile name is the student's live identity, so it wins over the signup name, which goes stale
-/// after a rename — that mismatch was the "old name" testers saw flash before it corrected.
+/// Order: the first word of the loaded profile's display name (the freshest — it reflects a rename
+/// made in this session), else the display name bootstrap returned at sign-in, else the first name
+/// given at signup, else the campus address (email local part), else `there`.
 ///
-/// Returns `null` until the profile has resolved ([profileResolved] is false): before that there
-/// is no authoritative name, and deriving one from the email only to replace it a frame later is
-/// the flicker to avoid. Callers hold the previously resolved name while this returns null.
-String? resolveGreetingName({
+/// Bootstrap finishes before the splash clears, so the second source is in memory on Home's first
+/// frame. This used to wait for `/profiles/me` instead and showed "there" until it arrived — a
+/// placeholder on every launch, to avoid a stale name that only a rename on another device could
+/// cause.
+String resolveGreetingName({
+  String? profileDisplayName,
+  String? accountDisplayName,
   String? firstName,
-  String? displayName,
   String? email,
-  required bool profileResolved,
 }) {
-  if (!profileResolved) return null;
-  final fromProfile = displayName?.trim();
-  if (fromProfile != null && fromProfile.isNotEmpty) {
-    return fromProfile.split(RegExp(r'\s+')).first;
+  for (final candidate in [profileDisplayName, accountDisplayName]) {
+    final name = candidate?.trim();
+    if (name != null && name.isNotEmpty) return name.split(RegExp(r'\s+')).first;
   }
   final fromSignup = firstName?.trim();
   if (fromSignup != null && fromSignup.isNotEmpty) return fromSignup;

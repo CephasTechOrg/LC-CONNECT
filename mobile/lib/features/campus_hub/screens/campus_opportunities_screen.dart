@@ -13,6 +13,7 @@ import '../providers/opportunity_badge_provider.dart';
 import '../widgets/campus_subpage_header.dart';
 import '../widgets/opportunity_card.dart';
 import '../../../shared/widgets/app_skeleton.dart';
+import '../../../shared/util/caching.dart';
 
 const _categoryFilters = <String, String>{
   'all': 'All types',
@@ -133,7 +134,7 @@ class _OpportunitiesState extends ConsumerState<CampusOpportunitiesScreen> {
               child: RefreshIndicator(
                 color: AppColors.primary,
                 onRefresh: () async => ref.invalidate(campusPostsProvider(_query)),
-                child: postsAsync.when(
+                child: postsAsync.cached(
                   // A skeleton in the shape of the content that is coming, not a spinner: the Campus Hub
                   // sub-pages were the only lists in the app that spun while every other list
                   // showed placeholders (4.2).

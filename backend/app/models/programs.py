@@ -67,6 +67,10 @@ class ScholarProfessionalProfile(Base):
         UUID(as_uuid=True), ForeignKey('users.id', ondelete='CASCADE'), unique=True, index=True, nullable=False
     )
     headshot_path: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # When the current headshot was uploaded. The object path never changes (a new photo overwrites
+    # it) and every read gets a fresh signed URL, so this is the only stable identity a client can
+    # cache the image under.
+    headshot_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     resume_path: Mapped[str | None] = mapped_column(Text, nullable=True)
     linkedin_url: Mapped[str | None] = mapped_column(String(300), nullable=True)
     handshake_url: Mapped[str | None] = mapped_column(String(300), nullable=True)

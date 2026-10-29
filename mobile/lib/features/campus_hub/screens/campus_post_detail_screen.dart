@@ -13,6 +13,7 @@ import '../widgets/campus_post_image_pager.dart';
 import '../widgets/campus_post_style.dart';
 import '../widgets/campus_subpage_header.dart';
 import '../widgets/link_preview_card.dart';
+import '../../../shared/util/caching.dart';
 
 class CampusPostDetailScreen extends ConsumerStatefulWidget {
   final String postId;
@@ -49,7 +50,7 @@ class _CampusPostDetailScreenState extends ConsumerState<CampusPostDetailScreen>
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: postAsync.when(
+        child: postAsync.cached(
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (_, _) => Column(
             children: [

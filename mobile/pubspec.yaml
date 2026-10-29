@@ -37,6 +37,8 @@ dependencies:
   # Disk-backed image cache. `Image.network` keeps decoded frames in RAM only, so every cold start
   # re-downloaded every avatar — the "the same unchanged profile image reloads repeatedly" report.
   cached_network_image: ^3.4.1
+  # Direct only to build a separate, sign-out-cleared cache for private (signed-URL) images.
+  flutter_cache_manager: ^3.4.1
   dio: ^5.9.2
   flutter_secure_storage: ^10.0.0
   go_router: ^17.2.3

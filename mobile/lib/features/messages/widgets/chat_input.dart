@@ -202,24 +202,70 @@ class _OutboxBanner extends StatelessWidget {
 }
 
 // ── Connection banner ─────────────────────────────────────────────
-class _ConnectionBanner extends StatelessWidget {
+class _ConnectionBanner extends StatefulWidget {
   final ValueListenable<RealtimeStatus> status;
   const _ConnectionBanner({required this.status});
 
   @override
+  State<_ConnectionBanner> createState() => _ConnectionBannerState();
+}
+
+/// Shows "Connecting…" only when the socket has been down for a while.
+///
+/// Every return to the app reconnects (the socket is dropped in the background so pushes fire),
+/// and that reconnect usually finishes in well under a second. Showing the strip at once made it
+/// flash on every app switch — noise for a state the user cannot act on. Sends made meanwhile
+/// queue in the outbox, which has its own banner.
+class _ConnectionBannerState extends State<_ConnectionBanner> {
+  static const _showAfter = Duration(milliseconds: 2500);
+
+  Timer? _timer;
+  bool _show = false;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.status.addListener(_onStatus);
+    _onStatus();
+  }
+
+  @override
+  void didUpdateWidget(_ConnectionBanner old) {
+    super.didUpdateWidget(old);
+    if (old.status != widget.status) {
+      old.status.removeListener(_onStatus);
+      widget.status.addListener(_onStatus);
+      _onStatus();
+    }
+  }
+
+  void _onStatus() {
+    if (widget.status.value == RealtimeStatus.ready) {
+      _timer?.cancel();
+      _timer = null;
+      if (_show) setState(() => _show = false);
+      return;
+    }
+    _timer ??= Timer(_showAfter, () {
+      if (mounted) setState(() => _show = true);
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    widget.status.removeListener(_onStatus);
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<RealtimeStatus>(
-      valueListenable: status,
-      builder: (context, value, _) {
-        final (String? label, IconData icon) = switch (value) {
-          RealtimeStatus.ready => (null, Icons.wifi_rounded),
-          RealtimeStatus.disconnected => ('Offline — reconnecting…', Icons.wifi_off_rounded),
-          _ => ('Connecting…', Icons.sync_rounded),
-        };
-        if (label == null) return const SizedBox.shrink();
-        return _SlimBanner(label: label, color: AppColors.textMid, icon: icon);
-      },
-    );
+    if (!_show) return const SizedBox.shrink();
+    final (String label, IconData icon) = switch (widget.status.value) {
+      RealtimeStatus.disconnected => ('Offline — reconnecting…', Icons.wifi_off_rounded),
+      _ => ('Connecting…', Icons.sync_rounded),
+    };
+    return _SlimBanner(label: label, color: AppColors.textMid, icon: icon);
   }
 }
 

@@ -8,7 +8,7 @@ class _ActivitiesPreview extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(activitiesNotifierProvider);
 
-    return async.when(
+    return async.cached(
       loading: () => const _PreviewLoading(),
       error: (_, _) => const _SectionEmpty(
         icon: Icons.event_busy_outlined,
@@ -130,7 +130,7 @@ class _SuggestedConnectionsPreview extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(discoveryNotifierProvider);
 
-    return async.when(
+    return async.cached(
       loading: () => const _PreviewLoading(),
       error: (_, _) => const _SectionEmpty(
         icon: Icons.people_outline_rounded,

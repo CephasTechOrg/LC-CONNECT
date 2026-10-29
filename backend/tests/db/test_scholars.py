@@ -235,6 +235,25 @@ async def test_upload_headshot_success_sets_path(db, factory, monkeypatch):
     assert updated.has_headshot is True
 
 
+async def test_headshot_version_changes_on_upload_only(db, factory, monkeypatch):
+    # The app caches the photo under this value; it must move on a new photo and only then, or the
+    # photo is either stale or re-downloaded on every save.
+    scholar = await _verified_scholar(db, factory)
+    monkeypatch.setattr(
+        service.storage_service, 'upload_scholar_file', lambda *a, **kw: f'{scholar.id}/headshot.jpg'
+    )
+    first = (await service.upload_headshot(db, scholar.id, _jpeg())).headshot_updated_at
+    assert first is not None
+
+    edited = await service.update_profile(
+        db, scholar.id, ScholarProfessionalProfileUpdate(summary='Builds things for the campus.')
+    )
+    assert edited.headshot_updated_at == first
+
+    second = (await service.upload_headshot(db, scholar.id, _jpeg())).headshot_updated_at
+    assert second is not None and second > first
+
+
 async def test_upload_resume_success_sets_path(db, factory, monkeypatch):
     scholar = await _verified_scholar(db, factory)
     monkeypatch.setattr(

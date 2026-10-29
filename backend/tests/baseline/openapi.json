@@ -1450,6 +1450,17 @@
             "title": "Auth User Id",
             "type": "string"
           },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
           "email": {
             "format": "email",
             "title": "Email",
@@ -3318,6 +3329,17 @@
               }
             ],
             "title": "Auth User Id"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
           },
           "email": {
             "format": "email",
@@ -7347,6 +7369,18 @@
           "has_resume": {
             "title": "Has Resume",
             "type": "boolean"
+          },
+          "headshot_updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Headshot Updated At"
           },
           "id": {
             "format": "uuid",

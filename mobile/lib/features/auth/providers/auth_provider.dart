@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/api/api_client.dart';
+import '../../../core/images/private_image_cache.dart';
 import '../data/duplicate_signup.dart';
 import '../data/person_name.dart';
 import 'suspension_provider.dart';
@@ -26,6 +27,10 @@ class AuthUser {
   final String? firstName;
   final String? lastName;
 
+  /// The profile's display name as of bootstrap, so a screen can name the user on its first
+  /// frame instead of waiting on `/profiles/me`. The loaded profile is fresher once it arrives.
+  final String? displayName;
+
   const AuthUser({
     required this.id,
     required this.email,
@@ -35,6 +40,7 @@ class AuthUser {
     this.profileCompleted = false,
     this.firstName,
     this.lastName,
+    this.displayName,
   });
 
   factory AuthUser.fromBootstrap(Map<String, dynamic> json) => AuthUser(
@@ -48,6 +54,7 @@ class AuthUser {
         profileCompleted: json['profile_completed'] as bool? ?? false,
         firstName: json['first_name'] as String?,
         lastName: json['last_name'] as String?,
+        displayName: json['display_name'] as String?,
       );
 
   AuthUser copyWith({bool? isVerified, bool? policiesAccepted, bool? profileCompleted}) =>
@@ -60,6 +67,7 @@ class AuthUser {
         profileCompleted: profileCompleted ?? this.profileCompleted,
         firstName: firstName,
         lastName: lastName,
+        displayName: displayName,
       );
 }
 
@@ -416,6 +424,12 @@ class AuthNotifier extends AsyncNotifier<AuthUser?> {
   Future<void> _clearLocalChatData() async {
     await ref.read(chatDraftStoreProvider).clearAll();
     await ref.read(chatMessageCacheProvider).clearAll();
+    try {
+      await ref.read(privateImageCacheProvider).emptyCache();
+    } catch (_) {
+      // A cache that cannot be emptied must not trap the user in the session they are leaving;
+      // its files also expire on their own (see [privateImageCacheProvider]).
+    }
   }
 
   /// Leave the verify-email gate and return to login/register.

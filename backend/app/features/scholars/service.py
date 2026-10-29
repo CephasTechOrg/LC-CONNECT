@@ -87,6 +87,7 @@ def _to_read(profile: ScholarProfessionalProfile) -> ScholarProfessionalProfileR
         submitted_at=profile.submitted_at,
         reviewed_at=profile.reviewed_at,
         has_headshot=profile.headshot_path is not None,
+        headshot_updated_at=profile.headshot_updated_at,
         has_resume=profile.resume_path is not None,
         created_at=profile.created_at,
         updated_at=profile.updated_at,
@@ -315,6 +316,7 @@ async def upload_headshot(db: AsyncSession, user_id: UUID, data: bytes) -> Schol
     profile.headshot_path = await run_sync(
         storage_service.upload_scholar_file, user_id, 'headshot', ext, content_type, clean_data
     )
+    profile.headshot_updated_at = datetime.now(UTC)
     _requeue_after_material_edit(profile)
     await db.commit()
     await db.refresh(profile)

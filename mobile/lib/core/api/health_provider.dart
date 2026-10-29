@@ -30,6 +30,16 @@ class BackendStatusNotifier extends Notifier<BackendStatus> {
   /// start or a blip than an outage, and a banner that cries wolf teaches users to ignore it.
   static const _failuresBeforeOffline = 2;
 
+  /// Right after the app comes back to the foreground (or starts), the radio is often still
+  /// re-associating, so the first requests fail on the network even though nothing is down. In
+  /// this window a failed request asks for a probe instead of flipping the banner on — that flip
+  /// was the "You're offline" strip flashing every time the user switched back to the app.
+  static const _wakeGrace = Duration(seconds: 6);
+  DateTime _wokeAt = DateTime.now();
+
+  @visibleForTesting
+  set wokeAt(DateTime value) => _wokeAt = value;
+
   Timer? _timer;
   _LifecycleObserver? _lifecycle;
   int _probeGeneration = 0;
@@ -48,7 +58,10 @@ class BackendStatusNotifier extends Notifier<BackendStatus> {
       ),
     );
 
-    _lifecycle = _LifecycleObserver(checkNow);
+    _lifecycle = _LifecycleObserver(() {
+      _wokeAt = DateTime.now();
+      checkNow();
+    });
     WidgetsBinding.instance.addObserver(_lifecycle!);
 
     ref.onDispose(() {
@@ -96,6 +109,11 @@ class BackendStatusNotifier extends Notifier<BackendStatus> {
   /// clears it.
   void reportUnreachable() {
     if (state == BackendStatus.offline) return;
+    if (DateTime.now().difference(_wokeAt) < _wakeGrace) {
+      // Probably the network waking up, not an outage: let the probe (two misses) decide.
+      checkNow();
+      return;
+    }
     // A real request already failed on the network, which is stronger evidence than a probe
     // miss — trust it immediately rather than waiting for a second failure.
     _consecutiveFailures = _failuresBeforeOffline;

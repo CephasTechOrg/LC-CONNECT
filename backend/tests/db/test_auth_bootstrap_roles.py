@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from uuid import uuid4
 
+from app.features.auth.router import _display_name
 from app.features.auth.service import bootstrap_user
 from app.models import User
 from app.security import SupabaseClaims
@@ -167,6 +168,8 @@ async def test_bootstrap_stores_signup_names_and_seeds_the_display_name(db):
     assert (user.first_name, user.last_name) == ('Ama', 'Mensah')
     # Not the email's local part ("ama.mensah") — the name they typed.
     assert user.profile.display_name == 'Ama Mensah'
+    # Returned by bootstrap, so the app can greet them by name before loading the profile.
+    assert _display_name(user) == 'Ama Mensah'
 
 
 async def test_bootstrap_ignores_names_that_fail_validation(db):

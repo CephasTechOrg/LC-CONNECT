@@ -13,6 +13,7 @@ import '../../../shared/widgets/app_skeleton.dart';
 import '../../../shared/widgets/app_states.dart';
 import '../../../shared/widgets/verified_badge.dart';
 import '../providers/connections_provider.dart';
+import '../../../shared/util/caching.dart';
 
 part '../widgets/connections_header.dart';
 part '../widgets/connections_tabs.dart';
@@ -65,7 +66,7 @@ class _ConnectionsScreenState extends ConsumerState<ConnectionsScreen>
               outgoingCount: async.value?.outgoing.length ?? 0,
             ),
             Expanded(
-              child: async.when(
+              child: async.cached(
                 loading: () => const AppListSkeleton(count: 2),
                 error: (e, _) => _ErrorState(
                   onRetry: () =>
