@@ -121,7 +121,7 @@ def test_a_serialized_message_carries_its_reply_quote():
 
 
 def test_protocol_5_frames():
-    assert protocol.PROTOCOL_VERSION == 5
+    assert protocol.PROTOCOL_VERSION >= 5
     user, message, conversation = uuid4(), uuid4(), uuid4()
     frame = protocol.reaction_change(
         conversation_id=conversation, message_id=message, user_id=user, emoji='👍', added=True,
@@ -139,3 +139,12 @@ def test_protocol_5_frames():
     assert protocol.conversation_muted(conversation, True)['muted'] is True
     assert protocol.presence(user, online=False, last_seen_at=None, visible=False)['visible'] is False
     assert protocol.ErrorCode.INVALID_REPLY == 'invalid_reply'
+
+
+def test_protocol_6_conversation_state():
+    assert protocol.PROTOCOL_VERSION == 6
+    frame = protocol.conversation_state('c-1', pinned_at='2026-10-29T12:00:00+00:00', archived=False)
+    assert frame == {
+        'type': 'conversation.state', 'conversation_id': 'c-1',
+        'pinned_at': '2026-10-29T12:00:00+00:00', 'archived': False,
+    }

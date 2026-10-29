@@ -5299,8 +5299,84 @@
         "title": "MessageResponse",
         "type": "object"
       },
+      "MessageSearchHit": {
+        "description": "One message matching a search, with enough of its chat to show and open it.",
+        "properties": {
+          "avatar_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Url"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "group_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Group Id"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "message_id": {
+            "format": "uuid",
+            "title": "Message Id",
+            "type": "string"
+          },
+          "sender_id": {
+            "format": "uuid",
+            "title": "Sender Id",
+            "type": "string"
+          },
+          "snippet": {
+            "title": "Snippet",
+            "type": "string"
+          },
+          "thread_id": {
+            "format": "uuid",
+            "title": "Thread Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message_id",
+          "thread_id",
+          "kind",
+          "title",
+          "sender_id",
+          "snippet",
+          "created_at"
+        ],
+        "title": "MessageSearchHit",
+        "type": "object"
+      },
       "MessageThreadRead": {
         "properties": {
+          "archived": {
+            "default": false,
+            "title": "Archived",
+            "type": "boolean"
+          },
           "conversation_id": {
             "format": "uuid",
             "title": "Conversation Id",
@@ -5378,6 +5454,11 @@
             ],
             "title": "Partner Department"
           },
+          "partner_online": {
+            "default": false,
+            "title": "Partner Online",
+            "type": "boolean"
+          },
           "partner_position_title": {
             "anyOf": [
               {
@@ -5388,6 +5469,18 @@
               }
             ],
             "title": "Partner Position Title"
+          },
+          "pinned_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pinned At"
           }
         },
         "required": [
@@ -8555,6 +8648,61 @@
           "reacted_at"
         ],
         "title": "ThreadReactionPreview",
+        "type": "object"
+      },
+      "ThreadStateRead": {
+        "properties": {
+          "archived": {
+            "title": "Archived",
+            "type": "boolean"
+          },
+          "pinned_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pinned At"
+          }
+        },
+        "required": [
+          "pinned_at",
+          "archived"
+        ],
+        "title": "ThreadStateRead",
+        "type": "object"
+      },
+      "ThreadStateRequest": {
+        "description": "Pin or archive a chat for yourself. Omitted fields are left as they are.",
+        "properties": {
+          "archived": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Archived"
+          },
+          "pinned": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pinned"
+          }
+        },
+        "title": "ThreadStateRequest",
         "type": "object"
       },
       "UnreadCount": {
@@ -16035,6 +16183,89 @@
         ]
       }
     },
+    "/api/v1/messages/search": {
+      "get": {
+        "description": "Messages containing `q` in chats you are in, newest first. Page with `before` set to the\nlast hit's `created_at`.",
+        "operationId": "search_api_v1_messages_search_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": true,
+            "schema": {
+              "maxLength": 80,
+              "minLength": 2,
+              "title": "Q",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "before",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Before"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MessageSearchHit"
+                  },
+                  "title": "Response Search Api V1 Messages Search Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Search",
+        "tags": [
+          "messages"
+        ]
+      }
+    },
     "/api/v1/messages/search-recipients": {
       "get": {
         "description": "Search students + staff to start a new conversation with \u2014 verified staff only.",
@@ -16430,6 +16661,65 @@
           }
         ],
         "summary": "Get Thread Presence",
+        "tags": [
+          "messages"
+        ]
+      }
+    },
+    "/api/v1/messages/threads/{match_id}/state": {
+      "patch": {
+        "description": "Pin (at most three) or archive a chat for yourself. Your other devices follow along.",
+        "operationId": "update_thread_state_api_v1_messages_threads__match_id__state_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "match_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Match Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ThreadStateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ThreadStateRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Thread State",
         "tags": [
           "messages"
         ]

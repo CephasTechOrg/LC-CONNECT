@@ -76,6 +76,9 @@ class ChatScreen extends ConsumerStatefulWidget {
   final String? groupId;
   final String? groupAvatarUrl;
 
+  /// A message to open at (and highlight) instead of the bottom — a search result.
+  final String? jumpTo;
+
   const ChatScreen({
     super.key,
     required this.matchId,
@@ -83,6 +86,7 @@ class ChatScreen extends ConsumerStatefulWidget {
     this.groupTitle,
     this.groupId,
     this.groupAvatarUrl,
+    this.jumpTo,
   });
 
   @override
@@ -132,6 +136,12 @@ abstract class _ChatScreenStateBase extends ConsumerState<ChatScreen> {
 
   /// Keys for the rendered bubbles, so a quote can scroll its original into view.
   final bubbleKeys = <String, GlobalKey>{};
+
+  /// Unread count when the chat was opened (before it is cleared), the message the "New
+  /// messages" divider sits above, and whether the chat has been scrolled to its target yet.
+  int unreadOnOpen = 0;
+  String? unreadDividerBefore;
+  bool openedAtTarget = false;
 
   /// Recent WebSocket ack round-trips, newest last. See [_ChatSendLogic.ackTimeoutFor].
   final ackLatencies = <Duration>[];
@@ -207,6 +217,7 @@ class _ChatScreenState extends _ChatScreenStateBase
     initDraftLogic();
     loadDraft();
     // Must run after the first frame — Riverpod forbids notifier writes during build.
+    unreadOnOpen = ref.read(unreadProvider).countFor(widget.matchId);
     Future.microtask(() {
       if (!mounted) return;
       unread.enterConversation(widget.matchId);
@@ -288,6 +299,8 @@ class _ChatScreenState extends _ChatScreenStateBase
       // A server below protocol 5 has no `GET /messages/{id}/reactions`.
       onShowReactors: rt.supportsProtocol(kReactorsProtocolVersion) ? showReactedBy : null,
       highlightedId: highlightedId,
+      unreadDividerBefore: unreadDividerBefore,
+      unreadCount: unreadOnOpen,
       child: _ChatScreenBody(
       partner: partner,
       partnerSubtitle: widget.thread?.headerSubtitle,

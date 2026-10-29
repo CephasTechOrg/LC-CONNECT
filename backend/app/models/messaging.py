@@ -62,6 +62,10 @@ class ConversationMember(Base):
         UUID(as_uuid=True), ForeignKey('messages.id', ondelete='SET NULL'), nullable=True
     )
     muted: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # This member's own inbox arrangement: pinned to the top (up to three), or archived out of the
+    # main list. Timestamps rather than flags so pinned chats keep the order they were pinned in.
+    pinned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     joined_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
 

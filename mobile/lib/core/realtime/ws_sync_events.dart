@@ -30,3 +30,11 @@ class NotificationsRead extends InboundEvent {
   final List<String> ids;
   const NotificationsRead(this.ids);
 }
+
+/// This user pinned or archived a chat, possibly on another device (protocol 6).
+class ConversationState extends InboundEvent {
+  final String conversationId;
+  final String? pinnedAt;
+  final bool archived;
+  const ConversationState(this.conversationId, {this.pinnedAt, required this.archived});
+}

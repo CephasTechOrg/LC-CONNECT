@@ -34,6 +34,7 @@ class _Adapter implements HttpClientAdapter {
   final List<Map<String, dynamic>> threads;
   final mutes = <String>[];
   bool failMute = false;
+  bool failState = false;
   _Adapter(this.threads);
 
   @override
@@ -41,6 +42,10 @@ class _Adapter implements HttpClientAdapter {
     const json = {Headers.contentTypeHeader: [Headers.jsonContentType]};
     if (o.path.endsWith('/messages/threads') && o.method == 'GET') {
       return ResponseBody.fromString(jsonEncode(threads), 200, headers: json);
+    }
+    if (o.path.endsWith('/state') && o.method == 'PATCH') {
+      if (failState) return ResponseBody.fromString('{"detail":"You can pin up to 3 chats"}', 409, headers: json);
+      return ResponseBody.fromString('{"pinned_at":null,"archived":false}', 200, headers: json);
     }
     if (o.path.endsWith('/mute') && o.method == 'PATCH') {
       if (failMute) return ResponseBody.fromString('{"detail":"nope"}', 500, headers: json);
@@ -166,5 +171,34 @@ void main() {
     adapter.failMute = true;
     await expectLater(notifier.setMuted('match-1', true), throwsA(anything));
     expect(_only(c).muted, isFalse);
+  });
+
+  test('a connection coming online lights the dot on their chat', () async {
+    final (c, rt, _) = await _ready([_thread()]);
+    rt.emit(const PresenceEvent('them', online: true));
+    await pumpEventQueue();
+    expect(_only(c).partnerOnline, isTrue);
+
+    rt.emit(const PresenceEvent('them', online: false, visible: false));
+    await pumpEventQueue();
+    expect(_only(c).partnerOnline, isFalse);
+  });
+
+  test('pins and archives made on another device arrive here', () async {
+    final (c, rt, _) = await _ready([_thread()]);
+    rt.emit(const ConversationState('match-1', pinnedAt: '2026-10-29T12:00:00Z', archived: false));
+    await pumpEventQueue();
+    expect(_only(c).pinned, isTrue);
+
+    rt.emit(const ConversationState('match-1', archived: true));
+    await pumpEventQueue();
+    expect((_only(c).pinned, _only(c).archived), (false, true));
+  });
+
+  test('a refused pin (the fourth) is rolled back', () async {
+    final (c, _, adapter) = await _ready([_thread()]);
+    adapter.failState = true;
+    await expectLater(c.read(threadsNotifierProvider.notifier).setPinned('match-1', true), throwsA(anything));
+    expect(_only(c).pinned, isFalse);
   });
 }

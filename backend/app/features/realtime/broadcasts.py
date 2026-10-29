@@ -103,3 +103,15 @@ async def broadcast_conversation_muted(user_id: UUID, addressing_id: UUID, muted
         await rt.event_bus.publish_to_user(user_id, protocol.conversation_muted(addressing_id, muted))
     except Exception as exc:  # noqa: BLE001
         logger.warning('broadcast_conversation_muted failed (user=%s): %s', user_id, exc)
+
+
+async def broadcast_conversation_state(
+    user_id: UUID, addressing_id: UUID, *, pinned_at: str | None, archived: bool
+) -> None:
+    """Keep a user's other devices' inbox arrangement (pins, archive) in step."""
+    try:
+        await rt.event_bus.publish_to_user(
+            user_id, protocol.conversation_state(addressing_id, pinned_at=pinned_at, archived=archived)
+        )
+    except Exception as exc:  # noqa: BLE001 — a sync frame must never fail the request
+        logger.warning('broadcast_conversation_state failed (user=%s): %s', user_id, exc)

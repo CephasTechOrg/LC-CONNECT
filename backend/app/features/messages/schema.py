@@ -199,10 +199,42 @@ class MessageThreadRead(BaseModel):
     latest_reaction: ThreadReactionPreview | None = None
     # Whether the viewer muted this conversation (no message or reaction pushes).
     muted: bool = False
+    # The viewer's own arrangement: pinned to the top, or archived out of the main list.
+    pinned_at: datetime | None = None
+    archived: bool = False
+    # DM partner online right now, when the viewer may see it (see `shared/presence.py`).
+    partner_online: bool = False
 
 
 class ThreadMuteRequest(BaseModel):
     muted: bool
+
+
+class ThreadStateRequest(BaseModel):
+    """Pin or archive a chat for yourself. Omitted fields are left as they are."""
+
+    pinned: bool | None = None
+    archived: bool | None = None
+
+
+class ThreadStateRead(BaseModel):
+    pinned_at: datetime | None
+    archived: bool
+
+
+class MessageSearchHit(BaseModel):
+    """One message matching a search, with enough of its chat to show and open it."""
+
+    message_id: UUID
+    # The addressing id the app opens the chat by (match id for a DM, conversation id otherwise).
+    thread_id: UUID
+    kind: str  # 'dm' | 'staff_dm' | 'group'
+    title: str  # the partner's or the group's name
+    avatar_url: str | None = None
+    group_id: UUID | None = None
+    sender_id: UUID
+    snippet: str
+    created_at: datetime
 
 
 class PresenceRead(BaseModel):

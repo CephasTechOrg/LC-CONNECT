@@ -31,7 +31,7 @@ async def list_threads_for_user(db: AsyncSession, user_id: UUID) -> list[Message
     newest activity first. DM rows carry the partner; group rows carry the group."""
     member_rows = (
         await db.execute(
-            select(Conversation, ConversationMember.muted)
+            select(Conversation, ConversationMember)
             .join(ConversationMember, ConversationMember.conversation_id == Conversation.id)
             .where(ConversationMember.user_id == user_id, ConversationMember.status == 'active')
         )
@@ -39,7 +39,7 @@ async def list_threads_for_user(db: AsyncSession, user_id: UUID) -> list[Message
     if not member_rows:
         return []
     conversations = [conv for conv, _ in member_rows]
-    muted_ids = {conv.id for conv, muted in member_rows if muted}
+    mine = {conv.id: member for conv, member in member_rows}
 
     # A staff thread whose staff side lost their position is no longer accessible — drop it
     # here too, so the inbox never lists a thread that would 403 on open.
@@ -101,6 +101,10 @@ async def list_threads_for_user(db: AsyncSession, user_id: UUID) -> list[Message
         ).scalars().all()
     } if partner_of else {}
 
+    from app.features.messages.presence_read import online_partners
+
+    online = await online_partners(db, user_id) if partner_of else set()
+
     # Group metadata.
     group_ids = [c.id for c in conversations if c.kind == 'group']
     group_of = {
@@ -126,7 +130,8 @@ async def list_threads_for_user(db: AsyncSession, user_id: UUID) -> list[Message
                 partner_department=position.department if position else None,
                 latest_message=message_read(latest_msg) if latest_msg else None,
                 latest_reaction=reaction_previews.get(conv.id),
-                muted=conv.id in muted_ids,
+                **_my_state(mine[conv.id]),
+                partner_online=partner_of.get(conv.id) in online,
             ))
         else:
             group = group_of.get(conv.id)
@@ -137,7 +142,7 @@ async def list_threads_for_user(db: AsyncSession, user_id: UUID) -> list[Message
                 group=GroupThreadInfo(id=group.id, name=group.name, avatar_url=group.avatar_url),
                 latest_message=message_read(latest_msg) if latest_msg else None,
                 latest_reaction=reaction_previews.get(conv.id),
-                muted=conv.id in muted_ids,
+                **_my_state(mine[conv.id]),
             ))
 
     # Newest activity first; a message beats an empty thread.
@@ -146,3 +151,7 @@ async def list_threads_for_user(db: AsyncSession, user_id: UUID) -> list[Message
         reverse=True,
     )
     return threads
+
+
+def _my_state(member: ConversationMember) -> dict:
+    return {'muted': member.muted, 'pinned_at': member.pinned_at, 'archived': member.archived_at is not None}

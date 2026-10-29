@@ -68,6 +68,12 @@ class MessageThread {
   final ThreadReactionPreview? latestReaction;
   // Whether I muted this chat (no message or reaction pushes). Synced across my devices.
   final bool muted;
+  // My own arrangement, synced across my devices: pinned to the top (when), or archived.
+  final DateTime? pinnedAt;
+  final bool archived;
+  // A DM partner who is online now and whom I may see (connections, reciprocal). Kept live by
+  // `presence` frames.
+  final bool partnerOnline;
   final bool partnerTyping; // transient (live), never from JSON
 
   const MessageThread({
@@ -83,8 +89,13 @@ class MessageThread {
     this.latestMessage,
     this.latestReaction,
     this.muted = false,
+    this.pinnedAt,
+    this.archived = false,
+    this.partnerOnline = false,
     this.partnerTyping = false,
   });
+
+  bool get pinned => pinnedAt != null;
 
   bool get isGroup => kind == 'group';
   bool get isStaffThread => kind == 'staff_dm';
@@ -139,6 +150,9 @@ class MessageThread {
           ? ThreadReactionPreview.fromJson(j['latest_reaction'] as Map<String, dynamic>)
           : null,
       muted: j['muted'] as bool? ?? false,
+      pinnedAt: j['pinned_at'] != null ? DateTime.parse(j['pinned_at'] as String) : null,
+      archived: j['archived'] as bool? ?? false,
+      partnerOnline: j['partner_online'] as bool? ?? false,
     );
   }
 
@@ -147,6 +161,10 @@ class MessageThread {
     ThreadReactionPreview? latestReaction,
     bool clearLatestReaction = false,
     bool? muted,
+    DateTime? pinnedAt,
+    bool clearPinnedAt = false,
+    bool? archived,
+    bool? partnerOnline,
     bool? partnerTyping,
   }) =>
       MessageThread(
@@ -162,6 +180,9 @@ class MessageThread {
         latestMessage: latestMessage ?? this.latestMessage,
         latestReaction: clearLatestReaction ? null : (latestReaction ?? this.latestReaction),
         muted: muted ?? this.muted,
+        pinnedAt: clearPinnedAt ? null : (pinnedAt ?? this.pinnedAt),
+        archived: archived ?? this.archived,
+        partnerOnline: partnerOnline ?? this.partnerOnline,
         partnerTyping: partnerTyping ?? this.partnerTyping,
       );
 }

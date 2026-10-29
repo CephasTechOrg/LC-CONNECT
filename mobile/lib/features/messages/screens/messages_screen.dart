@@ -23,9 +23,19 @@ import '../utils/chat_routes.dart';
 import '../widgets/messages_segments.dart';
 import '../widgets/staff_tag.dart';
 import '../data/thread_preview.dart';
+import '../data/message_search.dart';
+import '../data/thread_order.dart';
+import '../providers/inbox_drafts_provider.dart';
+import '../providers/message_search_provider.dart';
+import '../../../core/api/api_error.dart';
+import '../../../core/realtime/realtime_client.dart';
+import '../../../core/realtime/ws_protocol.dart';
 import '../../../shared/util/caching.dart';
 
 part '../widgets/thread_row.dart';
+part '../widgets/thread_actions.dart';
+part '../widgets/archived_chats.dart';
+part '../widgets/message_search_results.dart';
 
 class MessagesScreen extends ConsumerStatefulWidget {
   const MessagesScreen({super.key});
@@ -101,15 +111,27 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
                   onRetry: () => ref.invalidate(threadsNotifierProvider),
                 ),
                 data: (threads) {
-                  final visible = _filter(threads);
+                  final arranged = arrangeInbox(threads);
+                  // Searching looks through archived chats too, and through message text.
+                  final searching = _query.isNotEmpty;
+                  final visible = searching ? _filter(threads) : arranged.main;
+                  final hits = searching
+                      ? ref.watch(messageSearchProvider(_query)).value ?? const <MessageSearchHit>[]
+                      : const <MessageSearchHit>[];
                   return RefreshIndicator(
                     onRefresh: () async =>
                         ref.invalidate(threadsNotifierProvider),
                     child: threads.isEmpty
                         ? _EmptyState(canMessageAnyone: canMessageAnyone)
-                        : visible.isEmpty
+                        : visible.isEmpty && hits.isEmpty && arranged.archived.isEmpty
                             ? _NoMatches(query: _query)
-                            : _ThreadList(threads: visible),
+                            : _ThreadList(
+                                threads: visible,
+                                leading: !searching && arranged.archived.isNotEmpty
+                                    ? _ArchivedRow(archived: arranged.archived)
+                                    : null,
+                                trailing: hits.isEmpty ? null : _MessageSearchResults(hits: hits, threads: threads),
+                              ),
                   );
                 },
               ),
@@ -124,13 +146,18 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
 // ── Thread list ───────────────────────────────────────────────────
 class _ThreadList extends StatelessWidget {
   final List<MessageThread> threads;
-  const _ThreadList({required this.threads});
+
+  /// Above the rows (the Archived row) and below them (message search results).
+  final Widget? leading;
+  final Widget? trailing;
+  const _ThreadList({required this.threads, this.leading, this.trailing});
 
   @override
   Widget build(BuildContext context) {
+    final extraTop = leading == null ? 0 : 1;
     return ListView.separated(
       padding: const EdgeInsets.only(top: AppSpacing.xs, bottom: 88),
-      itemCount: threads.length,
+      itemCount: threads.length + extraTop + (trailing == null ? 0 : 1),
       // Starts under the text, not the avatar, so each row reads as one unit.
       separatorBuilder: (context, _) => const Divider(
         height: 1,
@@ -138,7 +165,12 @@ class _ThreadList extends StatelessWidget {
         endIndent: AppSpacing.gutter,
         color: AppColors.border,
       ),
-      itemBuilder: (_, i) => _ThreadCard(thread: threads[i]),
+      itemBuilder: (_, i) {
+        if (leading != null && i == 0) return leading!;
+        final index = i - extraTop;
+        if (index >= threads.length) return trailing!;
+        return _ThreadCard(thread: threads[index]);
+      },
     );
   }
 }

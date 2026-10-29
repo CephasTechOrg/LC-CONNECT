@@ -11,6 +11,8 @@ class _ChatActions extends InheritedWidget {
     this.onReply,
     this.onShowReactors,
     this.highlightedId,
+    this.unreadDividerBefore,
+    this.unreadCount = 0,
   });
 
   /// Swipe or "Reply"; null when the server cannot take a reply.
@@ -23,12 +25,17 @@ class _ChatActions extends InheritedWidget {
   final String Function(String userId) quoteSenderName;
   final String? highlightedId;
 
+  /// The message the "New messages" divider sits above, and how many were unread on opening.
+  final String? unreadDividerBefore;
+  final int unreadCount;
+
   static _ChatActions? maybeOf(BuildContext context) =>
       context.dependOnInheritedWidgetOfExactType<_ChatActions>();
 
   @override
   bool updateShouldNotify(_ChatActions old) =>
       highlightedId != old.highlightedId ||
+      unreadDividerBefore != old.unreadDividerBefore ||
       onReply != old.onReply ||
       onShowReactors != old.onShowReactors;
 }

@@ -17,7 +17,7 @@ part 'ws_sync_events.dart';
 /// 5 adds `reply_to_id` on `message.send` (gated: an older server would drop the quote silently),
 /// state fields on `messages.reaction` (now on the user channel), and the inbound `presence`,
 /// `conversation.muted`, `notification.retracted` and `notifications.read` frames.
-const int kProtocolVersion = 5;
+const int kProtocolVersion = 6;
 
 /// Replies, who-reacted, mute and presence arrived in protocol 5. Each gates its affordance, so a
 /// control never appears against a server that would 404 it or drop it.
@@ -25,6 +25,10 @@ const int kReplyProtocolVersion = 5;
 const int kReactorsProtocolVersion = 5;
 const int kMuteProtocolVersion = 5;
 const int kPresenceProtocolVersion = 5;
+
+/// Pin and archive (with their `conversation.state` sync frame), message search and connection
+/// presence arrived in protocol 6.
+const int kInboxProtocolVersion = 6;
 
 /// Frames introduced in protocol 2. Pass to `RealtimeClient.supportsProtocol` before sending one.
 const int kDeliveryProtocolVersion = 2;
@@ -362,6 +366,12 @@ InboundEvent parseInbound(Map<String, dynamic> raw) {
         online: raw['online'] as bool? ?? false,
         lastSeenAt: raw['last_seen_at'] as String?,
         visible: raw['visible'] as bool? ?? true,
+      );
+    case 'conversation.state':
+      return ConversationState(
+        raw['conversation_id'] as String,
+        pinnedAt: raw['pinned_at'] as String?,
+        archived: raw['archived'] as bool? ?? false,
       );
     case 'conversation.muted':
       return ConversationMuted(raw['conversation_id'] as String, raw['muted'] as bool? ?? false);

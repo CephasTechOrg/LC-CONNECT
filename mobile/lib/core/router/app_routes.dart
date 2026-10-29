@@ -120,6 +120,7 @@ List<RouteBase> appRoutes() => [
         groupTitle: args?.name ?? 'Group',
         groupId: args?.groupId,
         groupAvatarUrl: args?.avatarUrl,
+        jumpTo: state.uri.queryParameters['m'],
       );
     },
   ),
@@ -130,6 +131,8 @@ List<RouteBase> appRoutes() => [
     builder: (context, state) => ChatScreen(
       matchId: state.pathParameters['matchId']!,
       thread: state.extra as MessageThread?,
+      // `?m=` opens the chat at that message — a search result.
+      jumpTo: state.uri.queryParameters['m'],
     ),
   ),
   // Top-level scanner route — opened from push notifications and the Campus Hub card.

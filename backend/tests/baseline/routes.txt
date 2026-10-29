@@ -77,6 +77,7 @@ GET /api/v1/groups/{group_id}/members
 GET /api/v1/groups/{group_id}/requests
 GET /api/v1/lookups
 GET /api/v1/messages/capabilities
+GET /api/v1/messages/search
 GET /api/v1/messages/search-recipients
 GET /api/v1/messages/threads
 GET /api/v1/messages/threads/{match_id}
@@ -109,6 +110,7 @@ PATCH /api/v1/groups/{group_id}
 PATCH /api/v1/groups/{group_id}/members/me
 PATCH /api/v1/groups/{group_id}/members/{user_id}
 PATCH /api/v1/messages/threads/{match_id}/mute
+PATCH /api/v1/messages/threads/{match_id}/state
 PATCH /api/v1/messages/{message_id}
 PATCH /api/v1/profiles/me
 PATCH /api/v1/scholars/me

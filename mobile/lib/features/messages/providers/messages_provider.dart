@@ -48,6 +48,14 @@ class ThreadsNotifier extends AsyncNotifier<List<MessageThread>> {
           _onDeleted(event);
         case ConversationMuted():
           _updateThread(event.conversationId, (t) => t.copyWith(muted: event.muted));
+        case ConversationState():
+          final pinnedAt = DateTime.tryParse(event.pinnedAt ?? '');
+          _updateThread(
+            event.conversationId,
+            (t) => t.copyWith(pinnedAt: pinnedAt, clearPinnedAt: pinnedAt == null, archived: event.archived),
+          );
+        case PresenceEvent():
+          _onPresence(event);
         default:
           break;
       }
@@ -214,6 +222,55 @@ class ThreadsNotifier extends AsyncNotifier<List<MessageThread>> {
         for (final t in fresh) typing.contains(t.addressingId) ? t.copyWith(partnerTyping: true) : t,
       ]);
     } catch (_) {/* keep the current rows; the next open refreshes */}
+  }
+
+  /// A connection came online or went offline: the dot on every DM row with them.
+  void _onPresence(PresenceEvent event) {
+    final current = state.asData?.value;
+    if (current == null) return;
+    final online = event.visible && event.online;
+    if (!current.any((t) => t.partner?.userId == event.userId && t.partnerOnline != online)) return;
+    state = AsyncData([
+      for (final t in current) t.partner?.userId == event.userId ? t.copyWith(partnerOnline: online) : t,
+    ]);
+  }
+
+  /// Pin or unpin a chat for myself — optimistic, rolled back if the server refuses (a fourth pin
+  /// is a 409, which the caller shows).
+  Future<void> setPinned(String addressingId, bool pinned) =>
+      _setState(addressingId, {'pinned': pinned}, (t) => pinned
+          ? t.copyWith(pinnedAt: DateTime.now(), archived: false)
+          : t.copyWith(clearPinnedAt: true));
+
+  /// Archive or unarchive a chat for myself. Archiving unpins, as on the server.
+  Future<void> setArchived(String addressingId, bool archived) =>
+      _setState(addressingId, {'archived': archived}, (t) => archived
+          ? t.copyWith(archived: true, clearPinnedAt: true)
+          : t.copyWith(archived: false));
+
+  Future<void> _setState(
+    String addressingId,
+    Map<String, bool> change,
+    MessageThread Function(MessageThread) optimistic,
+  ) async {
+    final before = state.asData?.value.where((t) => t.addressingId == addressingId).firstOrNull;
+    _updateThread(addressingId, optimistic);
+    try {
+      await ref.read(apiClientProvider).dio.patch('/messages/threads/$addressingId/state', data: change);
+    } catch (_) {
+      // Restore only what this change touched; a message may have landed on the row meanwhile.
+      if (before != null) {
+        _updateThread(
+          addressingId,
+          (t) => t.copyWith(
+            pinnedAt: before.pinnedAt,
+            clearPinnedAt: before.pinnedAt == null,
+            archived: before.archived,
+          ),
+        );
+      }
+      rethrow;
+    }
   }
 
   /// Mute or unmute a chat for myself — optimistic, rolled back if the server refuses.
