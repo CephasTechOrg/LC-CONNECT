@@ -11,6 +11,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/a11y.dart';
+import '../data/blueprint_rules.dart';
 import '../data/url_field.dart';
 import '../providers/scholars_provider.dart';
 
@@ -141,6 +142,7 @@ class _BlueprintBondScreenState extends ConsumerState<BlueprintBondScreen> {
   Future<void> _save() async {
     final links = _normalizedLinks();
     if (links == null) return;
+    _absorbPendingTags();
     setState(() => _saving = true);
     try {
       await ref.read(scholarProfileNotifierProvider.notifier).updateFields(
@@ -226,6 +228,7 @@ class _BlueprintBondScreenState extends ConsumerState<BlueprintBondScreen> {
   Future<void> _submitForReview() async {
     final links = _normalizedLinks();
     if (links == null) return;
+    _absorbPendingTags();
     setState(() => _submitting = true);
     try {
       // Persist local edits first so Honors reviews what the student currently sees.
@@ -251,12 +254,18 @@ class _BlueprintBondScreenState extends ConsumerState<BlueprintBondScreen> {
   }
 
   void _addTag(TextEditingController ctrl, Set<String> target) {
-    final value = ctrl.text.trim();
-    if (value.isEmpty) return;
+    final tags = splitTags(ctrl.text, existing: target);
     setState(() {
-      target.add(value);
+      target.addAll(tags);
       ctrl.clear();
     });
+  }
+
+  /// Text still sitting in a tag box when Save is tapped is what the student meant to add — it
+  /// used to be silently dropped, leaving skills one short of the minimum.
+  void _absorbPendingTags() {
+    if (_skillCtrl.text.trim().isNotEmpty) _addTag(_skillCtrl, _skills);
+    if (_careerCtrl.text.trim().isNotEmpty) _addTag(_careerCtrl, _careerInterests);
   }
 
   Future<void> _addInternship() async {
@@ -370,10 +379,14 @@ class _BlueprintBondScreenState extends ConsumerState<BlueprintBondScreen> {
         _SectionCard(
           title: 'About you',
           requiredDone: doneUnless(const ['summary']),
-          child: _Field(
-            controller: _summaryCtrl,
-            maxLines: 5,
-            hint: 'What you study, what you are good at, and what you are looking for.',
+          child: ValueListenableBuilder<TextEditingValue>(
+            valueListenable: _summaryCtrl,
+            builder: (context, value, _) => _Field(
+              controller: _summaryCtrl,
+              maxLines: 5,
+              hint: 'What you study, what you are good at, and what you are looking for.',
+              helper: summaryProgress(value.text),
+            ),
           ),
         ),
         _SectionCard(
@@ -384,10 +397,11 @@ class _BlueprintBondScreenState extends ConsumerState<BlueprintBondScreen> {
             children: [
               _TagInput(
                 label: 'Skills',
-                hint: 'e.g. Python, public speaking',
+                hint: 'e.g. Python, public speaking, Excel',
                 controller: _skillCtrl,
                 tags: _skills,
                 onAdd: () => _addTag(_skillCtrl, _skills),
+                helper: tagProgress(_skills.length, kMinSkills),
                 onRemove: (t) => setState(() => _skills.remove(t)),
               ),
               const SizedBox(height: AppSpacing.lg),
@@ -397,6 +411,7 @@ class _BlueprintBondScreenState extends ConsumerState<BlueprintBondScreen> {
                 controller: _careerCtrl,
                 tags: _careerInterests,
                 onAdd: () => _addTag(_careerCtrl, _careerInterests),
+                helper: tagProgress(_careerInterests.length, kMinCareerInterests),
                 onRemove: (t) => setState(() => _careerInterests.remove(t)),
               ),
             ],

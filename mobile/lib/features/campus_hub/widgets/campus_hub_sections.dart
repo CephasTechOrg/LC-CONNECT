@@ -7,14 +7,9 @@ class _QuickActionsRow extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final opportunityNew = ref.watch(opportunityNewCountProvider);
     return Padding(
-      // Sits just under the spotlight dots, so a small top inset (sm, not lg) keeps the shortcuts
-      // visually connected to the carousel while still reading as a separate row.
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.gutter,
-        AppSpacing.sm,
-        AppSpacing.gutter,
-        0,
-      ),
+      // Sits right under the spotlight dots: their hit boxes and each shortcut's own padding
+      // already give the gap, so no extra top inset — a separate row, but plainly connected.
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.gutter),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

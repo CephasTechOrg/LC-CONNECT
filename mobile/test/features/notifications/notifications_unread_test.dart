@@ -14,8 +14,9 @@ import 'package:lc_connect/features/notifications/screens/notifications_screen.d
 /// and the styling would flash off; the workaround passed `treatAsRead: true` for every row, which
 /// disabled unread styling on the only screen that lists notifications.
 ///
-/// These tests pin the replacement: snapshot the unread ids on entry, style from the snapshot, and
-/// mark rows read individually as they are opened.
+/// These tests pin the replacement: rows style from their own read flag, nothing is marked read on
+/// entry, and opening a row marks just that one read — and untints it at once (it used to stay
+/// tinted for the visit and came back unread on the next one).
 void main() {
   AppNotification note(String id, {bool read = false, DateTime? createdAt}) => AppNotification(
     id: id,
@@ -113,9 +114,7 @@ void main() {
     expect(badge.markAllCalls, 0);
   });
 
-  testWidgets('a row opened and returned to still reads as one of the new ones', (tester) async {
-    // Marking read must not retroactively restyle the list the user is still looking at —
-    // that is the information ("these are the new ones") report #14 asked to preserve.
+  testWidgets('an opened row untints at once and stays read when you come back', (tester) async {
     await tester.pumpWidget(screen([note('n1'), note('n2')], badge: 2));
     await tester.pumpAndSettle();
 
@@ -123,7 +122,6 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('connections'), findsOneWidget, reason: 'sanity: the tap navigated');
 
-    // Back to the inbox — the screen was pushed over, not disposed, so the snapshot survives.
     tester.state<NavigatorState>(find.byType(Navigator).last).pop();
     await tester.pumpAndSettle();
 
@@ -131,7 +129,7 @@ void main() {
         .widgetList<ListTile>(find.byType(ListTile))
         .where((t) => t.tileColor != null)
         .length;
-    expect(tinted, 2, reason: 'the entry snapshot governs styling, not the live read flag');
+    expect(tinted, 1, reason: 'the opened row is read; only the untouched one is still unread');
   });
 
   testWidgets('"Mark all read" appears only when something is unread', (tester) async {
@@ -243,6 +241,8 @@ class _FixedCount extends NotificationCountNotifier {
   @override
   Future<void> markOneRead(String notificationId) async {
     markedRead.add(notificationId);
+    // Same local effect as the real notifier: the cached row flips before any request.
+    ref.read(notificationsListProvider.notifier).markReadLocally(notificationId);
     if (state > 0) state = state - 1;
   }
 

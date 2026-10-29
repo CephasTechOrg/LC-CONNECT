@@ -14,7 +14,8 @@ from app.features.scholars.schema import ScholarProfessionalProfileUpdate, Schol
         'javascript:alert(1)',
         'data:text/html,<script>',
         'ftp://example.com/x',
-        'linkedin.com/in/x',  # scheme required
+        'not a url',
+        'localhost',  # no dotted host
     ],
 )
 def test_rejects_non_http_profile_urls(bad: str):
@@ -33,3 +34,10 @@ def test_accepts_https_and_clears_empty():
     assert update.handshake_url is None
     project = ScholarProjectEntry(name='Demo', url='http://example.com/p')
     assert project.url == 'http://example.com/p'
+
+
+def test_bare_host_gets_https():
+    """A scheme-less link is completed, not rejected — rejecting it failed the whole profile save."""
+    update = ScholarProfessionalProfileUpdate(linkedin_url='linkedin.com/in/x')
+    assert update.linkedin_url == 'https://linkedin.com/in/x'
+    assert ScholarProjectEntry(name='Demo', url='github.com/me/p').url == 'https://github.com/me/p'

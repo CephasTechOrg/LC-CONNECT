@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import re
 from datetime import datetime
 from typing import Literal
+from urllib.parse import urlsplit
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -22,16 +24,28 @@ def _strip_or_none(value: object) -> object:
     return value
 
 
+_SCHEME = re.compile(r'^[a-z][a-z0-9+.\-]*:')
+
+
 def _http_url_or_none(value: object) -> object:
-    """Allow clearing via empty/whitespace; otherwise require http(s) — never javascript:/data:."""
+    """Allow clearing via empty/whitespace; otherwise an http(s) URL — never javascript:/data:.
+
+    A bare `linkedin.com/in/me` gets `https://` added rather than being rejected: rejecting it
+    failed the student's whole profile save (summary, skills and all) over one link, and the app's
+    own hint invited typing it that way. Anything with another scheme is still refused.
+    """
     cleaned = _strip_or_none(value)
     if cleaned is None:
         return None
     if not isinstance(cleaned, str):
         return cleaned
-    lower = cleaned.lower()
-    if not (lower.startswith('https://') or lower.startswith('http://')):
+    if not _SCHEME.match(cleaned.lower()):
+        cleaned = f'https://{cleaned}'
+    parsed = urlsplit(cleaned)
+    if parsed.scheme.lower() not in ('http', 'https'):
         raise ValueError('URL must start with http:// or https://')
+    if '.' not in parsed.netloc or any(ch.isspace() for ch in cleaned):
+        raise ValueError('Enter a web address like linkedin.com/in/your-name')
     return cleaned
 
 

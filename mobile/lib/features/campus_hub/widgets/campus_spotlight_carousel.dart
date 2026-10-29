@@ -59,8 +59,7 @@ class _SpotlightCarouselState extends State<_SpotlightCarousel> {
                   _SpotlightCard(spotlight: campusSpotlights[i]),
             ),
           ),
-          // The dots' 32dp hit boxes already add ~12dp of air around them.
-          const SizedBox(height: AppSpacing.xs),
+          // No spacer: the dots' own hit boxes give the air between card and dots.
           _SpotlightDots(
             count: campusSpotlights.length,
             active: _index,
@@ -101,8 +100,9 @@ class _SpotlightDots extends StatelessWidget {
       children: [
         for (var i = 0; i < count; i++)
           // The visible dot is 7dp, but the tap target must not be: wrap it in
-          // a 32dp hit box (dots are a supplementary control — the carousel
-          // itself swipes — so 32dp here rather than the full 48dp row height).
+          // a 32×24dp hit box (dots are a supplementary control — the carousel
+          // itself swipes — so smaller than the 48dp row height, and short so the
+          // shortcuts below stay close to the spotlight they follow).
           Semantics(
             button: true,
             selected: i == active,
@@ -112,7 +112,7 @@ class _SpotlightDots extends StatelessWidget {
               behavior: HitTestBehavior.opaque,
               child: SizedBox(
                 width: 32,
-                height: 32,
+                height: 24,
                 child: Center(
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 300),
