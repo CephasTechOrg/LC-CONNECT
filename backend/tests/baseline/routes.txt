@@ -77,8 +77,10 @@ GET /api/v1/messages/capabilities
 GET /api/v1/messages/search-recipients
 GET /api/v1/messages/threads
 GET /api/v1/messages/threads/{match_id}
+GET /api/v1/messages/threads/{match_id}/presence
 GET /api/v1/messages/threads/{match_id}/sync
 GET /api/v1/messages/unread-summary
+GET /api/v1/messages/{message_id}/reactions
 GET /api/v1/messages/{message_id}/read-by
 GET /api/v1/notifications
 GET /api/v1/notifications/unread-count
@@ -103,6 +105,7 @@ PATCH /api/v1/campus-positions/me
 PATCH /api/v1/groups/{group_id}
 PATCH /api/v1/groups/{group_id}/members/me
 PATCH /api/v1/groups/{group_id}/members/{user_id}
+PATCH /api/v1/messages/threads/{match_id}/mute
 PATCH /api/v1/messages/{message_id}
 PATCH /api/v1/profiles/me
 PATCH /api/v1/scholars/me

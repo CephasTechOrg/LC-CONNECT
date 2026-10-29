@@ -147,43 +147,68 @@ async def emit_notification(
     target_id: UUID | None = None,
     detail: str | None = None,
     collapse_unread: bool = False,
+    subject_id: UUID | None = None,
+    push: bool = True,
+    push_data: dict[str, str] | None = None,
 ) -> None:
     """Persist an in-app notification and deliver it live to the recipient's user channel.
 
-    `collapse_unread` suppresses the row when an **unread** one already exists with the same
-    (recipient, type, actor, target). Reactions need it: the toggle is one tap, so react →
-    un-react → react is a two-second gesture that would otherwise queue three notifications and a
-    push for each. Collapsing on *unread* rather than on a time window means the recipient still
-    hears about it again once they have actually seen the first one.
+    `collapse_unread`: when an **unread** row already exists for the same (recipient, type, actor,
+    and `subject_id` or else `target_id`), update that row's `detail` and re-send it instead of
+    adding another — and send no second push. Reactions need it: changing 👍 to ❤️ is one tap, and
+    would otherwise queue two notifications and two pushes. Collapsing on *unread* rather than on
+    a time window means the recipient still hears about it again once they have seen the first.
+
+    `subject_id` keys that per message for a reaction, so two reactions to two messages stay two
+    rows. `push=False` records and delivers the row without a push (a muted chat). `push_data` is
+    extra push payload — a reaction's chat id, so tapping the push opens the chat.
     """
     from app.features.notifications import service as notifications_service
 
     try:
         async with AsyncSessionLocal() as db:
-            if collapse_unread and await notifications_service.unread_duplicate_exists(
-                db, user_id=user_id, type=notif_type, actor_id=actor_id, target_id=target_id
-            ):
-                return
-            notification = await notifications_service.create_notification(
-                db,
-                user_id=user_id,
-                type=notif_type,
-                group_id=group_id,
-                actor_id=actor_id,
-                target_type=target_type,
-                target_id=target_id,
-                detail=detail,
-            )
+            existing = None
+            if collapse_unread:
+                existing = await notifications_service.find_unread_duplicate(
+                    db,
+                    user_id=user_id,
+                    type=notif_type,
+                    actor_id=actor_id,
+                    target_id=target_id,
+                    subject_id=subject_id,
+                )
+            if existing is not None:
+                if existing.detail == detail:
+                    return
+                existing.detail = detail
+                notification = existing
+            else:
+                notification = await notifications_service.create_notification(
+                    db,
+                    user_id=user_id,
+                    type=notif_type,
+                    group_id=group_id,
+                    actor_id=actor_id,
+                    target_type=target_type,
+                    target_id=target_id,
+                    detail=detail,
+                    subject_id=subject_id,
+                )
             await db.commit()
             await db.refresh(notification)
             dto = await notifications_service.read_one(db, notification)
         await event_bus.publish_to_user(user_id, protocol.notification_event(dto.model_dump(mode='json')))
-        if notif_type in PUSHABLE_NOTIFICATION_TYPES and push_sender.enabled:
+        if (
+            existing is None
+            and push
+            and notif_type in PUSHABLE_NOTIFICATION_TYPES
+            and push_sender.enabled
+        ):
             actor_name = dto.actor.display_name if dto.actor else None
             group_name = dto.group.name if dto.group else None
             _spawn(
                 _schedule_notification_push(
-                    user_id, notif_type, actor_name, group_name, detail=detail
+                    user_id, notif_type, actor_name, group_name, detail=detail, data=push_data
                 ),
                 what='notification push',
             )
@@ -197,6 +222,7 @@ async def _schedule_notification_push(
     actor_name: str | None,
     group_name: str | None,
     detail: str | None = None,
+    data: dict[str, str] | None = None,
 ) -> None:
     await asyncio.sleep(settings.push_reconnect_grace_seconds)
     if manager.user_socket_count(user_id) != 0:
@@ -209,6 +235,7 @@ async def _schedule_notification_push(
             actor_name=actor_name,
             group_name=group_name,
             detail=detail,
+            data=data,
         )
 
 
@@ -233,10 +260,14 @@ async def emit_message_created(
     *,
     sender_id: UUID,
     recipients: list[tuple[UUID, bool]],
+    reply: dict | None = None,
 ) -> None:
-    """Fan out a persisted message to live subscribers — shared by WS and REST send paths."""
-    await event_bus.publish_to_conversation(message.conversation_id, protocol.message_created(message))
-    updated = protocol.conversation_updated(message)
+    """Fan out a persisted message to live subscribers — shared by WS and REST send paths.
+    `reply` is the quoted message's preview when this message is a reply."""
+    await event_bus.publish_to_conversation(
+        message.conversation_id, protocol.message_created(message, reply)
+    )
+    updated = protocol.conversation_updated(message, reply)
     await event_bus.publish_to_user(sender_id, updated)
     for recipient_id, muted in recipients:
         await event_bus.publish_to_user(recipient_id, updated)
@@ -251,10 +282,9 @@ async def emit_message_created(
 async def broadcast_message_edited(message: Message, member_ids: list[UUID]) -> None:
     """Fan out an edit to the conversation **and** to each member's user channel.
 
-    Unlike a reaction, which goes to the conversation channel only. An edit *can* change the
-    thread list: if this was the conversation's latest message, every member's inbox row is now
-    showing text that is no longer what the message says. Reactions never affect that row, so they
-    do not need the second publish; edits do.
+    An edit *can* change the thread list: if this was the conversation's latest message, every
+    member's inbox row is now showing text that is no longer what the message says, so it goes to
+    the user channels as well as the conversation.
 
     No push notification. Only new messages notify — a push saying someone rephrased something is
     noise, and would also re-alert a conversation the recipient had already read.
@@ -270,33 +300,6 @@ async def broadcast_message_edited(message: Message, member_ids: list[UUID]) -> 
         await event_bus.publish_to_user(member_id, frame)
 
 
-async def broadcast_reaction(
-    *, conversation_id: UUID, message_id: UUID, user_id: UUID, emoji: str, added: bool
-) -> None:
-    """Tell the conversation that a reaction changed (protocol 3).
-
-    Published to the **conversation** channel only, not to each member's user channel — unlike a
-    new message. A reaction does not change the thread list: the conversation's preview, its
-    timestamp and its unread count are all unaffected, so a user channel frame would make every
-    client re-render an inbox row for nothing.
-
-    Carries the resulting state rather than a delta. Add-and-remove racing is then last-write-wins
-    at the *frame* level, which is the same answer the database gives, so a client cannot end up
-    disagreeing with the server about whether a chip is filled.
-
-    Takes the conversation rather than looking it up: `toggle_reaction` has already resolved it
-    to authorize the call, so re-querying here would be a second round trip for an answer we hold
-    — and one that could disagree with the first if the row changed in between.
-
-    Best-effort, like every other broadcast here: a reaction that fails to fan out is still
-    recorded, and the next page load carries it.
-    """
-    await event_bus.publish_to_conversation(
-        conversation_id,
-        protocol.reaction_event(message_id, user_id, emoji, added=added),
-    )
-
-
 async def emit_reaction_activity(
     *,
     sender_id: UUID,
@@ -308,8 +311,8 @@ async def emit_reaction_activity(
     """Tell a message's author, on their user channel, that someone reacted — so their inbox row
     updates live even with the chat closed (protocol 4).
 
-    Add-only and author-only, mirroring the reaction notification. The conversation-channel
-    `broadcast_reaction` still covers anyone with the chat open; this is purely the inbox signal.
+    Add-only and author-only, mirroring the reaction notification. v5 clients get the richer `messages.reaction` state frame on every member's user channel (see
+    `broadcasts.broadcast_reaction_change`); this remains for v4 clients' inboxes.
 
     Best-effort, like every broadcast here: a dropped frame is recovered by the durable inbox
     preview (`latest_reactions_for_threads`) on the next load.

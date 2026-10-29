@@ -140,6 +140,8 @@ Set these in the Render dashboard for the API service:
 | **`ATTENDANCE_QR_SIGNING_SECRET`** | **Required** where attendance is in use | HMAC key for the rotating check-in QR. Unset → `start_session` 503s, and any check-in is rejected (`verify_challenge_token` returns False rather than trusting an unsigned code) |
 | `SLOW_REQUEST_MS` | Optional — default `1000` | Requests slower than this log at WARNING instead of INFO, so they can be found with a level filter |
 | `WS_MAX_UNSUPPORTED_REPLIES` | Optional — default `20` | Per-connection budget for replies to unimplemented WebSocket frames. Over budget the gateway goes quiet rather than closing — closing caused a reconnect-ban loop |
+| `PRESENCE_OFFLINE_GRACE_SECONDS` | Optional — default `10` | How long a user's last socket must stay gone before DM partners see them go offline ("Last seen …"). A reconnect inside the window (network switch, app resume) is invisible |
+| `PRESENCE_LAST_SEEN_WRITE_THROTTLE_SECONDS` | Optional — default `60` | At most one `user_presence.last_seen_at` write per user per window when they come online; the offline transition always writes |
 
 These have safe defaults in `app/config.py`, so they only need setting to override:
 

@@ -168,6 +168,13 @@ class Settings(BaseSettings):
     firebase_credentials_json: str | None = Field(default=None, alias='FIREBASE_CREDENTIALS_JSON')
     # Grace before an offline push: absorb Wi-Fi↔cellular handoffs / rapid reconnects.
     push_reconnect_grace_seconds: float = Field(default=3.0, alias='PUSH_RECONNECT_GRACE_SECONDS')
+    # Presence ("Online" / "Last seen"). A user is shown offline only after their last socket has
+    # been gone this long, so a reconnect (network switch, app resume) does not flicker it.
+    presence_offline_grace_seconds: float = Field(default=10.0, alias='PRESENCE_OFFLINE_GRACE_SECONDS')
+    # At most one last-seen write per user in this window when they come online.
+    presence_last_seen_write_throttle_seconds: float = Field(
+        default=60.0, alias='PRESENCE_LAST_SEEN_WRITE_THROTTLE_SECONDS'
+    )
 
     # Delegated campus publishing: verified staff may author posts when enabled.
     staff_publishing_enabled: bool = Field(default=True, alias='STAFF_PUBLISHING_ENABLED')

@@ -79,6 +79,11 @@ class Notification(Base):
     # the user's notification history.
     target_type: Mapped[str | None] = mapped_column(String(30), nullable=True)
     target_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    # The specific thing the event is about, when the target is a container. A reaction targets
+    # the *chat* (that is what tapping opens) but is about one *message*: keying de-duplication
+    # and retraction on the message is what keeps two reactions to two messages two rows, and lets
+    # an un-react remove exactly its own row. No FK, for the same dangling-is-fine reason as above.
+    subject_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
 
     read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)

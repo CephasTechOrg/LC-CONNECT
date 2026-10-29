@@ -171,7 +171,7 @@ def test_subscribe_then_forbidden(happy_auth, monkeypatch):
 def test_duplicate_send_returns_same_ack(happy_auth, monkeypatch):
     cache: dict = {}
 
-    async def fake_persist(db, *, sender_id, match_id, conversation_id, body, client_message_id):
+    async def fake_persist(db, *, sender_id, match_id, conversation_id, body, client_message_id, reply_to_id=None):
         created = client_message_id not in cache
         if created:
             cache[client_message_id] = _make_message(match_id, sender_id, client_message_id, body)
@@ -205,7 +205,7 @@ def test_send_emits_conversation_updated_on_user_channel(happy_auth, monkeypatch
     # A single socket avoids TestClient's concurrent-websocket deadlock; the gateway
     # publishes conversation.updated to BOTH participants' user channels, so the sender
     # receives it on its own user channel — proving publish_to_user is wired.
-    async def persist(db, *, sender_id, match_id, conversation_id, body, client_message_id):
+    async def persist(db, *, sender_id, match_id, conversation_id, body, client_message_id, reply_to_id=None):
         return _make_message(match_id, sender_id, client_message_id, body), True
 
     monkeypatch.setattr('app.features.realtime.gateway.persist_message_idempotent', persist)

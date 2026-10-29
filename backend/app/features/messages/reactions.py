@@ -3,20 +3,26 @@
 Split out of `service.py` when that file crossed the 600-line hard cap. The seam is real rather
 than arbitrary: everything here is about one small side table, and none of it is on the send or
 read path that the rest of the service exists to serve.
+
+One reaction per person per message, as in WhatsApp: setting an emoji replaces the caller's
+previous one. `set_reaction` and `clear_reaction` report whether anything actually changed, so
+the caller fans out and notifies only on a real change — a duplicate tap used to broadcast anyway,
+and clients applying it as a +1 drifted.
 """
 
 from __future__ import annotations
 
 from typing import NamedTuple
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from fastapi import HTTPException, status
-from sqlalchemy import delete, func, select
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy import and_, delete, func, or_, select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.features.messages.schema import ReactionSummary, ThreadReactionPreview
-from app.models import Message, MessageReaction, Profile
+from app.features.messages.schema import MessageReactor, ReactionSummary, ThreadReactionPreview
+from app.models import Conversation, Message, MessageReaction, Profile
+from app.shared.message_snippets import snippet
 
 #: The reactions a client may send, in the order the picker shows them.
 #:
@@ -24,11 +30,11 @@ from app.models import Message, MessageReaction, Profile
 #: rather than free text for three reasons — it caps what the per-message aggregate can return, it
 #: keeps arbitrary payloads out of a column that renders straight into the UI, and it means the
 #: chip strip has a known maximum width. An enum table would have cost a join on the hottest read
-#: in the app.
+#: in the app. Kept equal to the app's picker by `tests/test_reaction_allowlist_parity.py`.
 #:
 #: Adding one is a one-line change here; removing one leaves existing rows readable but
-#: un-addable, which is the right way round.
-REACTION_ALLOWLIST: tuple[str, ...] = ('👍', '❤️', '😂', '😮', '😢', '🙏', '👏', '🔥')
+#: un-addable, which is the right way round (👏 and 🔥 were removed that way).
+REACTION_ALLOWLIST: tuple[str, ...] = ('👍', '❤️', '😂', '😮', '😢', '🙏')
 
 
 class ReactedMessage(NamedTuple):
@@ -41,78 +47,123 @@ class ReactedMessage(NamedTuple):
     #: canonical id would open nothing for a DM, which is the bug `openMessageConversation` had.
     addressing_id: UUID
     is_group: bool
+    #: A one-line excerpt of the reacted message, for previews and notifications.
+    snippet: str = ''
 
 
-async def toggle_reaction(
-    db: AsyncSession, *, message_id: UUID, user_id: UUID, emoji: str, add: bool
-) -> ReactedMessage:
-    """Add or remove one person's one emoji on one message. Idempotent in both directions.
+class ReactionChange(NamedTuple):
+    """What a set or clear did. `changed` is false for a no-op (same emoji again, nothing to
+    remove), and then nothing should be broadcast or notified."""
 
-    Authorization is the same gate every other REST message endpoint uses, so a message id alone
-    reveals nothing: not-a-member is a 404, blocked or a closed staff thread a 403.
+    message: ReactedMessage
+    previous: str | None
+    current: str | None
+    changed: bool
 
-    Reacting to a soft-deleted message is refused. The body of a deleted message is never sent to
-    clients, so a reaction on one would be attached to a tombstone nobody can read.
 
-    Returns the conversation and the message's sender, so the caller can fan the change out and
-    notify the right person without asking the database questions this function has answered.
-    """
-    if emoji not in REACTION_ALLOWLIST:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail='That reaction is not available',
-        )
-
-    message = (
+async def _resolve(db: AsyncSession, message_id: UUID, user_id: UUID) -> ReactedMessage:
+    """Load the message and authorize the caller. Membership is checked *before* the deleted
+    check: the other order answers "does this message exist and was it deleted?" to anyone holding
+    the id — a 409 where a stranger should see the same 404 a non-existent id gives."""
+    row = (
         await db.execute(
             select(
                 Message.conversation_id,
                 Message.deleted_at,
                 Message.sender_id,
                 Message.match_id,
+                Message.body,
             ).where(Message.id == message_id)
         )
     ).one_or_none()
-    if message is None:
+    if row is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Message not found')
-    conversation_id, deleted_at, sender_id, match_id = message
-    resolved = ReactedMessage(
-        conversation_id, sender_id, match_id or conversation_id, match_id is None
-    )
+    conversation_id, deleted_at, sender_id, match_id, body = row
 
     from app.shared.conversations import accessible_conversation
 
-    # Membership is checked *before* the deleted check, not after. The other order answers
-    # "does this message exist and was it deleted?" to anyone holding the id, including someone
-    # with no access to the conversation — a 409 where a stranger should see the same 404 a
-    # non-existent id gives. Authorizing first collapses both back into one answer.
     await accessible_conversation(db, conversation_id, user_id)
-
+    # Reacting to a deleted message is refused: its body is never sent to clients, so a reaction
+    # would be attached to a tombstone nobody can read.
     if deleted_at is not None:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='That message was deleted')
+    return ReactedMessage(
+        conversation_id, sender_id, match_id or conversation_id, match_id is None, snippet(body)
+    )
+
+
+def _check_allowed(emoji: str) -> None:
+    if emoji not in REACTION_ALLOWLIST:
         raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT, detail='That message was deleted'
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail='That reaction is not available',
         )
 
-    if not add:
+
+async def set_reaction(
+    db: AsyncSession, *, message_id: UUID, user_id: UUID, emoji: str
+) -> ReactionChange:
+    """Make `emoji` the caller's one reaction to the message, replacing any other.
+
+    An upsert on `uq_message_reaction_user`, so a double-tap or two devices at once still leave
+    exactly one row. The previous emoji is read under a row lock first, so the caller can tell a
+    replace (notify with the new emoji) from a repeat (do nothing).
+    """
+    _check_allowed(emoji)
+    resolved = await _resolve(db, message_id, user_id)
+    previous = (
         await db.execute(
-            delete(MessageReaction).where(
+            select(MessageReaction.emoji)
+            .where(MessageReaction.message_id == message_id, MessageReaction.user_id == user_id)
+            .with_for_update()
+        )
+    ).scalar_one_or_none()
+    if previous == emoji:
+        # Release the row lock. A commit rather than a rollback: nothing was written either way,
+        # and a rollback would expire every object the caller still holds from this session.
+        await db.commit()
+        return ReactionChange(resolved, previous, emoji, changed=False)
+
+    await db.execute(
+        pg_insert(MessageReaction)
+        .values(id=uuid4(), message_id=message_id, user_id=user_id, emoji=emoji)
+        .on_conflict_do_update(
+            constraint='uq_message_reaction_user',
+            set_={'emoji': emoji, 'created_at': func.now()},
+        )
+    )
+    await db.commit()
+    return ReactionChange(resolved, previous, emoji, changed=True)
+
+
+async def clear_reaction(
+    db: AsyncSession, *, message_id: UUID, user_id: UUID, emoji: str
+) -> ReactionChange:
+    """Remove the caller's reaction if it is `emoji`. Matching on the emoji means a stale client
+    removing 👍 cannot take away the ❤️ the same person picked since on another device."""
+    resolved = await _resolve(db, message_id, user_id)
+    removed = (
+        await db.execute(
+            delete(MessageReaction)
+            .where(
                 MessageReaction.message_id == message_id,
                 MessageReaction.user_id == user_id,
                 MessageReaction.emoji == emoji,
             )
+            .returning(MessageReaction.emoji)
         )
-        await db.commit()
-        return resolved
+    ).scalar_one_or_none()
+    await db.commit()
+    return ReactionChange(resolved, removed, None, changed=removed is not None)
 
-    db.add(MessageReaction(message_id=message_id, user_id=user_id, emoji=emoji))
-    try:
-        await db.commit()
-    except IntegrityError:
-        # The unique constraint is the arbiter, exactly as in `persist_message_idempotent`: a
-        # double-tap, or two devices reacting at once, is success rather than an error. Reporting
-        # a conflict here would make the client undo an optimistic chip that is in fact correct.
-        await db.rollback()
-    return resolved
+
+async def toggle_reaction(
+    db: AsyncSession, *, message_id: UUID, user_id: UUID, emoji: str, add: bool
+) -> ReactedMessage:
+    """Set or clear, for callers that only need the resolved message (tests, older paths)."""
+    if add:
+        return (await set_reaction(db, message_id=message_id, user_id=user_id, emoji=emoji)).message
+    return (await clear_reaction(db, message_id=message_id, user_id=user_id, emoji=emoji)).message
 
 
 async def reactions_for(
@@ -146,30 +197,74 @@ async def reactions_for(
         summaries.setdefault(message_id, []).append(
             ReactionSummary(emoji=emoji, count=count, reacted_by_me=bool(mine))
         )
-    # Stable order, matching the picker, so a chip strip does not reshuffle between requests.
-    order = {emoji: index for index, emoji in enumerate(REACTION_ALLOWLIST)}
     for items in summaries.values():
-        items.sort(key=lambda s: order.get(s.emoji, len(order)))
+        sort_by_picker(items)
     return summaries
+
+
+def sort_by_picker(items: list[ReactionSummary]) -> None:
+    """Stable order, matching the picker, so a chip strip does not reshuffle between requests.
+    Emoji no longer in the picker sort last."""
+    order = {emoji: index for index, emoji in enumerate(REACTION_ALLOWLIST)}
+    items.sort(key=lambda s: order.get(s.emoji, len(order)))
+
+
+async def reactors_for(db: AsyncSession, message_id: UUID, viewer_id: UUID) -> list[MessageReactor]:
+    """Who reacted to a message and with what, newest first — the "Reacted by" sheet.
+
+    Same gate as `read_by`: a member of the conversation, or the same 404 a stranger gets for a
+    message that does not exist. Includes the viewer.
+    """
+    conversation_id = (
+        await db.execute(select(Message.conversation_id).where(Message.id == message_id))
+    ).scalar_one_or_none()
+    if conversation_id is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Message not found')
+
+    from app.shared.conversations import accessible_conversation
+
+    await accessible_conversation(db, conversation_id, viewer_id)
+    rows = (
+        await db.execute(
+            select(
+                MessageReaction.user_id,
+                Profile.display_name,
+                Profile.avatar_url,
+                MessageReaction.emoji,
+                MessageReaction.created_at,
+            )
+            .outerjoin(Profile, Profile.user_id == MessageReaction.user_id)
+            .where(MessageReaction.message_id == message_id)
+            .order_by(MessageReaction.created_at.desc(), MessageReaction.id.desc())
+        )
+    ).all()
+    return [
+        MessageReactor(user_id=uid, display_name=name, avatar_url=avatar, emoji=emoji, reacted_at=at)
+        for uid, name, avatar, emoji, at in rows
+    ]
 
 
 async def latest_reactions_for_threads(
     db: AsyncSession, conversation_ids: list[UUID], *, owner_id: UUID
 ) -> dict[UUID, ThreadReactionPreview]:
-    """The most recent reaction another member left on one of `owner_id`'s own messages, per
-    conversation — **one bounded query** for the whole inbox (``DISTINCT ON`` the conversation).
+    """The newest reaction worth showing on each inbox row — **one bounded query** for the whole
+    inbox (``DISTINCT ON`` the conversation).
 
-    Powers the durable inbox preview: the live `messages.reaction_activity` frame updates an open
-    inbox, and this makes the same information survive a cold load or a restart. Scoped to the
-    viewer's *own* messages reacted to by *someone else* — the only reaction the owner is told
-    about — so it mirrors exactly what the notification and the live frame cover.
+    In a DM, any reaction (both people are in it). In a group, only a reaction to `owner_id`'s own
+    message or one `owner_id` left: everyone else's reactions to everyone else's messages would
+    otherwise take over a busy group's row. Reactions to deleted messages are skipped.
 
-    No ordering or unread implications: it reads the reactions table and the caller attaches the
-    result to a row it has already placed.
+    No ordering or unread implications: the caller attaches the result to a row it has already
+    placed, and shows it only when it is newer than the row's latest message.
     """
     if not conversation_ids:
         return {}
 
+    relevant = or_(
+        Conversation.kind != 'group',
+        Message.sender_id == owner_id,
+        MessageReaction.user_id == owner_id,
+    )
     rows = (
         await db.execute(
             select(
@@ -179,15 +274,19 @@ async def latest_reactions_for_threads(
                 MessageReaction.message_id,
                 MessageReaction.created_at,
                 Profile.display_name,
+                Message.sender_id,
+                Message.body,
             )
             .select_from(MessageReaction)
             .join(Message, Message.id == MessageReaction.message_id)
+            .join(Conversation, Conversation.id == Message.conversation_id)
             .outerjoin(Profile, Profile.user_id == MessageReaction.user_id)
             .where(
-                Message.conversation_id.in_(conversation_ids),
-                Message.sender_id == owner_id,
-                Message.deleted_at.is_(None),
-                MessageReaction.user_id != owner_id,
+                and_(
+                    Message.conversation_id.in_(conversation_ids),
+                    Message.deleted_at.is_(None),
+                    relevant,
+                )
             )
             # Latest reaction per conversation. Mirrors the `DISTINCT ON` the thread list already
             # uses for the latest message, so it stays one query rather than one per thread.
@@ -207,6 +306,32 @@ async def latest_reactions_for_threads(
             actor_name=display_name,
             message_id=message_id,
             reacted_at=created_at,
+            message_sender_id=sender_id,
+            message_snippet=snippet(body),
         )
-        for conversation_id, emoji, actor_id, message_id, created_at, display_name in rows
+        for conversation_id, emoji, actor_id, message_id, created_at, display_name, sender_id, body in rows
     }
+
+
+def summaries_for_actor(
+    counts: list[ReactionSummary], *, mine: str | None
+) -> list[ReactionSummary]:
+    """Viewer-neutral counts re-flagged from one person's point of view."""
+    return [
+        ReactionSummary(emoji=c.emoji, count=c.count, reacted_by_me=c.emoji == mine) for c in counts
+    ]
+
+
+async def reaction_counts(db: AsyncSession, message_id: UUID) -> list[ReactionSummary]:
+    """One message's tallies with no viewer (`reacted_by_me` false), for the fan-out frame."""
+    rows = (
+        await db.execute(
+            select(MessageReaction.emoji, func.count(MessageReaction.id))
+            .where(MessageReaction.message_id == message_id)
+            .group_by(MessageReaction.emoji)
+        )
+    ).all()
+    items = [ReactionSummary(emoji=e, count=n, reacted_by_me=False) for e, n in rows]
+    sort_by_picker(items)
+    return items
+

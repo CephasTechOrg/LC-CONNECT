@@ -20,10 +20,19 @@ from pydantic import ValidationError
 
 from app.config import settings
 from app.database import AsyncSessionLocal
+from app.features.messages.replies import (
+    ReplyTargetError,
+    preview_of,
+    reply_previews_for,
+    sender_name,
+    validate_reply_target,
+)
 from app.features.messages.service import persist_message_idempotent
-from app.features.realtime import protocol, service
+from app.features.realtime import presence, protocol, service
 from app.features.realtime.manager import Connection
 from app.features.realtime.protocol import CloseCode, ErrorCode
+from app.features.realtime.receipts import on_delivered as _on_delivered
+from app.features.realtime.receipts import on_read as _on_read
 from app.features.realtime.runtime import (
     emit_message_created,
     event_bus,
@@ -49,10 +58,12 @@ async def websocket_gateway(websocket: WebSocket) -> None:
     conn = await _authenticate(websocket)
     if conn is None:
         return
+    await presence.on_connect(conn.user_id)
     try:
         await _serve(websocket, conn)
     finally:
         await manager.unregister(conn)
+        presence.on_disconnect(conn.user_id)
 
 
 async def _close(websocket: WebSocket, code: int) -> None:
@@ -282,6 +293,16 @@ async def _on_send(conn: Connection, frame: protocol.SendFrame) -> None:
         except service.WsForbidden:
             manager.send(conn, protocol.error(ErrorCode.FORBIDDEN, 'Forbidden', frame.request_id))
             return
+        reply = None
+        if frame.reply_to_id is not None:
+            try:
+                target = await validate_reply_target(db, conversation.id, frame.reply_to_id)
+            except ReplyTargetError as exc:
+                # Rejected, not sent without the quote: the sender chose to reply, and silently
+                # dropping that would change what they said.
+                manager.send(conn, protocol.error(ErrorCode.INVALID_REPLY, exc.code, frame.request_id))
+                return
+            reply = preview_of(target, await sender_name(db, target.sender_id))
         message, created = await persist_message_idempotent(
             db,
             sender_id=conn.user_id,
@@ -289,13 +310,20 @@ async def _on_send(conn: Connection, frame: protocol.SendFrame) -> None:
             conversation_id=conversation.id,
             body=frame.body,
             client_message_id=frame.client_message_id,
+            reply_to_id=frame.reply_to_id,
         )
-    manager.send(conn, protocol.message_ack(frame.request_id, message, duplicate=not created))
+        if not created:
+            reply = (await reply_previews_for(db, [message])).get(message.id)
+    reply_json = reply.model_dump(mode='json') if reply else None
+    manager.send(
+        conn, protocol.message_ack(frame.request_id, message, duplicate=not created, reply=reply_json)
+    )
     if created:
         await emit_message_created(
             message,
             sender_id=conn.user_id,
             recipients=recipients,
+            reply=reply_json,
         )
 
 
@@ -314,90 +342,3 @@ async def _on_typing(conn: Connection, conversation_id: UUID, active: bool) -> N
     frame = protocol.typing_event(conn.addressing.get(canonical, str(conversation_id)), conn.user_id, active)
     for partner_id in partners:
         await event_bus.publish_to_user(partner_id, frame)
-
-
-async def _on_delivered(conn: Connection, frame: protocol.DeliveredFrame) -> None:
-    """Advance this member's delivery boundary and tell the conversation (protocol 2).
-
-    Same authorization and same publish shape as [_on_read]. It stays a separate handler rather
-    than a parameterised one because the two are only *currently* alike: read has a display-only
-    mirror on `messages` and drives unread counts, delivery has neither, and reactions and edits
-    will add more receipt kinds that diverge further.
-
-    Silent on every failure. A delivery acknowledgement is not a request — there is no
-    `request_id` to correlate an error with, and a client that cannot record a tick has nothing
-    useful to do about it.
-    """
-    async with AsyncSessionLocal() as db:
-        try:
-            await service.recheck_account(db, conn.user_id)
-            conversation, _ = await service.authorize_conversation(db, conn.user_id, frame.conversation_id)
-        except service.WsForbidden:
-            return
-        # Groups are skipped, and this is the load-bearing line of the handler.
-        #
-        # A group bubble shows no delivered tick (design §2.1: that needs a rule for which
-        # members count, plus every member's boundary held client-side). But every member's
-        # device acknowledges every message — so one message in a 30-member group produced 29
-        # acknowledgements, each costing an account recheck, an authorization, four more queries
-        # and a fan-out to all 30 sockets. Roughly 170 queries and 870 socket writes to drive a
-        # glyph that is never drawn, and quadratic in group size.
-        #
-        # Enforced here rather than trusted to the client: the client also suppresses it, but
-        # only the server can bound what an old or modified client sends.
-        if conversation.kind == 'group':
-            return
-        delivered_at = await service.mark_delivered(
-            db,
-            recipient_id=conn.user_id,
-            match_id=frame.conversation_id,
-            through_message_id=frame.through_message_id,
-            # Already resolved by `authorize_conversation` above; re-resolving is a wasted
-            # cross-region round trip on the hottest realtime path.
-            conversation=conversation,
-        )
-    if delivered_at is None:
-        return
-    # Canonical id to route, client-facing id to address — see the note in [_on_read].
-    await event_bus.publish_to_conversation(
-        conversation.id,
-        protocol.delivery_receipt(
-            conversation.match_id or conversation.id,
-            conn.user_id,
-            frame.through_message_id,
-            delivered_at.isoformat(),
-        ),
-        exclude_user=conn.user_id,
-    )
-
-
-async def _on_read(conn: Connection, frame: protocol.ReadFrame) -> None:
-    async with AsyncSessionLocal() as db:
-        try:
-            await service.recheck_account(db, conn.user_id)
-            conversation, _ = await service.authorize_conversation(db, conn.user_id, frame.conversation_id)
-        except service.WsForbidden:
-            return
-        read_at = await service.mark_read(
-            db,
-            reader_id=conn.user_id,
-            match_id=frame.conversation_id,
-            through_message_id=frame.through_message_id,
-            conversation=conversation,  # see `_on_delivered`
-        )
-    if read_at is None:
-        return
-    # Route on the canonical id (what the manager indexes), but address the frame with the
-    # client-facing id (what the recipient's open chat matches on). Before subscriptions were
-    # canonicalised these were the same value for a DM, which is why this read correctly by
-    # accident — it must not go back to echoing the client's ref.
-    await event_bus.publish_to_conversation(
-        conversation.id,
-        protocol.read_receipt(
-            conversation.match_id or conversation.id,
-            conn.user_id,
-            frame.through_message_id,
-            read_at.isoformat(),
-        ),
-        exclude_user=conn.user_id,
-    )

@@ -11,6 +11,7 @@ The interesting properties are concurrency and authorization, not "a row gets wr
 from __future__ import annotations
 
 import asyncio
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from fastapi import HTTPException
@@ -18,7 +19,10 @@ from sqlalchemy import select
 
 from app.features.messages.reactions import (
     REACTION_ALLOWLIST,
+    clear_reaction,
     reactions_for,
+    reactors_for,
+    set_reaction,
     toggle_reaction,
 )
 from app.features.messages.service import delete_message, persist_message_idempotent
@@ -85,19 +89,33 @@ async def test_removing_is_idempotent(db, factory):
     assert (await db.execute(select(MessageReaction))).scalars().all() == []
 
 
-async def test_removing_one_emoji_leaves_the_others(db, factory):
+async def test_picking_another_emoji_replaces_the_first(db, factory):
+    """One reaction per person, as in WhatsApp: ❤️ after 👍 moves the reaction, it does not stack
+    a second one — and a stale "remove 👍" from another device cannot take the ❤️ away."""
     a, b, message = await _dm(db, factory)
-    await toggle_reaction(db, message_id=message.id, user_id=b.id, emoji=THUMB, add=True)
-    await toggle_reaction(db, message_id=message.id, user_id=b.id, emoji=HEART, add=True)
+    first = await set_reaction(db, message_id=message.id, user_id=b.id, emoji=THUMB)
+    second = await set_reaction(db, message_id=message.id, user_id=b.id, emoji=HEART)
+    assert (first.previous, first.current, first.changed) == (None, THUMB, True)
+    assert (second.previous, second.current, second.changed) == (THUMB, HEART, True)
 
-    await toggle_reaction(db, message_id=message.id, user_id=b.id, emoji=THUMB, add=False)
+    stale = await clear_reaction(db, message_id=message.id, user_id=b.id, emoji=THUMB)
+    assert not stale.changed
 
     remaining = (await db.execute(select(MessageReaction.emoji))).scalars().all()
     assert remaining == [HEART]
 
 
+async def test_the_same_emoji_again_is_a_no_op(db, factory):
+    """No change means nothing to broadcast or notify — a repeated frame used to make counts drift."""
+    a, b, message = await _dm(db, factory)
+    await set_reaction(db, message_id=message.id, user_id=b.id, emoji=THUMB)
+    again = await set_reaction(db, message_id=message.id, user_id=b.id, emoji=THUMB)
+    assert not again.changed
+    assert len((await db.execute(select(MessageReaction))).scalars().all()) == 1
+
+
 async def test_two_people_can_send_the_same_emoji(db, factory):
-    """The constraint is (message, user, emoji) — per person, not per message. Getting this wrong
+    """The constraint is (message, user) — one per *person*, not per message. Getting this wrong
     would mean the second reactor silently replaced the first."""
     a, b, message = await _dm(db, factory)
 
@@ -123,8 +141,9 @@ async def test_an_emoji_outside_the_allowlist_is_refused(db, factory):
 
 
 async def test_the_allowlist_is_bounded(db):
-    # The design caps this at 8: it bounds the aggregate and the chip strip's width.
-    assert 1 <= len(REACTION_ALLOWLIST) <= 8
+    # Six, matching the app's picker (see tests/test_reaction_allowlist_parity.py): it bounds the
+    # aggregate and the chip strip's width.
+    assert len(REACTION_ALLOWLIST) == 6
     assert len(set(REACTION_ALLOWLIST)) == len(REACTION_ALLOWLIST)
 
 
@@ -246,9 +265,30 @@ async def test_aggregate_order_follows_the_picker(db, factory):
     """A chip strip that reshuffles between requests looks broken, so the order is the allowlist's
     rather than whatever the database returns."""
     a, b, message = await _dm(db, factory)
-    # Added in reverse picker order.
+    # Added in reverse picker order, by two people (one reaction each).
     await toggle_reaction(db, message_id=message.id, user_id=b.id, emoji=HEART, add=True)
-    await toggle_reaction(db, message_id=message.id, user_id=b.id, emoji=THUMB, add=True)
+    await toggle_reaction(db, message_id=message.id, user_id=a.id, emoji=THUMB, add=True)
 
     summaries = (await reactions_for(db, [message.id], viewer_id=a.id))[message.id]
     assert [s.emoji for s in summaries] == [THUMB, HEART]
+
+
+# ── who reacted ───────────────────────────────────────────────────────────────
+
+async def test_reactors_lists_names_and_emoji_newest_first_including_me(db, factory):
+    a, b, message = await _dm(db, factory)
+    now = datetime.now(UTC)
+    db.add(MessageReaction(message_id=message.id, user_id=a.id, emoji=HEART, created_at=now - timedelta(minutes=1)))
+    db.add(MessageReaction(message_id=message.id, user_id=b.id, emoji=THUMB, created_at=now))
+    await db.commit()
+
+    reactors = await reactors_for(db, message.id, a.id)
+    assert [(r.display_name, r.emoji) for r in reactors] == [('B', THUMB), ('A', HEART)]
+
+
+async def test_a_stranger_cannot_list_reactors(db, factory):
+    a, b, message = await _dm(db, factory)
+    stranger = await factory.user(display_name='S')
+    with pytest.raises(HTTPException) as exc:
+        await reactors_for(db, message.id, stranger.id)
+    assert exc.value.status_code == 404

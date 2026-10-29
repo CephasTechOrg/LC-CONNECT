@@ -1,7 +1,19 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Table, Text, UniqueConstraint, func
+from sqlalchemy import (
+    Boolean,
+    Column,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    Table,
+    Text,
+    UniqueConstraint,
+    func,
+    text,
+)
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -103,6 +115,11 @@ class Profile(Base):
     is_hidden: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     allow_messages_from_matches_only: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     show_profile_to_verified_only: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    # "Online" / "Last seen" in chats. Reciprocal, as in WhatsApp: hiding yours also hides others'
+    # from you, so it cannot be used to watch people while staying invisible.
+    show_presence: Mapped[bool] = mapped_column(
+        Boolean, default=True, server_default=text('true'), nullable=False
+    )
     profile_completed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)

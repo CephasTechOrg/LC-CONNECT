@@ -40,6 +40,7 @@ from app.models.messaging import (
     Message,
     MessageEdit,
     MessageReaction,
+    UserPresence,
 )
 from app.models.notifications import DeviceToken, Notification
 from app.models.programs import Program, ProgramMembership, ScholarProfessionalProfile
@@ -75,6 +76,7 @@ __all__ = [
     'Message',
     'MessageEdit',
     'MessageReaction',
+    'UserPresence',
     'Notification',
     'Profile',
     'Program',

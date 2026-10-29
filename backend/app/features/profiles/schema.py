@@ -32,6 +32,8 @@ class ProfileUpdate(BaseModel):
     is_hidden: bool | None = None
     allow_messages_from_matches_only: bool | None = None
     show_profile_to_verified_only: bool | None = None
+    # "Online" / "Last seen" in chats; reciprocal (hiding yours hides others' from you).
+    show_presence: bool | None = None
     interests: list[_LookupName] | None = Field(default=None, max_length=_MAX_SELECTIONS)
     languages_spoken: list[_LookupName] | None = Field(default=None, max_length=_MAX_SELECTIONS)
     languages_learning: list[_LookupName] | None = Field(default=None, max_length=_MAX_SELECTIONS)
@@ -41,6 +43,7 @@ class ProfileUpdate(BaseModel):
 class MyProfileRead(ProfilePublic):
     allow_messages_from_matches_only: bool
     show_profile_to_verified_only: bool
+    show_presence: bool = True
     connection_count: int
     activity_count: int
     message_count: int
