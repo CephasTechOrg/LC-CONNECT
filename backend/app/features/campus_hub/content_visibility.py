@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,6 +13,32 @@ from app.shared.programs import is_active_program_member
 
 # Audiences every account may read, whatever their role — the public campus feed.
 _PUBLIC_AUDIENCES = ('all',)
+
+# An opportunity posted without a closing date is taken down this long after it went up. Without
+# it, every undated job and every employer post (which had no date field at all) stayed in the feed
+# forever, so a student who joined today scrolled past roles filled months ago. Visibility is never
+# tied to when a student signed up: anything still open is shown to everyone.
+UNDATED_OPPORTUNITY_LIFETIME = timedelta(days=60)
+
+
+def _still_open(now: datetime) -> ColumnElement[bool]:
+    """Not past its closing date — or, for an undated opportunity, under 60 days old."""
+    return or_(
+        CampusPost.expires_at > now,
+        and_(
+            CampusPost.expires_at.is_(None),
+            or_(CampusPost.kind != 'opportunity', CampusPost.publish_at > now - UNDATED_OPPORTUNITY_LIFETIME),
+        ),
+    )
+
+
+def closes_at(post: CampusPost) -> datetime | None:
+    """When the post leaves the feed: its own closing date, else the undated-opportunity rule."""
+    if post.expires_at is not None:
+        return post.expires_at
+    if post.kind == 'opportunity' and post.publish_at is not None:
+        return post.publish_at + UNDATED_OPPORTUNITY_LIFETIME
+    return None
 
 
 def _has_verified_position(user_id) -> Select:
@@ -76,7 +102,7 @@ def published_posts_stmt(*, user: User, now: datetime | None = None) -> Select:
         CampusPost.status == 'published',
         CampusPost.publish_at.is_not(None),
         CampusPost.publish_at <= now,
-        or_(CampusPost.expires_at.is_(None), CampusPost.expires_at > now),
+        _still_open(now),
         _audience_filter(user),
         or_(CampusPost.eligible_program_slug.is_(None), _eligible_for_program(user.id)),
     )
@@ -100,7 +126,8 @@ async def is_post_visible(db: AsyncSession, post: CampusPost, *, user: User, now
     now = now or datetime.now(UTC)
     if post.status != 'published' or post.publish_at is None or post.publish_at > now:
         return False
-    if post.expires_at is not None and post.expires_at <= now:
+    end = closes_at(post)
+    if end is not None and end <= now:
         return False
     if not await _can_read_audience(db, post.audience, user=user):
         return False

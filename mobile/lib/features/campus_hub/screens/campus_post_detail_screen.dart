@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/app_states.dart';
+import '../data/opportunity_format.dart';
 import '../models/campus_post.dart';
 import '../providers/campus_hub_provider.dart';
 import '../widgets/campus_post_image_pager.dart';
@@ -97,8 +98,8 @@ class _PostBody extends StatelessWidget {
     final isPartner = post.isEmployerPartner || post.isBlueprintBond;
 
     final deadline = post.expiresAt?.toLocal();
-    final daysLeft = deadline?.difference(DateTime.now()).inDays;
-    final closingSoon = daysLeft != null && daysLeft <= 3;
+    final deadlineText = deadlineLabel(deadline, post.category);
+    final closingSoon = deadlineText.urgent;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
@@ -186,13 +187,8 @@ class _PostBody extends StatelessWidget {
                 ),
                 const SizedBox(width: 6),
                 Text(
-                  closingSoon
-                      ? 'Closes ${DateFormat('MMM d').format(deadline)} · ${daysLeft <= 0
-                            ? 'today'
-                            : daysLeft == 1
-                            ? '1 day left'
-                            : '$daysLeft days left'}'
-                      : 'Deadline: ${DateFormat('MMM d, y').format(deadline)}',
+                  // The same words as the card: one deadline, one way of saying it.
+                  deadlineText.text,
                   style: AppTypography.label.copyWith(
                     fontWeight: FontWeight.w700,
                     color: closingSoon ? _warning : AppColors.primaryText,

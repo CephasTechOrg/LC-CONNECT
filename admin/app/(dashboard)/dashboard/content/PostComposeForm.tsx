@@ -174,7 +174,9 @@ export default function PostComposeForm({
         summary: summary.trim() || null,
         body: isOpportunity ? '' : body.trim(),
         external_url: externalUrl.trim() || null,
-        expires_at: expiresAt ? `${expiresAt}T23:59:59.000Z` : null,
+        // End of the chosen day where the admin is, not in UTC: `T23:59:59Z` closed posts at about
+        // 7–8 PM on campus, hours before the date shown to students.
+        expires_at: expiresAt ? new Date(`${expiresAt}T23:59:59`).toISOString() : null,
       };
 
       let post: Post;

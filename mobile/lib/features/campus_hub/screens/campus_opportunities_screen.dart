@@ -46,8 +46,28 @@ class _OpportunitiesState extends ConsumerState<CampusOpportunitiesScreen> {
     });
   }
 
-  CampusPostsQuery get _query =>
-      CampusPostsQuery(kind: 'opportunity', category: _category == 'all' ? null : _category);
+  static const _pageSize = 30;
+  int _pages = 1;
+
+  CampusPostsQuery _query([int page = 0]) => CampusPostsQuery(
+        kind: 'opportunity',
+        category: _category == 'all' ? null : _category,
+        pageSize: _pageSize,
+        page: page,
+      );
+
+  /// Every loaded page in order, whether more may follow, and whether one is still loading.
+  ({List<CampusPostSummary> posts, bool hasMore, bool loadingMore}) _loaded(List<CampusPostSummary> first) {
+    final posts = [...first];
+    var last = first;
+    for (var page = 1; page < _pages; page++) {
+      final rows = ref.watch(campusPostsProvider(_query(page))).value;
+      if (rows == null) return (posts: posts, hasMore: false, loadingMore: true);
+      posts.addAll(rows);
+      last = rows;
+    }
+    return (posts: posts, hasMore: last.length >= _pageSize, loadingMore: false);
+  }
 
   List<CampusPostSummary> _bySource(List<CampusPostSummary> posts, _SourceTab source) {
     switch (source) {
@@ -84,7 +104,7 @@ class _OpportunitiesState extends ConsumerState<CampusOpportunitiesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final postsAsync = ref.watch(campusPostsProvider(_query));
+    final postsAsync = ref.watch(campusPostsProvider(_query()));
     final isVerifiedScholar = ref.watch(scholarEligibilityProvider).isPermitted;
     // Non-scholars never receive Blueprint Bond posts; keep filtering campus-facing.
     final source = isVerifiedScholar ? _source : _SourceTab.all;
@@ -112,28 +132,24 @@ class _OpportunitiesState extends ConsumerState<CampusOpportunitiesScreen> {
               ),
               const SizedBox(height: 12),
             ],
-            SizedBox(
-              height: 36,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                children: _categoryFilters.entries.map((e) {
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: AppFilterChip(
-                      label: e.value,
-                      selected: _category == e.key,
-                      onTap: () => setState(() => _category = e.key),
-                    ),
-                  );
-                }).toList(),
-              ),
+            // Full 48dp chips: this row was boxed to 36dp, squeezing every chip's tap target.
+            AppFilterChipRow(
+              labels: _categoryFilters.values.toList(),
+              selected: _categoryFilters[_category] ?? 'All',
+              onSelect: (label) => setState(() {
+                _category = _categoryFilters.entries.firstWhere((e) => e.value == label).key;
+                _pages = 1;
+              }),
             ),
             const SizedBox(height: 8),
             Expanded(
               child: RefreshIndicator(
                 color: AppColors.primary,
-                onRefresh: () async => ref.invalidate(campusPostsProvider(_query)),
+                onRefresh: () async {
+                  ref.invalidate(campusPostsProvider);
+                  setState(() => _pages = 1);
+                  await ref.read(campusPostsProvider(_query()).future);
+                },
                 child: postsAsync.cached(
                   // A skeleton in the shape of the content that is coming, not a spinner: the Campus Hub
                   // sub-pages were the only lists in the app that spun while every other list
@@ -141,10 +157,11 @@ class _OpportunitiesState extends ConsumerState<CampusOpportunitiesScreen> {
                   loading: () => const AppHubPanelSkeleton(count: 4),
                   error: (_, _) => AppErrorState(
                     message: 'Could not load opportunities.',
-                    onRetry: () => ref.invalidate(campusPostsProvider(_query)),
+                    onRetry: () => ref.invalidate(campusPostsProvider(_query())),
                   ),
-                  data: (allPosts) {
-                    final posts = _bySource(allPosts, source);
+                  data: (firstPage) {
+                    final loaded = _loaded(firstPage);
+                    final posts = _bySource(loaded.posts, source);
                     if (posts.isEmpty) {
                       return AppEmptyState(
                         icon: Icons.work_outline,
@@ -152,16 +169,36 @@ class _OpportunitiesState extends ConsumerState<CampusOpportunitiesScreen> {
                         subtitle: _emptySubtitle(source),
                       );
                     }
+                    final footer = loaded.loadingMore || loaded.hasMore;
                     return ListView.builder(
                       padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-                      itemCount: posts.length,
-                      itemBuilder: (context, index) => Padding(
-                        padding: EdgeInsets.only(bottom: index < posts.length - 1 ? 14 : 0),
-                        child: OpportunityCard(
-                          post: posts[index],
-                          onTap: () => context.push('/home/posts/${posts[index].id}'),
-                        ),
-                      ),
+                      itemCount: posts.length + (footer ? 1 : 0),
+                      itemBuilder: (context, index) {
+                        if (index == posts.length) {
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 12),
+                            child: loaded.loadingMore
+                                ? const Center(
+                                    child: SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                    ),
+                                  )
+                                : TextButton(
+                                    onPressed: () => setState(() => _pages++),
+                                    child: const Text('Show more opportunities'),
+                                  ),
+                          );
+                        }
+                        return Padding(
+                          padding: EdgeInsets.only(bottom: index < posts.length - 1 ? 14 : 0),
+                          child: OpportunityCard(
+                            post: posts[index],
+                            onTap: () => context.push('/home/posts/${posts[index].id}'),
+                          ),
+                        );
+                      },
                     );
                   },
                 ),

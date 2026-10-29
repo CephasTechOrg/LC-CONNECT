@@ -5941,6 +5941,18 @@
             "title": "Category",
             "type": "string"
           },
+          "closes_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closes At"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -6044,6 +6056,18 @@
             "title": "Category",
             "type": "string"
           },
+          "closes_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closes At"
+          },
           "description": {
             "maxLength": 8000,
             "minLength": 1,
@@ -6084,6 +6108,18 @@
           "category": {
             "title": "Category",
             "type": "string"
+          },
+          "closes_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closes At"
           },
           "created_at": {
             "format": "date-time",

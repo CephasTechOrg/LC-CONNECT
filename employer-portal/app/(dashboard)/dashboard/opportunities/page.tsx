@@ -15,6 +15,7 @@ type Submission = {
   description: string;
   category: string;
   external_url: string | null;
+  closes_at: string | null;
   status: 'pending' | 'approved' | 'rejected';
   review_note: string | null;
   created_at: string;
@@ -31,6 +32,14 @@ function when(iso: string): string {
   return Number.isNaN(d.getTime()) ? '—' : formatDate(iso);
 }
 
+/** `yyyy-mm-dd`, `days` from today in local time — the value a date input takes. */
+function dayInput(days: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
 export default function OpportunitiesPage() {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -41,6 +50,7 @@ export default function OpportunitiesPage() {
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState<Category>('internship');
   const [externalUrl, setExternalUrl] = useState('');
+  const [closesOn, setClosesOn] = useState(dayInput(30));
   const [submitting, setSubmitting] = useState(false);
   const [flash, setFlash] = useState<string | null>(null);
 
@@ -78,6 +88,8 @@ export default function OpportunitiesPage() {
           description: description.trim(),
           category,
           external_url: externalUrl.trim() || null,
+          // End of the chosen day in the employer's own time zone.
+          closes_at: new Date(`${closesOn}T23:59:59`).toISOString(),
         }),
       });
       setFlash('Published — Presidential Scholars can see it now.');
@@ -85,6 +97,7 @@ export default function OpportunitiesPage() {
       setDescription('');
       setCategory('internship');
       setExternalUrl('');
+      setClosesOn(dayInput(30));
       setShowForm(false);
       await load();
     } catch (err) {
@@ -158,6 +171,21 @@ export default function OpportunitiesPage() {
                 placeholder="https://…"
               />
             </div>
+            <div className="field">
+              <label htmlFor="closes_on">Applications close</label>
+              <input
+                id="closes_on"
+                type="date"
+                value={closesOn}
+                min={dayInput(1)}
+                max={dayInput(180)}
+                onChange={(e) => setClosesOn(e.target.value)}
+                required
+              />
+              <p className="ops-cell-sub">
+                Students see it until the end of this day. Up to six months ahead.
+              </p>
+            </div>
             <div className="actions">
               <button className="btn" type="submit" disabled={submitting}>
                 {submitting ? 'Publishing…' : 'Publish opportunity'}
@@ -193,6 +221,7 @@ export default function OpportunitiesPage() {
                   <th>Category</th>
                   <th>Link</th>
                   <th>Submitted</th>
+                  <th>Closes</th>
                   <th>Status</th>
                   <th>Review note</th>
                 </tr>
@@ -215,6 +244,7 @@ export default function OpportunitiesPage() {
                       )}
                     </td>
                     <td data-label="Submitted">{when(s.created_at)}</td>
+                    <td data-label="Closes">{s.closes_at ? when(s.closes_at) : '—'}</td>
                     <td data-label="Status"><span className={statusChip(s.status)}>{s.status}</span></td>
                     <td data-label="Review note">
                       {s.review_note ? (

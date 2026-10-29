@@ -25,6 +25,7 @@ class AppDateFormat {
   static final DateFormat _compactDate = DateFormat('EEE, MMM d'); // Tue, Sep 16
   static final DateFormat _fullDate = DateFormat('EEEE, MMMM d, y'); // Tuesday, September 16, 2026
   static final DateFormat _dayMonth = DateFormat('MMM d'); // Sep 16
+  static final DateFormat _dayMonthYear = DateFormat('MMM d, y'); // Sep 16, 2027
   static final DateFormat _weekday = DateFormat('EEE'); // Tue
   static final DateFormat _fullWeekday = DateFormat('EEEE'); // Tuesday
   static final DateFormat _time = DateFormat('h:mm a'); // 6:00 PM
@@ -39,6 +40,12 @@ class AppDateFormat {
 
   /// Month and day only — `Sep 16`.
   static String dayMonth(DateTime at) => _dayMonth.format(at.toLocal());
+
+  /// `Sep 16`, with the year only when it is not this year — `Jan 4, 2027`.
+  static String dayMonthMaybeYear(DateTime at, {DateTime? now}) {
+    final local = at.toLocal();
+    return local.year == (now ?? DateTime.now()).year ? _dayMonth.format(local) : _dayMonthYear.format(local);
+  }
 
   /// Time of day — `6:00 PM`.
   static String time(DateTime at) => _time.format(at.toLocal());
