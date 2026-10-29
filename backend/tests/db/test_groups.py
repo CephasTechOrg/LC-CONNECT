@@ -134,7 +134,8 @@ async def test_invitee_lists_and_accepts_a_private_invite(db, factory):
 
     invites = await service.my_invites(db, friend.id)
     assert [g.id for g, _ in invites] == [group.id]
-    assert await service.discover_groups(db, query=None, category=None, limit=30) == []  # not discoverable
+    found = await service.discover_groups(db, viewer_id=friend.id, query=None, category=None, limit=30)
+    assert found == []  # not discoverable
 
     result = await service.accept_invite(db, group, friend)
     await db.commit()
@@ -322,9 +323,55 @@ async def test_discovery_lists_only_public_groups(db, factory):
     await _make_group(db, owner, name='Unlisted House', visibility='unlisted')
     await _make_group(db, owner, name='Secret Society', visibility='private')
 
-    found = await service.discover_groups(db, query=None, category=None, limit=50)
+    viewer = await factory.user()
+    found = await service.discover_groups(db, viewer_id=viewer.id, query=None, category=None, limit=50)
     names = {g.name for g in found}
     assert names == {'Public Club'}  # unlisted + private never listed
+
+
+async def test_discovery_leaves_out_groups_the_viewer_is_in(db, factory):
+    # Filtering these after the LIMIT let them use up the page, so a student in many groups saw a
+    # short or empty Discover list.
+    owner = await factory.user()
+    viewer = await factory.user()
+    joined = await _make_group(db, owner, name='Joined Club')
+    await _make_group(db, owner, name='Open Club')
+    await service.join_group(db, joined, viewer)
+    await db.commit()
+
+    found = await service.discover_groups(db, viewer_id=viewer.id, query=None, category=None, limit=50)
+    assert {g.name for g in found} == {'Open Club'}
+
+
+async def test_discovery_sorts_by_members_and_pages(db, factory):
+    owner = await factory.user()
+    viewer = await factory.user()
+    small = await _make_group(db, owner, name='Small')
+    big = await _make_group(db, owner, name='Big')
+    for _ in range(2):
+        await service.join_group(db, big, await factory.user())
+    await db.commit()
+
+    first = await service.discover_groups(
+        db, viewer_id=viewer.id, query=None, category=None, sort='popular', limit=1
+    )
+    second = await service.discover_groups(
+        db, viewer_id=viewer.id, query=None, category=None, sort='popular', limit=1, offset=1
+    )
+    assert [g.id for g in first + second] == [big.id, small.id]
+
+    newest = await service.discover_groups(db, viewer_id=viewer.id, query=None, category=None, sort='new', limit=1)
+    assert [g.id for g in newest] == [big.id]
+
+
+async def test_discovery_search_takes_wildcards_literally(db, factory):
+    owner = await factory.user()
+    viewer = await factory.user()
+    await _make_group(db, owner, name='100% Fitness')
+    await _make_group(db, owner, name='Book Club')
+
+    found = await service.discover_groups(db, viewer_id=viewer.id, query='%', category=None, limit=50)
+    assert [g.name for g in found] == ['100% Fitness']
 
 
 # ── leave ────────────────────────────────────────────────────────────────────────

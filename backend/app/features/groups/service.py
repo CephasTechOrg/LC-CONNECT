@@ -10,7 +10,7 @@ from __future__ import annotations
 from uuid import UUID
 
 from fastapi import HTTPException, status
-from sqlalchemy import func, select
+from sqlalchemy import exists, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
@@ -20,6 +20,7 @@ from app.models import Conversation, ConversationMember, Group, Profile, User
 from app.shared.policies import users_are_connected
 from app.shared.profiles import profile_load_options
 from app.shared.serializers import profile_to_public
+from app.shared.text_search import like_pattern
 
 ACTIVE = 'active'
 
@@ -105,6 +106,7 @@ async def to_summary(
     list, so no per-group count query runs; omit it for a single group and it self-fetches."""
     if member_count is None:
         member_count = await active_member_count(db, group.conversation_id)
+    is_member = viewer_member is not None and viewer_member.status == ACTIVE
     return GroupSummary(
         id=group.id,
         name=group.name,
@@ -115,13 +117,15 @@ async def to_summary(
         member_count=member_count,
         max_members=group.max_members,
         my_status=viewer_member.status if viewer_member else None,
+        conversation_id=group.conversation_id if is_member else None,
+        my_role=viewer_member.role if is_member else None,
     )
 
 
 async def to_read(db: AsyncSession, group: Group, viewer_member: ConversationMember | None) -> GroupRead:
     summary = await to_summary(db, group, viewer_member)
     return GroupRead(
-        **summary.model_dump(),
+        **summary.model_dump(exclude={'conversation_id', 'my_role'}),
         description=group.description,
         owner_id=group.owner_id,
         conversation_id=group.conversation_id,
@@ -380,15 +384,44 @@ async def my_invites(db: AsyncSession, user_id: UUID) -> list[tuple[Group, Conve
 
 
 async def discover_groups(
-    db: AsyncSession, *, query: str | None, category: str | None, limit: int
+    db: AsyncSession,
+    *,
+    viewer_id: UUID,
+    query: str | None,
+    category: str | None,
+    sort: str = 'popular',
+    limit: int,
+    offset: int = 0,
 ) -> list[Group]:
-    stmt = select(Group).where(Group.visibility == 'public')  # unlisted/private are not listed
+    """Public groups the viewer could join, one page at a time.
+
+    Groups the viewer is already in or invited to are left out here rather than filtered by the
+    app: they are listed elsewhere on the same screen, and filtering after the `LIMIT` let them
+    take up the page — a student in many groups saw a short or empty Discover list.
+    """
+    stmt = select(Group).where(
+        Group.visibility == 'public',  # unlisted/private are not listed
+        ~exists().where(
+            ConversationMember.conversation_id == Group.conversation_id,
+            ConversationMember.user_id == viewer_id,
+            ConversationMember.status.in_((ACTIVE, 'invited')),
+        ),
+    )
     if category:
         stmt = stmt.where(Group.category == category)
-    if query:
-        stmt = stmt.where(Group.name.ilike(f'%{query.strip()}%'))
-    stmt = stmt.order_by(Group.created_at.desc()).limit(limit)
-    return list((await db.execute(stmt)).scalars().all())
+    if query and query.strip():
+        stmt = stmt.where(Group.name.ilike(like_pattern(query.strip()), escape='\\'))
+    if sort == 'popular':
+        members = (
+            select(func.count())
+            .where(ConversationMember.conversation_id == Group.conversation_id, ConversationMember.status == ACTIVE)
+            .correlate(Group)
+            .scalar_subquery()
+        )
+        stmt = stmt.order_by(members.desc(), Group.created_at.desc(), Group.id)
+    else:
+        stmt = stmt.order_by(Group.created_at.desc(), Group.id)
+    return list((await db.execute(stmt.limit(limit).offset(offset))).scalars().all())
 
 
 async def members_read(

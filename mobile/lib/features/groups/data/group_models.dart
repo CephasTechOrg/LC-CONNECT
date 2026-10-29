@@ -1,6 +1,22 @@
 /// Group models mirroring the backend `/groups` API (GroupSummary / GroupRead).
 library;
 
+/// One name per backend category — the create sheet, list rows and filters all use it. There
+/// used to be three vocabularies ("Clubs & Sports", "Academic", "Wellness"…) and three of the
+/// filter chips mapped to the same category, so they returned identical results.
+const groupCategoryLabels = {'club': 'Club', 'class': 'Class', 'housing': 'Housing', 'interest': 'Interest'};
+
+/// Discover filters, in display order, to the backend category (null = all).
+const groupCategoryChips = <String, String?>{
+  'All': null,
+  'Clubs': 'club',
+  'Classes': 'class',
+  'Housing': 'housing',
+  'Interests': 'interest',
+};
+
+String groupCategoryLabel(String category) => groupCategoryLabels[category] ?? 'Group';
+
 class GroupSummary {
   final String id;
   final String name;
@@ -12,6 +28,11 @@ class GroupSummary {
   final int? maxMembers;
   final String? myStatus; // null | requested | invited | active | banned
 
+  /// The group's chat, and my role in it — only for groups I am in (from `GET /groups/me`), so a
+  /// row can open the chat and label an admin without fetching the whole group first.
+  final String? chatId;
+  final String? myGroupRole;
+
   const GroupSummary({
     required this.id,
     required this.name,
@@ -22,6 +43,8 @@ class GroupSummary {
     required this.memberCount,
     this.maxMembers,
     this.myStatus,
+    this.chatId,
+    this.myGroupRole,
   });
 
   factory GroupSummary.fromJson(Map<String, dynamic> j) => GroupSummary(
@@ -34,6 +57,8 @@ class GroupSummary {
         memberCount: (j['member_count'] as num).toInt(),
         maxMembers: (j['max_members'] as num?)?.toInt(),
         myStatus: j['my_status'] as String?,
+        chatId: j['conversation_id'] as String?,
+        myGroupRole: j['my_role'] as String?,
       );
 
   bool get isMember => myStatus == 'active';
@@ -67,6 +92,8 @@ class GroupSummary {
         memberCount: memberCount ?? this.memberCount,
         maxMembers: maxMembers,
         myStatus: myStatus ?? this.myStatus,
+        chatId: chatId,
+        myGroupRole: myGroupRole,
       );
 }
 

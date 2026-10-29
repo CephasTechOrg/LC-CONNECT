@@ -4303,10 +4303,10 @@
           "member_count",
           "max_members",
           "my_status",
-          "description",
-          "owner_id",
           "conversation_id",
           "my_role",
+          "description",
+          "owner_id",
           "created_at"
         ],
         "title": "GroupRead",
@@ -4328,6 +4328,18 @@
           "category": {
             "title": "Category",
             "type": "string"
+          },
+          "conversation_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conversation Id"
           },
           "id": {
             "format": "uuid",
@@ -4352,6 +4364,17 @@
           "member_count": {
             "title": "Member Count",
             "type": "integer"
+          },
+          "my_role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "My Role"
           },
           "my_status": {
             "anyOf": [
@@ -14545,6 +14568,7 @@
             "schema": {
               "anyOf": [
                 {
+                  "maxLength": 80,
                   "type": "string"
                 },
                 {
@@ -14572,6 +14596,20 @@
           },
           {
             "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "popular",
+              "enum": [
+                "popular",
+                "new"
+              ],
+              "title": "Sort",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
@@ -14579,6 +14617,18 @@
               "maximum": 100,
               "minimum": 1,
               "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 5000,
+              "minimum": 0,
+              "title": "Offset",
               "type": "integer"
             }
           }
