@@ -96,13 +96,16 @@ class _CompactCardState extends ConsumerState<_CompactCard> {
                   ),
                 ),
                 const SizedBox(height: 3),
-                Text(
-                  AppDateFormat.date(a.startTime),
-                  style: AppTypography.caption.copyWith(
-                    fontWeight: FontWeight.w400,
-                    color: AppColors.textMuted,
+                if (a.isHappeningNow(DateTime.now()))
+                  const _HappeningNow()
+                else
+                  Text(
+                    AppDateFormat.date(a.startTime),
+                    style: AppTypography.caption.copyWith(
+                      fontWeight: FontWeight.w400,
+                      color: AppColors.textMuted,
+                    ),
                   ),
-                ),
                 const SizedBox(height: 2),
                 Row(
                   children: [
@@ -160,3 +163,28 @@ class _CompactCardState extends ConsumerState<_CompactCard> {
 }
 
 // ── Join button (full-size for featured card) ─────────────────────
+
+/// In place of the date on an activity that has started and not ended — it stays listed until it
+/// is over, so the row says why it is still here.
+class _HappeningNow extends StatelessWidget {
+  const _HappeningNow();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 7,
+          height: 7,
+          decoration: const BoxDecoration(color: AppColors.green, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 5),
+        Text(
+          'Happening now',
+          style: AppTypography.caption.copyWith(fontWeight: FontWeight.w700, color: AppColors.green),
+        ),
+      ],
+    );
+  }
+}

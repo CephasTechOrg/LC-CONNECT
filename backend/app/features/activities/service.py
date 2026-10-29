@@ -128,6 +128,13 @@ async def update_activity(db: AsyncSession, activity: Activity, changes: dict) -
     end = changes.get('end_time', activity.end_time)
     if end is not None and end <= start:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='end_time must be after start_time')
+    new_cap = changes.get('max_participants')
+    if new_cap is not None and new_cap < await activity_count(db, activity.id):
+        # Lowering the cap below who already joined would leave the activity over capacity, with
+        # nobody to decide who loses their place.
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail='More people have already joined than that limit'
+        )
     for field in ('title', 'description', 'category', 'location', 'start_time', 'end_time', 'max_participants'):
         if field in changes:
             value = changes[field]

@@ -21,7 +21,15 @@ class _ActivitiesPreview extends ConsumerWidget {
             text: 'No activities yet. Check back soon.',
           );
         }
-        final visible = activities.take(2).toList();
+        // The featured activity first — the same one Activities leads with — then the soonest.
+        final featured = ref.watch(featuredActivityProvider).value?.activity;
+        final lead = featured == null
+            ? null
+            : activities.where((a) => a.id == featured.id).firstOrNull ?? featured;
+        final visible = [
+          ?lead,
+          ...activities.where((a) => a.id != lead?.id),
+        ].take(2).toList();
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.gutter),
           child: Column(

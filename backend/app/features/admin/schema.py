@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import AwareDatetime, BaseModel, ConfigDict, EmailStr, Field
 
 from app.features.campus_hub.schema import CampusPostImageRead, LinkPreviewRead
 from app.features.campus_positions.schema import CampusPositionRead
@@ -239,3 +239,22 @@ class ScholarMediaSignedUrlRead(BaseModel):
 
     url: str
     expires_in: int
+
+
+class AdminActivityRead(BaseModel):
+    """An upcoming activity in the admin list, with whether it is the campus pick."""
+
+    id: UUID
+    title: str
+    category: str
+    location: str
+    start_time: datetime
+    end_time: datetime | None
+    participant_count: int
+    max_participants: int | None
+    creator_name: str | None
+    featured_until: datetime | None
+
+
+class ActivityFeatureRequest(BaseModel):
+    until: AwareDatetime

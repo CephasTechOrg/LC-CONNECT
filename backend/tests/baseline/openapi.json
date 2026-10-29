@@ -189,6 +189,20 @@
         "title": "ActivityCreate",
         "type": "object"
       },
+      "ActivityFeatureRequest": {
+        "properties": {
+          "until": {
+            "format": "date-time",
+            "title": "Until",
+            "type": "string"
+          }
+        },
+        "required": [
+          "until"
+        ],
+        "title": "ActivityFeatureRequest",
+        "type": "object"
+      },
       "ActivityParticipantRead": {
         "description": "A row in an activity's roster. Activities are public, so this is just names/avatars \u2014\nno moderation. `is_creator` marks the organizer.",
         "properties": {
@@ -454,6 +468,97 @@
           }
         },
         "title": "ActivityUpdate",
+        "type": "object"
+      },
+      "AdminActivityRead": {
+        "description": "An upcoming activity in the admin list, with whether it is the campus pick.",
+        "properties": {
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "creator_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Creator Name"
+          },
+          "end_time": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Time"
+          },
+          "featured_until": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Featured Until"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "location": {
+            "title": "Location",
+            "type": "string"
+          },
+          "max_participants": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Participants"
+          },
+          "participant_count": {
+            "title": "Participant Count",
+            "type": "integer"
+          },
+          "start_time": {
+            "format": "date-time",
+            "title": "Start Time",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "category",
+          "location",
+          "start_time",
+          "end_time",
+          "participant_count",
+          "max_participants",
+          "creator_name",
+          "featured_until"
+        ],
+        "title": "AdminActivityRead",
         "type": "object"
       },
       "AdminDashboardSummary": {
@@ -4053,6 +4158,31 @@
           "has_resume"
         ],
         "title": "EmployerScholarView",
+        "type": "object"
+      },
+      "FeaturedActivityRead": {
+        "description": "The featured activity and why: an admin pin, or what the score saw in it.",
+        "properties": {
+          "activity": {
+            "$ref": "#/components/schemas/ActivityRead"
+          },
+          "reason": {
+            "enum": [
+              "pinned",
+              "filling_up",
+              "starting_soon",
+              "popular",
+              "featured"
+            ],
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "activity",
+          "reason"
+        ],
+        "title": "FeaturedActivityRead",
         "type": "object"
       },
       "ForgotPasswordRequest": {
@@ -8767,6 +8897,41 @@
         ]
       }
     },
+    "/api/v1/activities/featured": {
+      "get": {
+        "description": "The one featured activity \u2014 an admin's pick, else the best upcoming by score. Null when\nnothing is upcoming.",
+        "operationId": "get_featured_activity_api_v1_activities_featured_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/FeaturedActivityRead"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Get Featured Activity Api V1 Activities Featured Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Featured Activity",
+        "tags": [
+          "activities"
+        ]
+      }
+    },
     "/api/v1/activities/{activity_id}": {
       "get": {
         "operationId": "get_activity_api_v1_activities__activity_id__get",
@@ -9124,6 +9289,150 @@
         "summary": "List Participants",
         "tags": [
           "activities"
+        ]
+      }
+    },
+    "/api/v1/admin/activities": {
+      "get": {
+        "operationId": "list_upcoming_activities_api_v1_admin_activities_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AdminActivityRead"
+                  },
+                  "title": "Response List Upcoming Activities Api V1 Admin Activities Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Upcoming Activities",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/activities/{activity_id}/feature": {
+      "delete": {
+        "operationId": "unfeature_activity_api_v1_admin_activities__activity_id__feature_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "activity_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Activity Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Unfeature Activity",
+        "tags": [
+          "admin"
+        ]
+      },
+      "post": {
+        "operationId": "feature_activity_api_v1_admin_activities__activity_id__feature_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "activity_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Activity Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActivityFeatureRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Feature Activity",
+        "tags": [
+          "admin"
         ]
       }
     },

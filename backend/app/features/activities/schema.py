@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
 from pydantic import AwareDatetime, BaseModel, Field, model_validator
@@ -67,3 +68,10 @@ class ActivityRead(BaseModel):
     has_joined: bool
     is_cancelled: bool
     created_at: datetime
+
+
+class FeaturedActivityRead(BaseModel):
+    """The featured activity and why: an admin pin, or what the score saw in it."""
+
+    activity: ActivityRead
+    reason: Literal['pinned', 'filling_up', 'starting_soon', 'popular', 'featured']
