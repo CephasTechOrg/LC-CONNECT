@@ -15,7 +15,7 @@ from app.features.connections.schema import (
     ConnectionRequestRead,
     MatchRead,
 )
-from app.features.connections.service import existing_match, ordered_pair
+from app.features.connections.service import active_match, existing_match, ordered_pair
 from app.models import ConnectionRequest, Match, Profile, User
 from app.shared.conversations import ensure_dm_conversation
 from app.shared.policies import users_are_blocked
@@ -48,42 +48,16 @@ async def send_connection_request(payload: ConnectionRequestCreate, current_user
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='User not found')
     if await users_are_blocked(db, current_user.id, payload.receiver_id):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='Connection is not allowed')
-    if await existing_match(db, current_user.id, payload.receiver_id):
+    # A disconnected pair is not connected: they may ask again. Checking `existing_match` here
+    # answered "already matched" forever after a disconnect.
+    if await active_match(db, current_user.id, payload.receiver_id):
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='You are already matched')
 
     reverse_request = (await db.execute(select(ConnectionRequest).where(ConnectionRequest.sender_id == payload.receiver_id, ConnectionRequest.receiver_id == current_user.id, ConnectionRequest.status == 'pending'))).scalar_one_or_none()
     if reverse_request:
         reverse_request.status = 'accepted'
         reverse_request.responded_at = datetime.now(UTC)
-        left, right = ordered_pair(current_user.id, payload.receiver_id)
-        new_match = Match(user_a_id=left, user_b_id=right)
-        db.add(new_match)
-        try:
-            await db.flush()
-        except IntegrityError:
-            # Both sides connected back at the same instant — the other transaction created
-            # the match. Reload and finish as success (same heal as accept).
-            await db.rollback()
-            reverse_request = (
-                await db.execute(
-                    select(ConnectionRequest).where(
-                        ConnectionRequest.sender_id == payload.receiver_id,
-                        ConnectionRequest.receiver_id == current_user.id,
-                    )
-                )
-            ).scalar_one_or_none()
-            if reverse_request is None:
-                raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT, detail='You are already matched'
-                ) from None
-            if reverse_request.status == 'pending':
-                reverse_request.status = 'accepted'
-                reverse_request.responded_at = datetime.now(UTC)
-            new_match = await existing_match(db, current_user.id, payload.receiver_id)
-            if new_match is None:
-                raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT, detail='You are already matched'
-                ) from None
+        new_match = await _match_for(db, current_user.id, payload.receiver_id)
         new_match.disconnected_at = None
         await ensure_dm_conversation(db, new_match)  # every match gets its conversation
         await db.commit()
@@ -93,10 +67,23 @@ async def send_connection_request(payload: ConnectionRequestCreate, current_user
         return reverse_request
 
     existing = (await db.execute(select(ConnectionRequest).where(ConnectionRequest.sender_id == current_user.id, ConnectionRequest.receiver_id == payload.receiver_id))).scalar_one_or_none()
-    if existing is not None:
+    if existing is not None and existing.status == 'pending':
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='Connection request already exists')
+    if existing is not None:
+        # An answered request from before (accepted then disconnected, or declined): the pair
+        # constraint allows one row, so asking again reopens it rather than inserting a second.
+        existing.status = 'pending'
+        existing.intent = payload.intent
+        existing.note = payload.note
+        existing.created_at = datetime.now(UTC)
+        existing.responded_at = None
+        await db.commit()
+        await db.refresh(existing)
+        await _notify(payload.receiver_id, 'connection_request', current_user.id)
+        return existing
 
-    request = ConnectionRequest(sender_id=current_user.id, receiver_id=payload.receiver_id, intent=payload.intent, note=payload.note)
+    sender_id = current_user.id  # read before any rollback can expire `current_user`
+    request = ConnectionRequest(sender_id=sender_id, receiver_id=payload.receiver_id, intent=payload.intent, note=payload.note)
     db.add(request)
     try:
         await db.commit()
@@ -105,7 +92,7 @@ async def send_connection_request(payload: ConnectionRequestCreate, current_user
         # Return that one instead of surfacing a 500 — the action is idempotent.
         await db.rollback()
         return (await db.execute(select(ConnectionRequest).where(
-            ConnectionRequest.sender_id == current_user.id,
+            ConnectionRequest.sender_id == sender_id,
             ConnectionRequest.receiver_id == payload.receiver_id,
         ))).scalar_one()
     await db.refresh(request)
@@ -113,14 +100,39 @@ async def send_connection_request(payload: ConnectionRequestCreate, current_user
     return request
 
 
+async def _match_for(db: AsyncSession, user_a: UUID, user_b: UUID) -> Match:
+    """The pair's match row: the existing one (a disconnected pair reconnecting reuses it), or a new
+    one. A savepoint absorbs the race where both people connect at the same instant — the loser's
+    insert fails, only the savepoint rolls back, and it finishes against the winner's row. A full
+    rollback here used to discard the caller's other changes and expire every loaded object."""
+    match = await existing_match(db, user_a, user_b)
+    if match is not None:
+        return match
+    left, right = ordered_pair(user_a, user_b)
+    try:
+        async with db.begin_nested():
+            match = Match(user_a_id=left, user_b_id=right)
+            db.add(match)
+    except IntegrityError:
+        match = await existing_match(db, user_a, user_b)
+        if match is None:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='You are already matched') from None
+    return match
+
+
 async def _enrich(db: AsyncSession, requests: list[ConnectionRequest], partner_user_id_fn) -> list[ConnectionRequestEnriched]:
+    # One query for every partner's profile; this used to load them one request at a time.
+    partner_ids = {partner_user_id_fn(req) for req in requests}
+    profiles = {
+        p.user_id: p
+        for p in (
+            await db.execute(select(Profile).options(*profile_load_options()).where(Profile.user_id.in_(partner_ids)))
+        ).scalars()
+    } if partner_ids else {}
     result: list[ConnectionRequestEnriched] = []
     for req in requests:
-        try:
-            profile = await get_profile_by_user_id(db, partner_user_id_fn(req))
-            partner = profile_to_public(profile)
-        except Exception:
-            partner = None
+        profile = profiles.get(partner_user_id_fn(req))
+        partner = profile_to_public(profile) if profile is not None else None
         result.append(ConnectionRequestEnriched(
             id=req.id,
             sender_id=req.sender_id,
@@ -190,6 +202,12 @@ async def disconnect_from_user(
     if match.disconnected_at is None:
         match.disconnected_at = datetime.now(UTC)
         await db.commit()
+        # Live sockets would otherwise keep typing to each other and showing each other online.
+        from app.features.realtime.presence import hide_between
+        from app.features.realtime.runtime import revoke_pair_access
+
+        await revoke_pair_access(current_user.id, user_id)
+        await hide_between(current_user.id, user_id)
     return MessageResponse(message='Disconnected')
 
 
@@ -203,30 +221,7 @@ async def accept_request(request_id: UUID, current_user: User = Depends(require_
 
     request.status = 'accepted'
     request.responded_at = datetime.now(UTC)
-    left, right = ordered_pair(request.sender_id, request.receiver_id)
-    match = await existing_match(db, request.sender_id, request.receiver_id)
-    if match is None:
-        match = Match(user_a_id=left, user_b_id=right)
-        db.add(match)
-        try:
-            await db.flush()
-        except IntegrityError:
-            # Race with mutual-connect (or a double-tap accept): the other txn created the pair.
-            # Roll back, then re-apply accept against the surviving match — same success path.
-            await db.rollback()
-            request = await db.get(ConnectionRequest, request_id)
-            if request is None or request.receiver_id != current_user.id:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND, detail='Pending request not found'
-                ) from None
-            if request.status == 'pending':
-                request.status = 'accepted'
-                request.responded_at = datetime.now(UTC)
-            match = await existing_match(db, request.sender_id, request.receiver_id)
-            if match is None:
-                raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT, detail='You are already matched'
-                ) from None
+    match = await _match_for(db, request.sender_id, request.receiver_id)
     # Reconnecting reuses the old row (uq_match_pair forbids a second one), so the disconnect
     # flag has to be cleared or the pair stays disconnected despite an accepted request.
     match.disconnected_at = None

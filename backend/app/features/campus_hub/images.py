@@ -69,11 +69,29 @@ async def add_image(
     object_path, public_url = await run_sync(
         storage_service.upload_campus_post_image, post.id, image_id, content_type, clean
     )
+    # Re-check under a lock on the post, *after* the slow processing and upload (no lock is held
+    # through those). Two uploads at once used to read the same count, take the same sort_order,
+    # and the second failed with a 500 after its file was already stored — or both got in past
+    # the limit. The second now waits here, sees the first, and either takes the next slot or is
+    # refused and its stored file removed.
+    await db.execute(select(CampusPost.id).where(CampusPost.id == post.id).with_for_update())
+    count, top = (
+        await db.execute(
+            select(func.count(), func.max(CampusPostImage.sort_order)).where(CampusPostImage.post_id == post.id)
+        )
+    ).one()
+    if count >= MAX_IMAGES:
+        await db.rollback()
+        await run_sync(storage_service.delete_campus_post_image, object_path)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail='Announcements can have at most 4 images',
+        )
     db.add(
         CampusPostImage(
             id=image_id,
             post_id=post.id,
-            sort_order=current_count,
+            sort_order=0 if top is None else top + 1,
             object_path=object_path,
             public_url=public_url,
         )

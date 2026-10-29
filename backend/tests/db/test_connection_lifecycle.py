@@ -124,3 +124,36 @@ async def test_withdrawing_frees_the_pair_to_ask_again(db, factory):
     rows = (await db.execute(select(ConnectionRequest).where(
         ConnectionRequest.sender_id == a.id, ConnectionRequest.receiver_id == b.id))).scalars().all()
     assert len(rows) == 1
+
+
+async def test_after_a_disconnect_either_side_can_ask_again_and_accepting_reconnects(db, factory, monkeypatch):
+    """The real flow: disconnect, ask again, accept. Asking again used to answer "already
+    matched" (it counted the disconnected match) and then trip the one-request-per-pair rule."""
+    import importlib
+
+    from app.features.connections.schema import ConnectionRequestCreate
+
+    # The package exports its APIRouter as `router`, which shadows the module of the same name.
+    connections = importlib.import_module('app.features.connections.router')
+
+    async def quiet(*_args, **_kwargs):
+        return None
+
+    monkeypatch.setattr(connections, '_notify', quiet)
+    monkeypatch.setattr('app.features.realtime.runtime.revoke_pair_access', quiet)
+    monkeypatch.setattr('app.features.realtime.presence.hide_between', quiet)
+
+    a, b = await factory.user(display_name='A'), await factory.user(display_name='B')
+    first = await connections.send_connection_request(
+        ConnectionRequestCreate(receiver_id=b.id), current_user=a, db=db
+    )
+    await connections.accept_request(first.id, current_user=b, db=db)
+    await connections.disconnect_from_user(b.id, current_user=a, db=db)
+    assert await users_are_connected(db, a.id, b.id) is False
+
+    again = await connections.send_connection_request(
+        ConnectionRequestCreate(receiver_id=b.id), current_user=a, db=db
+    )
+    assert again.status == 'pending' and again.id == first.id
+    await connections.accept_request(again.id, current_user=b, db=db)
+    assert await users_are_connected(db, a.id, b.id) is True

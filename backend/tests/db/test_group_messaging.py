@@ -13,7 +13,7 @@ from uuid import uuid4
 
 import pytest
 from fastapi import HTTPException
-from sqlalchemy import select
+from sqlalchemy import select, update
 
 from app.features.groups import service as group_service
 from app.features.groups.schema import GroupCreate
@@ -104,6 +104,12 @@ async def test_muted_members_are_flagged_for_push_exclusion(db, factory):
 async def test_group_unread_uses_the_per_member_boundary(db, factory):
     group, members = await _group_with_members(db, factory, n_members=3)
     owner, reader = members[0], members[1]
+    # The messages below are back-dated; members have to have joined before them to count them.
+    await db.execute(
+        update(ConversationMember)
+        .where(ConversationMember.conversation_id == group.conversation_id)
+        .values(joined_at=BASE - timedelta(days=1))
+    )
 
     # Owner sends 3 messages.
     msgs = []
@@ -325,3 +331,22 @@ async def test_read_by_drops_a_removed_member(db, factory):
     await db.commit()
 
     assert await read_by(db, message.id, sender.id) == []
+
+
+async def test_a_new_member_starts_with_only_what_arrived_after_joining(db, factory):
+    group, members = await _group_with_members(db, factory, n_members=2)
+    owner, newcomer = members[0], members[1]
+    await db.execute(
+        update(ConversationMember)
+        .where(ConversationMember.conversation_id == group.conversation_id, ConversationMember.user_id == newcomer.id)
+        .values(joined_at=BASE + timedelta(minutes=5))
+    )
+    for i in range(10):
+        db.add(Message(
+            conversation_id=group.conversation_id, sender_id=owner.id, body=f'm{i}',
+            created_at=BASE + timedelta(minutes=i),
+        ))
+    await db.commit()
+
+    _, per = await unread_summary(db, newcomer.id)
+    assert per.get(group.conversation_id) == 5  # m5..m9, not the whole history

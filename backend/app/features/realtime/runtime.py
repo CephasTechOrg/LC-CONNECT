@@ -12,6 +12,7 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 
 from app.config import settings
 from app.database import AsyncSessionLocal
@@ -85,6 +86,7 @@ subscribe_limiter = RateLimiter(settings.ws_subscribe_rate_per_10s, 10, name='ws
 # Generous next to the 25s heartbeat: a client reconnecting or waking from background may
 # ping a little early. Over budget we drop silently rather than error (see gateway._on_ping).
 ping_limiter = RateLimiter(settings.ws_ping_rate_per_10s, 10, name='ws_ping')
+receipt_limiter = RateLimiter(settings.ws_receipt_rate_per_10s, 10, name='ws_receipt')
 malformed_limiter = RateLimiter(settings.ws_max_malformed_frames, 60, name='ws_malformed')
 # Bounds the *reply* to an unimplemented frame, not the frame itself. Over budget the gateway goes
 # quiet instead of closing (see gateway._reject_unsupported): closing is what produced the
@@ -183,17 +185,30 @@ async def emit_notification(
                 existing.detail = detail
                 notification = existing
             else:
-                notification = await notifications_service.create_notification(
-                    db,
-                    user_id=user_id,
-                    type=notif_type,
-                    group_id=group_id,
-                    actor_id=actor_id,
-                    target_type=target_type,
-                    target_id=target_id,
-                    detail=detail,
-                    subject_id=subject_id,
-                )
+                try:
+                    # A savepoint: if a concurrent emit just created the same unread row, the
+                    # unique index refuses this one and only the savepoint rolls back.
+                    async with db.begin_nested():
+                        notification = await notifications_service.create_notification(
+                            db,
+                            user_id=user_id,
+                            type=notif_type,
+                            group_id=group_id,
+                            actor_id=actor_id,
+                            target_type=target_type,
+                            target_id=target_id,
+                            detail=detail,
+                            subject_id=subject_id,
+                        )
+                except IntegrityError:
+                    existing = await notifications_service.find_unread_duplicate(
+                        db, user_id=user_id, type=notif_type, actor_id=actor_id,
+                        target_id=target_id, subject_id=subject_id,
+                    )
+                    if existing is None:
+                        raise
+                    existing.detail = detail
+                    notification = existing
             await db.commit()
             await db.refresh(notification)
             dto = await notifications_service.read_one(db, notification)

@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.shared.message_limits import MAX_BODY_CHARS
 from app.shared.schemas import ProfilePublic
@@ -84,8 +84,18 @@ class MessageReadBy(BaseModel):
     avatar_url: str | None = None
 
 
+def _not_blank(value: str) -> str:
+    """Length limits apply to the raw text, so a body of spaces passed `min_length=1` and was
+    stored as an empty message. The WebSocket path already refused it."""
+    if not value.strip():
+        raise ValueError('Message cannot be empty')
+    return value
+
+
 class MessageCreate(BaseModel):
     body: str = Field(min_length=1, max_length=MAX_BODY_CHARS)
+
+    _body_not_blank = field_validator('body')(_not_blank)
     # Optional idempotency key; a retry with the same value returns the original message.
     client_message_id: UUID | None = None
     # The message this one replies to; must be in the same conversation and not deleted.
@@ -96,6 +106,8 @@ class MessageEditRequest(BaseModel):
     """The new body. Same bounds as sending — an edit cannot smuggle in a longer message."""
 
     body: str = Field(min_length=1, max_length=MAX_BODY_CHARS)
+
+    _body_not_blank = field_validator('body')(_not_blank)
 
 
 class LinkPreviewRequest(BaseModel):

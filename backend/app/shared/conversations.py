@@ -19,7 +19,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
-from app.models import Conversation, ConversationMember, Match
+from app.models import Conversation, ConversationMember, Match, User
 from app.shared.policies import staff_thread_is_open, users_are_blocked
 
 ACTIVE = 'active'
@@ -93,10 +93,15 @@ async def ensure_staff_dm_conversation(db: AsyncSession, user_a: UUID, user_b: U
 
     Unlike `ensure_dm_conversation`, there is no `Match` to key uniqueness off of — a
     `staff_dm` is addressed directly by its own conversation id (the same pattern a group
-    uses). Creation is a rare, human-initiated action (not a swipe-matching hot path), so a
-    plain check-then-create is an acceptable trade-off over adding pair-uniqueness plumbing
-    for a single low-contention feature.
+    uses), so nothing in the schema stops a second one.
+
+    Both people's user rows are locked first, always in the same order (so two creators can
+    never deadlock on each other). A double-tap on "Message" used to make two conversations; now
+    the second request waits, then finds the first.
     """
+    await db.execute(
+        select(User.id).where(User.id.in_((user_a, user_b))).order_by(User.id).with_for_update()
+    )
     existing = await find_staff_dm(db, user_a, user_b)
     if existing is not None:
         return existing
@@ -163,6 +168,27 @@ async def accessible_conversation(db: AsyncSession, ref: UUID, user_id: UUID) ->
             status_code=status.HTTP_403_FORBIDDEN, detail='This staff conversation is no longer available'
         )
     return conversation
+
+
+async def dm_is_disconnected(db: AsyncSession, conversation: Conversation) -> bool:
+    """Whether this is a DM whose connection either side has ended.
+
+    A disconnect keeps the history readable for both people (the match row is kept for that), but
+    the chat is closed: no new messages, replies, reactions or typing. Those paths used to go on
+    working, so "disconnect" changed nothing a student could see.
+    """
+    if conversation.kind != 'dm' or conversation.match_id is None:
+        return False
+    ended = (
+        await db.execute(select(Match.disconnected_at).where(Match.id == conversation.match_id))
+    ).scalar_one_or_none()
+    return ended is not None
+
+
+async def assert_can_post(db: AsyncSession, conversation: Conversation) -> None:
+    """403 for new content in a disconnected DM — see [dm_is_disconnected]."""
+    if await dm_is_disconnected(db, conversation):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='You are no longer connected')
 
 
 async def active_members_with_mute(

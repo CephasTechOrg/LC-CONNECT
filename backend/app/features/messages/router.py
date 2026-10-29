@@ -53,10 +53,12 @@ from app.shared.conversations import (
     active_member_ids,
     active_members_with_mute,
     addressing_ids_for_conversations,
+    assert_can_post,
 )
 from app.shared.policies import can_message_as_staff
 from app.shared.rate_limit import (
     link_preview_limit,
+    message_delete_limit,
     message_edit_limit,
     message_send_limit,
     reaction_limit,
@@ -241,6 +243,7 @@ async def send_message(
     db: AsyncSession = Depends(get_db),
 ):
     conversation = await accessible_conversation(db, match_id, current_user.id)
+    await assert_can_post(db, conversation)
     reply = None
     if payload.reply_to_id is not None:
         try:
@@ -355,7 +358,7 @@ async def get_message_read_by(
 
 @router.delete('/{message_id}', response_model=MessageRead)
 async def delete_message_endpoint(
-    message_id: UUID, current_user: User = Depends(require_verified_user), db: AsyncSession = Depends(get_db)
+    message_id: UUID, current_user: User = Depends(message_delete_limit), db: AsyncSession = Depends(get_db)
 ):
     """Delete a message for everyone (soft delete → tombstone). Sender anywhere; group admins in
     their group. Fans out a `message.deleted` event so open chats update live."""

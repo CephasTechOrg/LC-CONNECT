@@ -34,7 +34,7 @@ class Connection:
     """A single authenticated socket and its outbound pipeline."""
 
     __slots__ = (
-        'socket', 'user_id', 'subscriptions', 'partners', 'refs', 'addressing',
+        'socket', 'user_id', 'subscriptions', 'partners', 'partners_at', 'refs', 'addressing',
         'last_seen', 'alive', '_outbox', '_writer',
     )
 
@@ -45,6 +45,10 @@ class Connection:
         # canonical conversation_id -> other active member ids, cached at subscribe so typing
         # needs no DB hit. One entry for a DM, N-1 for a group.
         self.partners: dict[UUID, list[UUID]] = {}
+        # When each `partners` entry was read (monotonic seconds). The typing path refreshes an
+        # entry older than a minute, so people who joined a group after you opened it see you
+        # typing too.
+        self.partners_at: dict[UUID, float] = {}
         # Client-supplied ref -> canonical conversation id. A DM is addressed by its *match* id
         # (and, since resolve_conversation tries the conversation table first, sometimes by its
         # conversation id), while every server-side publisher routes on the canonical id. This
@@ -152,6 +156,7 @@ class ConnectionManager:
         canonical = conn.canonical(conversation_ref)
         conn.subscriptions.discard(canonical)
         conn.partners.pop(canonical, None)
+        conn.partners_at.pop(canonical, None)
         conn.addressing.pop(canonical, None)
         for ref in [r for r, target in conn.refs.items() if target == canonical]:
             del conn.refs[ref]

@@ -192,7 +192,16 @@ async def _reserve_capacity(db: AsyncSession, group: Group) -> None:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='Group is full')
 
 
+async def _lock_group(db: AsyncSession, group: Group) -> None:
+    """Serialize membership changes for one group. Taken *before* reading the member row: two
+    taps on Join (or two admins inviting the same person) both read "no row" and both inserted, and
+    the second failed with a 500 on the one-row-per-member constraint. With the lock, the second
+    waits, then reads the first's row and answers normally."""
+    await db.execute(select(Group.id).where(Group.id == group.id).with_for_update())
+
+
 async def join_group(db: AsyncSession, group: Group, user: User) -> JoinResult:
+    await _lock_group(db, group)
     existing = await membership(db, group.conversation_id, user.id)
     if existing and existing.status == 'banned':
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='You cannot join this group')
@@ -242,6 +251,7 @@ async def invite_user(db: AsyncSession, group: Group, target_user_id: UUID, invi
     # know (public discovery is the path for everyone else). Enforced here, not just in the UI.
     if not await users_are_connected(db, invited_by, target_user_id):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='You can only invite your connections')
+    await _lock_group(db, group)
     existing = await membership(db, group.conversation_id, target_user_id)
     if existing and existing.status == ACTIVE:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='Already a member')

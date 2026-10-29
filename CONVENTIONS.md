@@ -88,6 +88,10 @@ lib/
    feature must **never** import another feature's `service.py`/`providers`. Cross-feature needs
    go through `shared/`.
 4. **Models stay centralized** (`app/models.py`) — one SQLAlchemy metadata, no circular imports.
+5. **Writes are race-safe.** Anything a double tap, a second device or a retry could run twice uses
+   a unique constraint, an upsert or a row lock — never check-then-insert — and recovers from an
+   `IntegrityError` with a savepoint, not `db.rollback()`. See
+   [`docs/architecture/data-integrity.md`](docs/architecture/data-integrity.md).
 
 ### Backend shared-kernel ownership
 

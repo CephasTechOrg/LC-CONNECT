@@ -48,6 +48,18 @@ class Notification(Base):
             'user_id',
             postgresql_where=text('read_at IS NULL'),
         ),
+        # At most one *unread* row per (recipient, type, actor, subject) — the collapse rule of
+        # `emit_notification`, made a guarantee. Without it two reactions arriving together both
+        # found no unread row and both inserted: two rows, two pushes.
+        Index(
+            'uq_notifications_unread_subject',
+            'user_id',
+            'type',
+            'actor_id',
+            'subject_id',
+            unique=True,
+            postgresql_where=text('read_at IS NULL AND subject_id IS NOT NULL'),
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)

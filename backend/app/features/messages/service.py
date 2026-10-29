@@ -11,7 +11,7 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import HTTPException, status
-from sqlalchemy import func, or_, select, tuple_
+from sqlalchemy import and_, func, or_, select, tuple_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
@@ -23,6 +23,7 @@ from app.features.messages.schema import (
     ReplyPreview,
 )
 from app.models import (
+    Conversation,
     ConversationMember,
     Match,
     Message,
@@ -59,13 +60,24 @@ async def unread_summary(db: AsyncSession, user_id: UUID) -> tuple[int, dict[UUI
             select(ConversationMember.conversation_id, func.count(Message.id))
             .select_from(ConversationMember)
             .join(Message, Message.conversation_id == ConversationMember.conversation_id)
+            .join(Conversation, Conversation.id == ConversationMember.conversation_id)
             .outerjoin(boundary, boundary.id == ConversationMember.last_read_message_id)
             .where(
                 ConversationMember.user_id == user_id,
                 ConversationMember.status == 'active',
                 Message.sender_id != user_id,
+                # A deleted message is a tombstone with nothing to read; counting it left a badge
+                # the user could never clear by reading.
+                Message.deleted_at.is_(None),
                 or_(
-                    ConversationMember.last_read_message_id.is_(None),
+                    # No boundary yet: in a group, only what arrived since joining — someone added
+                    # to a busy group used to start with its entire history unread. A DM's members
+                    # can postdate its messages (chats carried over from before conversations
+                    # existed), so there everything still counts.
+                    and_(
+                        ConversationMember.last_read_message_id.is_(None),
+                        or_(Conversation.kind != 'group', Message.created_at >= ConversationMember.joined_at),
+                    ),
                     tuple_(Message.created_at, Message.id) > tuple_(boundary.created_at, boundary.id),
                 ),
             )
@@ -256,15 +268,17 @@ async def persist_message_idempotent(
         body=body,
         reply_to_id=reply_to_id,
     )
-    db.add(message)
     try:
-        # `populate_existing`-style read-back without a second round trip: the INSERT returns the
-        # server-generated `created_at`, so the `db.refresh(message)` that used to follow the
-        # commit is unnecessary. That refresh was a third round trip on the critical path of every
-        # single message, purely to read back one column the INSERT already knew.
-        await db.flush()
+        # A savepoint, so a duplicate rolls back only this insert: a full rollback discarded the
+        # caller's other work and expired every object loaded in the session.
+        async with db.begin_nested():
+            db.add(message)
+            # The INSERT returns the server-generated `created_at` (eager defaults), so no
+            # `db.refresh(message)` round trip follows the commit.
+            await db.flush()
     except IntegrityError:
-        await db.rollback()
+        if client_message_id is None:
+            raise  # not the idempotency key — a real constraint failure, not a retry
         existing = (
             await db.execute(
                 select(Message).where(
@@ -272,7 +286,15 @@ async def persist_message_idempotent(
                     Message.client_message_id == client_message_id,
                 )
             )
-        ).scalar_one()
+        ).scalar_one_or_none()
+        if existing is None:
+            raise
+        if existing.conversation_id != conversation_id:
+            # The same client id reused in another chat is a client bug, not a retry; answering
+            # with that other chat's message would leak it into this one.
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT, detail='client_message_id already used'
+            ) from None
         return existing, False
 
     await db.commit()

@@ -140,12 +140,18 @@ async def _advance_boundary(
 async def _member_for(
     db: AsyncSession, conversation_id: UUID, user_id: UUID
 ) -> ConversationMember | None:
+    """The member row, locked until commit. Boundaries are read-compare-write: without the lock two
+    devices acknowledging at once could each read the old boundary and the *older* write could
+    land last, moving the tick backwards (and the unread count up)."""
     return (
         await db.execute(
-            select(ConversationMember).where(
+            select(ConversationMember)
+            .where(
                 ConversationMember.conversation_id == conversation_id,
                 ConversationMember.user_id == user_id,
             )
+            .with_for_update()
+            .execution_options(populate_existing=True)
         )
     ).scalar_one_or_none()
 
@@ -234,16 +240,18 @@ async def mark_read(
     # Free: same row, already loaded, no extra query.
     await _advance_boundary(db, member, 'last_delivered_message_id', cursor)
 
-    # 2. Keep DM receipts working.
-    await db.execute(
-        update(Message)
-        .where(
-            Message.conversation_id == conversation.id,
-            Message.sender_id != reader_id,
-            Message.created_at <= cursor_created,
-            Message.read_at.is_(None),
+    # 2. Keep DM receipts working. Groups read from the member boundaries instead; stamping
+    # every message there was a write per message per reader, contending for the same rows.
+    if conversation.kind != 'group':
+        await db.execute(
+            update(Message)
+            .where(
+                Message.conversation_id == conversation.id,
+                Message.sender_id != reader_id,
+                Message.created_at <= cursor_created,
+                Message.read_at.is_(None),
+            )
+            .values(read_at=now)
         )
-        .values(read_at=now)
-    )
     await db.commit()
     return now

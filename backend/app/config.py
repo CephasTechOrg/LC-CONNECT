@@ -120,6 +120,9 @@ class Settings(BaseSettings):
     ws_typing_rate_per_10s: int = Field(default=10, alias='WS_TYPING_RATE_PER_10S')
     ws_subscribe_rate_per_10s: int = Field(default=15, alias='WS_SUBSCRIBE_RATE_PER_10S')
     ws_ping_rate_per_10s: int = Field(default=6, alias='WS_PING_RATE_PER_10S')
+    # Read and delivered acknowledgements, together. Each is several queries and a write; a client
+    # sends a handful per chat opened, so this only bites a loop.
+    ws_receipt_rate_per_10s: int = Field(default=40, alias='WS_RECEIPT_RATE_PER_10S')
     ws_max_malformed_frames: int = Field(default=10, alias='WS_MAX_MALFORMED_FRAMES')
     # Requests slower than this are logged at WARNING rather than INFO, so they can be found with
     # a level filter in Render's log search instead of by reading everything.
@@ -139,6 +142,10 @@ class Settings(BaseSettings):
     # will ever see it; low enough that a held finger cannot amplify into the hundreds.
     rate_limit_reactions_per_minute: int = Field(
         default=60, alias='RATE_LIMIT_REACTIONS_PER_MINUTE'
+    )
+    # A delete fans out to the conversation and every member like an edit does.
+    rate_limit_message_deletes_per_minute: int = Field(
+        default=30, alias='RATE_LIMIT_MESSAGE_DELETES_PER_MINUTE'
     )
     # An edit writes an audit row *and* fans out to the conversation and every member's user
     # channel. Unlimited, a single message could be edited hundreds of times inside its window,

@@ -7,6 +7,7 @@ How the system is built — the technical design docs.
 | [`architecture.md`](./architecture.md) | System components, API areas, and data flows |
 | [`database.md`](./database.md) | PostgreSQL schema — tables, relationships, indexes |
 | [`realtime-messaging.md`](./realtime-messaging.md) | Real-time messaging end-to-end (WebSocket gateway, fan-out, dedup) |
+| [`data-integrity.md`](./data-integrity.md) | Transactions, locking, races, idempotency and caching — read before writing data |
 | [`image_storage.md`](./image_storage.md) | Avatar/image storage — folders, replace-not-duplicate, sanitization |
 | [`folder_structure.md`](./folder_structure.md) | Backend + mobile folder layout (feature-first) |
 
