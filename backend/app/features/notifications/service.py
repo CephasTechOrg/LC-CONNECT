@@ -16,7 +16,8 @@ from app.features.notifications.schema import (
     NotificationGroupInfo,
     NotificationRead,
 )
-from app.models import DeviceToken, Group, Notification, Profile
+from app.models import DeviceToken, Group, Message, Notification, Profile
+from app.shared.message_snippets import snippet
 
 
 async def register_device(db: AsyncSession, user_id: UUID, token: str, platform: str) -> None:
@@ -69,6 +70,7 @@ async def create_notification(
     target_type: str | None = None,
     target_id: UUID | None = None,
     detail: str | None = None,
+    subject_id: UUID | None = None,
 ) -> Notification:
     """Insert a notification (caller commits). Never notify someone about their own action.
 
@@ -83,13 +85,21 @@ async def create_notification(
         target_type=target_type,
         target_id=target_id,
         detail=detail,
+        subject_id=subject_id,
     )
     db.add(notification)
     await db.flush()
     return notification
 
 
-def _to_read(n: Notification, group_name: str | None, actor_name: str | None, actor_avatar: str | None) -> NotificationRead:
+def _to_read(
+    n: Notification,
+    group_name: str | None,
+    actor_name: str | None,
+    actor_avatar: str | None,
+    message: tuple[str | None, bool] | None = None,
+) -> NotificationRead:
+    """`message` is the subject message's (body, deleted), for a reaction row's excerpt."""
     return NotificationRead(
         id=n.id,
         type=n.type,
@@ -100,6 +110,7 @@ def _to_read(n: Notification, group_name: str | None, actor_name: str | None, ac
         target_type=n.target_type,
         target_id=n.target_id,
         detail=n.detail,
+        snippet=snippet(message[0], deleted=message[1]) if message is not None else None,
     )
 
 
@@ -125,9 +136,17 @@ async def list_notifications(
     """
     actor = aliased(Profile)
     stmt = (
-        select(Notification, Group.name, actor.display_name, actor.avatar_url)
+        select(
+            Notification,
+            Group.name,
+            actor.display_name,
+            actor.avatar_url,
+            Message.body,
+            Message.deleted_at,
+        )
         .outerjoin(Group, Group.id == Notification.group_id)
         .outerjoin(actor, actor.user_id == Notification.actor_id)
+        .outerjoin(Message, Message.id == Notification.subject_id)
         .where(Notification.user_id == user_id)
     )
     if before_created_at is not None and before_id is not None:
@@ -137,7 +156,16 @@ async def list_notifications(
     stmt = stmt.order_by(Notification.created_at.desc(), Notification.id.desc()).limit(limit)
 
     rows = (await db.execute(stmt)).all()
-    return [_to_read(n, group_name, actor_name, actor_avatar) for n, group_name, actor_name, actor_avatar in rows]
+    return [
+        _to_read(
+            n,
+            group_name,
+            actor_name,
+            actor_avatar,
+            (body, deleted_at is not None) if n.subject_id is not None else None,
+        )
+        for n, group_name, actor_name, actor_avatar, body, deleted_at in rows
+    ]
 
 
 async def read_one(db: AsyncSession, notification: Notification) -> NotificationRead:
@@ -156,7 +184,71 @@ async def read_one(db: AsyncSession, notification: Notification) -> Notification
         ).first()
         if row is not None:
             actor_name, actor_avatar = row
-    return _to_read(notification, group_name, actor_name, actor_avatar)
+    message = None
+    if notification.subject_id:
+        found = (
+            await db.execute(
+                select(Message.body, Message.deleted_at).where(Message.id == notification.subject_id)
+            )
+        ).first()
+        message = (found[0], found[1] is not None) if found is not None else (None, True)
+    return _to_read(notification, group_name, actor_name, actor_avatar, message)
+
+
+def _duplicate_filter(
+    *,
+    user_id: UUID,
+    type: str,
+    actor_id: UUID | None,
+    target_id: UUID | None,
+    subject_id: UUID | None = None,
+):
+    """The unread row this event would repeat: same recipient, type and actor, and the same
+    subject message when there is one (else the same target)."""
+    where = [
+        Notification.user_id == user_id,
+        Notification.type == type,
+        Notification.actor_id == actor_id,
+        Notification.read_at.is_(None),
+    ]
+    if subject_id is not None:
+        where.append(Notification.subject_id == subject_id)
+    else:
+        where.append(Notification.target_id == target_id)
+    return where
+
+
+async def find_unread_duplicate(
+    db: AsyncSession,
+    *,
+    user_id: UUID,
+    type: str,
+    actor_id: UUID | None,
+    target_id: UUID | None,
+    subject_id: UUID | None = None,
+) -> Notification | None:
+    """The **unread** notification this event would repeat, if any.
+
+    Used to collapse repeats of a cheap, repeatable action — changing a reaction is one tap, and
+    would otherwise be a row and a push per tap. Keyed on unread rather than on a time window so
+    the recipient is told again once they have actually seen the first one. Keyed per message
+    (`subject_id`) for reactions, so reactions to two different messages stay two rows.
+    """
+    return (
+        await db.execute(
+            select(Notification)
+            .where(
+                *_duplicate_filter(
+                    user_id=user_id,
+                    type=type,
+                    actor_id=actor_id,
+                    target_id=target_id,
+                    subject_id=subject_id,
+                )
+            )
+            .limit(1)
+        )
+    ).scalar_one_or_none()
 
 
 async def unread_duplicate_exists(
@@ -166,28 +258,43 @@ async def unread_duplicate_exists(
     type: str,
     actor_id: UUID | None,
     target_id: UUID | None,
+    subject_id: UUID | None = None,
 ) -> bool:
-    """Whether an **unread** notification already exists for this exact (recipient, type, actor,
-    target).
-
-    Used to collapse repeats of a cheap, repeatable action — a reaction toggle is one tap, so
-    react/un-react/react would otherwise be three rows and three pushes in a few seconds. Keyed on
-    unread rather than on a time window so the recipient is still told again once they have
-    actually seen the first one.
-    """
+    """Whether [find_unread_duplicate] would find a row."""
     return (
-        await db.execute(
-            select(Notification.id)
-            .where(
-                Notification.user_id == user_id,
-                Notification.type == type,
-                Notification.actor_id == actor_id,
-                Notification.target_id == target_id,
-                Notification.read_at.is_(None),
-            )
-            .limit(1)
+        await find_unread_duplicate(
+            db,
+            user_id=user_id,
+            type=type,
+            actor_id=actor_id,
+            target_id=target_id,
+            subject_id=subject_id,
         )
-    ).scalar_one_or_none() is not None
+    ) is not None
+
+
+async def retract_unread(
+    db: AsyncSession, *, user_id: UUID, type: str, actor_id: UUID, subject_id: UUID
+) -> list[UUID]:
+    """Delete the **unread** rows for this event and return their ids (caller commits).
+
+    An un-react takes back a notification the recipient has not seen yet — "Ama reacted 👍" should
+    not linger after Ama removed it. A row already read stays: the recipient saw it, and deleting
+    it would make their history disagree with their memory.
+    """
+    return list(
+        (
+            await db.execute(
+                delete(Notification)
+                .where(
+                    *_duplicate_filter(
+                        user_id=user_id, type=type, actor_id=actor_id, target_id=None, subject_id=subject_id
+                    )
+                )
+                .returning(Notification.id)
+            )
+        ).scalars()
+    )
 
 
 async def unread_count(db: AsyncSession, user_id: UUID) -> int:

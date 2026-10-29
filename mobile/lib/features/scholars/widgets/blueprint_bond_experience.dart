@@ -308,7 +308,11 @@ Future<ScholarProject?> showProjectEditor(
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
     ),
     builder: (ctx) {
-      return Padding(
+      // The link is checked here, like LinkedIn: a bare `github.com/me` gets `https://`, and
+      // anything that is not a web address is flagged on the field instead of failing the whole
+      // profile save later with a generic error.
+      String? urlError;
+      return StatefulBuilder(builder: (ctx, setSheetState) => Padding(
         padding: EdgeInsets.only(
           left: 20,
           right: 20,
@@ -332,7 +336,13 @@ Future<ScholarProject?> showProjectEditor(
               const SizedBox(height: 12),
               _Field(label: 'Your role', controller: roleCtrl, hint: 'Optional'),
               const SizedBox(height: 12),
-              _Field(label: 'Link (URL)', controller: urlCtrl, hint: 'Optional'),
+              _Field(
+                label: 'Link (URL)',
+                controller: urlCtrl,
+                hint: 'Optional, e.g. github.com/you/project',
+                keyboardType: TextInputType.url,
+                errorText: urlError,
+              ),
               const SizedBox(height: 12),
               _Field(label: 'Description', controller: descCtrl, maxLines: 3, hint: 'Optional'),
               const SizedBox(height: 16),
@@ -340,10 +350,20 @@ Future<ScholarProject?> showProjectEditor(
                 onPressed: () {
                   final name = nameCtrl.text.trim();
                   if (name.isEmpty) return;
+                  final link = normalizeProfileUrl(
+                    urlCtrl.text,
+                    fieldLabel: 'project',
+                    example: 'github.com/you/project',
+                  );
+                  if (link is UrlFieldInvalid) {
+                    setSheetState(() => urlError = link.message);
+                    return;
+                  }
+                  final url = (link as UrlFieldValid).value;
                   Navigator.of(ctx).pop(ScholarProject(
                     name: name,
                     role: roleCtrl.text.trim().isEmpty ? null : roleCtrl.text.trim(),
-                    url: urlCtrl.text.trim().isEmpty ? null : urlCtrl.text.trim(),
+                    url: url.isEmpty ? null : url,
                     description: descCtrl.text.trim().isEmpty ? null : descCtrl.text.trim(),
                   ));
                 },
@@ -357,7 +377,7 @@ Future<ScholarProject?> showProjectEditor(
             ],
           ),
         ),
-      );
+      ));
     },
   );
 

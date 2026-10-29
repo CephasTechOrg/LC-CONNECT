@@ -4783,6 +4783,18 @@
               }
             ],
             "title": "Client Message Id"
+          },
+          "reply_to_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reply To Id"
           }
         },
         "required": [
@@ -4893,6 +4905,54 @@
         "title": "MessageLinkPreviewRead",
         "type": "object"
       },
+      "MessageReactor": {
+        "description": "Someone who reacted to a message, and with what \u2014 a row in the \"Reacted by\" sheet.\n\nName and avatar only, for the same reason as [MessageReadBy]: the sheet draws a name, an\navatar and an emoji, and a full public profile per reactor would be kilobytes of unrelated\npersonal data. Includes the caller, so the sheet can show \"You\" and offer removal.",
+        "properties": {
+          "avatar_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Url"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "emoji": {
+            "title": "Emoji",
+            "type": "string"
+          },
+          "reacted_at": {
+            "format": "date-time",
+            "title": "Reacted At",
+            "type": "string"
+          },
+          "user_id": {
+            "format": "uuid",
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "emoji",
+          "reacted_at"
+        ],
+        "title": "MessageReactor",
+        "type": "object"
+      },
       "MessageRead": {
         "properties": {
           "body": {
@@ -4986,6 +5046,16 @@
               }
             ],
             "title": "Read At"
+          },
+          "reply_to": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReplyPreview"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "sender_id": {
             "format": "uuid",
@@ -5106,6 +5176,11 @@
               }
             ],
             "title": "Match Id"
+          },
+          "muted": {
+            "default": false,
+            "title": "Muted",
+            "type": "boolean"
           },
           "partner": {
             "anyOf": [
@@ -5491,6 +5566,11 @@
             "title": "Role",
             "type": "string"
           },
+          "show_presence": {
+            "default": true,
+            "title": "Show Presence",
+            "type": "boolean"
+          },
           "show_profile_to_verified_only": {
             "title": "Show Profile To Verified Only",
             "type": "boolean"
@@ -5631,6 +5711,17 @@
           "read": {
             "title": "Read",
             "type": "boolean"
+          },
+          "snippet": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Snippet"
           },
           "target_id": {
             "anyOf": [
@@ -6003,6 +6094,43 @@
           }
         },
         "title": "PositionRevokeRequest",
+        "type": "object"
+      },
+      "PresenceRead": {
+        "description": "A DM partner's online state, as the viewer is allowed to see it.\n\n`visible` is false when either side has hidden their status \u2014 reciprocal, as in WhatsApp \u2014\nand then `online` is false and `last_seen_at` null, so a hidden status reveals nothing.",
+        "properties": {
+          "last_seen_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Seen At"
+          },
+          "online": {
+            "default": false,
+            "title": "Online",
+            "type": "boolean"
+          },
+          "user_id": {
+            "format": "uuid",
+            "title": "User Id",
+            "type": "string"
+          },
+          "visible": {
+            "title": "Visible",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "user_id",
+          "visible"
+        ],
+        "title": "PresenceRead",
         "type": "object"
       },
       "ProfilePublic": {
@@ -6424,6 +6552,17 @@
             ],
             "title": "Pronouns"
           },
+          "show_presence": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Show Presence"
+          },
           "show_profile_to_verified_only": {
             "anyOf": [
               {
@@ -6671,6 +6810,29 @@
         "title": "PublishingCapabilitiesRead",
         "type": "object"
       },
+      "ReactionState": {
+        "description": "A message's reactions after a change, from the caller's point of view.\n\nReturned by the reaction endpoints so the client reconciles its optimistic chip strip with\nthe server's answer in the same round trip, instead of waiting for (or missing) a frame.",
+        "properties": {
+          "message_id": {
+            "format": "uuid",
+            "title": "Message Id",
+            "type": "string"
+          },
+          "reactions": {
+            "items": {
+              "$ref": "#/components/schemas/ReactionSummary"
+            },
+            "title": "Reactions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "message_id",
+          "reactions"
+        ],
+        "title": "ReactionState",
+        "type": "object"
+      },
       "ReactionSummary": {
         "description": "One emoji's tally on a message, from the viewer's point of view.\n\nAggregated server-side rather than sent as individual rows: a popular message would otherwise\nship one row per reactor to render a chip that says \"12\". `reacted_by_me` comes from the same\ngrouped query, so the client never needs a second request to know whether to fill the chip.",
         "properties": {
@@ -6785,6 +6947,53 @@
           "role"
         ],
         "title": "RecipientSearchResult",
+        "type": "object"
+      },
+      "ReplyPreview": {
+        "description": "The message a reply quotes, as the quote block shows it.\n\nA snippet rather than the whole body: a quote is one or two lines, and a long message would\notherwise ride along in full on every reply to it. `deleted` lets the quote say so instead of\nshowing a stale excerpt; `edited` marks that the excerpt is the message's current text.",
+        "properties": {
+          "body_snippet": {
+            "title": "Body Snippet",
+            "type": "string"
+          },
+          "deleted": {
+            "default": false,
+            "title": "Deleted",
+            "type": "boolean"
+          },
+          "edited": {
+            "default": false,
+            "title": "Edited",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "sender_id": {
+            "format": "uuid",
+            "title": "Sender Id",
+            "type": "string"
+          },
+          "sender_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sender Name"
+          }
+        },
+        "required": [
+          "id",
+          "sender_id",
+          "body_snippet"
+        ],
+        "title": "ReplyPreview",
         "type": "object"
       },
       "ReportCreate": {
@@ -8052,8 +8261,21 @@
         "title": "SystemStatusRead",
         "type": "object"
       },
+      "ThreadMuteRequest": {
+        "properties": {
+          "muted": {
+            "title": "Muted",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "muted"
+        ],
+        "title": "ThreadMuteRequest",
+        "type": "object"
+      },
       "ThreadReactionPreview": {
-        "description": "The most recent reaction another member left on one of the viewer's own messages in a\nthread.\n\nSurfaced on the inbox row so a reaction to your message is visible without opening the chat \u2014\nthe durable half of the feature whose live half is the `messages.reaction_activity` frame.\nIt is deliberately additive: it never affects thread ordering or the unread count.",
+        "description": "The newest reaction worth showing on a thread's inbox row.\n\nIn a DM that is any reaction; in a group, one to the viewer's own message or by the viewer \u2014\notherwise a busy group's reactions to everyone else's messages would take over the row.\nSurfaced so \"Ama reacted \ud83d\udc4d to \u201csee you at 5\u201d\" is visible without opening the chat. Additive:\nit never affects thread ordering or the unread count.",
         "properties": {
           "actor_id": {
             "format": "uuid",
@@ -8078,6 +8300,23 @@
           "message_id": {
             "format": "uuid",
             "title": "Message Id",
+            "type": "string"
+          },
+          "message_sender_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message Sender Id"
+          },
+          "message_snippet": {
+            "default": "",
+            "title": "Message Snippet",
             "type": "string"
           },
           "reacted_at": {
@@ -15666,6 +15905,107 @@
         ]
       }
     },
+    "/api/v1/messages/threads/{match_id}/mute": {
+      "patch": {
+        "description": "Mute or unmute a conversation for yourself \u2014 no message or reaction pushes while muted.\nWorks for DMs and groups alike; messages still arrive and count as unread.",
+        "operationId": "mute_thread_api_v1_messages_threads__match_id__mute_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "match_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Match Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ThreadMuteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Mute Thread",
+        "tags": [
+          "messages"
+        ]
+      }
+    },
+    "/api/v1/messages/threads/{match_id}/presence": {
+      "get": {
+        "description": "Your DM partner's \"Online\" / \"Last seen\", if you may see it \u2014 reciprocal, as in\nWhatsApp: if either of you hides it, neither sees it. Not available for groups.",
+        "operationId": "get_thread_presence_api_v1_messages_threads__match_id__presence_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "match_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Match Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PresenceRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Thread Presence",
+        "tags": [
+          "messages"
+        ]
+      }
+    },
     "/api/v1/messages/threads/{match_id}/sync": {
       "get": {
         "description": "Oldest-first messages after a cursor \u2014 reconnect catch-up.",
@@ -15884,6 +16224,59 @@
         ]
       }
     },
+    "/api/v1/messages/{message_id}/reactions": {
+      "get": {
+        "description": "Who reacted to this message and with what, newest first \u2014 including you.",
+        "operationId": "get_message_reactors_api_v1_messages__message_id__reactions_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "message_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Message Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MessageReactor"
+                  },
+                  "title": "Response Get Message Reactors Api V1 Messages  Message Id  Reactions Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Message Reactors",
+        "tags": [
+          "messages"
+        ]
+      }
+    },
     "/api/v1/messages/{message_id}/reactions/{emoji}": {
       "delete": {
         "description": "Remove your reaction. Idempotent \u2014 removing one that is not there is success.",
@@ -15910,7 +16303,14 @@
           }
         ],
         "responses": {
-          "204": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReactionState"
+                }
+              }
+            },
             "description": "Successful Response"
           },
           "422": {
@@ -15935,7 +16335,7 @@
         ]
       },
       "put": {
-        "description": "React to a message. Idempotent \u2014 reacting twice is success, not a conflict.\n\n`PUT` rather than `POST` precisely because it is idempotent: a double-tap, or a retry after a\ndropped response, must not need the client to reason about whether the first one landed.",
+        "description": "Make `emoji` your reaction to a message, replacing any other \u2014 one per person.\n\n`PUT` because it is idempotent: a double-tap, or a retry after a dropped response, needs no\nreasoning about whether the first landed. Returns the message's resulting reactions.",
         "operationId": "add_reaction_api_v1_messages__message_id__reactions__emoji__put",
         "parameters": [
           {
@@ -15959,7 +16359,14 @@
           }
         ],
         "responses": {
-          "204": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReactionState"
+                }
+              }
+            },
             "description": "Successful Response"
           },
           "422": {

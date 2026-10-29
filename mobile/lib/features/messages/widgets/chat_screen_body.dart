@@ -37,6 +37,15 @@ class _ChatScreenBody extends StatelessWidget {
   final VoidCallback? onIdentityTap;
   final VoidCallback? onMenu;
 
+  /// The message being replied to, shown above the composer; null when not replying.
+  final ChatMessage? replyingTo;
+  final String replyName;
+  final VoidCallback onCancelReply;
+
+  /// "Online" / "Last seen …" under a DM partner's name, when they share it.
+  final String? presence;
+  final bool muted;
+
   const _ChatScreenBody({
     required this.partner,
     this.partnerSubtitle,
@@ -69,6 +78,11 @@ class _ChatScreenBody extends StatelessWidget {
     required this.onTyping,
     this.onIdentityTap,
     this.onMenu,
+    this.replyingTo,
+    this.replyName = '',
+    required this.onCancelReply,
+    this.presence,
+    this.muted = false,
   });
 
   @override
@@ -81,7 +95,8 @@ class _ChatScreenBody extends StatelessWidget {
             children: [
               _ChatHeader(
                 title: isGroup ? (groupTitle ?? 'Group') : (partner?.displayName ?? 'Chat'),
-                subtitle: isGroup ? null : partnerSubtitle,
+                subtitle: isGroup ? null : (presence ?? partnerSubtitle),
+                muted: muted,
                 avatarUrl: isGroup ? groupAvatarUrl : partner?.avatarUrl,
                 isGroup: isGroup,
                 campusVerified: !isGroup && (partner?.campusVerified ?? false),
@@ -127,6 +142,8 @@ class _ChatScreenBody extends StatelessWidget {
                 ),
               ),
               if (partnerTyping) _TypingBubble(name: typingName, showName: isGroup),
+              if (replyingTo != null)
+                _ReplyBar(target: replyingTo!, name: replyName, onCancel: onCancelReply),
               _InputBar(
                 controller: inputController,
                 // A send is in flight while any bubble is still optimistic. Was hardcoded false,

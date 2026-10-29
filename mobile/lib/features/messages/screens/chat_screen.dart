@@ -27,15 +27,20 @@ import '../../groups/providers/groups_provider.dart';
 import '../../safety/providers/safety_provider.dart';
 import '../../safety/widgets/safety_sheet.dart';
 import '../providers/messages_provider.dart';
+import '../providers/presence_provider.dart';
+import '../providers/reactors_provider.dart';
 import '../providers/read_by_provider.dart';
 import '../providers/unread_provider.dart';
 import '../widgets/message_status_icon.dart';
 import '../data/chat_draft_store.dart';
+import '../data/reaction_choices.dart';
+import '../data/reaction_state.dart';
 import '../data/message_limits.dart';
 import '../data/chat_message_cache.dart';
 import '../data/emoji_only.dart';
 import '../data/message_runs.dart';
 import '../data/message_urls.dart';
+import '../data/presence_format.dart';
 import '../widgets/message_link_preview.dart';
 
 part '../widgets/chat_header.dart';
@@ -46,11 +51,17 @@ part '../widgets/chat_input.dart';
 part '../widgets/chat_typing_bubble.dart';
 part '../widgets/chat_unavailable.dart';
 part '../widgets/read_by_sheet.dart';
+part '../widgets/reacted_by_sheet.dart';
 part '../widgets/chat_screen_body.dart';
 part '../widgets/chat_draft_logic.dart';
 part '../widgets/chat_reactions.dart';
+part '../widgets/chat_edit_logic.dart';
+part '../widgets/chat_receipts_logic.dart';
+part '../widgets/chat_reply_logic.dart';
+part '../widgets/chat_reply_widgets.dart';
 part '../widgets/chat_send_logic.dart';
 part '../widgets/chat_screen_logic.dart';
+part '../widgets/chat_dm_menu.dart';
 
 /// Pixels from the bottom of the list before we treat the user as "scrolled up".
 const _kScrollBottomThreshold = 96.0;
@@ -108,6 +119,20 @@ abstract class _ChatScreenStateBase extends ConsumerState<ChatScreen> {
   final messages = <ChatMessage>[];
   final seenServerIds = <String>{};
 
+  /// Messages whose reaction request is in flight: my own state frames for them are skipped, so
+  /// the request's response (the authority) is not overtaken by an echo.
+  final reactionInFlight = <String>{};
+
+  /// The message the composer is replying to, shown as a quote above it (protocol 5).
+  ChatMessage? replyingTo;
+
+  /// A message briefly highlighted after jumping to it from a reply's quote.
+  String? highlightedId;
+  Timer? highlightTimer;
+
+  /// Keys for the rendered bubbles, so a quote can scroll its original into view.
+  final bubbleKeys = <String, GlobalKey>{};
+
   /// Recent WebSocket ack round-trips, newest last. See [_ChatSendLogic.ackTimeoutFor].
   final ackLatencies = <Duration>[];
   final sendTimers = <String, Timer>{};
@@ -156,7 +181,15 @@ abstract class _ChatScreenStateBase extends ConsumerState<ChatScreen> {
 }
 
 class _ChatScreenState extends _ChatScreenStateBase
-    with _ChatDraftLogic, _ChatReactionLogic, _ChatSendLogic, _ChatScreenLogic, WidgetsBindingObserver {
+    with
+        _ChatDraftLogic,
+        _ChatReactionLogic,
+        _ChatEditLogic,
+        _ChatReceiptLogic,
+        _ChatReplyLogic,
+        _ChatSendLogic,
+        _ChatScreenLogic,
+        WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
@@ -213,6 +246,7 @@ class _ChatScreenState extends _ChatScreenStateBase
     typingResetTimer?.cancel();
     typingStopTimer?.cancel();
     cacheSaveTimer?.cancel();
+    highlightTimer?.cancel();
     for (final t in sendTimers.values) {
       t.cancel();
     }
@@ -231,18 +265,6 @@ class _ChatScreenState extends _ChatScreenStateBase
     return false;
   }
 
-  void openDmMenu(MessagePartner partner) {
-    showSafetySheet(
-      context: context,
-      targetUserId: partner.userId,
-      targetName: partner.displayName ?? 'this student',
-      safetyService: ref.read(safetyServiceProvider),
-      onBlocked: () {
-        if (mounted) context.go('/messages');
-      },
-    );
-  }
-
   void reportMessage(ChatMessage message) {
     showReportMessageSheet(
       context: context,
@@ -256,8 +278,17 @@ class _ChatScreenState extends _ChatScreenStateBase
   Widget build(BuildContext context) {
     if (!validThread) return const _UnavailableChat();
     final partner = widget.thread?.partner;
+    final presence = isGroup ? null : ref.watch(partnerPresenceProvider(widget.matchId));
 
-    return _ChatScreenBody(
+    return _ChatActions(
+      keyFor: (id) => bubbleKeys.putIfAbsent(id, GlobalKey.new),
+      quoteSenderName: quoteSenderName,
+      onQuoteTap: jumpToMessage,
+      onReply: canReply ? startReply : null,
+      // A server below protocol 5 has no `GET /messages/{id}/reactions`.
+      onShowReactors: rt.supportsProtocol(kReactorsProtocolVersion) ? showReactedBy : null,
+      highlightedId: highlightedId,
+      child: _ChatScreenBody(
       partner: partner,
       partnerSubtitle: widget.thread?.headerSubtitle,
       loading: loading,
@@ -296,6 +327,14 @@ class _ChatScreenState extends _ChatScreenStateBase
               ? () => context.push('/users/${partner.profileId}', extra: partner.displayName)
               : null),
       onMenu: (!isGroup && partner != null) ? () => openDmMenu(partner) : null,
+      replyingTo: replyingTo,
+      replyName: replyingTo == null ? '' : quoteSenderName(replyingTo!.senderId),
+      onCancelReply: cancelReply,
+      presence: presence == null || !presence.visible
+          ? null
+          : presenceLabel(online: presence.online, lastSeenAt: presence.lastSeenAt),
+      muted: !isGroup && dmMuted,
+      ),
     );
   }
 }

@@ -19,6 +19,7 @@ from app.shared.blocking import run_image, run_sync
 from app.shared.image_processing import sanitize_avatar
 from app.shared.onboarding import compute_onboarding_completed
 from app.shared.policies import assert_profile_visible, connection_state
+from app.shared.presence import presence_audience
 from app.shared.profiles import get_profile_by_user_id, profile_load_options
 from app.shared.rate_limit import avatar_upload_limit
 from app.shared.schemas import ProfilePublic
@@ -56,6 +57,7 @@ async def get_my_profile(current_user: User = Depends(require_email_confirmed_us
         **profile_to_public(profile).model_dump(),
         allow_messages_from_matches_only=profile.allow_messages_from_matches_only,
         show_profile_to_verified_only=profile.show_profile_to_verified_only,
+        show_presence=profile.show_presence,
         connection_count=connection_count,
         activity_count=activity_count,
         message_count=message_count,
@@ -73,7 +75,15 @@ async def update_my_profile(payload: ProfileUpdate, current_user: User = Depends
     scalar_fields = {
         'display_name', 'pronouns', 'major', 'class_year', 'country_state', 'campus', 'bio',
         'is_hidden', 'allow_messages_from_matches_only', 'show_profile_to_verified_only',
+        'show_presence',
     }
+    presence_change = (
+        'show_presence' in data
+        and data['show_presence'] is not None
+        and bool(data['show_presence']) != profile.show_presence
+    )
+    # Who could see presence *before* a change: turning it off must reach exactly them.
+    audience_before = await presence_audience(db, current_user.id) if presence_change else []
     for field in scalar_fields:
         if field in data:
             setattr(profile, field, data[field])
@@ -98,6 +108,12 @@ async def update_my_profile(payload: ProfileUpdate, current_user: User = Depends
     position = await get_primary_position(db, current_user.id)
     profile.profile_completed = compute_onboarding_completed(current_user, profile, position)
     await db.commit()
+    if presence_change:
+        from app.features.realtime.presence import on_visibility_changed
+
+        await on_visibility_changed(
+            current_user.id, visible=bool(data['show_presence']), audience_before=audience_before
+        )
     return profile_to_public(await get_profile_by_user_id(db, current_user.id))
 
 

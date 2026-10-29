@@ -5,331 +5,11 @@ import '../../../core/api/api_client.dart';
 import '../../../core/realtime/realtime_client.dart';
 import '../../../core/realtime/ws_protocol.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../data/message_models.dart';
+import '../data/thread_models.dart';
 
-// ── Message partner (subset of ProfilePublic) ─────────────────────
-class MessagePartner {
-  final String profileId;
-  final String userId;
-  final String? displayName;
-  final String? avatarUrl;
-  final String? major;
-  final int? classYear;
-  final bool campusVerified;
-  final List<String> interests;
-  final List<String> lookingFor;
-  final List<String> languagesSpoken;
-  final List<String> languagesLearning;
-
-  const MessagePartner({
-    required this.profileId,
-    required this.userId,
-    this.displayName,
-    this.avatarUrl,
-    this.major,
-    this.classYear,
-    this.campusVerified = false,
-    required this.interests,
-    required this.lookingFor,
-    required this.languagesSpoken,
-    required this.languagesLearning,
-  });
-
-  factory MessagePartner.fromJson(Map<String, dynamic> j) => MessagePartner(
-        profileId: j['id'] as String,
-        userId: j['user_id'] as String,
-        displayName: j['display_name'] as String?,
-        avatarUrl: j['avatar_url'] as String?,
-        major: j['major'] as String?,
-        classYear: j['class_year'] as int?,
-        campusVerified: j['campus_verified'] as bool? ?? false,
-        interests: List<String>.from(j['interests'] ?? []),
-        lookingFor: List<String>.from(j['looking_for'] ?? []),
-        languagesSpoken: List<String>.from(j['languages_spoken'] ?? []),
-        languagesLearning: List<String>.from(j['languages_learning'] ?? []),
-      );
-}
-
-/// Minimal sender identity for a group message bubble (name + avatar), resolved from the
-/// group's members. Kept in the messages feature so bubbles don't depend on the groups models.
-class MessageSender {
-  final String name;
-  final String? avatarUrl;
-  final String? profileId; // for opening their profile from a group bubble
-  const MessageSender({required this.name, this.avatarUrl, this.profileId});
-}
-
-// ── Chat message ──────────────────────────────────────────────────
-enum MessageStatus { sending, sent, failed }
-
-/// One emoji's tally on a message, from this viewer's point of view.
-///
-/// Aggregated server-side: a popular message would otherwise ship one row per reactor to render a
-/// chip that says "12". [reactedByMe] arrives in the same payload, so the client never needs a
-/// second request to know whether to fill the chip.
-class ReactionSummary {
-  const ReactionSummary({
-    required this.emoji,
-    required this.count,
-    required this.reactedByMe,
-  });
-
-  final String emoji;
-  final int count;
-  final bool reactedByMe;
-
-  factory ReactionSummary.fromJson(Map<String, dynamic> j) => ReactionSummary(
-        emoji: j['emoji'] as String,
-        count: (j['count'] as num?)?.toInt() ?? 0,
-        reactedByMe: j['reacted_by_me'] as bool? ?? false,
-      );
-
-  Map<String, dynamic> toJson() =>
-      {'emoji': emoji, 'count': count, 'reacted_by_me': reactedByMe};
-
-  /// The chip after this viewer toggles [emoji]. Returns null when the chip should disappear —
-  /// the last reactor removing theirs.
-  ReactionSummary? toggled() {
-    if (reactedByMe) {
-      return count <= 1
-          ? null
-          : ReactionSummary(emoji: emoji, count: count - 1, reactedByMe: false);
-    }
-    return ReactionSummary(emoji: emoji, count: count + 1, reactedByMe: true);
-  }
-}
-
-class ChatMessage {
-  final String id;
-  final String matchId;
-  final String senderId;
-  final String? clientMessageId;
-  final String body;
-  final DateTime createdAt;
-  final DateTime? readAt;
-
-  /// Whether the recipient's device has acknowledged receipt (protocol 2).
-  ///
-  /// A boolean, not a timestamp. Delivery is recorded server-side as a per-member *boundary*,
-  /// which does not store when it passed any particular older message — so a `deliveredAt` would
-  /// be a fabricated time for every message but the newest. `readAt` can be a timestamp because
-  /// `messages.read_at` is a real per-row column.
-  ///
-  /// False also covers "not knowable": on a protocol 1 server nothing sends the acknowledgement.
-  /// That reads as "sent", understating progress rather than claiming something untrue.
-  final bool delivered;
-  final MessageStatus status;
-  final bool deleted;
-
-  /// Aggregated reactions, in the server's order (the picker's order), so the chip strip does not
-  /// reshuffle between requests. Empty for the overwhelming majority of messages.
-  final List<ReactionSummary> reactions;
-
-  /// When the sender last edited this, or null. Drives the small "edited" label; the record of
-  /// *what* changed lives server-side and is never sent to clients.
-  final DateTime? editedAt;
-
-  const ChatMessage({
-    required this.id,
-    required this.matchId,
-    required this.senderId,
-    this.clientMessageId,
-    required this.body,
-    required this.createdAt,
-    this.readAt,
-    this.delivered = false,
-    this.status = MessageStatus.sent,
-    this.deleted = false,
-    this.reactions = const [],
-    this.editedAt,
-  });
-
-  factory ChatMessage.fromJson(Map<String, dynamic> j) => ChatMessage(
-        id: j['id'] as String,
-        matchId: (j['match_id'] ?? j['conversation_id']) as String,
-        senderId: j['sender_id'] as String,
-        clientMessageId: j['client_message_id'] as String?,
-        body: j['body'] as String,
-        createdAt: DateTime.parse(j['created_at'] as String),
-        readAt: j['read_at'] != null ? DateTime.parse(j['read_at'] as String) : null,
-        // `delivered` comes from the server's per-page delivery cursor. A read message was
-        // necessarily received, so `read_at` also implies it — which matters because the server
-        // computes `delivered` as "every other member has acknowledged", and a member who
-        // acknowledges nothing (an older client) would otherwise hold it at false forever.
-        delivered: (j['delivered'] as bool? ?? false) || j['read_at'] != null,
-        status: MessageStatus.sent,
-        deleted: j['deleted'] as bool? ?? false,
-        reactions: [
-          for (final r in (j['reactions'] as List? ?? const []))
-            ReactionSummary.fromJson(Map<String, dynamic>.from(r as Map)),
-        ],
-        editedAt: j['edited_at'] != null ? DateTime.parse(j['edited_at'] as String) : null,
-      );
-
-  ChatMessage copyWith({
-    String? id,
-    DateTime? readAt,
-    bool? delivered,
-    MessageStatus? status,
-    bool? deleted,
-    List<ReactionSummary>? reactions,
-    String? body,
-    DateTime? editedAt,
-  }) =>
-      ChatMessage(
-        id: id ?? this.id,
-        matchId: matchId,
-        senderId: senderId,
-        clientMessageId: clientMessageId,
-        body: body ?? this.body,
-        createdAt: createdAt,
-        readAt: readAt ?? this.readAt,
-        delivered: delivered ?? this.delivered,
-        status: status ?? this.status,
-        deleted: deleted ?? this.deleted,
-        reactions: reactions ?? this.reactions,
-        editedAt: editedAt ?? this.editedAt,
-      );
-}
-
-/// The most recent reaction someone else left on one of *my* messages in a thread.
-///
-/// Surfaced on the inbox row so a reaction to your message is visible without opening the chat.
-/// Seeded from `GET /messages/threads` (durable) and updated live by a `messages.reaction_activity`
-/// frame. [reactedAt] is compared against the thread's latest message so a newer message still
-/// takes the row — the reaction never reorders the inbox.
-class ThreadReactionPreview {
-  const ThreadReactionPreview({
-    required this.emoji,
-    required this.actorId,
-    required this.reactedAt,
-    this.actorName,
-    this.messageId,
-  });
-
-  final String emoji;
-  final String actorId;
-  final String? actorName;
-  final String? messageId;
-  final DateTime reactedAt;
-
-  factory ThreadReactionPreview.fromJson(Map<String, dynamic> j) => ThreadReactionPreview(
-        emoji: j['emoji'] as String,
-        actorId: j['actor_id'] as String,
-        actorName: j['actor_name'] as String?,
-        messageId: j['message_id'] as String?,
-        reactedAt: DateTime.parse(j['reacted_at'] as String),
-      );
-}
-
-// ── Message thread (DM, staff DM, or group) ────────────────────────
-class MessageThread {
-  final String conversationId; // always present
-  final String kind; // 'dm' | 'staff_dm' | 'group'
-  final String? matchId; // dm only
-  final MessagePartner? partner; // dm / staff_dm only
-  // Staff identity context for the partner (staff_dm; set when they hold a verified
-  // campus position) — e.g. "Officer Jane Doe · Campus Security".
-  final String? partnerPositionTitle;
-  final String? partnerDepartment;
-  final String? groupId; // group only
-  final String? groupName; // group only
-  final String? groupAvatarUrl; // group only
-  final ChatMessage? latestMessage;
-  // The most recent reaction to one of my messages here, if any. Seeded from REST, kept live by
-  // `messages.reaction_activity`. Additive — it never changes thread ordering.
-  final ThreadReactionPreview? latestReaction;
-  final bool partnerTyping; // transient (live), never from JSON
-
-  const MessageThread({
-    required this.conversationId,
-    required this.kind,
-    this.matchId,
-    this.partner,
-    this.partnerPositionTitle,
-    this.partnerDepartment,
-    this.groupId,
-    this.groupName,
-    this.groupAvatarUrl,
-    this.latestMessage,
-    this.latestReaction,
-    this.partnerTyping = false,
-  });
-
-  bool get isGroup => kind == 'group';
-  bool get isStaffThread => kind == 'staff_dm';
-
-  /// The id the client addresses this thread by everywhere (open/subscribe/unread/live-match):
-  /// the match id for a DM, the conversation id for a group or staff thread. Matches the
-  /// server's frame ids.
-  String get addressingId => matchId ?? conversationId;
-
-  String get title => isGroup ? (groupName ?? 'Group') : (partner?.displayName ?? 'LC Student');
-  String? get avatarUrl => isGroup ? groupAvatarUrl : partner?.avatarUrl;
-
-  /// "Campus Safety Officer · Campus Security" — shown under the partner's name so a student
-  /// knows who they're talking to, or null when there's nothing to show.
-  String? get partnerSubtitle {
-    if (partnerPositionTitle == null && partnerDepartment == null) return null;
-    return [partnerPositionTitle, partnerDepartment].whereType<String>().join(' · ');
-  }
-
-  /// The line under the name in the chat header: a staff member's position, or a student's
-  /// major and class year — so the chat says who you are talking to, as the inbox row does.
-  String? get headerSubtitle {
-    final staff = partnerSubtitle;
-    if (staff != null) return staff;
-    final p = partner;
-    if (p == null) return null;
-    final parts = [
-      if (p.major != null && p.major!.trim().isNotEmpty) p.major!.trim(),
-      if (p.classYear != null) 'Class of ${p.classYear}',
-    ];
-    return parts.isEmpty ? null : parts.join(' · ');
-  }
-
-  factory MessageThread.fromJson(Map<String, dynamic> j) {
-    final group = j['group'] as Map<String, dynamic>?;
-    return MessageThread(
-      conversationId: j['conversation_id'] as String,
-      kind: (j['kind'] as String?) ?? 'dm',
-      matchId: j['match_id'] as String?,
-      partner: j['partner'] != null
-          ? MessagePartner.fromJson(j['partner'] as Map<String, dynamic>)
-          : null,
-      partnerPositionTitle: j['partner_position_title'] as String?,
-      partnerDepartment: j['partner_department'] as String?,
-      groupId: group?['id'] as String?,
-      groupName: group?['name'] as String?,
-      groupAvatarUrl: group?['avatar_url'] as String?,
-      latestMessage: j['latest_message'] != null
-          ? ChatMessage.fromJson(j['latest_message'] as Map<String, dynamic>)
-          : null,
-      latestReaction: j['latest_reaction'] != null
-          ? ThreadReactionPreview.fromJson(j['latest_reaction'] as Map<String, dynamic>)
-          : null,
-    );
-  }
-
-  MessageThread copyWith({
-    ChatMessage? latestMessage,
-    ThreadReactionPreview? latestReaction,
-    bool? partnerTyping,
-  }) =>
-      MessageThread(
-        conversationId: conversationId,
-        kind: kind,
-        matchId: matchId,
-        partner: partner,
-        partnerPositionTitle: partnerPositionTitle,
-        partnerDepartment: partnerDepartment,
-        groupId: groupId,
-        groupName: groupName,
-        groupAvatarUrl: groupAvatarUrl,
-        latestMessage: latestMessage ?? this.latestMessage,
-        latestReaction: latestReaction ?? this.latestReaction,
-        partnerTyping: partnerTyping ?? this.partnerTyping,
-      );
-}
+export '../data/message_models.dart';
+export '../data/thread_models.dart';
 
 // ── Thread list provider ──────────────────────────────────────────
 final threadsNotifierProvider =
@@ -339,6 +19,8 @@ final threadsNotifierProvider =
 class ThreadsNotifier extends AsyncNotifier<List<MessageThread>> {
   StreamSubscription<InboundEvent>? _sub;
   final _typingTimers = <String, Timer>{};
+  Timer? _refreshDebounce;
+  String _myId = '';
 
   @override
   Future<List<MessageThread>> build() async {
@@ -347,23 +29,42 @@ class ThreadsNotifier extends AsyncNotifier<List<MessageThread>> {
     // Watching the client ensures the socket connects; user-channel
     // `conversation.updated` + `typing` events keep this list live.
     final realtime = ref.watch(realtimeClientProvider);
+    _myId = ref.read(authNotifierProvider).asData?.value?.id ?? '';
     _sub = realtime.events.listen((event) {
-      if (event is ConversationUpdated) {
-        _onConversationUpdated(event);
-      } else if (event is TypingEvent) {
-        _onTyping(event);
-      } else if (event is ReactionActivity) {
-        _onReactionActivity(event);
+      switch (event) {
+        case ConversationUpdated():
+          _onConversationUpdated(event);
+        case TypingEvent():
+          _onTyping(event);
+        // A protocol-5 server also sends the richer state frame below; this one would only
+        // overwrite its snippet and actor name.
+        case ReactionActivity() when !realtime.supportsProtocol(kReactorsProtocolVersion):
+          _onReactionActivity(event);
+        case ReactionEvent():
+          _onReaction(event);
+        case MessageEdited():
+          _onEdited(event);
+        case MessageDeleted():
+          _onDeleted(event);
+        case ConversationMuted():
+          _updateThread(event.conversationId, (t) => t.copyWith(muted: event.muted));
+        default:
+          break;
       }
     });
     ref.onDispose(() {
       _sub?.cancel();
+      _refreshDebounce?.cancel();
       for (final t in _typingTimers.values) {
         t.cancel();
       }
     });
 
-    final response = await client.dio.get('/messages/threads');
+    return _fetch(client);
+  }
+
+  Future<List<MessageThread>> _fetch(ApiClient api) async {
+    final response = await api.dio.get('/messages/threads');
     return (response.data as List)
         .map((j) => MessageThread.fromJson(j as Map<String, dynamic>))
         .where((t) => t.isGroup || t.partner != null) // keep group + valid DM threads
@@ -418,6 +119,119 @@ class ThreadsNotifier extends AsyncNotifier<List<MessageThread>> {
       ),
     );
     state = AsyncData(updated);
+  }
+
+  void _updateThread(String addressingId, MessageThread Function(MessageThread) change) {
+    final current = state.asData?.value;
+    if (current == null) return;
+    final idx = current.indexWhere((t) => t.addressingId == addressingId);
+    if (idx == -1) return;
+    final updated = List<MessageThread>.from(current);
+    updated[idx] = change(current[idx]);
+    state = AsyncData(updated);
+  }
+
+  /// A reaction changed somewhere (protocol 5 state frame, on every member's user channel). The
+  /// row shows it when it is a reaction worth showing (any in a DM; in a group, to or by me) — it
+  /// never moves the row. An un-react that clears the reaction the row is showing refetches the
+  /// list quietly, so the row falls back to whatever is now newest.
+  void _onReaction(ReactionEvent event) {
+    final conversationId = event.conversationId;
+    if (!event.isStateful || conversationId == null) return;
+    final current = state.asData?.value;
+    final thread = current?.where((t) => t.addressingId == conversationId).firstOrNull;
+    if (thread == null) return;
+    if (event.userEmoji == null) {
+      final shown = thread.latestReaction;
+      if (shown != null && shown.messageId == event.messageId && shown.actorId == event.userId) {
+        _refreshDebounce?.cancel();
+        _refreshDebounce = Timer(const Duration(seconds: 1), _refreshSilently);
+      }
+      return;
+    }
+    final relevant =
+        !thread.isGroup || event.messageSenderId == _myId || event.userId == _myId;
+    if (!relevant) return;
+    _updateThread(
+      conversationId,
+      (t) => t.copyWith(
+        latestReaction: ThreadReactionPreview(
+          emoji: event.userEmoji!,
+          actorId: event.userId,
+          actorName: event.actorName,
+          messageId: event.messageId,
+          messageSenderId: event.messageSenderId,
+          messageSnippet: event.messageSnippet ?? '',
+          reactedAt: DateTime.tryParse(event.reactedAt ?? '') ?? DateTime.now(),
+        ),
+      ),
+    );
+  }
+
+  /// An edit to the row's latest message (or to the message its reaction quotes) changes what the
+  /// row says. The row used to keep the old text until the next full refresh.
+  void _onEdited(MessageEdited event) {
+    _updateThread(event.conversationId, (t) {
+      var next = t;
+      final latest = t.latestMessage;
+      if (latest != null && latest.id == event.messageId) {
+        next = next.copyWith(
+          latestMessage: latest.copyWith(body: event.body, editedAt: DateTime.tryParse(event.editedAt)),
+        );
+      }
+      final reaction = t.latestReaction;
+      if (reaction != null && reaction.messageId == event.messageId) {
+        next = next.copyWith(latestReaction: reaction.copyWith(messageSnippet: oneLine(event.body)));
+      }
+      return next;
+    });
+  }
+
+  /// A deleted latest message reads "This message was deleted" (it used to read blank), and a
+  /// reaction to a deleted message is no longer worth a line.
+  void _onDeleted(MessageDeleted event) {
+    _updateThread(event.conversationId, (t) {
+      var next = t;
+      final latest = t.latestMessage;
+      if (latest != null && latest.id == event.messageId) {
+        next = next.copyWith(latestMessage: latest.copyWith(deleted: true, body: ''));
+      }
+      if (t.latestReaction?.messageId == event.messageId) {
+        next = next.copyWith(clearLatestReaction: true);
+      }
+      return next;
+    });
+  }
+
+  Future<void> _refreshSilently() async {
+    try {
+      final fresh = await _fetch(ref.read(apiClientProvider));
+      final typing = {
+        for (final t in state.asData?.value ?? const <MessageThread>[])
+          if (t.partnerTyping) t.addressingId,
+      };
+      state = AsyncData([
+        for (final t in fresh) typing.contains(t.addressingId) ? t.copyWith(partnerTyping: true) : t,
+      ]);
+    } catch (_) {/* keep the current rows; the next open refreshes */}
+  }
+
+  /// Mute or unmute a chat for myself — optimistic, rolled back if the server refuses.
+  Future<void> setMuted(String addressingId, bool muted) async {
+    final before = state.asData?.value
+        .where((t) => t.addressingId == addressingId)
+        .firstOrNull
+        ?.muted;
+    _updateThread(addressingId, (t) => t.copyWith(muted: muted));
+    try {
+      await ref.read(apiClientProvider).dio.patch(
+        '/messages/threads/$addressingId/mute',
+        data: {'muted': muted},
+      );
+    } catch (_) {
+      if (before != null) _updateThread(addressingId, (t) => t.copyWith(muted: before));
+      rethrow;
+    }
   }
 
   void _onTyping(TypingEvent event) {

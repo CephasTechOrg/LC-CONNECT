@@ -93,9 +93,17 @@ class _BubbleTile extends StatelessWidget {
           !message.deleted &&
           message.status != MessageStatus.sent);
 
+  bool get _canReplyTo => !message.deleted && !message.id.startsWith('local:');
+
   @override
   Widget build(BuildContext context) {
-    return Padding(
+    final actions = _ChatActions.maybeOf(context);
+    final highlighted = actions?.highlightedId == message.id;
+    Widget tile = AnimatedContainer(
+      key: actions?.keyFor(message.id),
+      duration: const Duration(milliseconds: 250),
+      // A brief tint after jumping here from a reply's quote, so the eye lands on it.
+      color: highlighted ? AppColors.primarySoft : Colors.transparent,
       padding: EdgeInsets.only(bottom: lastOfRun ? AppSpacing.md : 2),
       child: Row(
         mainAxisAlignment:
@@ -167,6 +175,10 @@ class _BubbleTile extends StatelessWidget {
         ],
       ),
     );
+    if (actions?.onReply != null && _canReplyTo) {
+      tile = _SwipeToReply(onReply: () => actions!.onReply!(message), child: tile);
+    }
+    return tile;
   }
 
   /// Attaches the reaction strip to the bubble's lower, tail-side corner (WhatsApp-style) rather
@@ -196,6 +208,9 @@ class _BubbleTile extends StatelessWidget {
               isMine: isMine,
               reactions: reactions,
               onToggle: _canReact ? (emoji) => onReact!(message, emoji) : (_) {},
+              onShowReactors: _ChatActions.maybeOf(context)?.onShowReactors == null
+                  ? null
+                  : (emoji) => _ChatActions.maybeOf(context)!.onShowReactors!(message, emoji: emoji),
             ),
           ),
         ),
@@ -262,6 +277,7 @@ class _BubbleTile extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
+        if (message.replyTo != null) _ReplyQuote(quote: message.replyTo!, isMine: isMine),
         LinkedMessageText(text: message.body, isMine: isMine),
         if (url != null) ...[
           const SizedBox(height: AppSpacing.sm),

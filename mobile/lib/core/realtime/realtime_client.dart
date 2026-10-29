@@ -318,9 +318,20 @@ class RealtimeClient {
   }
 
   /// Returns `false` when the offline outbox is full — caller should surface failure.
-  bool sendMessage({required String conversationId, required String clientMessageId, required String body}) {
+  bool sendMessage({
+    required String conversationId,
+    required String clientMessageId,
+    required String body,
+    String? replyToId,
+  }) {
     final requestId = uuidV4(_random);
-    final frame = sendFrame(requestId: requestId, conversationId: conversationId, clientMessageId: clientMessageId, body: body);
+    final frame = sendFrame(
+      requestId: requestId,
+      conversationId: conversationId,
+      clientMessageId: clientMessageId,
+      body: body,
+      replyToId: replyToId,
+    );
     if (_status.value == RealtimeStatus.ready) {
       // Held until acked: a write to a half-open socket reports success but arrives nowhere,
       // so this is what lets the frame be re-queued rather than lost.

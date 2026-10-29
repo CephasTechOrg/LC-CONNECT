@@ -12,6 +12,8 @@ String apiErrorMessage(Object error, {required String fallback}) {
     if (data is Map) {
       final detail = data['detail'];
       if (detail is String && detail.trim().isNotEmpty) return detail;
+      final fieldError = validationMessage(detail);
+      if (fieldError != null) return fieldError;
     }
     // Timeouts / no connection → a clearer network message than the generic fallback.
     if (error.type == DioExceptionType.connectionTimeout ||
@@ -29,3 +31,36 @@ String apiErrorMessage(Object error, {required String fallback}) {
 /// tell "the server rejected this" from "we could not reach the server yet" — the first is
 /// final, the second is worth retrying.
 int? apiStatusCode(Object error) => error is DioException ? error.response?.statusCode : null;
+
+/// Field names the API can reject, as people would say them. Anything not listed is humanized
+/// from its snake_case key.
+const _fieldLabels = {
+  'linkedin_url': 'LinkedIn URL',
+  'handshake_url': 'Handshake URL',
+  'url': 'Project link',
+  'summary': 'Summary',
+  'skills': 'Skills',
+  'career_interests': 'Career interests',
+};
+
+/// The first problem in a FastAPI 422 `detail` list, named by field: "LinkedIn URL: URL must
+/// start with http:// or https://". A validation error used to fall through to the caller's
+/// generic fallback, so a single bad field on a long form read as "Something went wrong".
+String? validationMessage(Object? detail) {
+  if (detail is! List || detail.isEmpty) return null;
+  final first = detail.first;
+  if (first is! Map) return null;
+  final raw = first['msg'];
+  if (raw is! String || raw.trim().isEmpty) return null;
+  final msg = raw.replaceFirst(RegExp(r'^Value error,\s*'), '').trim();
+  final loc = first['loc'];
+  final key = loc is List ? loc.whereType<String>().where((s) => s != 'body').lastOrNull : null;
+  if (key == null) return msg;
+  final label = _fieldLabels[key] ?? _humanize(key);
+  return '$label: $msg';
+}
+
+String _humanize(String key) {
+  final words = key.replaceAll('_', ' ').trim();
+  return words.isEmpty ? key : words[0].toUpperCase() + words.substring(1);
+}

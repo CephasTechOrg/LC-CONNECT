@@ -250,6 +250,11 @@ async def set_my_mute(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Not a member')
     await service.set_mute(db, member, muted)
     await db.commit()
+    # Keep the member's other devices' inbox bell in step (a group is addressed by its
+    # conversation id). Lazy import, as elsewhere, to avoid a module-load cycle with realtime.
+    from app.features.realtime.broadcasts import broadcast_conversation_muted
+
+    await broadcast_conversation_muted(current_user.id, group.conversation_id, muted)
 
 
 @router.patch('/{group_id}/members/{user_id}', status_code=status.HTTP_204_NO_CONTENT)

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -16,18 +18,14 @@ import '../../../core/theme/app_typography.dart';
 
 part '../widgets/notification_rows.dart';
 
-/// The notification center. Unread rows stay visibly unread for the whole visit; opening one
-/// marks just that one read.
+/// The notification center. Unread rows are tinted until opened; opening one marks just that one
+/// read and untints it at once.
 ///
-/// Beta report #14 — "read/unread state is not visually clear enough". The unread chrome (tinted
-/// row, bold title, dot) was all implemented but unreachable: the screen marked *everything* read
-/// on mount, which raced the list refetch, so rows could come back already read and the styling
-/// would flash off. The workaround was to pass `treatAsRead: true` for every row, which disabled
-/// unread styling on the only screen that shows notifications.
-///
-/// The fix is [_unreadOnEntry]: snapshot which ids were unread *before* marking anything, and
-/// style from the snapshot. That removes the race the workaround existed for **and** gives the
-/// user time to see what was new — the two goals were never in conflict.
+/// Beta report #14 made unread state visible (the screen used to mark everything read on mount).
+/// A later fix kept opened rows tinted for the rest of the visit from a snapshot taken on entry,
+/// but that read as "I tapped it and it is still unread", and the cached list never learned the
+/// row was read, so it came back unread on the next visit. Rows now style from their own `read`,
+/// which the count notifier flips in the cached list before the request goes out.
 class NotificationsScreen extends ConsumerStatefulWidget {
   const NotificationsScreen({super.key});
 
@@ -37,11 +35,6 @@ class NotificationsScreen extends ConsumerStatefulWidget {
 }
 
 class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
-  /// Ids that were unread when this screen opened. Styling reads from here, never from the
-  /// live row state, so marking a row read does not make it look read mid-visit.
-  final Set<String> _unreadOnEntry = {};
-  bool _snapshotTaken = false;
-
   /// Ids the user has explicitly cleared with "Mark all read" during this visit.
   ///
   /// Needed because the list itself may still be stale — `markAllRead` triggers a refetch, but
@@ -51,29 +44,27 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
   /// The last rendered page, so "mark all read" knows which ids it just cleared.
   List<AppNotification> _items = const [];
 
-  /// Records the unread set once, from the first loaded page.
-  void _snapshot(List<AppNotification> items) {
-    _items = items;
-    if (_snapshotTaken) return;
-    _snapshotTaken = true;
-    _unreadOnEntry.addAll(items.where((n) => !n.read).map((n) => n.id));
+  @override
+  void initState() {
+    super.initState();
+    // The list is cached across visits (keepAlive), so refresh behind the cached rows on open:
+    // read state changed elsewhere (another device, a chat opened) shows up without a pull.
+    Future.microtask(() {
+      if (!mounted) return;
+      if (ref.read(notificationsListProvider).hasValue) {
+        ref.read(notificationsListProvider.notifier).refresh();
+      }
+    });
   }
 
-  /// A notification that arrives while the inbox is open is new to the user, so it counts as
-  /// unread even though the snapshot was taken before it existed.
-  bool _isUnread(AppNotification n) {
-    if (_clearedHere.contains(n.id)) return false;
-    return _unreadOnEntry.contains(n.id) || !n.read;
-  }
+  bool _isUnread(AppNotification n) => !n.read && !_clearedHere.contains(n.id);
 
-  Future<void> _open(AppNotification n) async {
+  void _open(AppNotification n) {
+    // Mark read without waiting: the row and badge change locally first, and navigation must not
+    // sit behind a network round trip.
+    if (!n.read) unawaited(ref.read(notificationCountProvider.notifier).markOneRead(n.id));
     final route = n.route;
-    // Mark read first so the badge drops immediately; the row keeps its styling for this visit.
-    if (!n.read) {
-      await ref.read(notificationCountProvider.notifier).markOneRead(n.id);
-    }
-    if (!mounted || route == null) return;
-    context.push(route);
+    if (route != null) context.push(route);
   }
 
   /// The list, with a day header wherever the calendar day changes.
@@ -189,7 +180,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                   ),
                 ],
                 data: (items) {
-                  _snapshot(items);
+                  _items = items;
                   if (items.isEmpty) {
                     return [const AppInlineMessage(message: "You're all caught up.")];
                   }

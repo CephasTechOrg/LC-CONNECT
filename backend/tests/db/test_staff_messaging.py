@@ -9,8 +9,8 @@ from sqlalchemy import select
 from app.features.admin.campus_positions import approve_position, revoke_position
 from app.features.campus_positions.schema import CampusPositionCreate
 from app.features.campus_positions.service import upsert_primary_position
-from app.features.messages.service import list_threads_for_user
 from app.features.messages.staff_messaging import create_staff_thread, search_recipients
+from app.features.messages.threads import list_threads_for_user
 from app.models import Profile
 from app.shared.conversations import accessible_conversation
 from app.shared.policies import can_message_as_staff

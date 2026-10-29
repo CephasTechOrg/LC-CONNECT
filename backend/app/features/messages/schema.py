@@ -34,6 +34,48 @@ class ReactionSummary(BaseModel):
     reacted_by_me: bool
 
 
+class ReactionState(BaseModel):
+    """A message's reactions after a change, from the caller's point of view.
+
+    Returned by the reaction endpoints so the client reconciles its optimistic chip strip with
+    the server's answer in the same round trip, instead of waiting for (or missing) a frame.
+    """
+
+    message_id: UUID
+    reactions: list[ReactionSummary]
+
+
+class MessageReactor(BaseModel):
+    """Someone who reacted to a message, and with what — a row in the "Reacted by" sheet.
+
+    Name and avatar only, for the same reason as [MessageReadBy]: the sheet draws a name, an
+    avatar and an emoji, and a full public profile per reactor would be kilobytes of unrelated
+    personal data. Includes the caller, so the sheet can show "You" and offer removal.
+    """
+
+    user_id: UUID
+    display_name: str | None = None
+    avatar_url: str | None = None
+    emoji: str
+    reacted_at: datetime
+
+
+class ReplyPreview(BaseModel):
+    """The message a reply quotes, as the quote block shows it.
+
+    A snippet rather than the whole body: a quote is one or two lines, and a long message would
+    otherwise ride along in full on every reply to it. `deleted` lets the quote say so instead of
+    showing a stale excerpt; `edited` marks that the excerpt is the message's current text.
+    """
+
+    id: UUID
+    sender_id: UUID
+    sender_name: str | None = None
+    body_snippet: str
+    deleted: bool = False
+    edited: bool = False
+
+
 class MessageReadBy(BaseModel):
     """A member who has read a given message."""
 
@@ -46,6 +88,8 @@ class MessageCreate(BaseModel):
     body: str = Field(min_length=1, max_length=MAX_BODY_CHARS)
     # Optional idempotency key; a retry with the same value returns the original message.
     client_message_id: UUID | None = None
+    # The message this one replies to; must be in the same conversation and not deleted.
+    reply_to_id: UUID | None = None
 
 
 class MessageEditRequest(BaseModel):
@@ -106,15 +150,18 @@ class MessageRead(BaseModel):
     # rather than a separate endpoint: one grouped query per page costs one round trip, and a
     # message with no reactions costs nothing to report.
     reactions: list[ReactionSummary] = []
+    # The message this one replies to, as its quote shows it; null when it is not a reply (or
+    # what it quoted has since been purged).
+    reply_to: ReplyPreview | None = None
 
 
 class ThreadReactionPreview(BaseModel):
-    """The most recent reaction another member left on one of the viewer's own messages in a
-    thread.
+    """The newest reaction worth showing on a thread's inbox row.
 
-    Surfaced on the inbox row so a reaction to your message is visible without opening the chat —
-    the durable half of the feature whose live half is the `messages.reaction_activity` frame.
-    It is deliberately additive: it never affects thread ordering or the unread count.
+    In a DM that is any reaction; in a group, one to the viewer's own message or by the viewer —
+    otherwise a busy group's reactions to everyone else's messages would take over the row.
+    Surfaced so "Ama reacted 👍 to “see you at 5”" is visible without opening the chat. Additive:
+    it never affects thread ordering or the unread count.
     """
 
     emoji: str
@@ -122,6 +169,9 @@ class ThreadReactionPreview(BaseModel):
     actor_name: str | None = None
     message_id: UUID
     reacted_at: datetime
+    # Whose message was reacted to, so the client can say "your message" or quote it.
+    message_sender_id: UUID | None = None
+    message_snippet: str = ''
 
 
 class GroupThreadInfo(BaseModel):
@@ -147,6 +197,25 @@ class MessageThreadRead(BaseModel):
     # The most recent reaction someone else left on one of my messages here, if any. Additive —
     # see [ThreadReactionPreview]; it does not move the row or change the unread count.
     latest_reaction: ThreadReactionPreview | None = None
+    # Whether the viewer muted this conversation (no message or reaction pushes).
+    muted: bool = False
+
+
+class ThreadMuteRequest(BaseModel):
+    muted: bool
+
+
+class PresenceRead(BaseModel):
+    """A DM partner's online state, as the viewer is allowed to see it.
+
+    `visible` is false when either side has hidden their status — reciprocal, as in WhatsApp —
+    and then `online` is false and `last_seen_at` null, so a hidden status reveals nothing.
+    """
+
+    user_id: UUID
+    visible: bool
+    online: bool = False
+    last_seen_at: datetime | None = None
 
 
 class UnreadSummary(BaseModel):

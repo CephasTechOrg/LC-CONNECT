@@ -1,9 +1,9 @@
 """The inbox has to show a reaction to your message without opening the chat.
 
-The live `messages.reaction_activity` frame updates an open inbox; `latest_reactions_for_threads`
-is the durable half that survives a cold load or a restart. These pin what it surfaces and — just
-as important — what it must not: it is scoped to the viewer's *own* messages, reacted to by
-*someone else*, and it never moves a row or changes an unread count.
+The live reaction frame updates an open inbox; `latest_reactions_for_threads` is the durable half
+that survives a cold load or a restart. In a DM it is any reaction (so the row can say "You reacted
+❤️ to …" as well as "Ama reacted 👍 to …"); in a group only one to or by the viewer. It never moves
+a row or changes an unread count.
 """
 
 from __future__ import annotations
@@ -17,11 +17,8 @@ from app.features.messages.reactions import (
     latest_reactions_for_threads,
     toggle_reaction,
 )
-from app.features.messages.service import (
-    delete_message,
-    list_threads_for_user,
-    persist_message_idempotent,
-)
+from app.features.messages.service import delete_message, persist_message_idempotent
+from app.features.messages.threads import list_threads_for_user
 from app.models import Conversation, MessageReaction
 
 THUMB = REACTION_ALLOWLIST[0]
@@ -55,18 +52,19 @@ async def test_a_reaction_to_my_message_surfaces_on_my_inbox_row(db, factory):
     assert preview.message_id == message.id
 
 
-async def test_my_own_reaction_is_not_surfaced_to_me(db, factory):
-    """The feature mirrors the notification: you hear when *someone else* reacts to *your*
-    message, never about your own tap."""
+async def test_my_own_reaction_shows_on_my_dm_row(db, factory):
+    """"You reacted 👍 to “hello”", as WhatsApp shows it — the row reflects the last thing that
+    happened in the chat, whoever did it."""
     a, b, conversation_id, message = await _dm(db, factory)
     await toggle_reaction(db, message_id=message.id, user_id=a.id, emoji=THUMB, add=True)
 
-    assert await latest_reactions_for_threads(db, [conversation_id], owner_id=a.id) == {}
+    preview = (await latest_reactions_for_threads(db, [conversation_id], owner_id=a.id))[conversation_id]
+    assert preview.actor_id == a.id
+    assert preview.message_sender_id == a.id
+    assert preview.message_snippet == 'hello'
 
 
-async def test_a_reaction_on_the_other_persons_message_belongs_to_them_not_me(db, factory):
-    """Scoped to the owner's own messages. A reaction A places on B's message is B's inbox news,
-    not A's — otherwise the owner would see their own tap echoed back."""
+async def test_a_dm_reaction_shows_on_both_rows(db, factory):
     a, b, conversation_id, message = await _dm(db, factory)
     reply, _ = await persist_message_idempotent(
         db, sender_id=b.id, match_id=message.match_id, conversation_id=conversation_id,
@@ -74,9 +72,36 @@ async def test_a_reaction_on_the_other_persons_message_belongs_to_them_not_me(db
     )
     await toggle_reaction(db, message_id=reply.id, user_id=a.id, emoji=THUMB, add=True)
 
-    assert await latest_reactions_for_threads(db, [conversation_id], owner_id=a.id) == {}
-    b_previews = await latest_reactions_for_threads(db, [conversation_id], owner_id=b.id)
-    assert b_previews[conversation_id].actor_id == a.id
+    for owner in (a, b):
+        preview = (await latest_reactions_for_threads(db, [conversation_id], owner_id=owner.id))[conversation_id]
+        assert (preview.actor_id, preview.message_snippet) == (a.id, 'hi back')
+
+
+async def test_a_group_row_shows_only_reactions_to_or_by_me(db, factory):
+    """Everyone else's reactions to everyone else's messages would otherwise take over a busy
+    group's row."""
+    from app.features.groups import service as group_service
+    from app.features.groups.schema import GroupCreate
+    from app.models import ConversationMember
+
+    me = await factory.user(display_name='Me')
+    x = await factory.user(display_name='X')
+    y = await factory.user(display_name='Y')
+    group = await group_service.create_group(
+        db, me, GroupCreate(name='Club', category='club', join_policy='open')
+    )
+    for u in (x, y):
+        db.add(ConversationMember(conversation_id=group.conversation_id, user_id=u.id, status='active'))
+    await db.commit()
+    xs, _ = await persist_message_idempotent(
+        db, sender_id=x.id, match_id=None, conversation_id=group.conversation_id,
+        body='x says', client_message_id=None,
+    )
+    await toggle_reaction(db, message_id=xs.id, user_id=y.id, emoji=THUMB, add=True)
+
+    assert await latest_reactions_for_threads(db, [group.conversation_id], owner_id=me.id) == {}
+    x_view = await latest_reactions_for_threads(db, [group.conversation_id], owner_id=x.id)
+    assert x_view[group.conversation_id].actor_id == y.id
 
 
 async def test_it_reports_the_most_recent_reaction(db, factory):
@@ -118,9 +143,8 @@ async def test_an_empty_thread_set_touches_the_database_not_at_all(db):
 
 
 async def test_the_thread_list_carries_the_preview_additively(db, factory):
-    """The inbox endpoint itself, not just the helper: A's row carries the reaction, and it is
-    purely additive — the message that heads the row does not change, and the reactor's own row
-    shows nothing."""
+    """The inbox endpoint itself, not just the helper: both rows carry the reaction, and it is purely
+    additive — the message that heads the row does not change."""
     a, b, conversation_id, message = await _dm(db, factory)
     await toggle_reaction(db, message_id=message.id, user_id=b.id, emoji=THUMB, add=True)
 
@@ -132,4 +156,5 @@ async def test_the_thread_list_carries_the_preview_additively(db, factory):
 
     b_threads = await list_threads_for_user(db, b.id)
     b_row = next(t for t in b_threads if t.conversation_id == conversation_id)
-    assert b_row.latest_reaction is None
+    assert b_row.latest_reaction is not None and b_row.latest_reaction.actor_id == b.id
+    assert b_row.muted is False

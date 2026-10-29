@@ -39,6 +39,9 @@ class NotificationRead(BaseModel):
     target_id: UUID | None = None
     #: Short display token for this event — currently the reaction emoji. See the model.
     detail: str | None = None
+    #: A one-line excerpt of the message the event is about (reactions only); empty once that
+    #: message is deleted, null for every other type.
+    snippet: str | None = None
 
 
 class UnreadCount(BaseModel):

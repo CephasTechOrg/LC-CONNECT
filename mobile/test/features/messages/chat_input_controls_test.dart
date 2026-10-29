@@ -19,7 +19,7 @@ void main() {
       // and cannot be constructed directly. Coarse, but it fails if the override is dropped,
       // which is the regression that shipped.
       final source =
-          File('lib/features/messages/widgets/chat_reactions.dart').readAsStringSync();
+          File('lib/features/messages/widgets/chat_edit_logic.dart').readAsStringSync();
       final save = source.indexOf("Text('Save')");
       expect(save, greaterThan(-1), reason: 'the Save button is gone');
 

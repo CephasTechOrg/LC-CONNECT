@@ -8,25 +8,39 @@ from app.config import settings
 from app.database import get_db
 from app.dependencies import require_verified_user
 from app.features.messages.editing import edit_message
-from app.features.messages.reactions import reactions_for, toggle_reaction
+from app.features.messages.membership import set_muted
+from app.features.messages.presence_read import partner_presence
+from app.features.messages.reaction_flow import apply_reaction
+from app.features.messages.reactions import reactions_for, reactors_for
+from app.features.messages.replies import (
+    ReplyTargetError,
+    preview_of,
+    reply_previews_for,
+    sender_name,
+    validate_reply_target,
+)
 from app.features.messages.schema import (
     LinkPreviewRequest,
     MessageCreate,
     MessageEditRequest,
     MessageLinkPreviewRead,
+    MessageReactor,
     MessageRead,
     MessageReadBy,
     MessageThreadRead,
     MessagingCapabilities,
+    PresenceRead,
+    ReactionState,
     ReactionSummary,
     RecipientSearchResult,
+    ReplyPreview,
     StaffThreadCreate,
+    ThreadMuteRequest,
     UnreadSummary,
 )
 from app.features.messages.service import (
     delete_message,
     delivery_cursor,
-    list_threads_for_user,
     message_read,
     page_thread,
     persist_message_idempotent,
@@ -35,6 +49,7 @@ from app.features.messages.service import (
     unread_summary,
 )
 from app.features.messages.staff_messaging import create_staff_thread, search_recipients
+from app.features.messages.threads import list_threads_for_user
 from app.models import User
 from app.shared.conversations import (
     accessible_conversation,
@@ -149,6 +164,7 @@ def _serialize_page(
     reactions: dict[UUID, list[ReactionSummary]],
     *,
     sender_id: UUID,
+    replies: dict[UUID, ReplyPreview] | None = None,
 ) -> list[MessageRead]:
     """Serialize a page, marking the requester's own messages delivered up to `cursor`.
 
@@ -165,6 +181,7 @@ def _serialize_page(
                 and (message.created_at, message.id) <= cursor
             ),
             reactions=reactions.get(message.id),
+            reply=(replies or {}).get(message.id),
         )
         for message in messages
     ]
@@ -191,7 +208,8 @@ async def get_thread(
     reactions = await reactions_for(
         db, [m.id for m in messages], viewer_id=current_user.id
     )
-    return _serialize_page(messages, cursor, reactions, sender_id=current_user.id)
+    replies = await reply_previews_for(db, messages)
+    return _serialize_page(messages, cursor, reactions, sender_id=current_user.id, replies=replies)
 
 
 @router.get('/threads/{match_id}/sync', response_model=list[MessageRead])
@@ -212,7 +230,38 @@ async def sync_thread_endpoint(
     reactions = await reactions_for(
         db, [m.id for m in messages], viewer_id=current_user.id
     )
-    return _serialize_page(messages, cursor, reactions, sender_id=current_user.id)
+    replies = await reply_previews_for(db, messages)
+    return _serialize_page(messages, cursor, reactions, sender_id=current_user.id, replies=replies)
+
+
+@router.patch('/threads/{match_id}/mute', status_code=status.HTTP_204_NO_CONTENT)
+async def mute_thread(
+    match_id: UUID,
+    payload: ThreadMuteRequest,
+    current_user: User = Depends(require_verified_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Mute or unmute a conversation for yourself — no message or reaction pushes while muted.
+    Works for DMs and groups alike; messages still arrive and count as unread."""
+    conversation = await accessible_conversation(db, match_id, current_user.id)
+    await set_muted(db, conversation, current_user.id, payload.muted)
+    from app.features.realtime.broadcasts import broadcast_conversation_muted
+
+    await broadcast_conversation_muted(
+        current_user.id, conversation.match_id or conversation.id, payload.muted
+    )
+
+
+@router.get('/threads/{match_id}/presence', response_model=PresenceRead)
+async def get_thread_presence(
+    match_id: UUID,
+    current_user: User = Depends(require_verified_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Your DM partner's "Online" / "Last seen", if you may see it — reciprocal, as in
+    WhatsApp: if either of you hides it, neither sees it. Not available for groups."""
+    conversation = await accessible_conversation(db, match_id, current_user.id)
+    return await partner_presence(db, conversation, current_user.id)
 
 
 @router.post('/threads/{match_id}', response_model=MessageRead, status_code=status.HTTP_201_CREATED)
@@ -223,6 +272,18 @@ async def send_message(
     db: AsyncSession = Depends(get_db),
 ):
     conversation = await accessible_conversation(db, match_id, current_user.id)
+    reply = None
+    if payload.reply_to_id is not None:
+        try:
+            target = await validate_reply_target(db, conversation.id, payload.reply_to_id)
+        except ReplyTargetError as exc:
+            code = (
+                status.HTTP_409_CONFLICT
+                if exc.code == 'reply_target_deleted'
+                else status.HTTP_422_UNPROCESSABLE_CONTENT
+            )
+            raise HTTPException(status_code=code, detail=exc.code) from exc
+        reply = preview_of(target, await sender_name(db, target.sender_id))
     message, created = await persist_message_idempotent(
         db,
         sender_id=current_user.id,
@@ -230,7 +291,11 @@ async def send_message(
         conversation_id=conversation.id,
         body=payload.body.strip(),
         client_message_id=payload.client_message_id,
+        reply_to_id=payload.reply_to_id,
     )
+    if not created:
+        # A retried send returns the original row — with the reply it was first sent with.
+        reply = (await reply_previews_for(db, [message])).get(message.id)
     if created:
         from app.features.realtime.runtime import emit_message_created
 
@@ -239,8 +304,9 @@ async def send_message(
             message,
             sender_id=current_user.id,
             recipients=recipients,
+            reply=reply.model_dump(mode='json') if reply else None,
         )
-    return message_read(message)
+    return message_read(message, reply=reply)
 
 
 @router.patch('/{message_id}', response_model=MessageRead)
@@ -263,62 +329,24 @@ async def edit_message_endpoint(
     return message_read(message)
 
 
-@router.put('/{message_id}/reactions/{emoji}', status_code=status.HTTP_204_NO_CONTENT)
+@router.put('/{message_id}/reactions/{emoji}', response_model=ReactionState)
 async def add_reaction(
     message_id: UUID,
     emoji: str,
     current_user: User = Depends(reaction_limit),
     db: AsyncSession = Depends(get_db),
 ):
-    """React to a message. Idempotent — reacting twice is success, not a conflict.
+    """Make `emoji` your reaction to a message, replacing any other — one per person.
 
-    `PUT` rather than `POST` precisely because it is idempotent: a double-tap, or a retry after a
-    dropped response, must not need the client to reason about whether the first one landed.
+    `PUT` because it is idempotent: a double-tap, or a retry after a dropped response, needs no
+    reasoning about whether the first landed. Returns the message's resulting reactions.
     """
-    reacted = await toggle_reaction(
-        db, message_id=message_id, user_id=current_user.id, emoji=emoji, add=True
-    )
-    from app.features.realtime.runtime import (
-        broadcast_reaction,
-        emit_notification,
-        emit_reaction_activity,
+    return await apply_reaction(
+        db, message_id=message_id, actor_id=current_user.id, emoji=emoji, add=True
     )
 
-    await broadcast_reaction(
-        conversation_id=reacted.conversation_id,
-        message_id=message_id,
-        user_id=current_user.id,
-        emoji=emoji,
-        added=True,
-    )
-    # Only the sender, and only on add. Without this a reaction was invisible unless the recipient
-    # happened to have the conversation open at that moment — the conversation channel reaches
-    # nobody who is not looking at it, so there was no inbox change, no badge and no push.
-    # Removing a reaction is deliberately silent: "someone un-reacted" is not news.
-    if reacted.sender_id is not None and reacted.sender_id != current_user.id:
-        # The inbox signal: updates the author's thread row live even with the chat closed. Paired
-        # with the durable `latest_reaction` the thread list now carries for a cold load.
-        await emit_reaction_activity(
-            sender_id=reacted.sender_id,
-            actor_id=current_user.id,
-            addressing_id=reacted.addressing_id,
-            message_id=message_id,
-            emoji=emoji,
-        )
-        await emit_notification(
-            user_id=reacted.sender_id,
-            notif_type='message_reaction',
-            actor_id=current_user.id,
-            # The *type* says which chat route to open, so the client never has to infer it
-            # from a thread list it may not have loaded yet.
-            target_type='group_chat' if reacted.is_group else 'dm',
-            target_id=reacted.addressing_id,
-            detail=emoji,
-            collapse_unread=True,
-        )
 
-
-@router.delete('/{message_id}/reactions/{emoji}', status_code=status.HTTP_204_NO_CONTENT)
+@router.delete('/{message_id}/reactions/{emoji}', response_model=ReactionState)
 async def remove_reaction(
     message_id: UUID,
     emoji: str,
@@ -326,18 +354,19 @@ async def remove_reaction(
     db: AsyncSession = Depends(get_db),
 ):
     """Remove your reaction. Idempotent — removing one that is not there is success."""
-    reacted = await toggle_reaction(
-        db, message_id=message_id, user_id=current_user.id, emoji=emoji, add=False
+    return await apply_reaction(
+        db, message_id=message_id, actor_id=current_user.id, emoji=emoji, add=False
     )
-    from app.features.realtime.runtime import broadcast_reaction
 
-    await broadcast_reaction(
-        conversation_id=reacted.conversation_id,
-        message_id=message_id,
-        user_id=current_user.id,
-        emoji=emoji,
-        added=False,
-    )
+
+@router.get('/{message_id}/reactions', response_model=list[MessageReactor])
+async def get_message_reactors(
+    message_id: UUID,
+    current_user: User = Depends(require_verified_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Who reacted to this message and with what, newest first — including you."""
+    return await reactors_for(db, message_id, current_user.id)
 
 
 @router.get('/{message_id}/read-by', response_model=list[MessageReadBy])

@@ -152,15 +152,20 @@ class NotificationService {
         return;
       }
     }
+    final conversationId = data['conversation_id'];
+    final hasConversation = conversationId is String && conversationId.isNotEmpty;
+    if (type == 'notification' && data['notif_type'] == 'message_reaction' && hasConversation) {
+      // A reaction is about a message: open the chat it is in, as WhatsApp does. Opening the chat
+      // also marks the reaction's notification read on the server.
+      onOpenConversation(conversationId);
+      return;
+    }
     if (type == 'notification') {
       // Connection/group-invite pushes — the notifications screen has the full detail + action.
       onOpenNotifications();
       return;
     }
-    final conversationId = data['conversation_id'];
-    if (conversationId is String && conversationId.isNotEmpty) {
-      onOpenConversation(conversationId);
-    }
+    if (hasConversation) onOpenConversation(conversationId);
   }
 
   Future<void> _register(Dio dio, String token) async {

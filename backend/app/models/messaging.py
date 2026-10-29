@@ -82,6 +82,11 @@ class Message(Base):
             unique=True,
             postgresql_where=text('client_message_id IS NOT NULL'),
         ),
+        Index(
+            'ix_messages_reply_to_id',
+            'reply_to_id',
+            postgresql_where=text('reply_to_id IS NOT NULL'),
+        ),
         # Keyset pagination + reconnect sync, keyed by the conversation (the live path since
         # P2). Newest-first within a conversation; also serves the unread boundary scan.
         Index('ix_messages_conversation_created_id', text('conversation_id'), text('created_at DESC'), text('id DESC')),
@@ -115,10 +120,19 @@ class Message(Base):
     # moderation until the retention window elapses, then purged by cron (see
     # `MESSAGE_SOFT_DELETE_RETENTION_DAYS`). Report snapshots survive row purge.
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # The message this one replies to, in the same conversation. SET NULL rather than CASCADE: the
+    # retention purge hard-deletes old rows, and a reply must outlive what it quoted (it then
+    # simply shows no quote). Indexed — partially — so that purge is not a full scan per row.
+    reply_to_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey('messages.id', ondelete='SET NULL'), nullable=True
+    )
 
 
 class MessageReaction(Base):
-    """One person's one emoji on one message (report #4).
+    """One person's reaction to one message — at most one each, as in WhatsApp (report #4).
+
+    Picking a different emoji replaces the old one rather than stacking a second: a chip strip
+    reads as "how people felt", and one person showing up under three emoji overstates it.
 
     A table rather than a JSON column on `messages`, and the reason is concurrency: a blob cannot
     carry a unique constraint, so two people reacting at the same instant would read-modify-write
@@ -132,10 +146,10 @@ class MessageReaction(Base):
 
     __tablename__ = 'message_reactions'
     __table_args__ = (
-        # Makes a toggle idempotent: a double-tap cannot produce two rows, and the loser of a race
-        # catches IntegrityError and treats it as success — the same arbiter pattern as message
-        # idempotency.
-        UniqueConstraint('message_id', 'user_id', 'emoji', name='uq_message_reaction'),
+        # One reaction per person per message. Also the arbiter for concurrent taps: setting a
+        # reaction is an upsert on this constraint, so a double-tap or two devices at once still
+        # leave exactly one row.
+        UniqueConstraint('message_id', 'user_id', name='uq_message_reaction_user'),
         # Serves the per-page aggregate: GROUP BY message_id, emoji over a page of message ids.
         Index('ix_message_reactions_message_emoji', 'message_id', 'emoji'),
     )
@@ -178,3 +192,21 @@ class MessageEdit(Base):
     edited_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+
+
+class UserPresence(Base):
+    """When a user was last connected — the "last seen" half of presence.
+
+    "Online" is not stored: it is whether the user has a live socket right now. Only the moment
+    they went offline is written, and only on that transition (throttled), so presence costs one
+    small write per session rather than one per heartbeat. A table of its own rather than a
+    column on `users`, which is read on every authenticated request and carries an `updated_at`
+    that a last-seen write must not bump.
+    """
+
+    __tablename__ = 'user_presence'
+
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey('users.id', ondelete='CASCADE'), primary_key=True
+    )
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

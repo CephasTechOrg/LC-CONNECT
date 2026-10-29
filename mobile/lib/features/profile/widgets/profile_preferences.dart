@@ -49,6 +49,16 @@ class _PreferencesCard extends ConsumerWidget {
                 .read(myProfileNotifierProvider.notifier)
                 .updatePreference(showProfileToVerifiedOnly: v),
           ),
+          const SizedBox(height: 12),
+          _PrefToggle(
+            icon: Icons.circle_outlined,
+            label: 'Show online status & last seen',
+            hint: "If you turn this off, you won't see other people's either.",
+            value: profile.showPresence,
+            onChanged: (v) => ref
+                .read(myProfileNotifierProvider.notifier)
+                .updatePreference(showPresence: v),
+          ),
         ],
       ),
     );
@@ -58,11 +68,13 @@ class _PreferencesCard extends ConsumerWidget {
 class _PrefToggle extends StatelessWidget {
   final IconData icon;
   final String label;
+  final String? hint;
   final bool value;
   final ValueChanged<bool> onChanged;
   const _PrefToggle({
     required this.icon,
     required this.label,
+    this.hint,
     required this.value,
     required this.onChanged,
   });
@@ -74,10 +86,20 @@ class _PrefToggle extends StatelessWidget {
         Icon(icon, size: 20, color: AppColors.textMuted),
         const SizedBox(width: 12),
         Expanded(
-          child: Text(
-            label,
-            style: AppTypography.bodySmall.copyWith(
-                color: AppColors.textMid),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: AppTypography.bodySmall.copyWith(color: AppColors.textMid),
+              ),
+              if (hint != null)
+                Text(
+                  hint!,
+                  style: AppTypography.label.copyWith(
+                      fontWeight: FontWeight.w400, color: AppColors.textMuted),
+                ),
+            ],
           ),
         ),
         Switch(

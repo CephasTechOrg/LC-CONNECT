@@ -192,9 +192,23 @@ class _NotificationTile extends StatelessWidget {
       ),
       subtitle: Padding(
         padding: const EdgeInsets.only(top: 2),
-        child: Text(
-          _timeAgo(notification.createdAt),
-          style: AppTypography.label.copyWith(color: AppColors.textMuted),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Which message the reaction was on — "reacted 👍 to your message" alone left the
+            // reader guessing.
+            if (notification.snippet != null && notification.snippet!.isNotEmpty)
+              Text(
+                '“${notification.snippet}”',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTypography.bodySmall.copyWith(color: AppColors.textMid),
+              ),
+            Text(
+              _timeAgo(notification.createdAt),
+              style: AppTypography.label.copyWith(color: AppColors.textMuted),
+            ),
+          ],
         ),
       ),
       trailing: unread

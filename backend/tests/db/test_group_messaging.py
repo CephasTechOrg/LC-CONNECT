@@ -152,7 +152,7 @@ async def test_rest_access_resolves_group_by_conversation_id(db, factory):
 async def test_unified_inbox_lists_both_dm_and_group_threads(db, factory):
     from datetime import UTC, datetime, timedelta
 
-    from app.features.messages.service import list_threads_for_user
+    from app.features.messages.threads import list_threads_for_user
 
     me = await factory.user(display_name='Me')
     friend = await factory.user(display_name='Friend')

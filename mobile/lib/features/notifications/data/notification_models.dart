@@ -25,6 +25,10 @@ class AppNotification {
   /// emoji is true of this row alone.
   final String? detail;
 
+  /// A short excerpt of the message the event is about (reactions), shown as the row's second
+  /// line. Null for every other type, and empty once that message was deleted.
+  final String? snippet;
+
   const AppNotification({
     required this.id,
     required this.type,
@@ -38,7 +42,26 @@ class AppNotification {
     this.targetType,
     this.targetId,
     this.detail,
+    this.snippet,
   });
+
+  /// The same row with its read state (or reaction emoji) changed — used to update the cached
+  /// list in place when a row is opened, instead of refetching the page.
+  AppNotification copyWith({bool? read, String? detail}) => AppNotification(
+        id: id,
+        type: type,
+        read: read ?? this.read,
+        createdAt: createdAt,
+        groupId: groupId,
+        groupName: groupName,
+        actorId: actorId,
+        actorName: actorName,
+        actorAvatarUrl: actorAvatarUrl,
+        targetType: targetType,
+        targetId: targetId,
+        detail: detail ?? this.detail,
+        snippet: snippet,
+      );
 
   factory AppNotification.fromJson(Map<String, dynamic> j) {
     final group = j['group'] as Map<String, dynamic>?;
@@ -56,6 +79,7 @@ class AppNotification {
       targetType: j['target_type'] as String?,
       targetId: j['target_id'] as String?,
       detail: j['detail'] as String?,
+      snippet: j['snippet'] as String?,
     );
   }
 

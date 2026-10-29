@@ -17,7 +17,7 @@ from uuid import uuid4
 
 import pytest
 
-from app.features.realtime import gateway, protocol, service
+from app.features.realtime import gateway, protocol, receipts, service
 from app.features.realtime.runtime import manager
 from app.models import Message
 
@@ -87,7 +87,7 @@ def routing(monkeypatch):
         async def ok_members_muted(db, conversation_id, *, exclude=None):
             return []  # no other recipients → no user-channel noise, no push scheduling
 
-        async def persist(db, *, sender_id, match_id, conversation_id, body, client_message_id):
+        async def persist(db, *, sender_id, match_id, conversation_id, body, client_message_id, reply_to_id=None):
             # NOTE: conversation_id is set here on purpose. The older helper in
             # test_realtime_gateway.py leaves it None, which makes addressing_id collapse to the
             # match id and hides exactly the mismatch these tests exist to catch.
@@ -109,6 +109,13 @@ def routing(monkeypatch):
         monkeypatch.setattr(service, 'authorize_conversation', ok_authorize)
         monkeypatch.setattr(gateway, 'active_member_ids', ok_members)
         monkeypatch.setattr(gateway, 'persist_message_idempotent', persist)
+
+        async def no_reaction_notifications(db, user_id, addressing_id):
+            return []
+
+        # Reading a chat also clears its reaction notifications — a DB write these routing tests
+        # do not exercise (see tests/db/test_reaction_notifications.py).
+        monkeypatch.setattr(receipts, 'mark_chat_reactions_read', no_reaction_notifications)
 
     return install
 

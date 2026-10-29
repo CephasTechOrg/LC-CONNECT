@@ -21,6 +21,9 @@ class _ChatHeader extends StatelessWidget {
   /// DM only: the partner is typing — replaces the subtitle, so no separate strip is needed.
   final bool partnerTyping;
 
+  /// I muted this chat — a small bell-off after the name, so it is never a mystery why it is quiet.
+  final bool muted;
+
   const _ChatHeader({
     this.title = 'Messages',
     this.subtitle,
@@ -30,6 +33,7 @@ class _ChatHeader extends StatelessWidget {
     this.onIdentityTap,
     this.onMenu,
     this.partnerTyping = false,
+    this.muted = false,
   });
 
   @override
@@ -81,6 +85,14 @@ class _ChatHeader extends StatelessWidget {
                                 const SizedBox(width: 4),
                                 const VerifiedBadge(size: 15),
                               ],
+                              if (muted) ...[
+                                const SizedBox(width: 4),
+                                Semantics(
+                                  label: 'Muted',
+                                  child: const Icon(Icons.notifications_off_outlined,
+                                      size: 15, color: AppColors.textMuted),
+                                ),
+                              ],
                             ],
                           ),
                           if (showTyping)
@@ -97,7 +109,11 @@ class _ChatHeader extends StatelessWidget {
                               subtitle!,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: AppTypography.caption.copyWith(color: AppColors.textMuted),
+                              style: AppTypography.caption.copyWith(
+                                // "Online" is the one subtitle worth a touch of colour.
+                                color: subtitle == 'Online' ? AppColors.green : AppColors.textMuted,
+                                fontWeight: subtitle == 'Online' ? FontWeight.w600 : null,
+                              ),
                             ),
                         ],
                       ),

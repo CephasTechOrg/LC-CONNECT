@@ -25,6 +25,13 @@ from app.features.notifications.service import prune_tokens, tokens_for_user
 logger = logging.getLogger('lc_connect.push')
 
 
+def notification_push_data(notif_type: str, extra: dict[str, str] | None = None) -> dict[str, str]:
+    """The push's data payload: the type, plus anything that lets a tap open the right place —
+    a reaction's `conversation_id`, so it opens the chat rather than the notification list.
+    FCM data values must be strings; the fixed keys cannot be overridden by `extra`."""
+    return {**(extra or {}), 'type': 'notification', 'notif_type': notif_type}
+
+
 def _notification_copy(
     notif_type: str,
     actor_name: str | None,
@@ -165,6 +172,7 @@ class PushSender:
         actor_name: str | None,
         group_name: str | None,
         detail: str | None = None,
+        data: dict[str, str] | None = None,
     ) -> None:
         """Push for the small set of in-app notifications worth interrupting someone for —
         a connection request/acceptance or a group invite/join-request/approval. Everything
@@ -177,20 +185,29 @@ class PushSender:
             return
         title, body = _notification_copy(notif_type, actor_name, group_name, detail)
         try:
-            invalid = await asyncio.to_thread(self._send_notification, tokens, notif_type, title, body)
+            invalid = await asyncio.to_thread(
+                self._send_notification, tokens, notif_type, title, body, data
+            )
         except Exception as exc:  # noqa: BLE001 - a push failure must never surface to the actor
             logger.warning('Notification push failed for user %s (type=%s): %s', recipient_id, notif_type, exc)
             return
         if invalid:
             await prune_tokens(db, invalid)
 
-    def _send_notification(self, tokens: list[str], notif_type: str, title: str, body: str) -> list[str]:
+    def _send_notification(
+        self,
+        tokens: list[str],
+        notif_type: str,
+        title: str,
+        body: str,
+        extra: dict[str, str] | None = None,
+    ) -> list[str]:
         from firebase_admin import messaging
 
         message = messaging.MulticastMessage(
             tokens=tokens,
             notification=messaging.Notification(title=title, body=body),
-            data={'type': 'notification', 'notif_type': notif_type},
+            data=notification_push_data(notif_type, extra),
             apns=messaging.APNSConfig(payload=messaging.APNSPayload(aps=messaging.Aps(sound='default'))),
         )
         response = messaging.send_each_for_multicast(message, app=self._app)

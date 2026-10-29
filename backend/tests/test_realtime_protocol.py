@@ -94,3 +94,48 @@ def test_rejects_oversized_body():
 def test_rejects_non_uuid_conversation():
     with pytest.raises(ValidationError):
         protocol.parse_inbound({'type': 'typing.start', 'conversation_id': 'not-a-uuid'})
+
+
+def test_protocol_5_send_frame_takes_an_optional_reply():
+    base = {
+        'type': 'message.send', 'request_id': str(uuid4()), 'conversation_id': str(uuid4()),
+        'client_message_id': str(uuid4()), 'body': 'ok',
+    }
+    assert protocol.parse_inbound(base).reply_to_id is None
+    target = uuid4()
+    assert protocol.parse_inbound({**base, 'reply_to_id': str(target)}).reply_to_id == target
+
+
+def test_a_serialized_message_carries_its_reply_quote():
+    from datetime import UTC, datetime
+    from types import SimpleNamespace
+
+    message = SimpleNamespace(
+        id=uuid4(), match_id=uuid4(), conversation_id=uuid4(), sender_id=uuid4(),
+        client_message_id=None, body='on my way', created_at=datetime(2026, 1, 1, tzinfo=UTC),
+        read_at=None, deleted_at=None,
+    )
+    quote = {'id': str(uuid4()), 'body_snippet': 'see you at 5'}
+    assert protocol.serialize_message(message)['reply_to'] is None
+    assert protocol.message_created(message, quote)['message']['reply_to'] == quote
+
+
+def test_protocol_5_frames():
+    assert protocol.PROTOCOL_VERSION == 5
+    user, message, conversation = uuid4(), uuid4(), uuid4()
+    frame = protocol.reaction_change(
+        conversation_id=conversation, message_id=message, user_id=user, emoji='👍', added=True,
+        user_emoji='👍', reactions=[{'emoji': '👍', 'count': 2}], actor_name='Ama',
+        message_sender_id=None, message_snippet='hi', reacted_at='2026-01-01T00:00:00+00:00',
+    )
+    # The v3 fields an older client applies as a delta are unchanged.
+    assert {k: frame[k] for k in ('type', 'message_id', 'user_id', 'emoji', 'added')} == {
+        'type': 'messages.reaction', 'message_id': str(message), 'user_id': str(user),
+        'emoji': '👍', 'added': True,
+    }
+    assert frame['conversation_id'] == str(conversation)
+    assert protocol.notification_retracted(message) == {'type': 'notification.retracted', 'id': str(message)}
+    assert protocol.notifications_read([message])['ids'] == [str(message)]
+    assert protocol.conversation_muted(conversation, True)['muted'] is True
+    assert protocol.presence(user, online=False, last_seen_at=None, visible=False)['visible'] is False
+    assert protocol.ErrorCode.INVALID_REPLY == 'invalid_reply'

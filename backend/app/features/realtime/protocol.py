@@ -12,6 +12,13 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, TypeAdapter, field_validator
 
+from app.features.realtime.protocol_events import (  # noqa: F401 — re-exported
+    conversation_muted,
+    notification_retracted,
+    notifications_read,
+    presence,
+    reaction_change,
+)
 from app.models import Message
 from app.shared.message_limits import MAX_BODY_CHARS as _MAX_BODY_CHARS
 
@@ -26,7 +33,11 @@ MAX_BODY_CHARS = _MAX_BODY_CHARS
 # 4 adds `messages.reaction_activity` (outbound, user channel). The v3 `messages.reaction` only
 # reaches clients with that chat open; this reaches the message author's inbox so a reaction to
 # their message is visible without opening the thread. Older clients ignore the unknown type.
-PROTOCOL_VERSION = 4
+# 5 adds, all additive: `reply_to_id` on `messages.send` (rejected with `invalid_reply`) and
+# `reply_to` on serialized messages; state fields and `conversation_id` on `messages.reaction`,
+# now sent to every member's user channel; `notification.retracted`, `notifications.read`,
+# `conversation.muted` and `presence` (outbound, user channel). See `protocol_events`.
+PROTOCOL_VERSION = 5
 
 
 # ── Error + close codes ───────────────────────────────────────────────────────
@@ -46,6 +57,8 @@ class ErrorCode:
     NOT_SUBSCRIBED = 'not_subscribed'
     INTERNAL = 'internal_error'
     IDLE_TIMEOUT = 'idle_timeout'
+    # `messages.send` named a reply target that is gone, deleted, or in another conversation.
+    INVALID_REPLY = 'invalid_reply'
 
 
 class CloseCode:
@@ -86,6 +99,9 @@ class SendFrame(BaseModel):
     conversation_id: UUID
     client_message_id: UUID
     body: str = Field(max_length=MAX_BODY_CHARS)
+    # Protocol 5: the message this one replies to. Validated against the conversation in the
+    # gateway, which answers `invalid_reply` rather than silently dropping the quote.
+    reply_to_id: UUID | None = None
 
     @field_validator('body')
     @classmethod
@@ -196,7 +212,8 @@ def addressing_id(message: Message) -> str:
     return str(message.match_id or message.conversation_id)
 
 
-def serialize_message(message: Message) -> dict[str, Any]:
+def serialize_message(message: Message, reply: dict[str, Any] | None = None) -> dict[str, Any]:
+    """`reply` is the quoted message's preview (a `ReplyPreview` dump), when this is a reply."""
     deleted = message.deleted_at is not None
     return {
         'id': str(message.id),
@@ -207,6 +224,7 @@ def serialize_message(message: Message) -> dict[str, Any]:
         'created_at': message.created_at.isoformat(),
         'read_at': message.read_at.isoformat() if message.read_at else None,
         'deleted': deleted,
+        'reply_to': reply,
     }
 
 
@@ -239,23 +257,33 @@ def unsubscribed(conversation_id: UUID) -> dict[str, Any]:
     return {'type': 'unsubscribed', 'conversation_id': str(conversation_id)}
 
 
-def message_ack(request_id: UUID, message: Message, duplicate: bool) -> dict[str, Any]:
+def message_ack(
+    request_id: UUID, message: Message, duplicate: bool, reply: dict[str, Any] | None = None
+) -> dict[str, Any]:
     return {
         'type': 'message.ack',
         'request_id': str(request_id),
         'client_message_id': str(message.client_message_id) if message.client_message_id else None,
         'duplicate': duplicate,
-        'message': serialize_message(message),
+        'message': serialize_message(message, reply),
     }
 
 
-def message_created(message: Message) -> dict[str, Any]:
-    return {'type': 'message.created', 'conversation_id': addressing_id(message), 'message': serialize_message(message)}
+def message_created(message: Message, reply: dict[str, Any] | None = None) -> dict[str, Any]:
+    return {
+        'type': 'message.created',
+        'conversation_id': addressing_id(message),
+        'message': serialize_message(message, reply),
+    }
 
 
-def conversation_updated(message: Message) -> dict[str, Any]:
+def conversation_updated(message: Message, reply: dict[str, Any] | None = None) -> dict[str, Any]:
     """User-channel event: a conversation has a new latest message (thread-list update)."""
-    return {'type': 'conversation.updated', 'conversation_id': addressing_id(message), 'message': serialize_message(message)}
+    return {
+        'type': 'conversation.updated',
+        'conversation_id': addressing_id(message),
+        'message': serialize_message(message, reply),
+    }
 
 
 def typing_event(conversation_id: UUID | str, user_id: UUID, active: bool) -> dict[str, Any]:
@@ -307,23 +335,6 @@ def message_edited(
         'message_id': str(message_id),
         'body': body,
         'edited_at': edited_at_iso,
-    }
-
-
-def reaction_event(
-    message_id: UUID, user_id: UUID, emoji: str, *, added: bool
-) -> dict[str, Any]:
-    """Conversation-channel event: someone's reaction on a message changed (protocol 3).
-
-    Carries the resulting state (`added`) rather than a delta, so an add racing a remove resolves
-    to last-write-wins at the frame level — the same answer the database gives.
-    """
-    return {
-        'type': 'messages.reaction',
-        'message_id': str(message_id),
-        'user_id': str(user_id),
-        'emoji': emoji,
-        'added': added,
     }
 
 

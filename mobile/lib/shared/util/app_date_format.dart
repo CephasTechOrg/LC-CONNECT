@@ -26,6 +26,7 @@ class AppDateFormat {
   static final DateFormat _fullDate = DateFormat('EEEE, MMMM d, y'); // Tuesday, September 16, 2026
   static final DateFormat _dayMonth = DateFormat('MMM d'); // Sep 16
   static final DateFormat _weekday = DateFormat('EEE'); // Tue
+  static final DateFormat _fullWeekday = DateFormat('EEEE'); // Tuesday
   static final DateFormat _time = DateFormat('h:mm a'); // 6:00 PM
   static final DateFormat _month = DateFormat('MMM'); // Sep
   static final DateFormat _dayOfMonth = DateFormat('d'); // 16
@@ -41,6 +42,12 @@ class AppDateFormat {
 
   /// Time of day — `6:00 PM`.
   static String time(DateTime at) => _time.format(at.toLocal());
+
+  /// Abbreviated weekday — `Tue`. An inbox row's stamp within the last week.
+  static String weekday(DateTime at) => _weekday.format(at.toLocal());
+
+  /// Full weekday — `Tuesday`. "Last seen Tuesday at 6:00 PM".
+  static String fullWeekday(DateTime at) => _fullWeekday.format(at.toLocal());
 
   /// Abbreviated month — `Sep`. The top line of a date block.
   static String month(DateTime at) => _month.format(at.toLocal());

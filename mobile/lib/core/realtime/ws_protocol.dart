@@ -2,6 +2,8 @@
 /// (see backend `app/features/realtime/protocol.py`). No I/O — unit-testable.
 library;
 
+part 'ws_sync_events.dart';
+
 /// What this client can speak. What the *server* speaks is a separate question — see
 /// `RealtimeClient.supportsProtocol`, and gate every frame added after v1 on it.
 ///
@@ -12,7 +14,17 @@ library;
 /// 4 adds `messages.reaction_activity` (inbound, user channel): a reaction to one of *your*
 /// messages, so the inbox row reflects it without the chat open. Inbound-only and additive — no
 /// new outbound frame — so it needs no gating; an older server simply never sends it.
-const int kProtocolVersion = 4;
+/// 5 adds `reply_to_id` on `message.send` (gated: an older server would drop the quote silently),
+/// state fields on `messages.reaction` (now on the user channel), and the inbound `presence`,
+/// `conversation.muted`, `notification.retracted` and `notifications.read` frames.
+const int kProtocolVersion = 5;
+
+/// Replies, who-reacted, mute and presence arrived in protocol 5. Each gates its affordance, so a
+/// control never appears against a server that would 404 it or drop it.
+const int kReplyProtocolVersion = 5;
+const int kReactorsProtocolVersion = 5;
+const int kMuteProtocolVersion = 5;
+const int kPresenceProtocolVersion = 5;
 
 /// Frames introduced in protocol 2. Pass to `RealtimeClient.supportsProtocol` before sending one.
 const int kDeliveryProtocolVersion = 2;
@@ -53,12 +65,14 @@ Map<String, dynamic> sendFrame({
   required String conversationId,
   required String clientMessageId,
   required String body,
+  String? replyToId,
 }) => {
       'type': 'message.send',
       'request_id': requestId,
       'conversation_id': conversationId,
       'client_message_id': clientMessageId,
       'body': body,
+      'reply_to_id': ?replyToId,
     };
 
 Map<String, dynamic> typingFrame(String conversationId, {required bool active}) => {
@@ -161,7 +175,38 @@ class ReactionEvent extends InboundEvent {
   final String userId;
   final String emoji;
   final bool added;
-  const ReactionEvent(this.messageId, this.userId, this.emoji, this.added);
+
+  // ── protocol 5: the resulting state, so a client applies it rather than a +1/−1 delta ──
+
+  /// The addressing id of the chat, so the inbox can match the row with the chat closed.
+  final String? conversationId;
+
+  /// [userId]'s one reaction now, or null when they have none.
+  final String? userEmoji;
+
+  /// The message's tallies after the change (no viewer flag).
+  final List<({String emoji, int count})>? counts;
+  final String? actorName;
+  final String? messageSenderId;
+  final String? messageSnippet;
+  final String? reactedAt;
+
+  const ReactionEvent(
+    this.messageId,
+    this.userId,
+    this.emoji,
+    this.added, {
+    this.conversationId,
+    this.userEmoji,
+    this.counts,
+    this.actorName,
+    this.messageSenderId,
+    this.messageSnippet,
+    this.reactedAt,
+  });
+
+  /// Whether this frame carries state (protocol 5) rather than only a delta (protocol 3).
+  bool get isStateful => counts != null;
 }
 
 /// A message's body changed (protocol 3).
@@ -289,12 +334,41 @@ InboundEvent parseInbound(Map<String, dynamic> raw) {
         raw['edited_at'] as String? ?? '',
       );
     case 'messages.reaction':
+      final counts = raw['reactions'] as List?;
       return ReactionEvent(
         raw['message_id'] as String,
         raw['user_id'] as String,
         raw['emoji'] as String,
         raw['added'] as bool? ?? true,
+        conversationId: raw['conversation_id'] as String?,
+        userEmoji: raw['user_emoji'] as String?,
+        counts: counts == null
+            ? null
+            : [
+                for (final c in counts)
+                  (
+                    emoji: (c as Map)['emoji'] as String,
+                    count: (c['count'] as num?)?.toInt() ?? 0,
+                  ),
+              ],
+        actorName: raw['actor_name'] as String?,
+        messageSenderId: raw['message_sender_id'] as String?,
+        messageSnippet: raw['message_snippet'] as String?,
+        reactedAt: raw['reacted_at'] as String?,
       );
+    case 'presence':
+      return PresenceEvent(
+        raw['user_id'] as String,
+        online: raw['online'] as bool? ?? false,
+        lastSeenAt: raw['last_seen_at'] as String?,
+        visible: raw['visible'] as bool? ?? true,
+      );
+    case 'conversation.muted':
+      return ConversationMuted(raw['conversation_id'] as String, raw['muted'] as bool? ?? false);
+    case 'notification.retracted':
+      return NotificationRetracted(raw['id'] as String);
+    case 'notifications.read':
+      return NotificationsRead([for (final id in (raw['ids'] as List? ?? const [])) id as String]);
     case 'messages.reaction_activity':
       return ReactionActivity(
         raw['conversation_id'] as String,

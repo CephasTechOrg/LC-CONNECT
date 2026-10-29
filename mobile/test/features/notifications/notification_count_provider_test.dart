@@ -41,8 +41,10 @@ class _FakeRealtime extends RealtimeClient {
 class _Adapter implements HttpClientAdapter {
   int unreadCount;
   bool markAllCalled = false;
+  final String listJson;
+  final List<String> markedOne = [];
 
-  _Adapter({this.unreadCount = 0});
+  _Adapter({this.unreadCount = 0, this.listJson = '[]'});
 
   @override
   Future<ResponseBody> fetch(RequestOptions o, Stream<Uint8List>? s, Future<void>? c) async {
@@ -60,9 +62,13 @@ class _Adapter implements HttpClientAdapter {
       unreadCount = 0;
       return ResponseBody.fromString('', 204);
     }
+    if (o.path.contains('/notifications/') && o.path.endsWith('/read') && o.method == 'POST') {
+      markedOne.add(o.path.split('/').reversed.elementAt(1));
+      return ResponseBody.fromString('', 204);
+    }
     if (o.path.endsWith('/notifications') && o.method == 'GET') {
       return ResponseBody.fromString(
-        '[]',
+        listJson,
         200,
         headers: {
           Headers.contentTypeHeader: [Headers.jsonContentType]
@@ -90,9 +96,10 @@ NotificationEvent _notif() => NotificationEvent({
 
 Future<(ProviderContainer, _FakeRealtime, _Adapter, ProviderSubscription<int>)> _ready({
   int unread = 0,
+  String listJson = '[]',
 }) async {
   final rt = _FakeRealtime();
-  final adapter = _Adapter(unreadCount: unread);
+  final adapter = _Adapter(unreadCount: unread, listJson: listJson);
   final c = ProviderContainer(overrides: [
     authNotifierProvider.overrideWith(_MockAuth.new),
     realtimeClientProvider.overrideWithValue(rt),
@@ -149,6 +156,78 @@ void main() {
     await pumpEventQueue();
 
     expect(c.read(notificationCountProvider), 3);
+    await rt.closeStreams();
+    c.dispose();
+  });
+
+  test('opening a row twice drops the badge once and flips the cached row', () async {
+    final (c, rt, adapter, sub) = await _ready(
+      unread: 2,
+      listJson: '[{"id":"n1","type":"connection_accepted","read":false,'
+          '"created_at":"2026-09-08T12:00:00.000Z"}]',
+    );
+    await c.read(notificationsListProvider.future);
+
+    final notifier = c.read(notificationCountProvider.notifier);
+    await notifier.markOneRead('n1');
+    await notifier.markOneRead('n1');
+
+    expect(c.read(notificationCountProvider), 1, reason: 'the second open must not subtract again');
+    expect(c.read(notificationsListProvider).value!.single.read, isTrue);
+    expect(adapter.markedOne, ['n1', 'n1'], reason: 'the server call stays idempotent');
+    sub.close();
+    await rt.closeStreams();
+    c.dispose();
+  });
+
+  test('a live frame for a row already listed updates it without a new unread', () async {
+    final (c, rt, _, sub) = await _ready(
+      unread: 1,
+      listJson: '[{"id":"n1","type":"connection_accepted","read":false,'
+          '"created_at":"2026-09-08T12:00:00.000Z"}]',
+    );
+    await c.read(notificationsListProvider.future);
+
+    rt.emit(_notif()); // same id n1
+    await pumpEventQueue();
+
+    expect(c.read(notificationCountProvider), 1);
+    expect(c.read(notificationsListProvider).value, hasLength(1));
+    sub.close();
+    await rt.closeStreams();
+    c.dispose();
+  });
+
+  const twoUnread = '[{"id":"n1","type":"message_reaction","read":false,'
+      '"created_at":"2026-09-08T12:00:00.000Z"},'
+      '{"id":"n2","type":"message_reaction","read":false,"created_at":"2026-09-08T12:01:00.000Z"}]';
+
+  test('a retracted reaction leaves the list and the badge follows the server', () async {
+    final (c, rt, adapter, sub) = await _ready(unread: 2, listJson: twoUnread);
+    await c.read(notificationsListProvider.future);
+
+    adapter.unreadCount = 1; // the server already dropped it
+    rt.emit(const NotificationRetracted('n1'));
+    await pumpEventQueue();
+
+    expect(c.read(notificationsListProvider).value!.map((n) => n.id), ['n2']);
+    expect(c.read(notificationCountProvider), 1);
+    sub.close();
+    await rt.closeStreams();
+    c.dispose();
+  });
+
+  test('reactions read by opening their chat untint here too', () async {
+    final (c, rt, adapter, sub) = await _ready(unread: 2, listJson: twoUnread);
+    await c.read(notificationsListProvider.future);
+
+    adapter.unreadCount = 0;
+    rt.emit(const NotificationsRead(['n1', 'n2']));
+    await pumpEventQueue();
+
+    expect(c.read(notificationsListProvider).value!.every((n) => n.read), isTrue);
+    expect(c.read(notificationCountProvider), 0);
+    sub.close();
     await rt.closeStreams();
     c.dispose();
   });

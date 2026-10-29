@@ -111,12 +111,17 @@ class _PromptCard extends StatelessWidget {
               background: _blueprintNavy,
             ),
             const SizedBox(width: AppSpacing.md),
+            // Always one line: on a narrow phone the title scales down a little rather than
+            // wrapping and making the card twice as tall.
             Expanded(
-              child: Text(
-                'Finish your Blueprint Bond profile',
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: AppTypography.titleSmall.copyWith(color: AppColors.textDark),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Finish your Blueprint Bond profile',
+                  maxLines: 1,
+                  style: AppTypography.titleSmall.copyWith(color: AppColors.textDark),
+                ),
               ),
             ),
             const SizedBox(width: AppSpacing.sm),

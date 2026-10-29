@@ -355,7 +355,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(
           find.text('Preferences', skipOffstage: false), findsOneWidget);
-      expect(find.byType(Switch, skipOffstage: false), findsNWidgets(2));
+      expect(find.byType(Switch, skipOffstage: false), findsNWidgets(3));
     });
 
     testWidgets('shows Edit Profile button', (tester) async {

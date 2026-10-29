@@ -141,12 +141,17 @@ class _Field extends StatelessWidget {
   final int maxLines;
   final String? hint;
   final TextInputType? keyboardType;
+  /// A line under the field (a requirement or a live count); [errorText] wins when both are set.
+  final String? helper;
+  final String? errorText;
   const _Field({
     this.label,
     required this.controller,
     this.maxLines = 1,
     this.hint,
     this.keyboardType,
+    this.helper,
+    this.errorText,
   });
 
   @override
@@ -161,7 +166,11 @@ class _Field extends StatelessWidget {
           minLines: maxLines > 1 ? 3 : 1,
           keyboardType: keyboardType,
           style: AppTypography.body.copyWith(color: AppColors.textDark),
-          decoration: _fieldDecoration(hint: hint),
+          decoration: _fieldDecoration(hint: hint).copyWith(
+            helperText: helper,
+            helperStyle: AppTypography.caption.copyWith(color: AppColors.textMuted),
+            errorText: errorText,
+          ),
         ),
       ],
     );
@@ -288,6 +297,8 @@ class _TagInput extends StatelessWidget {
   final Set<String> tags;
   final VoidCallback onAdd;
   final ValueChanged<String> onRemove;
+  /// The minimum still to meet ("Add at least 3 · 1 so far"); hidden once it is met.
+  final String? helper;
   const _TagInput({
     required this.label,
     required this.hint,
@@ -295,6 +306,7 @@ class _TagInput extends StatelessWidget {
     required this.tags,
     required this.onAdd,
     required this.onRemove,
+    this.helper,
   });
 
   @override
@@ -306,6 +318,10 @@ class _TagInput extends StatelessWidget {
         TextField(
           controller: controller,
           onSubmitted: (_) => onAdd(),
+          // A typed comma or semicolon ends a tag, so "Python, SQL" becomes two as you type.
+          onChanged: (v) {
+            if (v.endsWith(',') || v.endsWith(';')) onAdd();
+          },
           textInputAction: TextInputAction.done,
           style: AppTypography.body.copyWith(color: AppColors.textDark),
           decoration: _fieldDecoration(hint: hint).copyWith(
@@ -314,6 +330,8 @@ class _TagInput extends StatelessWidget {
               onPressed: onAdd,
               icon: const Icon(Icons.add_circle_rounded, color: AppColors.primary),
             ),
+            helperText: helper,
+            helperStyle: AppTypography.caption.copyWith(color: AppColors.textMuted),
           ),
         ),
         if (tags.isNotEmpty) ...[
