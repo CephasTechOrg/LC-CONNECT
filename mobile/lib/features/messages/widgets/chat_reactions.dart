@@ -1,194 +1,125 @@
 part of '../screens/chat_screen.dart';
 
-/// The reactions a user may choose, in picker order. Mirrors `REACTION_ALLOWLIST` server-side,
-/// which is the authority — anything else is refused with a 422.
-const kReactionChoices = <String>['👍', '❤️', '😂', '😮', '😢', '🙏'];
-
 /// Reaction UI and its optimistic toggle (report #4).
 ///
-/// Its own `part` file, as the design asked for up front: `chat_bubble.dart` is where editing and
-/// the long-press sheet also live, and it is the file that grows.
-/// How long after sending a message may be edited, mirroring `MESSAGE_EDIT_WINDOW_SECONDS`.
-///
-/// **Advisory only.** The server enforces the real window from its own clock; this exists so the
-/// Edit option disappears when it is no longer usable, rather than offering an action that 409s.
-/// A client clock that is wrong just means the option lingers or vanishes early — never that an
-/// expired edit succeeds.
-const kEditWindow = Duration(minutes: 15);
-
+/// Its own `part` file, as the design asked for up front: `chat_bubble.dart` is where the
+/// long-press sheet also lives, and it is the file that grows. Editing is in `chat_edit_logic`.
 mixin _ChatReactionLogic on _ChatScreenStateBase {
   // Implemented by _ChatScreenLogic, which is mixed in after this one — the same forward
   // declaration _ChatSendLogic already uses.
   void scheduleCacheSave();
 
-  /// Apply a reaction locally, call the server, and put it back if the call fails.
+  /// Apply a reaction locally, call the server, and settle on its answer.
   ///
-  /// Optimistic because a reaction is a *gesture* — the chip must fill under the thumb. A
-  /// round trip's delay before anything happens reads as a missed tap, and people tap again.
+  /// Optimistic because a reaction is a *gesture* — the chip must fill under the thumb. One
+  /// reaction per person: tapping my current emoji removes it, any other moves my reaction there.
+  /// The server's response is the authority (it returns the resulting tallies), so the strip ends
+  /// on the server's state rather than on whatever this device guessed.
   Future<void> toggleReaction(ChatMessage message, String emoji) async {
     final index = messages.indexWhere((m) => m.id == message.id);
     if (index == -1 || message.id.startsWith('local:')) return;
 
     final before = messages[index];
-    final after = _applyToggle(before, emoji);
-    final adding = after.reactions.any((r) => r.emoji == emoji && r.reactedByMe);
-
-    setState(() => messages[index] = after);
+    final removing = myEmoji(before.reactions) == emoji;
+    setState(() => messages[index] = before.copyWith(reactions: toggleMine(before.reactions, emoji)));
+    scheduleCacheSave();
+    reactionInFlight.add(message.id);
 
     try {
       final path = '/messages/${message.id}/reactions/${Uri.encodeComponent(emoji)}';
       final dio = ref.read(apiClientProvider).dio;
       // PUT and DELETE are both idempotent server-side, so a retry or a double-tap needs no
       // special handling here.
-      if (adding) {
-        await dio.put(path);
-      } else {
-        await dio.delete(path);
-      }
+      final response = removing ? await dio.delete(path) : await dio.put(path);
+      if (disposed || !mounted) return;
+      _settle(message.id, response.data);
     } catch (_) {
       if (disposed || !mounted) return;
       // Roll back to exactly what was there, not to "remove the chip": another person's reaction
       // may be in the same chip, and dropping it would delete their tally too.
       final current = messages.indexWhere((m) => m.id == message.id);
-      if (current != -1) {
-        setState(() => messages[current] = before);
-      }
+      if (current != -1) setState(() => messages[current] = before);
+      scheduleCacheSave();
       showReactionFailedSnack();
+    } finally {
+      reactionInFlight.remove(message.id);
     }
   }
 
-  /// This viewer's toggle applied to [message]'s chip strip.
-  ChatMessage _applyToggle(ChatMessage message, String emoji) {
-    final chips = [...message.reactions];
-    final at = chips.indexWhere((r) => r.emoji == emoji);
-
-    if (at == -1) {
-      chips.add(ReactionSummary(emoji: emoji, count: 1, reactedByMe: true));
-      // Keep the picker's order, so adding a chip does not reshuffle the strip.
-      chips.sort((a, b) =>
-          kReactionChoices.indexOf(a.emoji).compareTo(kReactionChoices.indexOf(b.emoji)));
-    } else {
-      final next = chips[at].toggled();
-      if (next == null) {
-        chips.removeAt(at);
-      } else {
-        chips[at] = next;
-      }
-    }
-    return message.copyWith(reactions: chips);
+  /// Replace the strip with the server's `ReactionState`, when it sent one (protocol 5; an older
+  /// server answers 204 and the optimistic strip stands).
+  void _settle(String messageId, Object? data) {
+    if (data is! Map || data['reactions'] is! List) return;
+    final at = messages.indexWhere((m) => m.id == messageId);
+    if (at == -1) return;
+    final chips = [
+      for (final r in data['reactions'] as List) ReactionSummary.fromJson(Map<String, dynamic>.from(r as Map)),
+    ]..sort((a, b) => reactionOrder(a.emoji).compareTo(reactionOrder(b.emoji)));
+    setState(() => messages[at] = messages[at].copyWith(reactions: chips));
+    scheduleCacheSave();
   }
 
-  /// A live reaction from someone else (protocol 3).
+  /// A live reaction change for a message in this chat.
   ///
-  /// Only their own tally moves: `reactedByMe` is this viewer's state and must survive another
-  /// person reacting to the same message with the same emoji.
-  void applyRemoteReaction(String messageId, String userId, String emoji, bool added) {
-    if (userId == currentUserId) return; // already applied optimistically
-    final index = messages.indexWhere((m) => m.id == messageId);
+  /// Protocol 5 frames carry the resulting state — the tallies and that person's one reaction —
+  /// so they are applied as state: a repeated or reordered frame cannot make counts drift. My own
+  /// frames count too (they come from my other devices), except while my own request for the same
+  /// message is in flight, whose response is the authority. Protocol 3 frames are a +1/−1 delta.
+  void applyRemoteReaction(ReactionEvent event) {
+    final index = messages.indexWhere((m) => m.id == event.messageId);
     // A reaction for a message that is paged out, or not loaded yet — the next page carries it.
     if (index == -1) return;
-
     final message = messages[index];
-    final chips = [...message.reactions];
-    final at = chips.indexWhere((r) => r.emoji == emoji);
+    final fromMe = event.userId == currentUserId;
 
-    if (added) {
+    if (event.isStateful) {
+      if (fromMe && reactionInFlight.contains(event.messageId)) return;
+      final mine = fromMe ? event.userEmoji : myEmoji(message.reactions);
+      setState(() => messages[index] = message.copyWith(reactions: applyState(event.counts!, mine)));
+      scheduleCacheSave();
+      return;
+    }
+    if (fromMe) return; // a v3 frame for my own tap — already applied optimistically
+    setState(() => messages[index] = message.copyWith(reactions: _applyDelta(message.reactions, event)));
+    scheduleCacheSave();
+  }
+
+  List<ReactionSummary> _applyDelta(List<ReactionSummary> before, ReactionEvent event) {
+    final chips = [...before];
+    final at = chips.indexWhere((r) => r.emoji == event.emoji);
+    if (event.added) {
       if (at == -1) {
-        chips.add(ReactionSummary(emoji: emoji, count: 1, reactedByMe: false));
-        chips.sort((a, b) =>
-            kReactionChoices.indexOf(a.emoji).compareTo(kReactionChoices.indexOf(b.emoji)));
+        chips.add(ReactionSummary(emoji: event.emoji, count: 1, reactedByMe: false));
       } else {
-        chips[at] = ReactionSummary(
-          emoji: emoji,
-          count: chips[at].count + 1,
-          reactedByMe: chips[at].reactedByMe,
-        );
+        chips[at] = ReactionSummary(emoji: event.emoji, count: chips[at].count + 1, reactedByMe: chips[at].reactedByMe);
       }
-    } else {
-      if (at == -1) return;
+    } else if (at != -1) {
       final remaining = chips[at].count - 1;
       if (remaining <= 0) {
         chips.removeAt(at);
       } else {
-        chips[at] = ReactionSummary(
-          emoji: emoji,
-          count: remaining,
-          reactedByMe: chips[at].reactedByMe,
-        );
+        chips[at] = ReactionSummary(emoji: event.emoji, count: remaining, reactedByMe: chips[at].reactedByMe);
       }
     }
-    setState(() => messages[index] = message.copyWith(reactions: chips));
+    chips.sort((a, b) => reactionOrder(a.emoji).compareTo(reactionOrder(b.emoji)));
+    return chips;
   }
 
-  /// Replace a message's body, optimistically, rolling back if the server refuses.
-  Future<void> editMessage(ChatMessage message, String newBody) async {
-    final trimmed = newBody.trim();
-    if (trimmed.isEmpty || trimmed == message.body) return;
-
-    final index = messages.indexWhere((m) => m.id == message.id);
-    if (index == -1) return;
-    final before = messages[index];
-
-    setState(() => messages[index] = before.copyWith(body: trimmed, editedAt: DateTime.now()));
-    scheduleCacheSave();
-
-    try {
-      await ref
-          .read(apiClientProvider)
-          .dio
-          .patch('/messages/${message.id}', data: {'body': trimmed});
-    } on DioException catch (e) {
-      if (disposed || !mounted) return;
-      final at = messages.indexWhere((m) => m.id == message.id);
-      if (at != -1) setState(() => messages[at] = before);
-      scheduleCacheSave();
-      // The server sends a machine-readable reason so this can say which rule was hit rather
-      // than a generic failure — the mistake report #8 made with attendance.
-      final expired = e.response?.statusCode == 409 &&
-          '${(e.response?.data as Map?)?['detail']}' == 'edit_window_expired';
-      showEditFailedSnack(
-        expired ? 'The edit window has passed.' : "Couldn't save that edit.",
-      );
-    } catch (_) {
-      if (disposed || !mounted) return;
-      final at = messages.indexWhere((m) => m.id == message.id);
-      if (at != -1) setState(() => messages[at] = before);
-      showEditFailedSnack("Couldn't save that edit.");
-    }
-  }
-
-  /// An edit that arrived from another device, or from the sender while this client is watching.
-  void applyRemoteEdit(String messageId, String body, String editedAt) {
-    final index = messages.indexWhere((m) => m.id == messageId);
-    // Paged out, or not loaded — the next page carries the edited body.
-    if (index == -1) return;
-    setState(() => messages[index] = messages[index].copyWith(
-          body: body,
-          editedAt: DateTime.tryParse(editedAt) ?? DateTime.now(),
-        ));
-    scheduleCacheSave();
-  }
-
-  /// Open the edit sheet for [message], then save what comes back.
-  ///
-  /// A sheet rather than putting the composer into an "edit mode": the composer may already hold
-  /// a draft for this conversation, and commandeering it would mean either discarding that draft
-  /// or juggling two texts in one field. A sheet leaves the draft untouched.
-  Future<void> promptEdit(ChatMessage message) async {
-    final edited = await showModalBottomSheet<String>(
+  /// "Reacted by" for [message], optionally filtered to one emoji (protocol 5).
+  void showReactedBy(ChatMessage message, {String? emoji}) {
+    if (!rt.supportsProtocol(kReactorsProtocolVersion)) return;
+    showModalBottomSheet<void>(
       context: context,
-      isScrollControlled: true, // so the keyboard does not cover the field
-      shape: const RoundedRectangleBorder(borderRadius: AppRadii.sheetTop),
-      builder: (_) => _EditMessageSheet(original: message.body, createdAt: message.createdAt),
-    );
-    if (edited == null || disposed || !mounted) return;
-    await editMessage(message, edited);
-  }
-
-  void showEditFailedSnack(String message) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => _ReactedBySheet(
+        messageId: message.id,
+        currentUserId: currentUserId,
+        initialEmoji: emoji,
+        onRemoveMine: (mine) {
+          final current = messages.where((m) => m.id == message.id).firstOrNull;
+          if (current != null) toggleReaction(current, mine);
+        },
+      ),
     );
   }
 
@@ -212,11 +143,15 @@ class _ReactionStrip extends StatelessWidget {
   const _ReactionStrip({
     required this.reactions,
     required this.onToggle,
+    this.onShowReactors,
     this.isMine = false,
   });
 
   final List<ReactionSummary> reactions;
   final void Function(String emoji) onToggle;
+
+  /// Long-press a chip to see who reacted with it; null when the server cannot say.
+  final void Function(String emoji)? onShowReactors;
   final bool isMine;
 
   @override
@@ -228,17 +163,22 @@ class _ReactionStrip extends StatelessWidget {
       runSpacing: AppSpacing.xs,
       children: [
         for (final reaction in reactions)
-          _ReactionChip(reaction: reaction, onTap: () => onToggle(reaction.emoji)),
+          _ReactionChip(
+            reaction: reaction,
+            onTap: () => onToggle(reaction.emoji),
+            onLongPress: onShowReactors == null ? null : () => onShowReactors!(reaction.emoji),
+          ),
       ],
     );
   }
 }
 
 class _ReactionChip extends StatelessWidget {
-  const _ReactionChip({required this.reaction, required this.onTap});
+  const _ReactionChip({required this.reaction, required this.onTap, this.onLongPress});
 
   final ReactionSummary reaction;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
 
   @override
   Widget build(BuildContext context) {
@@ -250,6 +190,7 @@ class _ReactionChip extends StatelessWidget {
       label: mine
           ? '${reaction.emoji} ${reaction.count}, you reacted. Double tap to remove.'
           : '${reaction.emoji} ${reaction.count}. Double tap to react.',
+      onLongPressHint: onLongPress == null ? null : 'see who reacted',
       excludeSemantics: true,
       child: Material(
         color: mine ? AppColors.primarySoft : AppColors.surface,
@@ -262,6 +203,7 @@ class _ReactionChip extends StatelessWidget {
         ),
         child: InkWell(
           onTap: onTap,
+          onLongPress: onLongPress,
           customBorder: const StadiumBorder(),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 3),
@@ -290,8 +232,9 @@ class _ReactionChip extends StatelessWidget {
 class _ReactionPicker extends StatelessWidget {
   const _ReactionPicker({required this.chosen, required this.onPick});
 
-  /// Emoji this viewer has already used on the message, shown as selected.
-  final Set<String> chosen;
+  /// The emoji this viewer reacted with, shown as selected (one per person). Picking it again
+  /// removes it; picking another moves the reaction.
+  final String? chosen;
   final void Function(String emoji) onPick;
 
   @override
@@ -307,7 +250,7 @@ class _ReactionPicker extends StatelessWidget {
           for (final emoji in kReactionChoices)
             Semantics(
               button: true,
-              selected: chosen.contains(emoji),
+              selected: chosen == emoji,
               label: emoji,
               excludeSemantics: true,
               child: InkResponse(
@@ -318,7 +261,7 @@ class _ReactionPicker extends StatelessWidget {
                   constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: chosen.contains(emoji) ? AppColors.primarySoft : null,
+                    color: chosen == emoji ? AppColors.primarySoft : null,
                     shape: BoxShape.circle,
                   ),
                   child: Text(emoji, style: const TextStyle(fontSize: 24)),
@@ -326,120 +269,6 @@ class _ReactionPicker extends StatelessWidget {
               ),
             ),
         ],
-      ),
-    );
-  }
-}
-
-
-/// The edit composer, shown over the chat.
-class _EditMessageSheet extends StatefulWidget {
-  const _EditMessageSheet({required this.original, required this.createdAt});
-
-  final String original;
-  final DateTime createdAt;
-
-  @override
-  State<_EditMessageSheet> createState() => _EditMessageSheetState();
-}
-
-class _EditMessageSheetState extends State<_EditMessageSheet> {
-  late final TextEditingController _controller =
-      TextEditingController(text: widget.original);
-  late final Timer _tick;
-  Duration _remaining = Duration.zero;
-
-  @override
-  void initState() {
-    super.initState();
-    _recompute();
-    // The countdown is advisory — the server decides — but it has to move, or a user typing a
-    // long correction has no idea they are about to run out.
-    _tick = Timer.periodic(const Duration(seconds: 1), (_) => _recompute());
-  }
-
-  void _recompute() {
-    final left = kEditWindow - DateTime.now().difference(widget.createdAt);
-    if (!mounted) return;
-    setState(() => _remaining = left.isNegative ? Duration.zero : left);
-  }
-
-  @override
-  void dispose() {
-    _tick.cancel();
-    _controller.dispose();
-    super.dispose();
-  }
-
-  String get _countdown {
-    final minutes = _remaining.inMinutes;
-    final seconds = _remaining.inSeconds % 60;
-    return '$minutes:${seconds.toString().padLeft(2, '0')} left to edit';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final expired = _remaining == Duration.zero;
-    return Padding(
-      // Lifts the sheet above the keyboard.
-      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.xl),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Edit message',
-                  style: AppTypography.titleSmall.copyWith(color: AppColors.textDark)),
-              const SizedBox(height: AppSpacing.xs),
-              Text(
-                expired ? 'The edit window has passed.' : _countdown,
-                style: AppTypography.caption.copyWith(
-                  color: expired ? AppColors.error : AppColors.textMuted,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              TextField(
-                controller: _controller,
-                autofocus: true,
-                maxLines: 5,
-                minLines: 1,
-                maxLength: kMaxMessageChars,
-                enabled: !expired,
-                decoration: const InputDecoration(hintText: 'Your message'),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    style: TextButton.styleFrom(minimumSize: const Size(48, 48)),
-                    child: const Text('Cancel'),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  FilledButton(
-                    // The app-wide `filledButtonTheme` sets `minimumSize: Size(double.infinity,
-                    // 52)` because every other FilledButton here is a full-width form submit.
-                    // Inside this Row that demands an infinite width, which is not a cosmetic
-                    // overflow: layout throws "BoxConstraints forces an infinite width", and in a
-                    // release build the button paints *nothing* — so the sheet offered no way to
-                    // save at all. Overridden at the call site rather than in the theme, which
-                    // nineteen full-width buttons depend on.
-                    style: FilledButton.styleFrom(
-                      minimumSize: const Size(96, kMinTouchTarget),
-                    ),
-                    onPressed: expired
-                        ? null
-                        : () => Navigator.of(context).pop(_controller.text.trim()),
-                    child: const Text('Save'),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

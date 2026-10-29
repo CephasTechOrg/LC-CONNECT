@@ -197,4 +197,38 @@ void main() {
     await rt.closeStreams();
     c.dispose();
   });
+
+  const twoUnread = '[{"id":"n1","type":"message_reaction","read":false,'
+      '"created_at":"2026-09-08T12:00:00.000Z"},'
+      '{"id":"n2","type":"message_reaction","read":false,"created_at":"2026-09-08T12:01:00.000Z"}]';
+
+  test('a retracted reaction leaves the list and the badge follows the server', () async {
+    final (c, rt, adapter, sub) = await _ready(unread: 2, listJson: twoUnread);
+    await c.read(notificationsListProvider.future);
+
+    adapter.unreadCount = 1; // the server already dropped it
+    rt.emit(const NotificationRetracted('n1'));
+    await pumpEventQueue();
+
+    expect(c.read(notificationsListProvider).value!.map((n) => n.id), ['n2']);
+    expect(c.read(notificationCountProvider), 1);
+    sub.close();
+    await rt.closeStreams();
+    c.dispose();
+  });
+
+  test('reactions read by opening their chat untint here too', () async {
+    final (c, rt, adapter, sub) = await _ready(unread: 2, listJson: twoUnread);
+    await c.read(notificationsListProvider.future);
+
+    adapter.unreadCount = 0;
+    rt.emit(const NotificationsRead(['n1', 'n2']));
+    await pumpEventQueue();
+
+    expect(c.read(notificationsListProvider).value!.every((n) => n.read), isTrue);
+    expect(c.read(notificationCountProvider), 0);
+    sub.close();
+    await rt.closeStreams();
+    c.dispose();
+  });
 }

@@ -1,6 +1,14 @@
 part of '../screens/chat_screen.dart';
 
-mixin _ChatScreenLogic on _ChatScreenStateBase, _ChatDraftLogic, _ChatReactionLogic, _ChatSendLogic {
+mixin _ChatScreenLogic
+    on
+        _ChatScreenStateBase,
+        _ChatDraftLogic,
+        _ChatReactionLogic,
+        _ChatEditLogic,
+        _ChatReceiptLogic,
+        _ChatReplyLogic,
+        _ChatSendLogic {
   Future<void> loadInitial() async {
     if (!validThread) return;
     final cached = await ref.read(chatMessageCacheProvider).load(widget.matchId);
@@ -49,6 +57,7 @@ mixin _ChatScreenLogic on _ChatScreenStateBase, _ChatDraftLogic, _ChatReactionLo
     loadInitial();
   }
 
+  @override
   Future<void> loadOlder() async {
     if (loadingOlder || !hasMore || messages.isEmpty) return;
     final oldest = messages.first;
@@ -188,11 +197,12 @@ mixin _ChatScreenLogic on _ChatScreenStateBase, _ChatDraftLogic, _ChatReactionLo
       case MessageEdited(:final conversationId, :final messageId, :final body, :final editedAt)
           when conversationId == widget.matchId:
         applyRemoteEdit(messageId, body, editedAt);
-      case ReactionEvent(:final messageId, :final userId, :final emoji, :final added):
-        // No conversation filter on the frame — it is published to the conversation channel, so
-        // only subscribers of *this* conversation receive it, and `applyRemoteReaction` ignores a
-        // message id it does not hold.
-        applyRemoteReaction(messageId, userId, emoji, added);
+      case final ReactionEvent reaction
+          when reaction.conversationId == null || reaction.conversationId == widget.matchId:
+        // Protocol 5 frames name their chat (they ride the user channel, so every chat hears
+        // them); a v3 frame does not, and `applyRemoteReaction` ignores a message it does not hold.
+        applyRemoteReaction(reaction);
+        ref.invalidate(messageReactorsProvider(reaction.messageId));
       case MessageDeleted(:final conversationId, :final messageId) when conversationId == widget.matchId:
         markDeleted(messageId);
       case WsError(:final code, :final message, :final requestId):
@@ -205,7 +215,11 @@ mixin _ChatScreenLogic on _ChatScreenStateBase, _ChatDraftLogic, _ChatReactionLo
   void markDeleted(String messageId) {
     final idx = messages.indexWhere((m) => m.id == messageId);
     if (idx == -1 || messages[idx].deleted) return;
-    setState(() => messages[idx] = messages[idx].copyWith(deleted: true));
+    setState(() {
+      messages[idx] = messages[idx].copyWith(deleted: true);
+      refreshQuotesOf(messageId, deleted: true);
+    });
+    scheduleCacheSave();
   }
 
   Future<void> deleteMessage(ChatMessage msg) async {
@@ -243,72 +257,6 @@ mixin _ChatScreenLogic on _ChatScreenStateBase, _ChatDraftLogic, _ChatReactionLo
   String typingName(MessagePartner? partner) {
     if (isGroup) return senders()[typingUserId]?.name ?? 'Someone';
     return partner?.displayName ?? 'Your match';
-  }
-
-  /// Mark my messages up to and including [throughMessageId] as read.
-  void markMineReadThrough(String throughMessageId) =>
-      _advanceMine(throughMessageId, (m, at) => m.copyWith(readAt: at, delivered: true));
-
-  /// Mark my messages up to and including [throughMessageId] as delivered.
-  void markMineDeliveredThrough(String throughMessageId) =>
-      _advanceMine(throughMessageId, (m, at) => m.copyWith(delivered: true));
-
-  /// Apply [stamp] to every message of mine at or before [throughMessageId].
-  ///
-  /// The receipt is a *boundary*, and this used to ignore it and flip every unread message of
-  /// mine instead. That was invisible while there was one thing to flip: with a single read tick,
-  /// "all" and "up to here" look the same the moment the partner is caught up — which they
-  /// usually are. With delivered and read as separate states it becomes visibly wrong, and wrong
-  /// in the direction that matters: it claims someone read a message they have not reached.
-  ///
-  /// Ordered by `(createdAt, id)` rather than list position: the list is sorted, but an
-  /// optimistic row sits at the tail with a client-side timestamp, and position alone would mark
-  /// it read by anything that arrived after it.
-  ///
-  /// A boundary naming a message that is not loaded (paged out, or newer than this client's tail)
-  /// is ignored — the next page load carries the correct state.
-  void _advanceMine(
-    String throughMessageId,
-    ChatMessage Function(ChatMessage message, DateTime at) stamp,
-  ) {
-    final boundary = messages.where((m) => m.id == throughMessageId).firstOrNull;
-    if (boundary == null) return;
-    final at = DateTime.now();
-    var changed = false;
-    final updated = [
-      for (final m in messages)
-        if (m.senderId == currentUserId && !_isAfter(m, boundary))
-          _stampIfNeeded(m, stamp, at, () => changed = true)
-        else
-          m,
-    ];
-    if (!changed) return;
-    setState(() {
-      messages
-        ..clear()
-        ..addAll(updated);
-    });
-  }
-
-  /// Keeps [_advanceMine] from rebuilding when a receipt is re-sent — which the client does after
-  /// every reconnect, and the socket is torn down on every app background.
-  ChatMessage _stampIfNeeded(
-    ChatMessage message,
-    ChatMessage Function(ChatMessage, DateTime) stamp,
-    DateTime at,
-    void Function() onChanged,
-  ) {
-    final next = stamp(message, at);
-    if (next.readAt == message.readAt && next.delivered == message.delivered) return message;
-    onChanged();
-    return next;
-  }
-
-  /// `(createdAt, id)` ordering — the same key the server's boundary comparison uses, so the two
-  /// sides cannot disagree about what "up to here" includes.
-  bool _isAfter(ChatMessage a, ChatMessage b) {
-    final byTime = a.createdAt.compareTo(b.createdAt);
-    return byTime != 0 ? byTime > 0 : a.id.compareTo(b.id) > 0;
   }
 
   void onUserTyping() {

@@ -7,7 +7,7 @@ part of '../screens/chat_screen.dart';
 /// red and then quietly delivered — the "sometimes it fails, sometimes it takes a while" report.
 /// Here a timeout means *escalate*, not *fail*: the REST route is idempotent on
 /// `client_message_id`, so the two paths can race without ever duplicating a message.
-mixin _ChatSendLogic on _ChatScreenStateBase, _ChatDraftLogic {
+mixin _ChatSendLogic on _ChatScreenStateBase, _ChatDraftLogic, _ChatReplyLogic {
   // Implemented by _ChatScreenLogic, which is mixed in after this one.
   void scheduleCacheSave();
   void scrollToBottom({bool jump, bool force});
@@ -26,6 +26,7 @@ mixin _ChatSendLogic on _ChatScreenStateBase, _ChatDraftLogic {
     typingStopTimer?.cancel();
     rt.sendTyping(widget.matchId, active: false);
     final clientId = uuidV4();
+    final target = replyingTo;
     final optimistic = ChatMessage(
       id: 'local:$clientId',
       matchId: widget.matchId,
@@ -34,15 +35,20 @@ mixin _ChatSendLogic on _ChatScreenStateBase, _ChatDraftLogic {
       body: text,
       createdAt: DateTime.now(),
       status: MessageStatus.sending,
+      // The quote shows at once; the server's own preview replaces it on the ack.
+      replyTo: target == null ? null : ReplyPreview.of(target, senderName: quoteSenderName(target.senderId)),
     );
-    setState(() => messages.add(optimistic));
+    setState(() {
+      messages.add(optimistic);
+      replyingTo = null;
+    });
     sendStartedAt[clientId] = DateTime.now();
-    dispatchSend(clientId, text);
+    dispatchSend(clientId, text, replyToId: target?.id);
     scrollToBottom(force: true);
     scheduleCacheSave();
   }
 
-  void dispatchSend(String clientId, String body) {
+  void dispatchSend(String clientId, String body, {String? replyToId}) {
     sendStartedAt.putIfAbsent(clientId, DateTime.now);
     // Captured before the send: `sendMessage` queues to the outbox when the socket is not ready,
     // and a queued frame goes nowhere until the next `auth.ok`.
@@ -51,6 +57,7 @@ mixin _ChatSendLogic on _ChatScreenStateBase, _ChatDraftLogic {
       conversationId: widget.matchId,
       clientMessageId: clientId,
       body: body,
+      replyToId: replyToId,
     );
     if (!accepted) {
       // The offline outbox is full — the only case where we fail immediately, because we have
@@ -69,10 +76,10 @@ mixin _ChatSendLogic on _ChatScreenStateBase, _ChatDraftLogic {
       //
       // This is what removes a fixed multi-second stall from the first message after every
       // app resume — the socket is torn down on background by design.
-      unawaited(escalateToRest(clientId, body));
+      unawaited(escalateToRest(clientId, body, replyToId: replyToId));
       return;
     }
-    armAckTimer(clientId, body);
+    armAckTimer(clientId, body, replyToId: replyToId);
   }
 
   /// How long to wait for an ack before trying HTTP.
@@ -105,11 +112,11 @@ mixin _ChatSendLogic on _ChatScreenStateBase, _ChatDraftLogic {
   }
 
   /// Not a failure timer: when it fires we try the other road.
-  void armAckTimer(String clientId, String body) {
+  void armAckTimer(String clientId, String body, {String? replyToId}) {
     sendTimers[clientId]?.cancel();
     sendTimers[clientId] = Timer(ackTimeoutFor(), () {
       if (!mounted || !isStillSending(clientId)) return;
-      unawaited(escalateToRest(clientId, body));
+      unawaited(escalateToRest(clientId, body, replyToId: replyToId));
     });
   }
 
@@ -126,11 +133,11 @@ mixin _ChatSendLogic on _ChatScreenStateBase, _ChatDraftLogic {
 
   /// Deliver over HTTP when the socket has not acked in time. Idempotent on the server via
   /// `client_message_id`, so this cannot double-post even if the original frame lands later.
-  Future<void> escalateToRest(String clientId, String body) async {
+  Future<void> escalateToRest(String clientId, String body, {String? replyToId}) async {
     try {
       final resp = await ref.read(apiClientProvider).dio.post(
             '/messages/threads/${widget.matchId}',
-            data: {'body': body, 'client_message_id': clientId},
+            data: {'body': body, 'client_message_id': clientId, 'reply_to_id': ?replyToId},
           );
       if (disposed || !mounted) return;
       // Delivered — stop the socket from retrying the same message on reconnect.
@@ -145,6 +152,10 @@ mixin _ChatSendLogic on _ChatScreenStateBase, _ChatDraftLogic {
         return;
       }
       if (status != null && status >= 400 && status < 500) {
+        if (_isReplyRejection(e)) {
+          replyTargetGone(clientId);
+          return;
+        }
         // A real rejection (no longer a member, blocked, thread closed) — retrying won't help.
         markSendFailed(clientId);
         showSendSnack(apiErrorMessage(e, fallback: 'Could not send that message.'));
@@ -160,9 +171,27 @@ mixin _ChatSendLogic on _ChatScreenStateBase, _ChatDraftLogic {
       sendTimers[clientId]?.cancel();
       sendTimers[clientId] = Timer(_ChatScreenStateBase.restRetryDelay, () {
         if (!mounted || !isStillSending(clientId)) return;
-        unawaited(escalateToRest(clientId, body));
+        unawaited(escalateToRest(clientId, body, replyToId: replyToId));
       });
     }
+  }
+
+  bool _isReplyRejection(Object e) {
+    final data = e is DioException ? e.response?.data : null;
+    final detail = data is Map ? '${data['detail']}' : '';
+    return detail.startsWith('reply_target_');
+  }
+
+  /// The message being replied to was deleted (or is otherwise gone) before this reply arrived.
+  /// The reply fails rather than going out without its quote — that would change what was said —
+  /// and its quote is dropped, so Retry sends it as a plain message by the user's own choice.
+  void replyTargetGone(String clientId) {
+    final idx = messages.indexWhere((m) => m.clientMessageId == clientId);
+    if (idx != -1) {
+      setState(() => messages[idx] = messages[idx].copyWith(clearReplyTo: true));
+    }
+    markSendFailed(clientId);
+    showSendSnack('The message you replied to is no longer available. Tap retry to send it anyway.');
   }
 
   void markSendFailed(String clientId) {
@@ -192,7 +221,8 @@ mixin _ChatSendLogic on _ChatScreenStateBase, _ChatDraftLogic {
     if (idx == -1) return;
     setState(() => messages[idx] = messages[idx].copyWith(status: MessageStatus.sending));
     sendStartedAt[cid] = DateTime.now(); // a manual retry gets a fresh deadline
-    dispatchSend(cid, failed.body);
+    // The quote travels with the retry (it is on the row, and in the on-disk cache).
+    dispatchSend(cid, failed.body, replyToId: messages[idx].replyTo?.id);
   }
 
   void reconcileAck(ChatMessage server) {
@@ -246,8 +276,15 @@ mixin _ChatSendLogic on _ChatScreenStateBase, _ChatDraftLogic {
   /// redden messages that were fine. Errors the server cannot attribute to a specific send are
   /// surfaced as a message, not as a failure.
   void handleWsError(String code, String message, {String? requestId}) {
-    if (code != 'rate_limited' && code != 'forbidden') return;
     final clientId = requestId == null ? null : rt.clientMessageIdForRequest(requestId);
+    if (code == 'invalid_reply') {
+      if (clientId != null) {
+        rt.cancelPendingSend(clientId);
+        replyTargetGone(clientId);
+      }
+      return;
+    }
+    if (code != 'rate_limited' && code != 'forbidden') return;
     final text = code == 'rate_limited' ? 'Sending too fast — please wait a moment.' : message;
     if (clientId == null) {
       showSendSnack(text);

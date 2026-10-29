@@ -3,11 +3,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/avatar_widget.dart';
+import '../../../shared/util/app_date_format.dart';
 import '../../../shared/widgets/app_search_field.dart';
 import '../../../shared/widgets/app_shell_header.dart';
 import '../../../shared/widgets/app_skeleton.dart';
@@ -22,6 +22,9 @@ import '../../groups/data/group_models.dart';
 import '../utils/chat_routes.dart';
 import '../widgets/messages_segments.dart';
 import '../widgets/staff_tag.dart';
+import '../data/thread_preview.dart';
+
+part '../widgets/thread_row.dart';
 
 class MessagesScreen extends ConsumerStatefulWidget {
   const MessagesScreen({super.key});
@@ -139,199 +142,6 @@ class _ThreadList extends StatelessWidget {
   }
 }
 
-class _ThreadCard extends ConsumerWidget {
-  final MessageThread thread;
-  const _ThreadCard({required this.thread});
-
-  static const avatarSize = 48.0;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final latest = thread.latestMessage;
-    final unread = ref.watch(unreadProvider.select((s) => s.countFor(thread.addressingId)));
-    // Report #23: the row showed incoming state (an unread bubble, a bold preview) but nothing at
-    // all when the last message was mine — so the one place a sender looks to check on a
-    // conversation they are waiting on said nothing. Groups are excluded: "delivered" there needs
-    // a rule about which members count, which is deliberately out of scope (see the design doc
-    // §2.1); they get a "read by" list in the conversation instead.
-    final myId = ref.watch(authNotifierProvider).asData?.value?.id;
-    final outgoing =
-        (!thread.isGroup && latest != null && myId != null && latest.senderId == myId)
-            ? latest
-            : null;
-
-    return InkWell(
-      onTap: () => thread.isGroup
-          ? context.push(groupChatPath(thread.conversationId),
-              extra: GroupChatArgs(
-                  name: thread.groupName ?? 'Group', groupId: thread.groupId, avatarUrl: thread.avatarUrl))
-          : context.push(dmChatPath(thread.addressingId), extra: thread),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.gutter,
-          vertical: AppSpacing.md,
-        ),
-        child: Row(
-          children: [
-            AvatarWidget(imageUrl: thread.avatarUrl, size: avatarSize),
-            const SizedBox(width: AppSpacing.md),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _titleRow(latest, hasUnread: unread > 0),
-                  const SizedBox(height: 3),
-                  Row(
-                    children: [
-                      Expanded(child: _preview(latest, hasUnread: unread > 0)),
-                      if (outgoing != null) ...[
-                        const SizedBox(width: AppSpacing.sm),
-                        // Compact: the conversation row has no room for a "Retry" label, and
-                        // retrying belongs in the conversation anyway.
-                        MessageStatusIcon(message: outgoing, compact: true),
-                      ],
-                      if (unread > 0) ...[
-                        const SizedBox(width: AppSpacing.sm),
-                        _UnreadBubble(count: unread),
-                      ],
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// Name (+ verified, + a Staff tag) on the left, time on the right.
-  ///
-  /// The major or position used to follow the name here and was cut off on most rows
-  /// ("Computer Scien…", "Campus Safety …") — half a label beside every name. The chat header
-  /// shows it in full; the row keeps only what tells conversations apart, and the Staff tag so
-  /// a message from an officer or advisor still stands out from a classmate's.
-  Widget _titleRow(ChatMessage? latest, {required bool hasUnread}) {
-    return Row(
-      children: [
-        Expanded(
-          child: Row(
-            children: [
-              Flexible(
-                child: Text(
-                  thread.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTypography.titleSmall.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textDark,
-                  ),
-                ),
-              ),
-              if (!thread.isGroup && (thread.partner?.campusVerified ?? false)) ...[
-                const SizedBox(width: AppSpacing.xs),
-                const VerifiedBadge(size: 14),
-              ],
-              if (thread.isStaffThread && thread.partnerSubtitle != null) ...[
-                const SizedBox(width: 6),
-                const StaffTag(),
-              ],
-            ],
-          ),
-        ),
-        if (latest != null) ...[
-          const SizedBox(width: AppSpacing.sm),
-          Text(
-            _formatThreadTime(latest.createdAt),
-            style: AppTypography.caption.copyWith(
-              color: hasUnread ? AppColors.primaryText : AppColors.textMuted,
-              fontWeight: hasUnread ? FontWeight.w700 : FontWeight.w400,
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-
-  /// "Ama reacted 👍 to your message" — names the reactor in a group (where it is not obvious),
-  /// and in a DM resolves to the partner when the live frame carried only an id.
-  String _reactionPreviewText(ThreadReactionPreview reaction) {
-    final name = reaction.actorName ??
-        (thread.isGroup ? null : thread.partner?.displayName);
-    final who = name == null || name.trim().isEmpty ? 'Someone' : name.trim();
-    return '$who reacted ${reaction.emoji} to your message';
-  }
-
-  Widget _preview(ChatMessage? latest, {required bool hasUnread}) {
-    // Precedence: typing is live and most salient; then a reaction to my message when it is the
-    // newest thing on the thread; otherwise the latest message. A reaction older than the latest
-    // message is superseded by it — the reaction never reorders the row, it only decorates it.
-    if (thread.partnerTyping) {
-      return Text(
-        'typing…',
-        style: AppTypography.bodySmall.copyWith(
-          color: AppColors.primaryText,
-          fontWeight: FontWeight.w600,
-          fontStyle: FontStyle.italic,
-        ),
-      );
-    }
-    final reaction = thread.latestReaction;
-    if (reaction != null &&
-        (latest == null || reaction.reactedAt.isAfter(latest.createdAt))) {
-      return Text(
-        _reactionPreviewText(reaction),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: AppTypography.bodySmall.copyWith(
-          color: AppColors.textMid,
-          fontWeight: FontWeight.w500,
-        ),
-      );
-    }
-    return Text(
-      latest?.body ?? 'No messages yet — say hello',
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-      style: AppTypography.bodySmall.copyWith(
-        // Unread → darker + semibold (WhatsApp-style emphasis).
-        color: hasUnread
-            ? AppColors.textDark
-            : (latest != null ? AppColors.textMid : AppColors.textMuted),
-        fontWeight: hasUnread ? FontWeight.w600 : FontWeight.w400,
-        fontStyle: latest == null ? FontStyle.italic : FontStyle.normal,
-      ),
-    );
-  }
-}
-
-// ── Unread count bubble ───────────────────────────────────────────
-class _UnreadBubble extends StatelessWidget {
-  final int count;
-  const _UnreadBubble({required this.count});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(minWidth: 20),
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: AppColors.primary,
-        borderRadius: BorderRadius.circular(11),
-      ),
-      alignment: Alignment.center,
-      child: Text(
-        count > 99 ? '99+' : '$count',
-        style: AppTypography.caption.copyWith(
-          color: Colors.white,
-          fontWeight: FontWeight.w700,
-          height: 1.2,
-        ),
-      ),
-    );
-  }
-}
-
 // ── Empty state ───────────────────────────────────────────────────
 class _EmptyState extends StatelessWidget {
   final bool canMessageAnyone;
@@ -380,14 +190,4 @@ class _ErrorState extends StatelessWidget {
       onRetry: onRetry,
     );
   }
-}
-
-// ── Time formatter ────────────────────────────────────────────────
-String _formatThreadTime(DateTime dt) {
-  final local = dt.toLocal();
-  final diff = DateTime.now().difference(local);
-  if (diff.inMinutes < 60) return '${diff.inMinutes}m';
-  if (diff.inHours < 24) return '${diff.inHours}h';
-  if (diff.inDays < 7) return DateFormat('EEE').format(local);
-  return DateFormat('MMM d').format(local);
 }

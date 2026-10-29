@@ -131,6 +131,9 @@ class MyProfile {
   final List<String> lookingForCodes;
   final bool allowMessagesFromMatchesOnly;
   final bool showProfileToVerifiedOnly;
+
+  /// Whether DM partners see "Online" / "Last seen". Reciprocal: off means I see theirs no more.
+  final bool showPresence;
   final int connectionCount;
   final int activityCount;
   final int messageCount;
@@ -159,6 +162,7 @@ class MyProfile {
     required this.lookingForCodes,
     required this.allowMessagesFromMatchesOnly,
     required this.showProfileToVerifiedOnly,
+    this.showPresence = true,
     required this.connectionCount,
     required this.activityCount,
     required this.messageCount,
@@ -190,6 +194,7 @@ class MyProfile {
             j['allow_messages_from_matches_only'] as bool? ?? true,
         showProfileToVerifiedOnly:
             j['show_profile_to_verified_only'] as bool? ?? true,
+        showPresence: j['show_presence'] as bool? ?? true,
         connectionCount: (j['connection_count'] as num?)?.toInt() ?? 0,
         activityCount: (j['activity_count'] as num?)?.toInt() ?? 0,
         messageCount: (j['message_count'] as num?)?.toInt() ?? 0,
@@ -202,6 +207,7 @@ class MyProfile {
     String? avatarUrl,
     bool? allowMessagesFromMatchesOnly,
     bool? showProfileToVerifiedOnly,
+    bool? showPresence,
   }) =>
       MyProfile(
         profileId: profileId,
@@ -226,9 +232,15 @@ class MyProfile {
             allowMessagesFromMatchesOnly ?? this.allowMessagesFromMatchesOnly,
         showProfileToVerifiedOnly:
             showProfileToVerifiedOnly ?? this.showProfileToVerifiedOnly,
+        showPresence: showPresence ?? this.showPresence,
         connectionCount: connectionCount,
         activityCount: activityCount,
         messageCount: messageCount,
+        // These were dropped here, so toggling any preference hid a verified staff member's
+        // position until the next reload.
+        campusPositionStatus: campusPositionStatus,
+        campusPositionTitle: campusPositionTitle,
+        campusPositionVerified: campusPositionVerified,
       );
 }
 
@@ -305,6 +317,7 @@ class MyProfileNotifier extends AsyncNotifier<MyProfile> {
   Future<void> updatePreference({
     bool? allowMessagesFromMatchesOnly,
     bool? showProfileToVerifiedOnly,
+    bool? showPresence,
   }) async {
     // Optimistic update
     final current = state.asData?.value;
@@ -312,6 +325,7 @@ class MyProfileNotifier extends AsyncNotifier<MyProfile> {
       state = AsyncData(current.copyWith(
         allowMessagesFromMatchesOnly: allowMessagesFromMatchesOnly,
         showProfileToVerifiedOnly: showProfileToVerifiedOnly,
+        showPresence: showPresence,
       ));
     }
     try {
@@ -323,6 +337,7 @@ class MyProfileNotifier extends AsyncNotifier<MyProfile> {
       if (showProfileToVerifiedOnly != null) {
         body['show_profile_to_verified_only'] = showProfileToVerifiedOnly;
       }
+      if (showPresence != null) body['show_presence'] = showPresence;
       await client.dio.patch('/profiles/me', data: body);
     } catch (e) {
       // Roll back on failure

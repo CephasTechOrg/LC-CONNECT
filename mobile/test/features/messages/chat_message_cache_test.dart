@@ -255,4 +255,22 @@ void main() {
       expect((await cache.load('conv-1'))!.single.delivered, isFalse);
     });
   });
+
+  test('a reply keeps its quote across a restart', () async {
+    await cache.save('conv-r', [
+      ChatMessage(
+        id: 'srv-9',
+        matchId: 'conv-r',
+        senderId: 'me',
+        body: 'yes, 5 works',
+        createdAt: DateTime.utc(2026, 10, 1),
+        replyTo: const ReplyPreview(id: 'srv-1', senderId: 'them', senderName: 'Ama', snippet: 'see you at 5?'),
+      ),
+    ]);
+    final quote = (await cache.load('conv-r'))!.single.replyTo;
+    expect(quote, isNotNull);
+    expect(quote!.id, 'srv-1');
+    expect(quote.senderName, 'Ama');
+    expect(quote.snippet, 'see you at 5?');
+  });
 }

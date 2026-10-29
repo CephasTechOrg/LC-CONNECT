@@ -78,7 +78,24 @@ class NotificationCountNotifier extends Notifier<int> {
   }
 
   void _onEvent(InboundEvent event) {
-    if (event is! NotificationEvent) return;
+    switch (event) {
+      case NotificationRetracted(:final id):
+        // Un-reacted before it was seen. Drop the row, and let the server say what the badge is
+        // (the row may not be loaded here, so a local decrement could be off by one).
+        ref.read(notificationsListProvider.notifier).remove(id);
+        _seed();
+      case NotificationsRead(:final ids):
+        // Read on another device, or by opening the chat the reactions were in.
+        ref.read(notificationsListProvider.notifier).markManyReadLocally(ids);
+        _seed();
+      case NotificationEvent():
+        _onNotification(event);
+      default:
+        break;
+    }
+  }
+
+  void _onNotification(NotificationEvent event) {
     final AppNotification row;
     try {
       row = AppNotification.fromJson(event.notification);

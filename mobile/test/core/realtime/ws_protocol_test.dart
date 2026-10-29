@@ -175,10 +175,10 @@ void main() {
     });
 
     test('the client advertises its current protocol version', () {
-      // Bumped to 4 by the reaction inbox signal. The capability constants stay pinned to the
+      // Bumped to 5 by reaction state frames, replies, mute and presence. The capability constants stay pinned to the
       // version each feature *arrived* in: gating on the current version would stop an older
       // server from getting acknowledgements or reactions it understands perfectly well.
-      expect(kProtocolVersion, 4);
+      expect(kProtocolVersion, 5);
       expect(kDeliveryProtocolVersion, 2);
       expect(kReactionProtocolVersion, 3);
       expect(authFrame('tok')['protocol_version'], kProtocolVersion);
@@ -265,6 +265,76 @@ void main() {
       });
       expect(activity, isA<ReactionActivity>());
       expect(activity, isNot(isA<ReactionEvent>()));
+    });
+  });
+
+  /// Protocol 5 — reaction state, replies, mute, presence and notification sync.
+  group('protocol 5 frames', () {
+    test('a reaction state frame carries the result, not a delta', () {
+      final event = parseInbound({
+        'type': 'messages.reaction',
+        'message_id': 'msg-1',
+        'user_id': 'them',
+        'emoji': '❤️',
+        'added': true,
+        'conversation_id': 'conv-1',
+        'user_emoji': '❤️',
+        'reactions': [
+          {'emoji': '👍', 'count': 2},
+          {'emoji': '❤️', 'count': 1},
+        ],
+        'actor_name': 'Ama',
+        'message_sender_id': 'me',
+        'message_snippet': 'see you at 5',
+        'reacted_at': '2026-10-29T12:00:00Z',
+      }) as ReactionEvent;
+
+      expect(event.isStateful, isTrue);
+      expect(event.conversationId, 'conv-1');
+      expect(event.userEmoji, '❤️');
+      expect(event.counts, [(emoji: '👍', count: 2), (emoji: '❤️', count: 1)]);
+      expect(event.actorName, 'Ama');
+      expect(event.messageSenderId, 'me');
+      expect(event.messageSnippet, 'see you at 5');
+    });
+
+    test('a v3 frame has no state and stays a delta', () {
+      final event = parseInbound({
+        'type': 'messages.reaction',
+        'message_id': 'msg-1',
+        'user_id': 'them',
+        'emoji': '👍',
+        'added': true,
+      }) as ReactionEvent;
+      expect(event.isStateful, isFalse);
+    });
+
+    test('presence, mute and notification frames parse', () {
+      final presence = parseInbound({
+        'type': 'presence',
+        'user_id': 'them',
+        'online': false,
+        'last_seen_at': '2026-10-29T12:00:00Z',
+      }) as PresenceEvent;
+      expect(presence.online, isFalse);
+      expect(presence.visible, isTrue);
+      expect(presence.lastSeenAt, '2026-10-29T12:00:00Z');
+
+      final muted = parseInbound({'type': 'conversation.muted', 'conversation_id': 'c', 'muted': true})
+          as ConversationMuted;
+      expect((muted.conversationId, muted.muted), ('c', true));
+
+      expect((parseInbound({'type': 'notification.retracted', 'id': 'n1'}) as NotificationRetracted).id, 'n1');
+      expect((parseInbound({'type': 'notifications.read', 'ids': ['a', 'b']}) as NotificationsRead).ids,
+          ['a', 'b']);
+    });
+
+    test('a reply rides on the send frame only when there is one', () {
+      final plain = sendFrame(requestId: 'r', conversationId: 'c', clientMessageId: 'x', body: 'hi');
+      expect(plain.containsKey('reply_to_id'), isFalse);
+      final reply =
+          sendFrame(requestId: 'r', conversationId: 'c', clientMessageId: 'x', body: 'hi', replyToId: 'm1');
+      expect(reply['reply_to_id'], 'm1');
     });
   });
 }

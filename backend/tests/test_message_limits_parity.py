@@ -32,5 +32,5 @@ def test_both_client_inputs_enforce_the_cap():
     composer = Path('../mobile/lib/features/messages/widgets/chat_input.dart').read_text()
     assert 'LengthLimitingTextInputFormatter(kMaxMessageChars)' in composer
 
-    edit_sheet = Path('../mobile/lib/features/messages/widgets/chat_reactions.dart').read_text()
+    edit_sheet = Path('../mobile/lib/features/messages/widgets/chat_edit_logic.dart').read_text()
     assert 'maxLength: kMaxMessageChars' in edit_sheet

@@ -147,6 +147,7 @@ Map<String, dynamic> _toCacheJson(ChatMessage m) => {
       'edited_at': m.editedAt?.toUtc().toIso8601String(),
       'status': m.status.name,
       'deleted': m.deleted,
+      'reply_to': m.replyTo?.toJson(),
     };
 
 ChatMessage _fromCacheJson(Map<String, dynamic> j) {
@@ -172,6 +173,10 @@ ChatMessage _fromCacheJson(Map<String, dynamic> j) {
     editedAt: j['edited_at'] != null ? DateTime.parse(j['edited_at'] as String) : null,
     status: _statusOf(j['status']),
     deleted: j['deleted'] as bool? ?? false,
+    // Additive. Kept so a failed reply restored from disk still retries *as a reply*.
+    replyTo: j['reply_to'] != null
+        ? ReplyPreview.fromJson(Map<String, dynamic>.from(j['reply_to'] as Map))
+        : null,
   );
 }
 

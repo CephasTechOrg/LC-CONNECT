@@ -21,10 +21,7 @@ extension _BubbleOptions on _BubbleTile {
             const SizedBox(height: 8),
             if (_canReact) ...[
               _ReactionPicker(
-                chosen: {
-                  for (final r in message.reactions)
-                    if (r.reactedByMe) r.emoji,
-                },
+                chosen: myEmoji(message.reactions),
                 onPick: (emoji) {
                   Navigator.of(sheetCtx).pop();
                   onReact!(message, emoji);
@@ -32,6 +29,30 @@ extension _BubbleOptions on _BubbleTile {
               ),
               const Divider(height: 1, color: AppColors.border),
             ],
+            if (_ChatActions.maybeOf(context)?.onReply != null && _canReplyTo)
+              ListTile(
+                leading: const Icon(Icons.reply_rounded, color: AppColors.textMid),
+                title: Text('Reply',
+                    style: TextStyle(fontWeight: FontWeight.w500, color: AppColors.textDark)),
+                subtitle: Text('Quote this message in your answer',
+                    style: AppTypography.label.copyWith(fontWeight: FontWeight.w400, color: AppColors.textMuted)),
+                onTap: () {
+                  Navigator.of(sheetCtx).pop();
+                  _ChatActions.maybeOf(context)!.onReply!(message);
+                },
+              ),
+            if (_ChatActions.maybeOf(context)?.onShowReactors != null && message.reactions.isNotEmpty)
+              ListTile(
+                leading: const Icon(Icons.emoji_emotions_outlined, color: AppColors.textMid),
+                title: Text('Reactions',
+                    style: TextStyle(fontWeight: FontWeight.w500, color: AppColors.textDark)),
+                subtitle: Text('See who reacted',
+                    style: AppTypography.label.copyWith(fontWeight: FontWeight.w400, color: AppColors.textMuted)),
+                onTap: () {
+                  Navigator.of(sheetCtx).pop();
+                  _ChatActions.maybeOf(context)!.onShowReactors!(message);
+                },
+              ),
             ListTile(
               leading: const Icon(Icons.copy_rounded, color: AppColors.textMid),
               title: Text('Copy',
