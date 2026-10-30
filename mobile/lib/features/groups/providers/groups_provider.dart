@@ -5,23 +5,25 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/api/api_client.dart';
 import '../data/group_models.dart';
 
-/// Backend category filters. The UI's friendly chips map onto these.
-const groupApiCategories = {
-  'Academic': 'class',
-  'Clubs & Sports': 'club',
-  'Housing': 'housing',
-  'Wellness': 'interest',
-  'Career': 'interest',
-  'Creative': 'interest',
-};
+/// Discover results per page.
+const kDiscoverPageSize = 20;
 
 class GroupsRepository {
   GroupsRepository(this._ref);
   final Ref _ref;
 
-  Future<List<GroupSummary>> discover({String? category, String? query}) async {
+  Future<List<GroupSummary>> discover({
+    String? category,
+    String? query,
+    String sort = 'popular',
+    int page = 0,
+  }) async {
     final dio = _ref.read(apiClientProvider).dio;
-    final params = <String, dynamic>{};
+    final params = <String, dynamic>{
+      'sort': sort,
+      'limit': kDiscoverPageSize,
+      'offset': page * kDiscoverPageSize,
+    };
     if (category != null) params['category'] = category;
     if (query != null && query.isNotEmpty) params['q'] = query;
     final resp = await dio.get('/groups/discover', queryParameters: params);
@@ -173,17 +175,23 @@ class GroupsRepository {
 
 final groupsRepositoryProvider = Provider<GroupsRepository>(GroupsRepository.new);
 
-/// Args for discovery: an optional backend category and an optional name search. Records have
-/// value equality, so identical (category, query) pairs share one cached request.
-typedef DiscoverArgs = ({String? category, String? query});
+/// Args for one page of discovery. Records have value equality, so identical arguments share one
+/// cached request.
+typedef DiscoverArgs = ({String? category, String? query, String sort, int page});
 
-/// Discover public groups, optionally filtered by category and/or a name search. `null` = all.
+/// One page of public groups I could join, optionally filtered by category and/or a name search.
+/// The server leaves out groups I am already in or invited to.
 final discoverGroupsProvider =
     FutureProvider.autoDispose.family<List<GroupSummary>, DiscoverArgs>((ref, args) {
-  // Cached per (category, query), so clearing a search or stepping back through categories
-  // reuses the earlier result instead of re-querying.
+  // Cached per page and filter, so clearing a search or stepping back through categories reuses
+  // the earlier result instead of re-querying.
   cacheFor(ref);
-  return ref.watch(groupsRepositoryProvider).discover(category: args.category, query: args.query);
+  return ref.watch(groupsRepositoryProvider).discover(
+        category: args.category,
+        query: args.query,
+        sort: args.sort,
+        page: args.page,
+      );
 });
 
 final myGroupsProvider = FutureProvider.autoDispose<List<GroupSummary>>((ref) {

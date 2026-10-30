@@ -175,10 +175,10 @@ void main() {
     });
 
     test('the client advertises its current protocol version', () {
-      // Bumped to 5 by reaction state frames, replies, mute and presence. The capability constants stay pinned to the
+      // Bumped to 6 by pin/archive sync and connection presence. The capability constants stay pinned to the
       // version each feature *arrived* in: gating on the current version would stop an older
       // server from getting acknowledgements or reactions it understands perfectly well.
-      expect(kProtocolVersion, 5);
+      expect(kProtocolVersion, 6);
       expect(kDeliveryProtocolVersion, 2);
       expect(kReactionProtocolVersion, 3);
       expect(authFrame('tok')['protocol_version'], kProtocolVersion);
@@ -336,5 +336,15 @@ void main() {
           sendFrame(requestId: 'r', conversationId: 'c', clientMessageId: 'x', body: 'hi', replyToId: 'm1');
       expect(reply['reply_to_id'], 'm1');
     });
+  });
+
+  test('protocol 6: a pin or archive on another device parses', () {
+    final state = parseInbound({
+      'type': 'conversation.state',
+      'conversation_id': 'c',
+      'pinned_at': '2026-10-29T12:00:00Z',
+      'archived': false,
+    }) as ConversationState;
+    expect((state.conversationId, state.pinnedAt, state.archived), ('c', '2026-10-29T12:00:00Z', false));
   });
 }

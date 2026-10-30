@@ -15,6 +15,14 @@ from app.features.realtime.runtime import event_bus
 from app.shared.notification_reads import mark_chat_reactions_read
 
 
+def _over_receipt_budget(conn: Connection) -> bool:
+    """Read and delivered frames were unlimited, and each costs several queries and a write. Over
+    budget they are dropped silently, like a ping — there is no request to answer."""
+    from app.features.realtime.runtime import receipt_limiter
+
+    return not receipt_limiter.allow(conn.user_id)
+
+
 async def on_delivered(conn: Connection, frame: protocol.DeliveredFrame) -> None:
     """Advance this member's delivery boundary and tell the conversation (protocol 2).
 
@@ -27,6 +35,8 @@ async def on_delivered(conn: Connection, frame: protocol.DeliveredFrame) -> None
     `request_id` to correlate an error with, and a client that cannot record a tick has nothing
     useful to do about it.
     """
+    if _over_receipt_budget(conn):
+        return
     async with AsyncSessionLocal() as db:
         try:
             await service.recheck_account(db, conn.user_id)
@@ -71,6 +81,8 @@ async def on_delivered(conn: Connection, frame: protocol.DeliveredFrame) -> None
 
 
 async def on_read(conn: Connection, frame: protocol.ReadFrame) -> None:
+    if _over_receipt_budget(conn):
+        return
     async with AsyncSessionLocal() as db:
         try:
             await service.recheck_account(db, conn.user_id)

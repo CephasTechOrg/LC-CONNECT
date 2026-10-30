@@ -17,6 +17,7 @@ import '../../auth/providers/auth_provider.dart';
 import '../../policies/data/policy_slugs.dart';
 import '../../scholars/widgets/blueprint_bond_card.dart';
 import '../providers/profile_provider.dart';
+import '../../../shared/util/caching.dart';
 
 part '../widgets/profile_header.dart';
 part '../widgets/profile_position_banner.dart';
@@ -38,7 +39,7 @@ class ProfileScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: async.when(
+        child: async.cached(
           loading: () => const AppProfileSkeleton(),
           error: (e, _) => _ErrorState(
             onRetry: () => ref.invalidate(myProfileNotifierProvider),

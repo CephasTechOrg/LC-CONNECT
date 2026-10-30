@@ -77,6 +77,9 @@ class EmployerOpportunitySubmission(Base):
     description: Mapped[str] = mapped_column(Text, nullable=False)
     category: Mapped[str] = mapped_column(String(30), nullable=False)
     external_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # When applications close; becomes the published post's `expires_at`. Null only on rows made
+    # before employers were asked for one — those fall under the 60-day undated rule.
+    closes_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     status: Mapped[str] = mapped_column(String(20), default='pending', index=True, nullable=False)
     review_note: Mapped[str | None] = mapped_column(Text, nullable=True)
     reviewed_by_id: Mapped[uuid.UUID | None] = mapped_column(

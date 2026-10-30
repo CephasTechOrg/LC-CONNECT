@@ -252,7 +252,10 @@ final myProfileNotifierProvider =
 class MyProfileNotifier extends AsyncNotifier<MyProfile> {
   @override
   Future<MyProfile> build() async {
-    ref.watch(authNotifierProvider);
+    // Who is signed in, and whether onboarding finished — not the whole auth value. Watching all
+    // of it refetched the profile on every auth refresh (each sign-in emits twice), and the
+    // screens showing it dropped to a spinner each time.
+    ref.watch(authNotifierProvider.select((a) => (a.value?.id, a.value?.profileCompleted)));
     final client = ref.watch(apiClientProvider);
     final response = await client.dio.get('/profiles/me');
     return MyProfile.fromJson(response.data as Map<String, dynamic>);

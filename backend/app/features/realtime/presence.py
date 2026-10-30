@@ -102,3 +102,10 @@ async def _send(user_id: UUID, frame: dict) -> None:
         await rt.event_bus.publish_to_user(user_id, frame)
     except Exception as exc:  # noqa: BLE001
         logger.warning('presence publish failed (user=%s): %s', user_id, exc)
+
+
+async def hide_between(user_a: UUID, user_b: UUID) -> None:
+    """Two people stopped being able to see each other (a disconnect): clear each one's dot on the
+    other's screen now, rather than leaving it until the next online/offline change."""
+    await _send(user_a, protocol.presence(user_b, online=False, last_seen_at=None, visible=False))
+    await _send(user_b, protocol.presence(user_a, online=False, last_seen_at=None, visible=False))

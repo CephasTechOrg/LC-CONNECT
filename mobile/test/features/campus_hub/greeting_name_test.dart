@@ -1,61 +1,38 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lc_connect/features/campus_hub/data/greeting_name.dart';
 
-/// Locks the greeting name resolution that fixes the "old name flashes, then corrects" report:
-/// the current saved profile name wins over the signup name, and nothing is derived until the
-/// profile has resolved (so the email-derived fallback never flashes first).
+/// The greeting names the user on its first frame (from bootstrap) and prefers the loaded profile
+/// once it arrives, so a rename made in this session shows at once.
 void main() {
   group('resolveGreetingName', () {
-    test('returns null while the profile is still loading', () {
+    test('names the user from bootstrap before the profile has loaded', () {
       expect(
-        resolveGreetingName(
-          firstName: 'Cephas',
-          email: 'cephas@students.livingstone.edu',
-          profileResolved: false,
-        ),
-        isNull,
-      );
-    });
-
-    test('prefers the saved profile display name over the signup first name', () {
-      // The rename case: signup says "Cephas", the student later set their display name to
-      // "Kwame Osei". The greeting must show the current name, not the stale signup one.
-      expect(
-        resolveGreetingName(
-          firstName: 'Cephas',
-          displayName: 'Kwame Osei',
-          email: 'cephas@students.livingstone.edu',
-          profileResolved: true,
-        ),
+        resolveGreetingName(accountDisplayName: 'Kwame Osei', firstName: 'Cephas'),
         'Kwame',
       );
     });
 
-    test('falls back to the signup first name when the profile has no display name', () {
+    test('prefers the loaded profile name, which reflects a rename', () {
       expect(
-        resolveGreetingName(
-          firstName: 'Cephas',
-          displayName: '  ',
-          email: 'cephas@students.livingstone.edu',
-          profileResolved: true,
-        ),
+        resolveGreetingName(profileDisplayName: 'Ama Mensah', accountDisplayName: 'Kwame Osei'),
+        'Ama',
+      );
+    });
+
+    test('falls back to the signup first name when there is no display name', () {
+      expect(
+        resolveGreetingName(profileDisplayName: '  ', firstName: 'Cephas', email: 'c@x.edu'),
         'Cephas',
       );
     });
 
     test('uses the capitalized email local part only when no name exists', () {
-      expect(
-        resolveGreetingName(
-          email: 'ama.boateng@students.livingstone.edu',
-          profileResolved: true,
-        ),
-        'Ama.boateng',
-      );
+      expect(resolveGreetingName(email: 'ama.boateng@students.livingstone.edu'), 'Ama.boateng');
     });
 
     test('falls back to "there" when nothing is available', () {
-      expect(resolveGreetingName(profileResolved: true), 'there');
-      expect(resolveGreetingName(email: '', profileResolved: true), 'there');
+      expect(resolveGreetingName(), 'there');
+      expect(resolveGreetingName(email: ''), 'there');
     });
   });
 }

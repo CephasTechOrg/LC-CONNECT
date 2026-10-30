@@ -66,6 +66,17 @@ def conversation_muted(conversation_id: UUID | str, muted: bool) -> dict[str, An
     return {'type': 'conversation.muted', 'conversation_id': str(conversation_id), 'muted': muted}
 
 
+def conversation_state(conversation_id: UUID | str, *, pinned_at: str | None, archived: bool) -> dict[str, Any]:
+    """User-channel event: this user pinned/unpinned or archived/unarchived a chat, so their other
+    devices arrange the inbox the same way. `conversation_id` is the addressing id."""
+    return {
+        'type': 'conversation.state',
+        'conversation_id': str(conversation_id),
+        'pinned_at': pinned_at,
+        'archived': archived,
+    }
+
+
 def presence(
     user_id: UUID, *, online: bool, last_seen_at: str | None, visible: bool = True
 ) -> dict[str, Any]:

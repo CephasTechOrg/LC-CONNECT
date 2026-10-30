@@ -12,6 +12,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
+import time
 from typing import Any
 from uuid import UUID
 
@@ -45,7 +46,8 @@ from app.features.realtime.runtime import (
     unsupported_limiter,
 )
 from app.features.realtime.ws_io import FrameTooLarge, receive_json_bounded
-from app.shared.conversations import active_member_ids
+from app.shared.conversations import active_member_ids, dm_is_disconnected
+from app.shared.rate_limit import message_send_limit
 
 logger = logging.getLogger('lc_connect.realtime')
 
@@ -247,13 +249,16 @@ async def _on_subscribe(conn: Connection, frame: protocol.SubscribeFrame) -> Non
         try:
             await service.recheck_account(db, conn.user_id)
             conversation, _ = await service.authorize_conversation(db, conn.user_id, frame.conversation_id)
-            others = await active_member_ids(db, conversation.id, exclude=conn.user_id)
+            # A disconnected DM stays readable, but typing in it goes nowhere.
+            closed = await dm_is_disconnected(db, conversation)
+            others = [] if closed else await active_member_ids(db, conversation.id, exclude=conn.user_id)
         except service.WsForbidden:
             manager.send(conn, protocol.error(ErrorCode.FORBIDDEN, 'Forbidden', frame.request_id))
             return
     # Cache the other members so typing needs no per-keystroke DB hit. One for a DM, N-1 for
     # a group — typing fans out to all of them. Keyed canonically, like the manager index.
     conn.partners[conversation.id] = others
+    conn.partners_at[conversation.id] = time.monotonic()
     conn.addressing[conversation.id] = str(conversation.match_id or conversation.id)
     manager.subscribe(conn, conversation.id, ref=frame.conversation_id)
     # The ack echoes the client's own ref — that is what it correlates the subscription on.
@@ -278,7 +283,10 @@ def _on_unsubscribe(conn: Connection, frame: protocol.UnsubscribeFrame) -> None:
 
 
 async def _on_send(conn: Connection, frame: protocol.SendFrame) -> None:
-    if not await send_limiter.aallow((conn.user_id, frame.conversation_id)):
+    # Per chat, and per user across every chat and both transports (the REST send bucket).
+    if not await send_limiter.aallow((conn.user_id, frame.conversation_id)) or not await (
+        message_send_limit.allow_user(conn.user_id)
+    ):
         manager.send(conn, protocol.error(ErrorCode.RATE_LIMITED, 'Slow down', frame.request_id))
         return
     async with AsyncSessionLocal() as db:
@@ -290,6 +298,8 @@ async def _on_send(conn: Connection, frame: protocol.SendFrame) -> None:
             conversation, recipients = await service.authorize_conversation(
                 db, conn.user_id, frame.conversation_id
             )
+            if await dm_is_disconnected(db, conversation):
+                raise service.WsForbidden('You are no longer connected')
         except service.WsForbidden:
             manager.send(conn, protocol.error(ErrorCode.FORBIDDEN, 'Forbidden', frame.request_id))
             return
@@ -327,6 +337,24 @@ async def _on_send(conn: Connection, frame: protocol.SendFrame) -> None:
         )
 
 
+# How long the typing audience cached at subscribe is trusted before being re-read.
+_PARTNERS_TTL_SECONDS = 60
+
+
+async def _refresh_partners(conn: Connection, canonical: UUID) -> list[UUID]:
+    try:
+        async with AsyncSessionLocal() as db:
+            others = await active_member_ids(db, canonical, exclude=conn.user_id)
+    except Exception as exc:  # noqa: BLE001 — a typing indicator is never worth an error
+        logger.warning('typing audience refresh failed (%s): %s', canonical, exc)
+        return conn.partners.get(canonical, [])
+    # Only if still subscribed: a revocation may have cleared the entry meanwhile.
+    if canonical in conn.partners:
+        conn.partners[canonical] = others
+        conn.partners_at[canonical] = time.monotonic()
+    return others
+
+
 async def _on_typing(conn: Connection, conversation_id: UUID, active: bool) -> None:
     # Authz proxy: members are cached only for authorized subscriptions (and cleared on
     # block/suspension/removal revocation), so this avoids a DB hit per keystroke while safe.
@@ -336,6 +364,8 @@ async def _on_typing(conn: Connection, conversation_id: UUID, active: bool) -> N
         return
     if active and not await typing_limiter.aallow((conn.user_id, canonical)):
         return
+    if time.monotonic() - conn.partners_at.get(canonical, 0) > _PARTNERS_TTL_SECONDS:
+        partners = await _refresh_partners(conn, canonical)
     # Deliver to every other member's USER channel → shows inside the chat and on their list.
     # One recipient for a DM, all others for a group. The frame carries the *addressing* id,
     # which is what the recipient's open chat matches on.

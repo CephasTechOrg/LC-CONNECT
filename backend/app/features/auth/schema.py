@@ -15,6 +15,9 @@ class BootstrapResponse(BaseModel):
     auth_user_id: UUID
     first_name: str | None = None
     last_name: str | None = None
+    # The profile's current display name, so the app can greet the user by name on its first
+    # frame instead of waiting on a second request for the profile.
+    display_name: str | None = None
 
 
 class CurrentUserResponse(BaseModel):
@@ -28,6 +31,9 @@ class CurrentUserResponse(BaseModel):
     auth_user_id: UUID | None = None
     first_name: str | None = None
     last_name: str | None = None
+    # The profile's current display name, so the app can greet the user by name on its first
+    # frame instead of waiting on a second request for the profile.
+    display_name: str | None = None
 
 
 class MessageResponse(BaseModel):

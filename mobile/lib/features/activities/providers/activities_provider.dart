@@ -24,6 +24,11 @@ class Activity {
   // activities are not penalised, but it keeps ordering reproducible).
   final DateTime? createdAt;
 
+  /// Started and not yet over. With no end time an activity counts as running for two hours, the
+  /// same rule the server uses to keep it listed.
+  bool isHappeningNow(DateTime now) =>
+      !startTime.isAfter(now) && (endTime ?? startTime.add(const Duration(hours: 2))).isAfter(now);
+
   const Activity({
     required this.id,
     required this.creatorId,
@@ -130,6 +135,42 @@ final activitiesFilterProvider =
 final activitiesNotifierProvider =
     AsyncNotifierProvider<ActivitiesNotifier, List<Activity>>(
         ActivitiesNotifier.new);
+
+/// The featured activity as the server chose it — an admin's campus pick, or the best upcoming by
+/// score — with the badge that says why. The same for every student, on Home and on Activities.
+class ServerFeatured {
+  const ServerFeatured(this.activity, this.reason);
+
+  final Activity activity;
+  final String reason; // pinned | filling_up | starting_soon | popular | featured
+
+  String get label => switch (reason) {
+        'pinned' => 'Campus pick',
+        'filling_up' => 'Filling up',
+        'starting_soon' => 'Starting soon',
+        'popular' => 'Popular',
+        _ => 'Featured',
+      };
+}
+
+/// Null when nothing is upcoming, or on an older server (the app then picks locally, see
+/// `selectFeatured`). Refetched whenever the activities list is.
+final featuredActivityProvider = FutureProvider<ServerFeatured?>((ref) async {
+  ref.watch(authNotifierProvider.select((a) => a.value?.id));
+  // Follow the list: a join, a pull-to-refresh or a filter change can change the pick.
+  await ref.watch(activitiesNotifierProvider.future);
+  try {
+    final response = await ref.read(apiClientProvider).dio.get('/activities/featured');
+    final body = response.data;
+    if (body is! Map) return null;
+    return ServerFeatured(
+      Activity.fromJson(Map<String, dynamic>.from(body['activity'] as Map)),
+      body['reason'] as String? ?? 'featured',
+    );
+  } catch (_) {
+    return null;
+  }
+});
 
 class ActivitiesNotifier extends AsyncNotifier<List<Activity>> {
   @override

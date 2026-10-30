@@ -18,6 +18,7 @@ import '../data/group_models.dart';
 import '../providers/groups_provider.dart';
 import '../../../shared/widgets/app_states.dart';
 import '../../../shared/widgets/app_skeleton.dart';
+import '../../../shared/util/caching.dart';
 
 part '../widgets/group_member_tile.dart';
 part '../widgets/group_requests_section.dart';
@@ -242,7 +243,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
         title: Text('Group info', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.textDark)),
         iconTheme: const IconThemeData(color: AppColors.textDark),
       ),
-      body: async.when(
+      body: async.cached(
         // A skeleton, not a spinner: this is content loading, and a spinner tells the user
         // nothing about what is arriving (4.2).
         loading: () => const AppProfileSkeleton(),

@@ -16,12 +16,14 @@ class _ThreadCard extends ConsumerWidget {
     // a rule about which members count, which is deliberately out of scope (see the design doc
     // §2.1); they get a "read by" list in the conversation instead.
     final myId = ref.watch(authNotifierProvider).asData?.value?.id;
+    final draft = ref.watch(inboxDraftsProvider.select((s) => s.value?[thread.addressingId]));
     final outgoing =
         (!thread.isGroup && latest != null && myId != null && latest.senderId == myId)
             ? latest
             : null;
 
     return InkWell(
+      onLongPress: () => showThreadActions(context, ref, thread, unread: unread),
       onTap: () => thread.isGroup
           ? context.push(groupChatPath(thread.conversationId),
               extra: GroupChatArgs(
@@ -34,7 +36,11 @@ class _ThreadCard extends ConsumerWidget {
         ),
         child: Row(
           children: [
-            AvatarWidget(imageUrl: thread.avatarUrl, size: avatarSize),
+            _AvatarWithPresence(
+              url: thread.avatarUrl,
+              online: !thread.isGroup && thread.partnerOnline,
+              size: avatarSize,
+            ),
             const SizedBox(width: AppSpacing.md),
             Expanded(
               child: Column(
@@ -44,7 +50,9 @@ class _ThreadCard extends ConsumerWidget {
                   const SizedBox(height: 3),
                   Row(
                     children: [
-                      Expanded(child: _preview(latest, hasUnread: unread > 0, myId: myId ?? '')),
+                      Expanded(
+                        child: _preview(latest, hasUnread: unread > 0, myId: myId ?? '', draft: draft),
+                      ),
                       if (outgoing != null) ...[
                         const SizedBox(width: AppSpacing.sm),
                         // Compact: the conversation row has no room for a "Retry" label, and
@@ -104,6 +112,10 @@ class _ThreadCard extends ConsumerWidget {
             ],
           ),
         ),
+        if (thread.pinned) ...[
+          const SizedBox(width: AppSpacing.sm),
+          const Icon(Icons.push_pin_rounded, size: 14, color: AppColors.textMuted, semanticLabel: 'Pinned'),
+        ],
         if (latest != null) ...[
           const SizedBox(width: AppSpacing.sm),
           Text(
@@ -118,8 +130,22 @@ class _ThreadCard extends ConsumerWidget {
     );
   }
 
-  Widget _preview(ChatMessage? latest, {required bool hasUnread, required String myId}) {
-    // Typing is live and most salient; everything else is [threadPreview]'s call.
+  Widget _preview(ChatMessage? latest, {required bool hasUnread, required String myId, String? draft}) {
+    // Typing is live and most salient; then an unsent draft (as in WhatsApp — the thing you were
+    // about to say matters more than the last thing said); everything else is [threadPreview]'s.
+    if (!thread.partnerTyping && draft != null && draft.trim().isNotEmpty) {
+      return Text.rich(
+        TextSpan(children: [
+          TextSpan(
+            text: 'Draft: ',
+            style: AppTypography.bodySmall.copyWith(color: AppColors.error, fontWeight: FontWeight.w600),
+          ),
+          TextSpan(text: oneLine(draft), style: AppTypography.bodySmall.copyWith(color: AppColors.textMid)),
+        ]),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      );
+    }
     if (thread.partnerTyping) {
       return Text(
         'typing…',
@@ -140,6 +166,41 @@ class _ThreadCard extends ConsumerWidget {
         color: hasUnread ? AppColors.textDark : (line.italic ? AppColors.textMuted : AppColors.textMid),
         fontWeight: hasUnread ? FontWeight.w600 : FontWeight.w400,
         fontStyle: line.italic ? FontStyle.italic : FontStyle.normal,
+      ),
+    );
+  }
+}
+
+/// The avatar, with a green dot when a connection is online (and you may see it).
+class _AvatarWithPresence extends StatelessWidget {
+  final String? url;
+  final bool online;
+  final double size;
+  const _AvatarWithPresence({required this.url, required this.online, required this.size});
+
+  @override
+  Widget build(BuildContext context) {
+    final avatar = AvatarWidget(imageUrl: url, size: size);
+    if (!online) return avatar;
+    return Semantics(
+      label: 'Online',
+      child: Stack(
+        children: [
+          avatar,
+          Positioned(
+            right: 1,
+            bottom: 1,
+            child: Container(
+              width: 13,
+              height: 13,
+              decoration: BoxDecoration(
+                color: AppColors.green,
+                shape: BoxShape.circle,
+                border: Border.all(color: AppColors.background, width: 2),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

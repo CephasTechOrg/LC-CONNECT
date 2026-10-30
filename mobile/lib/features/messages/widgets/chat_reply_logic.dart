@@ -41,7 +41,14 @@ mixin _ChatReplyLogic on _ChatScreenStateBase {
   }
 
   /// Scroll to [messageId] and highlight it briefly, loading older pages if it is not loaded yet.
-  Future<void> jumpToMessage(String messageId) async {
+  /// Used for a reply's quote, a search result, and (unhighlighted, near the top) the first
+  /// unread message.
+  Future<void> jumpToMessage(
+    String messageId, {
+    bool highlight = true,
+    double alignment = 0.3,
+    String notFound = "Couldn't find the original message.",
+  }) async {
     var pages = 0;
     while (!messages.any((m) => m.id == messageId) && hasMore && pages < _maxJumpPages) {
       pages++;
@@ -49,14 +56,16 @@ mixin _ChatReplyLogic on _ChatScreenStateBase {
       if (disposed || !mounted) return;
     }
     if (!messages.any((m) => m.id == messageId)) {
-      _jumpFailed();
+      _jumpFailed(notFound);
       return;
     }
-    setState(() => highlightedId = messageId);
-    highlightTimer?.cancel();
-    highlightTimer = Timer(const Duration(milliseconds: 1500), () {
-      if (!disposed && mounted) setState(() => highlightedId = null);
-    });
+    if (highlight) {
+      setState(() => highlightedId = messageId);
+      highlightTimer?.cancel();
+      highlightTimer = Timer(const Duration(milliseconds: 1500), () {
+        if (!disposed && mounted) setState(() => highlightedId = null);
+      });
+    }
     // The list builds lazily, so the bubble may not exist yet: estimate its offset first, then
     // let `ensureVisible` place it exactly once it is built.
     for (var attempt = 0; attempt < 3; attempt++) {
@@ -64,7 +73,7 @@ mixin _ChatReplyLogic on _ChatScreenStateBase {
       if (disposed || !mounted) return;
       final ctx = bubbleKeys[messageId]?.currentContext;
       if (ctx != null && ctx.mounted) {
-        await Scrollable.ensureVisible(ctx, alignment: 0.3, duration: const Duration(milliseconds: 300));
+        await Scrollable.ensureVisible(ctx, alignment: alignment, duration: const Duration(milliseconds: 300));
         return;
       }
       if (scrollController.hasClients) {
@@ -75,13 +84,36 @@ mixin _ChatReplyLogic on _ChatScreenStateBase {
     }
   }
 
-  void _jumpFailed() {
+  void _jumpFailed(String text) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text("Couldn't find the original message."),
-        behavior: SnackBarBehavior.floating,
-      ),
+      SnackBar(content: Text(text), behavior: SnackBarBehavior.floating),
     );
   }
+
+  /// Where a chat opens: at the message a search result named, else at the first unread message
+  /// under a "New messages" divider (as in WhatsApp), else at the bottom. Runs once, after the
+  /// first page from the server.
+  Future<void> openAtTarget() async {
+    if (openedAtTarget) return;
+    openedAtTarget = true;
+    final target = widget.jumpTo;
+    if (target != null) {
+      await jumpToMessage(target, notFound: "Couldn't find that message.");
+      return;
+    }
+    final firstUnread = firstUnreadId(messages, mine: currentUserId, unread: unreadOnOpen);
+    if (firstUnread == null) return;
+    setState(() => unreadDividerBefore = firstUnread);
+    await jumpToMessage(firstUnread, highlight: false, alignment: 0.05);
+  }
+}
+
+/// The oldest of the last [unread] messages from other people — where the "New messages" divider
+/// goes. Null when nothing is unread or those messages are not loaded.
+String? firstUnreadId(List<ChatMessage> messages, {required String mine, required int unread}) {
+  if (unread <= 0) return null;
+  final theirs = [for (final m in messages) if (m.senderId != mine && !m.deleted) m];
+  if (theirs.length < unread) return theirs.isEmpty ? null : theirs.first.id;
+  return theirs[theirs.length - unread].id;
 }

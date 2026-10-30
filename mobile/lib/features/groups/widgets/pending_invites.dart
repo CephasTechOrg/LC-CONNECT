@@ -11,8 +11,14 @@ import '../providers/groups_provider.dart';
 /// The invitee's side of the invite flow: groups you've been invited to (including
 /// private/unlisted ones that never appear in discovery), with Accept / Decline.
 /// Renders nothing when you have no pending invites.
+///
+/// On the Groups page it stays small: one invite shows as its own card, several collapse into a
+/// single "3 group invites" row that opens the full list in a sheet ([inSheet]). A stack of
+/// invite cards used to push everything else off the first screen.
 class PendingInvitesSection extends ConsumerStatefulWidget {
-  const PendingInvitesSection({super.key});
+  const PendingInvitesSection({super.key, this.inSheet = false});
+
+  final bool inSheet;
 
   @override
   ConsumerState<PendingInvitesSection> createState() => _PendingInvitesSectionState();
@@ -60,9 +66,32 @@ class _PendingInvitesSectionState extends ConsumerState<PendingInvitesSection> {
     // `.value`, not `asData?.value`: during a refresh the state is AsyncLoading *carrying* the
     // previous value, so `asData` is null and the section used to vanish and reappear.
     final invites = ref.watch(myInvitesProvider).value ?? const <GroupSummary>[];
-    if (invites.isEmpty) return const SizedBox.shrink();
+    if (invites.isEmpty) {
+      return widget.inSheet
+          ? Padding(
+              padding: const EdgeInsets.all(24),
+              child: Text('No pending invites', style: AppTypography.body.copyWith(color: AppColors.textMuted)),
+            )
+          : const SizedBox.shrink();
+    }
+    if (!widget.inSheet && invites.length > 1) {
+      return _InvitesSummaryRow(invites: invites, onTap: _openSheet);
+    }
+    if (!widget.inSheet) {
+      final g = invites.single;
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 4),
+        child: _InviteCard(
+          group: g,
+          busy: _busy.contains(g.id),
+          onAccept: () => _act(g, accept: true),
+          onDecline: () => _act(g, accept: false),
+        ),
+      );
+    }
 
     return Column(
+      mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
@@ -86,6 +115,75 @@ class _PendingInvitesSectionState extends ConsumerState<PendingInvitesSection> {
             ),
           ),
       ],
+    );
+  }
+}
+
+extension on _PendingInvitesSectionState {
+  void _openSheet() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => const SafeArea(
+        child: SingleChildScrollView(
+          padding: EdgeInsets.only(bottom: 12),
+          child: PendingInvitesSection(inSheet: true),
+        ),
+      ),
+    );
+  }
+}
+
+/// "3 group invites" — one tinted row in place of three cards.
+class _InvitesSummaryRow extends StatelessWidget {
+  final List<GroupSummary> invites;
+  final VoidCallback onTap;
+  const _InvitesSummaryRow({required this.invites, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final names = invites.map((g) => g.name).take(2).join(', ');
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 4, 20, 4),
+      child: Material(
+        color: AppColors.primarySoft,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Row(
+              children: [
+                const Icon(Icons.mail_outline_rounded, size: 20, color: AppColors.primaryText),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${invites.length} group invites',
+                        style: AppTypography.bodySmall.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textDark,
+                        ),
+                      ),
+                      Text(
+                        invites.length > 2 ? '$names and more' : names,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.caption.copyWith(color: AppColors.textMid),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

@@ -43,13 +43,16 @@ async def edit_message(db: AsyncSession, message_id: UUID, actor_id: UUID, body:
     The previous body is written to `message_edits` in the same transaction as the update: if one
     can happen without the other, the audit trail is worth nothing.
     """
-    from app.shared.conversations import accessible_conversation
+    from app.shared.conversations import accessible_conversation, assert_can_post
 
-    message = await db.get(Message, message_id)
+    # Locked, so "not deleted" (step 3) stays true until this commits: a delete racing the edit
+    # waits, rather than committing between the check and the update and leaving a deleted
+    # message with a fresh body and an edit-history row.
+    message = await db.get(Message, message_id, with_for_update=True)
     if message is None or message.conversation_id is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Message not found')
 
-    await accessible_conversation(db, message.conversation_id, actor_id)
+    await assert_can_post(db, await accessible_conversation(db, message.conversation_id, actor_id))
 
     if message.sender_id != actor_id:
         # Not 403: a non-sender should not learn that a message exists and is merely un-editable.

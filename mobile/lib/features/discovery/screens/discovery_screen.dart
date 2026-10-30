@@ -21,6 +21,7 @@ import '../../connections/widgets/connection_requests_button.dart';
 import '../providers/discovery_provider.dart';
 import '../../safety/providers/safety_provider.dart';
 import '../../safety/widgets/safety_sheet.dart';
+import '../../../shared/util/caching.dart';
 
 part '../widgets/discovery_student_card.dart';
 part '../widgets/discovery_card_parts.dart';
@@ -122,7 +123,7 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
             _buildFilterRow(),
             const SizedBox(height: AppSpacing.xs),
             Expanded(
-              child: discoveryState.when(
+              child: discoveryState.cached(
                 loading: () => const AppListSkeleton(count: 2),
                 error: (e, _) => _buildError(),
                 data: (cards) {

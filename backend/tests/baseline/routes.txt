@@ -1,5 +1,6 @@
 DELETE /api/v1/account
 DELETE /api/v1/activities/{activity_id}/leave
+DELETE /api/v1/admin/activities/{activity_id}/feature
 DELETE /api/v1/admin/campus-posts/{post_id}
 DELETE /api/v1/admin/campus-posts/{post_id}/images/{image_id}
 DELETE /api/v1/admin/campus-resources/{resource_id}
@@ -15,8 +16,10 @@ GET /
 GET /api/v1/account/export
 GET /api/v1/account/suspension-status
 GET /api/v1/activities
+GET /api/v1/activities/featured
 GET /api/v1/activities/{activity_id}
 GET /api/v1/activities/{activity_id}/participants
+GET /api/v1/admin/activities
 GET /api/v1/admin/admins
 GET /api/v1/admin/admins/me/scopes
 GET /api/v1/admin/attendance/honors
@@ -74,6 +77,7 @@ GET /api/v1/groups/{group_id}/members
 GET /api/v1/groups/{group_id}/requests
 GET /api/v1/lookups
 GET /api/v1/messages/capabilities
+GET /api/v1/messages/search
 GET /api/v1/messages/search-recipients
 GET /api/v1/messages/threads
 GET /api/v1/messages/threads/{match_id}
@@ -106,6 +110,7 @@ PATCH /api/v1/groups/{group_id}
 PATCH /api/v1/groups/{group_id}/members/me
 PATCH /api/v1/groups/{group_id}/members/{user_id}
 PATCH /api/v1/messages/threads/{match_id}/mute
+PATCH /api/v1/messages/threads/{match_id}/state
 PATCH /api/v1/messages/{message_id}
 PATCH /api/v1/profiles/me
 PATCH /api/v1/scholars/me
@@ -114,6 +119,7 @@ POST /api/v1/activities
 POST /api/v1/activities/{activity_id}/banner
 POST /api/v1/activities/{activity_id}/cancel
 POST /api/v1/activities/{activity_id}/join
+POST /api/v1/admin/activities/{activity_id}/feature
 POST /api/v1/admin/activities/{activity_id}/remove
 POST /api/v1/admin/admins/invite
 POST /api/v1/admin/admins/me/resign

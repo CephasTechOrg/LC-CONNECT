@@ -21,6 +21,19 @@ from app.features.campus_hub.schema import CampusPostCreate
 from app.models import CampusPost, EmployerOpportunitySubmission, User
 from app.shared.programs import PRESIDENTIAL_SCHOLARS_SLUG
 
+SUMMARY_LIMIT = 400
+
+
+def summary_of(description: str | None) -> str:
+    """The first 400 characters, ended on a word with an ellipsis rather than cut mid-word."""
+    text = ' '.join((description or '').split())
+    if len(text) <= SUMMARY_LIMIT:
+        return text
+    cut = text[: SUMMARY_LIMIT - 1]
+    if ' ' in cut:
+        cut = cut[: cut.rindex(' ')]
+    return cut.rstrip(' ,;:.-') + '…'
+
 
 async def publish_submission(
     db: AsyncSession, *, submission: EmployerOpportunitySubmission, actor: User
@@ -43,10 +56,11 @@ async def publish_submission(
         payload = CampusPostCreate(
             kind='opportunity',
             title=submission.title,
-            summary=(submission.description or '')[:400] or submission.title,
+            summary=summary_of(submission.description) or submission.title,
             body=submission.description,
             category=submission.category,
             external_url=submission.external_url,
+            expires_at=submission.closes_at,
         )
         post = await publishing.create_post(db, actor=actor, payload=payload)
         post.source = 'employer'

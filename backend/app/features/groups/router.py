@@ -1,6 +1,7 @@
 """Group endpoints. Roles/permissions come from `policies.py`; membership + join flows +
 transactional capacity come from `service.py`. Routers stay thin."""
 
+from typing import Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Body, Depends, File, HTTPException, Query, UploadFile, status
@@ -93,13 +94,17 @@ async def list_my_invites(current_user: User = Depends(require_email_confirmed_u
 
 @router.get('/discover', response_model=list[GroupSummary])
 async def discover(
-    q: str | None = Query(default=None),
+    q: str | None = Query(default=None, max_length=80),
     category: str | None = Query(default=None),
+    sort: Literal['popular', 'new'] = Query(default='popular'),
     limit: int = Query(default=30, ge=1, le=100),
+    offset: int = Query(default=0, ge=0, le=5000),
     current_user: User = Depends(require_email_confirmed_user),
     db: AsyncSession = Depends(get_db),
 ):
-    groups = await service.discover_groups(db, query=q, category=category, limit=limit)
+    groups = await service.discover_groups(
+        db, viewer_id=current_user.id, query=q, category=category, sort=sort, limit=limit, offset=offset
+    )
     conv_ids = [g.conversation_id for g in groups]
     # Two batched queries instead of two per group (my membership + member counts).
     mine = await service.memberships_for_user(db, current_user.id, conv_ids)

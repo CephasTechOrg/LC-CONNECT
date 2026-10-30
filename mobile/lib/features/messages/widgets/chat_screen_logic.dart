@@ -35,6 +35,7 @@ mixin _ChatScreenLogic
       scrollToBottom(jump: true, force: true);
       sendRead();
       scheduleCacheSave();
+      unawaited(openAtTarget());
     } catch (e) {
       if (disposed || !mounted) return;
       setState(() {

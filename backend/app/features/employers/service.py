@@ -16,7 +16,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.features.employers.schema import OpportunitySubmissionCreate
+from app.features.employers.schema import DEFAULT_OPEN_FOR, OpportunitySubmissionCreate
 from app.models import EmployerAccount, EmployerOpportunitySubmission, EmployerOrganization, User
 from app.shared.employer_publishing import publish_submission
 
@@ -63,6 +63,7 @@ async def submit_opportunity(
         description=payload.description.strip(),
         category=payload.category,
         external_url=str(payload.external_url) if payload.external_url else None,
+        closes_at=payload.closes_at or datetime.now(UTC) + DEFAULT_OPEN_FOR,
     )
     db.add(submission)
     await db.commit()

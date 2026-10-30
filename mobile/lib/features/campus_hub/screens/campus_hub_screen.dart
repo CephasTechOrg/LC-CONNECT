@@ -32,6 +32,7 @@ import '../../../core/theme/app_radii.dart';
 import '../../../core/theme/app_shadows.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../shared/util/caching.dart';
 
 part '../widgets/urgent_update_banner.dart';
 part '../widgets/campus_home_header.dart';
@@ -56,26 +57,21 @@ class CampusHubScreen extends ConsumerStatefulWidget {
 }
 
 class _CampusHubScreenState extends ConsumerState<CampusHubScreen> {
-  /// The last name we successfully resolved. Held across provider reloads (login, pull-to-refresh,
-  /// resume) so the greeting never downgrades to a transient fallback while data is in flight.
-  String? _lastGoodName;
-
   @override
   Widget build(BuildContext context) {
     // `.value`, not `asData?.value`: a provider being refreshed keeps its previous value available
     // here, so a pull-to-refresh does not blank the inputs and flash a fallback.
     final user = ref.watch(authNotifierProvider).value;
-    final profileAsync = ref.watch(myProfileNotifierProvider);
-    final profile = profileAsync.value;
+    final profile = ref.watch(myProfileNotifierProvider).value;
     final isStudent = (user?.role ?? 'student') == 'student';
-    final resolvedName = resolveGreetingName(
+    final firstName = resolveGreetingName(
+      // A profile left over from a previous account (Riverpod keeps the last value across a
+      // rebuild) must not name the new one.
+      profileDisplayName: profile?.userId == user?.id ? profile?.displayName : null,
+      accountDisplayName: user?.displayName,
       firstName: user?.firstName,
-      displayName: profile?.displayName,
       email: user?.email,
-      profileResolved: profileAsync.hasValue,
     );
-    if (resolvedName != null) _lastGoodName = resolvedName;
-    final firstName = _lastGoodName ?? 'there';
     final timeOfDay = _greeting();
     final overviewAsync = ref.watch(campusHubOverviewProvider);
     // Keep badge notifiers alive while Hub is visible (announcements WS + opportunities cursor).
@@ -116,7 +112,7 @@ class _CampusHubScreenState extends ConsumerState<CampusHubScreen> {
               // The urgent slot reads the same overview provider as Latest Updates below (a
               // second `when` on one provider is free) so an alert can lead without moving the
               // section's loading skeleton up.
-              ...overviewAsync.when(
+              ...overviewAsync.cached(
                 loading: () => const <Widget>[],
                 error: (_, _) => const <Widget>[],
                 data: (overview) => [
@@ -134,7 +130,7 @@ class _CampusHubScreenState extends ConsumerState<CampusHubScreen> {
               const _SpotlightCarousel(),
               const _QuickActionsRow(),
               const _PublisherCta(),
-              ...overviewAsync.when(
+              ...overviewAsync.cached(
                 loading: () => const [AppHomePanelSkeleton()],
                 error: (_, _) => [
                   // Inline, not the full-screen AppErrorState: one failed section must not

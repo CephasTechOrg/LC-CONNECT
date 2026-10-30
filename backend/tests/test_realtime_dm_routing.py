@@ -110,6 +110,12 @@ def routing(monkeypatch):
         monkeypatch.setattr(gateway, 'active_member_ids', ok_members)
         monkeypatch.setattr(gateway, 'persist_message_idempotent', persist)
 
+        async def still_connected(db, conversation):
+            return False
+
+        # A DB read (see tests/db/test_integrity_fixes.py for the disconnect rule itself).
+        monkeypatch.setattr(gateway, 'dm_is_disconnected', still_connected)
+
         async def no_reaction_notifications(db, user_id, addressing_id):
             return []
 

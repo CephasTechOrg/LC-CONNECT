@@ -2,8 +2,9 @@ part of '../screens/blueprint_bond_screen.dart';
 
 /// On-page headshot: the photo itself, not an "uploaded" checkmark.
 ///
-/// Uses `scholarHeadshotPreviewProvider` with `Image.network` (RAM cache only). Signed URLs
-/// expire in minutes, so they must not go through AvatarWidget's disk cache or full-screen viewer.
+/// The file is private, so every read is a fresh signed URL; the image is cached on disk under the
+/// upload-time key from `scholarHeadshotPreviewProvider` instead, in the sign-out-cleared
+/// [privateImageCacheProvider]. It no longer downloads again on every visit.
 class _HeadshotRow extends ConsumerWidget {
   final bool hasFile;
   final bool uploading;
@@ -18,14 +19,17 @@ class _HeadshotRow extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final preview = hasFile
         ? ref.watch(scholarHeadshotPreviewProvider)
-        : const AsyncValue<String?>.data(null);
-    final url = preview.asData?.value;
-    final loading = uploading || (hasFile && preview.isLoading);
+        : const AsyncValue<ScholarHeadshot?>.data(null);
+    // `.value`, not `asData?.value`: while the preview revalidates, keep showing the photo we
+    // have instead of collapsing to a spinner.
+    final headshot = preview.value;
+    final loading = uploading || (hasFile && preview.isLoading && headshot == null);
 
     return Row(
       children: [
         _HeadshotThumb(
-          url: url,
+          headshot: headshot,
+          cacheManager: ref.watch(privateImageCacheProvider),
           loading: loading,
           onTap: uploading ? null : onUpload,
         ),
@@ -63,16 +67,22 @@ class _HeadshotRow extends ConsumerWidget {
 }
 
 class _HeadshotThumb extends StatelessWidget {
-  final String? url;
+  final ScholarHeadshot? headshot;
+  final BaseCacheManager cacheManager;
   final bool loading;
   final VoidCallback? onTap;
-  const _HeadshotThumb({required this.url, required this.loading, this.onTap});
+  const _HeadshotThumb({
+    required this.headshot,
+    required this.cacheManager,
+    required this.loading,
+    this.onTap,
+  });
 
   static const _size = 64.0;
 
   @override
   Widget build(BuildContext context) {
-    final hasPhoto = url != null && url!.isNotEmpty;
+    final hasPhoto = headshot != null && headshot!.url.isNotEmpty;
     return Semantics(
       button: true,
       label: hasPhoto ? 'Headshot, double tap to replace' : 'Add headshot',
@@ -98,12 +108,16 @@ class _HeadshotThumb extends StatelessWidget {
                       ),
                     )
                   : hasPhoto
-                      ? Image.network(
-                          url!,
+                      ? CachedNetworkImage(
+                          imageUrl: headshot!.url,
+                          cacheKey: headshot!.cacheKey,
+                          cacheManager: cacheManager,
                           fit: BoxFit.cover,
                           alignment: Alignment.topCenter,
-                          cacheWidth: (_size * MediaQuery.devicePixelRatioOf(context)).round(),
-                          errorBuilder: (_, _, _) => const _HeadshotFallback(),
+                          memCacheWidth: (_size * MediaQuery.devicePixelRatioOf(context)).round(),
+                          fadeInDuration: Duration.zero,
+                          placeholder: (_, _) => const _HeadshotFallback(),
+                          errorWidget: (_, _, _) => const _HeadshotFallback(),
                         )
                       : const _HeadshotFallback(),
             ),

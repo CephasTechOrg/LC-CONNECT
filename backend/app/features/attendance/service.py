@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from fastapi import HTTPException, status
 from sqlalchemy import func, select
@@ -187,12 +187,32 @@ async def start_session(
 
 
 async def close_session(db: AsyncSession, *, session: AttendanceSession) -> AttendanceSession:
+    """Close the session and mark every member who did not check in absent — exactly once.
+
+    Three things can close a session at the same moment: the sweeper (on every API instance), a
+    check-in or QR read arriving just after the window, and the staff member's own Close. Each
+    used to read the existing records and insert absents with no lock, so two of them racing hit
+    the one-record-per-student constraint and failed with a 500 — most likely exactly when
+    students were scanning at the deadline. The session row is now locked first (the second
+    closer waits, then sees it closed and stops), and absents are inserted with ON CONFLICT DO
+    NOTHING, so a check-in committed in between is kept rather than colliding.
+    """
     if session.status == SESSION_CLOSED:
         return session
+    session = (
+        await db.execute(
+            select(AttendanceSession)
+            .where(AttendanceSession.id == session.id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+    ).scalar_one()
+    if session.status == SESSION_CLOSED:
+        await db.commit()  # release the lock; someone else closed it while we waited
+        return session
 
-    now = _now()
     session.status = SESSION_CLOSED
-    session.closed_at = now
+    session.closed_at = _now()
 
     member_ids = (
         await db.execute(
@@ -202,25 +222,21 @@ async def close_session(db: AsyncSession, *, session: AttendanceSession) -> Atte
             )
         )
     ).scalars().all()
-
-    existing_student_ids = set(
-        (
-            await db.execute(
-                select(AttendanceRecord.student_id).where(AttendanceRecord.session_id == session.id)
-            )
-        ).scalars().all()
-    )
-
-    for student_id in member_ids:
-        if student_id in existing_student_ids:
-            continue
-        db.add(
-            AttendanceRecord(
-                session_id=session.id,
-                student_id=student_id,
-                status=RECORD_ABSENT,
-                verification_method=VERIFICATION_QR,
-            )
+    if member_ids:
+        await db.execute(
+            pg_insert(AttendanceRecord)
+            .values([
+                {
+                    'id': uuid4(),
+                    'session_id': session.id,
+                    'student_id': student_id,
+                    'status': RECORD_ABSENT,
+                    'verification_method': VERIFICATION_QR,
+                    'manually_modified': False,
+                }
+                for student_id in member_ids
+            ])
+            .on_conflict_do_nothing(constraint='uq_attendance_record_session_student')
         )
 
     await db.commit()

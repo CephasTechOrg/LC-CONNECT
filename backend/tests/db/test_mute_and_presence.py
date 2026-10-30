@@ -12,8 +12,8 @@ import pytest
 from fastapi import HTTPException
 from sqlalchemy import select
 
+from app.features.messages.inbox_router import mute_thread
 from app.features.messages.presence_read import partner_presence
-from app.features.messages.router import mute_thread
 from app.features.messages.schema import ThreadMuteRequest
 from app.features.messages.threads import list_threads_for_user
 from app.models import Conversation, ConversationMember, Profile

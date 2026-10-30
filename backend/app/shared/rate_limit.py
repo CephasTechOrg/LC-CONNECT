@@ -147,6 +147,11 @@ class UserRateLimit:
             raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=self._message)
         return current_user
 
+    async def allow_user(self, user_id) -> bool:
+        """Spend from the same per-user bucket outside an HTTP request — the WebSocket send path
+        shares `message_send_limit` with REST, so switching transport is no way around it."""
+        return await self._limiter.aallow(user_id)
+
 
 # Limits come from settings (env-tunable, defaults in app/config.py) — one place to change them.
 connection_request_limit = UserRateLimit(
@@ -224,6 +229,10 @@ reaction_limit = UserRateLimit(
 message_edit_limit = UserRateLimit(
     'message_edit', settings.rate_limit_message_edits_per_minute, 60,
     'Slow down — too many edits.',
+)
+message_delete_limit = UserRateLimit(
+    'message_delete', settings.rate_limit_message_deletes_per_minute, 60,
+    'Slow down — too many deletes.',
 )
 link_preview_limit = UserRateLimit(
     'link_preview', settings.rate_limit_link_previews_per_minute, 60,

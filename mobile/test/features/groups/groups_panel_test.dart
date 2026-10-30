@@ -19,11 +19,16 @@ GroupSummary _g(String name, {String? myStatus}) => GroupSummary(
       myStatus: myStatus,
     );
 
-Widget _panel(List<GroupSummary> discover) => ProviderScope(
+Widget _panel(
+  List<GroupSummary> discover, {
+  List<GroupSummary> invites = const [],
+  List<GroupSummary> Function(int page)? pages,
+}) =>
+    ProviderScope(
       overrides: [
-        discoverGroupsProvider.overrideWith((ref, args) async => discover),
+        discoverGroupsProvider.overrideWith((ref, args) async => pages?.call(args.page) ?? discover),
         myGroupsProvider.overrideWith((ref) async => const <GroupSummary>[]),
-        myInvitesProvider.overrideWith((ref) async => const <GroupSummary>[]),
+        myInvitesProvider.overrideWith((ref) async => invites),
       ],
       child: const MaterialApp(home: Scaffold(body: GroupsPanel())),
     );
@@ -55,6 +60,37 @@ void main() {
     await tester.pumpWidget(_panel([_g('Joined Club', myStatus: 'active')]));
     await tester.pumpAndSettle();
 
-    expect(find.textContaining("in all the groups here"), findsOneWidget);
+    expect(find.textContaining("in every group here"), findsOneWidget);
+  });
+
+  testWidgets('several invites collapse into one row', (tester) async {
+    tester.view.physicalSize = const Size(800, 2000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(_panel(
+      [_g('Open Club')],
+      invites: [_g('Debate', myStatus: 'invited'), _g('Choir', myStatus: 'invited')],
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.text('2 group invites'), findsOneWidget);
+    expect(find.text('Accept'), findsNothing, reason: 'the cards live in the sheet the row opens');
+  });
+
+  testWidgets('Discover loads one page at a time', (tester) async {
+    tester.view.physicalSize = const Size(800, 6000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    final first = [for (var i = 0; i < kDiscoverPageSize; i++) _g('Group $i')];
+    await tester.pumpWidget(_panel(const [], pages: (p) => p == 0 ? first : [_g('Last Group')]));
+    await tester.pumpAndSettle();
+    expect(find.text('Last Group'), findsNothing);
+
+    await tester.tap(find.text('Show more groups'));
+    await tester.pumpAndSettle();
+    expect(find.text('Last Group'), findsOneWidget);
+    expect(find.text('Show more groups'), findsNothing, reason: 'a short page is the last one');
   });
 }

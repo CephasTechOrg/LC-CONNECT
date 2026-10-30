@@ -29,7 +29,6 @@ void main() {
     'lib/features/campus_hub/screens/compose_campus_post_screen.dart',
     'lib/features/campus_hub/widgets/campus_post_card.dart',
     'lib/features/campus_hub/widgets/campus_updates_panel.dart',
-    'lib/features/campus_hub/widgets/opportunity_card.dart',
     'lib/features/messages/widgets/chat_bubble.dart',
     'lib/features/messages/widgets/chat_message_list.dart',
   };

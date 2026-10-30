@@ -8,6 +8,7 @@ import { apiFetch, bootstrapUser, type BootstrapUser, toUserMessage } from '@/li
 import { createClient } from '@/lib/supabase/client';
 import { signOut } from '@/lib/auth/session';
 import {
+  IconActivities,
   IconAdmins,
   IconAttendance,
   IconAudit,
@@ -39,6 +40,7 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { href: '/dashboard', label: 'Dashboard', Icon: IconDashboard },
       { href: '/dashboard/content', label: 'Campus Hub', Icon: IconCampusHub },
+      { href: '/dashboard/activities', label: 'Activities', Icon: IconActivities },
       { href: '/dashboard/users', label: 'Users', Icon: IconUsers },
       { href: '/dashboard/positions', label: 'Campus positions', Icon: IconPositions },
       { href: '/dashboard/moderation', label: 'Moderation', Icon: IconModeration },

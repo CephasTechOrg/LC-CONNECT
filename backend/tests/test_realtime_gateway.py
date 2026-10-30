@@ -96,6 +96,11 @@ def happy_auth(monkeypatch):
     monkeypatch.setattr(service, 'recheck_account', ok_recheck)
     monkeypatch.setattr(service, 'authorize_conversation', ok_authorize)
     monkeypatch.setattr('app.features.realtime.gateway.active_member_ids', ok_members)
+
+    async def still_connected(db, conversation):
+        return False
+
+    monkeypatch.setattr('app.features.realtime.gateway.dm_is_disconnected', still_connected)
     return user
 
 

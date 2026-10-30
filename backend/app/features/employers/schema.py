@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, HttpUrl, field_validator
+from pydantic import AwareDatetime, BaseModel, ConfigDict, EmailStr, Field, HttpUrl, field_validator
 
 from app.features.campus_hub.schema import OPPORTUNITY_CATEGORIES
 
@@ -27,11 +27,32 @@ class EmployerOrganizationRead(BaseModel):
     created_at: datetime
 
 
+# An employer post stays up for this long unless the employer picks a date, and never longer
+# than the maximum: a listing nobody remembers to close is the stale feed students complained of.
+DEFAULT_OPEN_FOR = timedelta(days=30)
+MAX_OPEN_FOR = timedelta(days=180)
+
+
 class OpportunitySubmissionCreate(BaseModel):
     title: str = Field(min_length=1, max_length=200)
     description: str = Field(min_length=1, max_length=8000)
     category: str
     external_url: HttpUrl | None = None
+    # When applications close. Optional so an older portal build still submits; the service then
+    # applies `DEFAULT_OPEN_FOR`.
+    closes_at: AwareDatetime | None = None
+
+    @field_validator('closes_at')
+    @classmethod
+    def _closes_in_range(cls, value: datetime | None) -> datetime | None:
+        if value is None:
+            return None
+        now = datetime.now(UTC)
+        if value <= now:
+            raise ValueError('The closing date must be in the future')
+        if value > now + MAX_OPEN_FOR:
+            raise ValueError('The closing date can be at most 180 days away')
+        return value
 
     @field_validator('category')
     @classmethod
@@ -50,6 +71,7 @@ class OpportunitySubmissionRead(BaseModel):
     description: str
     category: str
     external_url: str | None
+    closes_at: datetime | None = None
     status: OpportunitySubmissionStatus
     review_note: str | None
     created_at: datetime

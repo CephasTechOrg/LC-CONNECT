@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field, TypeAdapter, field_validator
 
 from app.features.realtime.protocol_events import (  # noqa: F401 — re-exported
     conversation_muted,
+    conversation_state,
     notification_retracted,
     notifications_read,
     presence,
@@ -37,7 +38,10 @@ MAX_BODY_CHARS = _MAX_BODY_CHARS
 # `reply_to` on serialized messages; state fields and `conversation_id` on `messages.reaction`,
 # now sent to every member's user channel; `notification.retracted`, `notifications.read`,
 # `conversation.muted` and `presence` (outbound, user channel). See `protocol_events`.
-PROTOCOL_VERSION = 5
+# 6 adds `conversation.state` (outbound, user channel: a chat pinned or archived on another
+# device). Presence frames now also reach connections without an open chat; older clients ignore
+# a presence frame for someone they have no thread with.
+PROTOCOL_VERSION = 6
 
 
 # ── Error + close codes ───────────────────────────────────────────────────────

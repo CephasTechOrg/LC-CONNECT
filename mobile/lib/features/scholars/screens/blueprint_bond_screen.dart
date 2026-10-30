@@ -1,15 +1,19 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/api/api_error.dart';
+import '../../../core/images/private_image_cache.dart';
 import '../../../core/theme/app_radii.dart';
 import '../../../core/theme/app_shadows.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../shared/util/caching.dart';
 import '../../../shared/widgets/a11y.dart';
 import '../data/blueprint_rules.dart';
 import '../data/url_field.dart';
@@ -312,7 +316,9 @@ class _BlueprintBondScreenState extends ConsumerState<BlueprintBondScreen> {
           ),
         ),
       ),
-      body: async.when(
+      // `.cached`, not `.when`: a background refresh (resume, reconnect) keeps the form on screen
+      // instead of covering it with a spinner.
+      body: async.cached(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(
           child: Text(apiErrorMessage(e, fallback: 'Could not load your profile.')),

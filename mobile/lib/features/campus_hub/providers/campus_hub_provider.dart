@@ -13,17 +13,23 @@ class CampusPostsQuery {
   final String? priority;
   final String? category;
 
-  const CampusPostsQuery({this.kind, this.priority, this.category});
+  /// Paged lists set both; null keeps the server's default first page.
+  final int? pageSize;
+  final int page;
+
+  const CampusPostsQuery({this.kind, this.priority, this.category, this.pageSize, this.page = 0});
 
   @override
   bool operator ==(Object other) =>
       other is CampusPostsQuery &&
       other.kind == kind &&
       other.priority == priority &&
-      other.category == category;
+      other.category == category &&
+      other.pageSize == pageSize &&
+      other.page == page;
 
   @override
-  int get hashCode => Object.hash(kind, priority, category);
+  int get hashCode => Object.hash(kind, priority, category, pageSize, page);
 }
 
 final campusHubOverviewProvider = FutureProvider<CampusHubOverview>((ref) async {
@@ -45,6 +51,7 @@ final campusPostsProvider = FutureProvider.family<List<CampusPostSummary>, Campu
       if (query.kind != null) 'kind': query.kind,
       if (query.priority != null) 'priority': query.priority,
       if (query.category != null) 'category': query.category,
+      if (query.pageSize != null) ...{'limit': query.pageSize, 'offset': query.page * query.pageSize!},
     },
   );
   return (response.data as List)

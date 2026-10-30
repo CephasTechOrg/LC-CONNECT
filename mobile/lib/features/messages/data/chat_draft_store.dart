@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -41,6 +42,10 @@ class ChatDraftStore {
         _legacyRoot = legacyRootDir ?? _legacyRootDir;
 
   final Future<Directory> Function() _rootDir;
+
+  /// Bumped whenever a draft is saved or removed, so the inbox can show "Draft: …" on the right
+  /// rows without polling the disk.
+  final changes = ValueNotifier<int>(0);
 
   /// Injectable so the migration can be tested without touching the real documents directory.
   final Future<Directory> Function() _legacyRoot;
@@ -130,6 +135,7 @@ class ChatDraftStore {
         // survive a device migration or a backup restore, and [pruneStale] depends on it.
         'updated_at': DateTime.now().toUtc().toIso8601String(),
       }));
+      changes.value++;
     } catch (_) {
       // Best effort — a draft must never break sending a message.
     }
@@ -139,7 +145,10 @@ class ChatDraftStore {
   Future<void> delete(String conversationId) async {
     try {
       final file = await _fileFor(conversationId);
-      if (await file.exists()) await file.delete();
+      if (await file.exists()) {
+        await file.delete();
+        changes.value++;
+      }
     } catch (_) {
       // Nothing to recover: the draft is stale either way.
     }
@@ -153,9 +162,20 @@ class ChatDraftStore {
     try {
       final dir = await _rootDir();
       if (await dir.exists()) await dir.delete(recursive: true);
+      changes.value++;
     } catch (_) {
       // Best effort.
     }
+  }
+
+  /// The saved drafts for [conversationIds], by id. Missing ones are simply absent.
+  Future<Map<String, String>> loadMany(Iterable<String> conversationIds) async {
+    final drafts = <String, String>{};
+    for (final id in conversationIds) {
+      final text = await load(id);
+      if (text != null) drafts[id] = text;
+    }
+    return drafts;
   }
 
   /// Drops drafts untouched for longer than [olderThan].

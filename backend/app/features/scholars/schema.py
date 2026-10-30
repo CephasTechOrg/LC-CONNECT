@@ -123,6 +123,8 @@ class ScholarProfessionalProfileRead(BaseModel):
     submitted_at: datetime | None
     reviewed_at: datetime | None
     has_headshot: bool
+    # Changes only when a new headshot is uploaded — the client's image cache key.
+    headshot_updated_at: datetime | None = None
     has_resume: bool
     created_at: datetime
     updated_at: datetime

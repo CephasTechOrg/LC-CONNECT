@@ -22,6 +22,12 @@ class Activity(Base):
     end_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     max_participants: Mapped[int | None] = mapped_column(Integer, nullable=True)
     is_cancelled: Mapped[bool] = mapped_column(Boolean, default=False, index=True, nullable=False)
+    # Campus pick: while this is in the future the activity is the featured one for everyone,
+    # ahead of the automatic score (see `features/activities/featured.py`).
+    featured_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    featured_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey('users.id', ondelete='SET NULL'), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 

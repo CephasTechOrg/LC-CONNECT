@@ -7,9 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.database import get_db
 from app.dependencies import require_verified_user
+from app.features.messages import inbox_router
 from app.features.messages.editing import edit_message
-from app.features.messages.membership import set_muted
-from app.features.messages.presence_read import partner_presence
 from app.features.messages.reaction_flow import apply_reaction
 from app.features.messages.reactions import reactions_for, reactors_for
 from app.features.messages.replies import (
@@ -29,13 +28,11 @@ from app.features.messages.schema import (
     MessageReadBy,
     MessageThreadRead,
     MessagingCapabilities,
-    PresenceRead,
     ReactionState,
     ReactionSummary,
     RecipientSearchResult,
     ReplyPreview,
     StaffThreadCreate,
-    ThreadMuteRequest,
     UnreadSummary,
 )
 from app.features.messages.service import (
@@ -56,10 +53,12 @@ from app.shared.conversations import (
     active_member_ids,
     active_members_with_mute,
     addressing_ids_for_conversations,
+    assert_can_post,
 )
 from app.shared.policies import can_message_as_staff
 from app.shared.rate_limit import (
     link_preview_limit,
+    message_delete_limit,
     message_edit_limit,
     message_send_limit,
     reaction_limit,
@@ -68,6 +67,8 @@ from app.shared.rate_limit import (
 )
 
 router = APIRouter(prefix='/messages', tags=['messages'])
+# Pin/archive, search and bulk presence (protocol 6) live in their own module for the line cap.
+router.include_router(inbox_router.router)
 
 
 @router.get('/capabilities', response_model=MessagingCapabilities)
@@ -234,36 +235,6 @@ async def sync_thread_endpoint(
     return _serialize_page(messages, cursor, reactions, sender_id=current_user.id, replies=replies)
 
 
-@router.patch('/threads/{match_id}/mute', status_code=status.HTTP_204_NO_CONTENT)
-async def mute_thread(
-    match_id: UUID,
-    payload: ThreadMuteRequest,
-    current_user: User = Depends(require_verified_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """Mute or unmute a conversation for yourself — no message or reaction pushes while muted.
-    Works for DMs and groups alike; messages still arrive and count as unread."""
-    conversation = await accessible_conversation(db, match_id, current_user.id)
-    await set_muted(db, conversation, current_user.id, payload.muted)
-    from app.features.realtime.broadcasts import broadcast_conversation_muted
-
-    await broadcast_conversation_muted(
-        current_user.id, conversation.match_id or conversation.id, payload.muted
-    )
-
-
-@router.get('/threads/{match_id}/presence', response_model=PresenceRead)
-async def get_thread_presence(
-    match_id: UUID,
-    current_user: User = Depends(require_verified_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """Your DM partner's "Online" / "Last seen", if you may see it — reciprocal, as in
-    WhatsApp: if either of you hides it, neither sees it. Not available for groups."""
-    conversation = await accessible_conversation(db, match_id, current_user.id)
-    return await partner_presence(db, conversation, current_user.id)
-
-
 @router.post('/threads/{match_id}', response_model=MessageRead, status_code=status.HTTP_201_CREATED)
 async def send_message(
     match_id: UUID,
@@ -272,6 +243,7 @@ async def send_message(
     db: AsyncSession = Depends(get_db),
 ):
     conversation = await accessible_conversation(db, match_id, current_user.id)
+    await assert_can_post(db, conversation)
     reply = None
     if payload.reply_to_id is not None:
         try:
@@ -386,7 +358,7 @@ async def get_message_read_by(
 
 @router.delete('/{message_id}', response_model=MessageRead)
 async def delete_message_endpoint(
-    message_id: UUID, current_user: User = Depends(require_verified_user), db: AsyncSession = Depends(get_db)
+    message_id: UUID, current_user: User = Depends(message_delete_limit), db: AsyncSession = Depends(get_db)
 ):
     """Delete a message for everyone (soft delete → tombstone). Sender anywhere; group admins in
     their group. Fans out a `message.deleted` event so open chats update live."""

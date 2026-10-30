@@ -80,9 +80,9 @@ async def _resolve(db: AsyncSession, message_id: UUID, user_id: UUID) -> Reacted
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Message not found')
     conversation_id, deleted_at, sender_id, match_id, body = row
 
-    from app.shared.conversations import accessible_conversation
+    from app.shared.conversations import accessible_conversation, assert_can_post
 
-    await accessible_conversation(db, conversation_id, user_id)
+    await assert_can_post(db, await accessible_conversation(db, conversation_id, user_id))
     # Reacting to a deleted message is refused: its body is never sent to clients, so a reaction
     # would be attached to a tombstone nobody can read.
     if deleted_at is not None:

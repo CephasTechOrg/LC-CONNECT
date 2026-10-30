@@ -39,6 +39,10 @@ class GroupSummary(BaseModel):
     member_count: int
     max_members: int | None
     my_status: str | None  # None | requested | invited | active | banned
+    # Set only for the viewer's own groups (`GET /groups/me`), so a list row can open the chat and
+    # label an admin without fetching the whole group first.
+    conversation_id: UUID | None = None
+    my_role: str | None = None  # None | member | admin | owner
 
 
 class GroupRead(GroupSummary):

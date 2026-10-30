@@ -9,11 +9,13 @@ from app.config import settings
 from app.database import get_db
 from app.dependencies import require_email_confirmed_user
 from app.features.activities import service
+from app.features.activities.featured import featured_activity, still_on
 from app.features.activities.schema import (
     ActivityCreate,
     ActivityParticipantRead,
     ActivityRead,
     ActivityUpdate,
+    FeaturedActivityRead,
 )
 from app.features.activities.service import activity_read
 from app.models import Activity, ActivityParticipant, User
@@ -51,7 +53,9 @@ async def list_activities(current_user: User = Depends(require_email_confirmed_u
     count_subq = select(func.count(ActivityParticipant.id)).where(ActivityParticipant.activity_id == Activity.id).scalar_subquery()
     joined_subq = select(ActivityParticipant.id).where(ActivityParticipant.activity_id == Activity.id, ActivityParticipant.user_id == current_user.id).exists().correlate(Activity)
 
-    stmt = select(Activity, count_subq.label('participant_count'), joined_subq.label('has_joined')).where(Activity.is_cancelled.is_(False), Activity.start_time >= datetime.now(UTC))
+    # Upcoming *or happening now*: an activity used to vanish the moment it started, even with
+    # hours still to run.
+    stmt = select(Activity, count_subq.label('participant_count'), joined_subq.label('has_joined')).where(Activity.is_cancelled.is_(False), still_on(datetime.now(UTC)))
     if category:
         stmt = stmt.where(Activity.category == category.strip().lower())
 
@@ -62,6 +66,21 @@ async def list_activities(current_user: User = Depends(require_email_confirmed_u
         await activity_read(db, activity, current_user.id, participant_count=p_count, has_joined_status=h_joined)
         for activity, p_count, h_joined in rows
     ]
+
+
+@router.get('/featured', response_model=FeaturedActivityRead | None)
+async def get_featured_activity(
+    current_user: User = Depends(require_email_confirmed_user), db: AsyncSession = Depends(get_db)
+):
+    """The one featured activity — an admin's pick, else the best upcoming by score. Null when
+    nothing is upcoming."""
+    chosen = await featured_activity(db, current_user.id, now=datetime.now(UTC))
+    if chosen is None:
+        return None
+    read = await activity_read(
+        db, chosen.activity, current_user.id, participant_count=chosen.participant_count, has_joined_status=chosen.has_joined
+    )
+    return FeaturedActivityRead(activity=read, reason=chosen.reason)
 
 
 @router.get('/{activity_id}', response_model=ActivityRead)

@@ -30,6 +30,10 @@ class ConversationMember(Base):
     __tablename__ = 'conversation_members'
     __table_args__ = (
         UniqueConstraint('conversation_id', 'user_id', name='uq_conversation_member'),
+        # Purging a message nulls any boundary pointing at it (ON DELETE SET NULL); without these
+        # each purged message scanned the whole members table to find them.
+        Index('ix_conversation_members_last_read', 'last_read_message_id'),
+        Index('ix_conversation_members_last_delivered', 'last_delivered_message_id'),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -62,6 +66,10 @@ class ConversationMember(Base):
         UUID(as_uuid=True), ForeignKey('messages.id', ondelete='SET NULL'), nullable=True
     )
     muted: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # This member's own inbox arrangement: pinned to the top (up to three), or archived out of the
+    # main list. Timestamps rather than flags so pinned chats keep the order they were pinned in.
+    pinned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     joined_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
 
@@ -96,6 +104,8 @@ class Message(Base):
         # Legacy unread index (match/read_at based). Superseded by the boundary scan; kept for
         # rollback safety, droppable post-cutover.
         Index('ix_messages_unread', 'match_id', 'sender_id', postgresql_where=text('read_at IS NULL')),
+        # The retention purge selects deleted messages; this keeps it off a full scan.
+        Index('ix_messages_deleted_at', 'deleted_at', postgresql_where=text('deleted_at IS NOT NULL')),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)

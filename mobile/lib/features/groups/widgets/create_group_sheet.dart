@@ -40,7 +40,7 @@ class _CreateGroupFormState extends ConsumerState<_CreateGroupForm> {
   bool _submitting = false;
   String? _error;
 
-  static const _categories = {'club': 'Club', 'housing': 'Housing', 'class': 'Class', 'interest': 'Interest'};
+  static const _categories = groupCategoryLabels;
   static const _policies = {'open': 'Anyone can join', 'approval': 'Approve requests', 'invite': 'Invite only'};
   static const _visibilities = {'public': 'Public', 'unlisted': 'Unlisted', 'private': 'Private'};
 

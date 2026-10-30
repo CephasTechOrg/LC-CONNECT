@@ -88,7 +88,7 @@ class ActivitiesScreen extends ConsumerWidget {
                               .read(activitiesFilterProvider.notifier)
                               .set('all'),
                         )
-                      : _ActivityList(activities: activities),
+                      : _ActivityList(activities: activities, filter: filter),
                 ),
               ),
             ),

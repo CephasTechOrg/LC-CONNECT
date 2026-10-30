@@ -8,7 +8,7 @@ class _ActivitiesPreview extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(activitiesNotifierProvider);
 
-    return async.when(
+    return async.cached(
       loading: () => const _PreviewLoading(),
       error: (_, _) => const _SectionEmpty(
         icon: Icons.event_busy_outlined,
@@ -21,7 +21,15 @@ class _ActivitiesPreview extends ConsumerWidget {
             text: 'No activities yet. Check back soon.',
           );
         }
-        final visible = activities.take(2).toList();
+        // The featured activity first — the same one Activities leads with — then the soonest.
+        final featured = ref.watch(featuredActivityProvider).value?.activity;
+        final lead = featured == null
+            ? null
+            : activities.where((a) => a.id == featured.id).firstOrNull ?? featured;
+        final visible = [
+          ?lead,
+          ...activities.where((a) => a.id != lead?.id),
+        ].take(2).toList();
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.gutter),
           child: Column(
@@ -130,7 +138,7 @@ class _SuggestedConnectionsPreview extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(discoveryNotifierProvider);
 
-    return async.when(
+    return async.cached(
       loading: () => const _PreviewLoading(),
       error: (_, _) => const _SectionEmpty(
         icon: Icons.people_outline_rounded,

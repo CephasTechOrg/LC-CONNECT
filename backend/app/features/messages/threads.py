@@ -10,12 +10,13 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import or_, select, true
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 
 from app.features.messages.schema import GroupThreadInfo, MessageThreadRead
 from app.features.messages.service import message_read
-from app.models import CampusPosition, Conversation, ConversationMember, Group, Message, Profile
+from app.models import Block, CampusPosition, Conversation, ConversationMember, Group, Message, Profile
 from app.shared.policies import open_staff_thread_ids
 from app.shared.profiles import profile_load_options
 from app.shared.serializers import profile_to_public
@@ -31,7 +32,7 @@ async def list_threads_for_user(db: AsyncSession, user_id: UUID) -> list[Message
     newest activity first. DM rows carry the partner; group rows carry the group."""
     member_rows = (
         await db.execute(
-            select(Conversation, ConversationMember.muted)
+            select(Conversation, ConversationMember)
             .join(ConversationMember, ConversationMember.conversation_id == Conversation.id)
             .where(ConversationMember.user_id == user_id, ConversationMember.status == 'active')
         )
@@ -39,7 +40,7 @@ async def list_threads_for_user(db: AsyncSession, user_id: UUID) -> list[Message
     if not member_rows:
         return []
     conversations = [conv for conv, _ in member_rows]
-    muted_ids = {conv.id for conv, muted in member_rows if muted}
+    mine = {conv.id: member for conv, member in member_rows}
 
     # A staff thread whose staff side lost their position is no longer accessible — drop it
     # here too, so the inbox never lists a thread that would 403 on open.
@@ -54,15 +55,7 @@ async def list_threads_for_user(db: AsyncSession, user_id: UUID) -> list[Message
     from app.features.messages.reactions import latest_reactions_for_threads
 
     reaction_previews = await latest_reactions_for_threads(db, conv_ids, owner_id=user_id)
-    latest = (
-        await db.execute(
-            select(Message)
-            .where(Message.conversation_id.in_(conv_ids))
-            .distinct(Message.conversation_id)
-            .order_by(Message.conversation_id, Message.created_at.desc(), Message.id.desc())
-        )
-    ).scalars().all()
-    latest_map = {m.conversation_id: m for m in latest}
+    latest_map = await _latest_messages(db, conv_ids)
 
     # Partner profiles (the other active member of each DM / staff_dm conversation).
     partner_style_ids = [c.id for c in conversations if c.kind in _PARTNER_KINDS]
@@ -101,6 +94,11 @@ async def list_threads_for_user(db: AsyncSession, user_id: UUID) -> list[Message
         ).scalars().all()
     } if partner_of else {}
 
+    from app.features.messages.presence_read import online_partners
+
+    online = await online_partners(db, user_id) if partner_of else set()
+    blocked = await _blocked_people(db, user_id) if partner_of else set()
+
     # Group metadata.
     group_ids = [c.id for c in conversations if c.kind == 'group']
     group_of = {
@@ -118,6 +116,8 @@ async def list_threads_for_user(db: AsyncSession, user_id: UUID) -> list[Message
             partner_profile = profiles.get(partner_of.get(conv.id))
             if partner_profile is None:
                 continue  # orphaned conversation (partner profile missing) — skip, as before
+            if partner_of.get(conv.id) in blocked:
+                continue  # a block closes the chat (opening it is a 403), so it leaves the inbox
             position = positions.get(partner_of.get(conv.id))
             threads.append(MessageThreadRead(
                 conversation_id=conv.id, kind=conv.kind, match_id=conv.match_id,
@@ -126,7 +126,8 @@ async def list_threads_for_user(db: AsyncSession, user_id: UUID) -> list[Message
                 partner_department=position.department if position else None,
                 latest_message=message_read(latest_msg) if latest_msg else None,
                 latest_reaction=reaction_previews.get(conv.id),
-                muted=conv.id in muted_ids,
+                **_my_state(mine[conv.id]),
+                partner_online=partner_of.get(conv.id) in online,
             ))
         else:
             group = group_of.get(conv.id)
@@ -137,7 +138,7 @@ async def list_threads_for_user(db: AsyncSession, user_id: UUID) -> list[Message
                 group=GroupThreadInfo(id=group.id, name=group.name, avatar_url=group.avatar_url),
                 latest_message=message_read(latest_msg) if latest_msg else None,
                 latest_reaction=reaction_previews.get(conv.id),
-                muted=conv.id in muted_ids,
+                **_my_state(mine[conv.id]),
             ))
 
     # Newest activity first; a message beats an empty thread.
@@ -146,3 +147,34 @@ async def list_threads_for_user(db: AsyncSession, user_id: UUID) -> list[Message
         reverse=True,
     )
     return threads
+
+
+def _my_state(member: ConversationMember) -> dict:
+    return {'muted': member.muted, 'pinned_at': member.pinned_at, 'archived': member.archived_at is not None}
+
+
+async def _latest_messages(db: AsyncSession, conversation_ids: list[UUID]) -> dict[UUID, Message]:
+    """The newest message of each conversation: one index probe per conversation (LATERAL …
+    LIMIT 1 on `ix_messages_conversation_created_id`). `DISTINCT ON` sorted every message of every
+    conversation to keep one per group, so the inbox slowed as history grew."""
+    if not conversation_ids:
+        return {}
+    ids = select(Conversation.id.label('cid')).where(Conversation.id.in_(conversation_ids)).subquery()
+    newest = (
+        select(Message)
+        .where(Message.conversation_id == ids.c.cid)
+        .order_by(Message.created_at.desc(), Message.id.desc())
+        .limit(1)
+        .lateral()
+    )
+    row = aliased(Message, newest)
+    messages = (await db.execute(select(row).select_from(ids).join(newest, true()))).scalars().all()
+    return {m.conversation_id: m for m in messages}
+
+
+async def _blocked_people(db: AsyncSession, user_id: UUID) -> set[UUID]:
+    """Everyone blocked by, or blocking, this user."""
+    rows = await db.execute(
+        select(Block.blocker_id, Block.blocked_id).where(or_(Block.blocker_id == user_id, Block.blocked_id == user_id))
+    )
+    return {blocked if blocker == user_id else blocker for blocker, blocked in rows.all()}

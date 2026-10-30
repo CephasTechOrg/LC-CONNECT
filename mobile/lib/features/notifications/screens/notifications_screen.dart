@@ -15,6 +15,7 @@ import '../../../shared/widgets/app_states.dart';
 import '../../../shared/util/app_date_format.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../shared/util/caching.dart';
 
 part '../widgets/notification_rows.dart';
 
@@ -166,7 +167,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
             ),
             children: [
               const _ConnectionRequestsCard(), // pinned: always the way into Connections
-              ...async.when(
+              ...async.cached(
                 loading: () => const [
                   AppThreadRowSkeleton(),
                   AppThreadRowSkeleton(),

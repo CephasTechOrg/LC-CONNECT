@@ -97,29 +97,58 @@ async def test_persist_creates_on_clean_insert():
     db.rollback.assert_not_awaited()
 
 
-async def test_persist_returns_existing_row_on_conflict():
-    """A duplicate client_message_id must roll back and return the original row
-    (created=False) so both the retry and the original ack converge on one id."""
-    existing = Message(sender_id=uuid4(), match_id=uuid4(), body='hi')
-    result = MagicMock()
-    result.scalar_one.return_value = existing
+class _Savepoint:
+    """Stands in for `db.begin_nested()`: an async context that lets the flush error through."""
 
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *exc):
+        return False
+
+
+def _conflicting_db(existing: Message) -> MagicMock:
+    result = MagicMock()
+    result.scalar_one_or_none.return_value = existing
     db = MagicMock()
     db.add = MagicMock()
+    db.begin_nested = MagicMock(return_value=_Savepoint())
     db.flush = AsyncMock(side_effect=_integrity_error())
     db.rollback = AsyncMock()
     db.commit = AsyncMock()
     db.execute = AsyncMock(return_value=result)
+    return db
+
+
+async def test_persist_returns_existing_row_on_conflict():
+    """A duplicate client_message_id returns the original row (created=False) so both the retry
+    and the original ack converge on one id. Only the savepoint rolls back — a full rollback
+    discarded the caller's other work and expired every loaded object."""
+    conversation_id = uuid4()
+    existing = Message(sender_id=uuid4(), match_id=uuid4(), conversation_id=conversation_id, body='hi')
+    db = _conflicting_db(existing)
 
     msg, created = await persist_message_idempotent(
-        db, sender_id=existing.sender_id, match_id=existing.match_id, conversation_id=uuid4(),
+        db, sender_id=existing.sender_id, match_id=existing.match_id, conversation_id=conversation_id,
         body='hi', client_message_id=uuid4(),
     )
 
     assert created is False
     assert msg is existing
-    db.rollback.assert_awaited_once()
+    db.rollback.assert_not_awaited()
     db.commit.assert_not_awaited()  # never commit on the conflict path
+
+
+async def test_a_client_id_reused_in_another_chat_is_refused():
+    existing = Message(sender_id=uuid4(), match_id=uuid4(), conversation_id=uuid4(), body='private')
+    db = _conflicting_db(existing)
+
+    with pytest.raises(HTTPException) as exc:
+        await persist_message_idempotent(
+            db, sender_id=existing.sender_id, match_id=uuid4(), conversation_id=uuid4(),
+            body='hi', client_message_id=uuid4(),
+        )
+    assert exc.value.status_code == 409
 
 
 # ── keyset direction guards (compiled SQL) ─────────────────────────────────────

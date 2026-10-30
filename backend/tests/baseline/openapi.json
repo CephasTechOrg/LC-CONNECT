@@ -189,6 +189,20 @@
         "title": "ActivityCreate",
         "type": "object"
       },
+      "ActivityFeatureRequest": {
+        "properties": {
+          "until": {
+            "format": "date-time",
+            "title": "Until",
+            "type": "string"
+          }
+        },
+        "required": [
+          "until"
+        ],
+        "title": "ActivityFeatureRequest",
+        "type": "object"
+      },
       "ActivityParticipantRead": {
         "description": "A row in an activity's roster. Activities are public, so this is just names/avatars \u2014\nno moderation. `is_creator` marks the organizer.",
         "properties": {
@@ -454,6 +468,97 @@
           }
         },
         "title": "ActivityUpdate",
+        "type": "object"
+      },
+      "AdminActivityRead": {
+        "description": "An upcoming activity in the admin list, with whether it is the campus pick.",
+        "properties": {
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "creator_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Creator Name"
+          },
+          "end_time": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Time"
+          },
+          "featured_until": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Featured Until"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "location": {
+            "title": "Location",
+            "type": "string"
+          },
+          "max_participants": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Participants"
+          },
+          "participant_count": {
+            "title": "Participant Count",
+            "type": "integer"
+          },
+          "start_time": {
+            "format": "date-time",
+            "title": "Start Time",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "category",
+          "location",
+          "start_time",
+          "end_time",
+          "participant_count",
+          "max_participants",
+          "creator_name",
+          "featured_until"
+        ],
+        "title": "AdminActivityRead",
         "type": "object"
       },
       "AdminDashboardSummary": {
@@ -1449,6 +1554,17 @@
             "format": "uuid",
             "title": "Auth User Id",
             "type": "string"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
           },
           "email": {
             "format": "email",
@@ -3319,6 +3435,17 @@
             ],
             "title": "Auth User Id"
           },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
           "email": {
             "format": "email",
             "title": "Email",
@@ -4033,6 +4160,31 @@
         "title": "EmployerScholarView",
         "type": "object"
       },
+      "FeaturedActivityRead": {
+        "description": "The featured activity and why: an admin pin, or what the score saw in it.",
+        "properties": {
+          "activity": {
+            "$ref": "#/components/schemas/ActivityRead"
+          },
+          "reason": {
+            "enum": [
+              "pinned",
+              "filling_up",
+              "starting_soon",
+              "popular",
+              "featured"
+            ],
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "activity",
+          "reason"
+        ],
+        "title": "FeaturedActivityRead",
+        "type": "object"
+      },
       "ForgotPasswordRequest": {
         "properties": {
           "email": {
@@ -4281,10 +4433,10 @@
           "member_count",
           "max_members",
           "my_status",
-          "description",
-          "owner_id",
           "conversation_id",
           "my_role",
+          "description",
+          "owner_id",
           "created_at"
         ],
         "title": "GroupRead",
@@ -4306,6 +4458,18 @@
           "category": {
             "title": "Category",
             "type": "string"
+          },
+          "conversation_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conversation Id"
           },
           "id": {
             "format": "uuid",
@@ -4330,6 +4494,17 @@
           "member_count": {
             "title": "Member Count",
             "type": "integer"
+          },
+          "my_role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "My Role"
           },
           "my_status": {
             "anyOf": [
@@ -5124,8 +5299,84 @@
         "title": "MessageResponse",
         "type": "object"
       },
+      "MessageSearchHit": {
+        "description": "One message matching a search, with enough of its chat to show and open it.",
+        "properties": {
+          "avatar_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Url"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "group_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Group Id"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "message_id": {
+            "format": "uuid",
+            "title": "Message Id",
+            "type": "string"
+          },
+          "sender_id": {
+            "format": "uuid",
+            "title": "Sender Id",
+            "type": "string"
+          },
+          "snippet": {
+            "title": "Snippet",
+            "type": "string"
+          },
+          "thread_id": {
+            "format": "uuid",
+            "title": "Thread Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message_id",
+          "thread_id",
+          "kind",
+          "title",
+          "sender_id",
+          "snippet",
+          "created_at"
+        ],
+        "title": "MessageSearchHit",
+        "type": "object"
+      },
       "MessageThreadRead": {
         "properties": {
+          "archived": {
+            "default": false,
+            "title": "Archived",
+            "type": "boolean"
+          },
           "conversation_id": {
             "format": "uuid",
             "title": "Conversation Id",
@@ -5203,6 +5454,11 @@
             ],
             "title": "Partner Department"
           },
+          "partner_online": {
+            "default": false,
+            "title": "Partner Online",
+            "type": "boolean"
+          },
           "partner_position_title": {
             "anyOf": [
               {
@@ -5213,6 +5469,18 @@
               }
             ],
             "title": "Partner Position Title"
+          },
+          "pinned_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pinned At"
           }
         },
         "required": [
@@ -5766,6 +6034,18 @@
             "title": "Category",
             "type": "string"
           },
+          "closes_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closes At"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -5869,6 +6149,18 @@
             "title": "Category",
             "type": "string"
           },
+          "closes_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closes At"
+          },
           "description": {
             "maxLength": 8000,
             "minLength": 1,
@@ -5909,6 +6201,18 @@
           "category": {
             "title": "Category",
             "type": "string"
+          },
+          "closes_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closes At"
           },
           "created_at": {
             "format": "date-time",
@@ -7348,6 +7652,18 @@
             "title": "Has Resume",
             "type": "boolean"
           },
+          "headshot_updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Headshot Updated At"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -8334,6 +8650,61 @@
         "title": "ThreadReactionPreview",
         "type": "object"
       },
+      "ThreadStateRead": {
+        "properties": {
+          "archived": {
+            "title": "Archived",
+            "type": "boolean"
+          },
+          "pinned_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pinned At"
+          }
+        },
+        "required": [
+          "pinned_at",
+          "archived"
+        ],
+        "title": "ThreadStateRead",
+        "type": "object"
+      },
+      "ThreadStateRequest": {
+        "description": "Pin or archive a chat for yourself. Omitted fields are left as they are.",
+        "properties": {
+          "archived": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Archived"
+          },
+          "pinned": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pinned"
+          }
+        },
+        "title": "ThreadStateRequest",
+        "type": "object"
+      },
       "UnreadCount": {
         "properties": {
           "count": {
@@ -8710,6 +9081,41 @@
         ]
       }
     },
+    "/api/v1/activities/featured": {
+      "get": {
+        "description": "The one featured activity \u2014 an admin's pick, else the best upcoming by score. Null when\nnothing is upcoming.",
+        "operationId": "get_featured_activity_api_v1_activities_featured_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/FeaturedActivityRead"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Get Featured Activity Api V1 Activities Featured Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Featured Activity",
+        "tags": [
+          "activities"
+        ]
+      }
+    },
     "/api/v1/activities/{activity_id}": {
       "get": {
         "operationId": "get_activity_api_v1_activities__activity_id__get",
@@ -9067,6 +9473,150 @@
         "summary": "List Participants",
         "tags": [
           "activities"
+        ]
+      }
+    },
+    "/api/v1/admin/activities": {
+      "get": {
+        "operationId": "list_upcoming_activities_api_v1_admin_activities_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AdminActivityRead"
+                  },
+                  "title": "Response List Upcoming Activities Api V1 Admin Activities Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Upcoming Activities",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/activities/{activity_id}/feature": {
+      "delete": {
+        "operationId": "unfeature_activity_api_v1_admin_activities__activity_id__feature_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "activity_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Activity Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Unfeature Activity",
+        "tags": [
+          "admin"
+        ]
+      },
+      "post": {
+        "operationId": "feature_activity_api_v1_admin_activities__activity_id__feature_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "activity_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Activity Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActivityFeatureRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Feature Activity",
+        "tags": [
+          "admin"
         ]
       }
     },
@@ -14511,6 +15061,7 @@
             "schema": {
               "anyOf": [
                 {
+                  "maxLength": 80,
                   "type": "string"
                 },
                 {
@@ -14538,6 +15089,20 @@
           },
           {
             "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "popular",
+              "enum": [
+                "popular",
+                "new"
+              ],
+              "title": "Sort",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
@@ -14545,6 +15110,18 @@
               "maximum": 100,
               "minimum": 1,
               "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 5000,
+              "minimum": 0,
+              "title": "Offset",
               "type": "integer"
             }
           }
@@ -15606,6 +16183,89 @@
         ]
       }
     },
+    "/api/v1/messages/search": {
+      "get": {
+        "description": "Messages containing `q` in chats you are in, newest first. Page with `before` set to the\nlast hit's `created_at`.",
+        "operationId": "search_api_v1_messages_search_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": true,
+            "schema": {
+              "maxLength": 80,
+              "minLength": 2,
+              "title": "Q",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "before",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Before"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MessageSearchHit"
+                  },
+                  "title": "Response Search Api V1 Messages Search Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Search",
+        "tags": [
+          "messages"
+        ]
+      }
+    },
     "/api/v1/messages/search-recipients": {
       "get": {
         "description": "Search students + staff to start a new conversation with \u2014 verified staff only.",
@@ -16001,6 +16661,65 @@
           }
         ],
         "summary": "Get Thread Presence",
+        "tags": [
+          "messages"
+        ]
+      }
+    },
+    "/api/v1/messages/threads/{match_id}/state": {
+      "patch": {
+        "description": "Pin (at most three) or archive a chat for yourself. Your other devices follow along.",
+        "operationId": "update_thread_state_api_v1_messages_threads__match_id__state_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "match_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Match Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ThreadStateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ThreadStateRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Thread State",
         "tags": [
           "messages"
         ]

@@ -10,6 +10,7 @@ class GroupSearchField extends StatelessWidget {
   final bool hasText;
   final ValueChanged<String> onChanged;
   final VoidCallback onClear;
+  final EdgeInsetsGeometry padding;
 
   const GroupSearchField({
     super.key,
@@ -17,6 +18,7 @@ class GroupSearchField extends StatelessWidget {
     required this.hasText,
     required this.onChanged,
     required this.onClear,
+    this.padding = const EdgeInsets.fromLTRB(20, 12, 20, 0),
   });
 
   @override
@@ -25,7 +27,7 @@ class GroupSearchField extends StatelessWidget {
         OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: color));
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+      padding: padding,
       child: TextField(
         controller: controller,
         onChanged: onChanged,

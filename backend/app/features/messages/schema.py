@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.shared.message_limits import MAX_BODY_CHARS
 from app.shared.schemas import ProfilePublic
@@ -84,8 +84,18 @@ class MessageReadBy(BaseModel):
     avatar_url: str | None = None
 
 
+def _not_blank(value: str) -> str:
+    """Length limits apply to the raw text, so a body of spaces passed `min_length=1` and was
+    stored as an empty message. The WebSocket path already refused it."""
+    if not value.strip():
+        raise ValueError('Message cannot be empty')
+    return value
+
+
 class MessageCreate(BaseModel):
     body: str = Field(min_length=1, max_length=MAX_BODY_CHARS)
+
+    _body_not_blank = field_validator('body')(_not_blank)
     # Optional idempotency key; a retry with the same value returns the original message.
     client_message_id: UUID | None = None
     # The message this one replies to; must be in the same conversation and not deleted.
@@ -96,6 +106,8 @@ class MessageEditRequest(BaseModel):
     """The new body. Same bounds as sending — an edit cannot smuggle in a longer message."""
 
     body: str = Field(min_length=1, max_length=MAX_BODY_CHARS)
+
+    _body_not_blank = field_validator('body')(_not_blank)
 
 
 class LinkPreviewRequest(BaseModel):
@@ -199,10 +211,42 @@ class MessageThreadRead(BaseModel):
     latest_reaction: ThreadReactionPreview | None = None
     # Whether the viewer muted this conversation (no message or reaction pushes).
     muted: bool = False
+    # The viewer's own arrangement: pinned to the top, or archived out of the main list.
+    pinned_at: datetime | None = None
+    archived: bool = False
+    # DM partner online right now, when the viewer may see it (see `shared/presence.py`).
+    partner_online: bool = False
 
 
 class ThreadMuteRequest(BaseModel):
     muted: bool
+
+
+class ThreadStateRequest(BaseModel):
+    """Pin or archive a chat for yourself. Omitted fields are left as they are."""
+
+    pinned: bool | None = None
+    archived: bool | None = None
+
+
+class ThreadStateRead(BaseModel):
+    pinned_at: datetime | None
+    archived: bool
+
+
+class MessageSearchHit(BaseModel):
+    """One message matching a search, with enough of its chat to show and open it."""
+
+    message_id: UUID
+    # The addressing id the app opens the chat by (match id for a DM, conversation id otherwise).
+    thread_id: UUID
+    kind: str  # 'dm' | 'staff_dm' | 'group'
+    title: str  # the partner's or the group's name
+    avatar_url: str | None = None
+    group_id: UUID | None = None
+    sender_id: UUID
+    snippet: str
+    created_at: datetime
 
 
 class PresenceRead(BaseModel):

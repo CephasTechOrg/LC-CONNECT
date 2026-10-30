@@ -8,15 +8,16 @@ from __future__ import annotations
 from uuid import UUID
 
 from fastapi import HTTPException, status
-from sqlalchemy import func, or_, select
+from sqlalchemy import exists, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.messages.schema import MessageThreadRead, RecipientSearchResult
 from app.features.messages.service import message_read
-from app.models import CampusPosition, Message, Profile, User
+from app.models import Block, CampusPosition, Message, Profile, User
 from app.shared.policies import can_message_as_staff, users_are_blocked
 from app.shared.profiles import profile_load_options
 from app.shared.serializers import profile_to_public
+from app.shared.text_search import like_pattern
 
 
 async def create_staff_thread(db: AsyncSession, *, actor: User, target_user_id: UUID) -> MessageThreadRead:
@@ -100,7 +101,14 @@ async def search_recipients(
     Matches on display name or official title, active + verified accounts only, excluding
     `actor` and anyone they've blocked (in either direction).
     """
-    pattern = f'%{query.strip().lower()}%'
+    pattern = like_pattern(query.strip().lower())
+    # Excluded in the query (either direction), not checked one row at a time afterwards.
+    blocked = exists().where(
+        or_(
+            (Block.blocker_id == actor.id) & (Block.blocked_id == User.id),
+            (Block.blocker_id == User.id) & (Block.blocked_id == actor.id),
+        )
+    )
     rows = (
         await db.execute(
             select(User, Profile, CampusPosition)
@@ -119,9 +127,10 @@ async def search_recipients(
                 User.is_verified.is_(True),
                 User.deleted_at.is_(None),
                 or_(
-                    func.lower(Profile.display_name).like(pattern),
-                    func.lower(CampusPosition.official_title).like(pattern),
+                    func.lower(Profile.display_name).like(pattern, escape='\\'),
+                    func.lower(CampusPosition.official_title).like(pattern, escape='\\'),
                 ),
+                ~blocked,
             )
             .order_by(Profile.display_name.asc())
             .limit(limit)
@@ -130,8 +139,6 @@ async def search_recipients(
 
     results: list[RecipientSearchResult] = []
     for user, profile, position in rows:
-        if await users_are_blocked(db, actor.id, user.id):
-            continue
         results.append(
             RecipientSearchResult(
                 user_id=user.id,
